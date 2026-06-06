@@ -1,0 +1,2201 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="auto">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Javiss Gemini AI - Ultimate Workstation</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <style>
+        :root { 
+            --bg-main: #f0f4f9; 
+            --bg-sidebar: #e9eef6; 
+            --bg-card: #ffffff; 
+            --border: #c4c7c5; 
+            --text-main: #1f1f1f; 
+            --text-muted: #444746;
+            --bg-msg-user: #d3e3fd; 
+            --bg-msg-bot: transparent; 
+            --primary: #0b57d0; 
+            --primary-container: #d3e3fd;
+            --danger: #b3261e;
+            --input-bg: #f0f4f9;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        [data-theme="dark"] { 
+            --bg-main: #131314; 
+            --bg-sidebar: #1e1f20; 
+            --bg-card: #282a2c; 
+            --border: #444746; 
+            --text-main: #e3e3e3; 
+            --text-muted: #c4c7c5;
+            --bg-msg-user: #004a77; 
+            --bg-msg-bot: transparent; 
+            --primary: #a8c7fa; 
+            --primary-container: #004a77;
+            --danger: #f2b8b5;
+            --input-bg: #1e1f20;
+            --shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+        
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            display: flex;
+            width: 100vw;
+            height: 100dvh; 
+            background: var(--bg-main);
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        /* LAYOUT CONTAINER */
+        .app-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* LEFT SIDEBAR */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            background: var(--bg-sidebar);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            z-index: 999;
+            transition: var(--transition);
+        }
+        .sidebar-header {
+            padding: 18px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .sidebar-scroll-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .sidebar-section {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .flex-grow-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            padding-left: 4px;
+        }
+        .sidebar-footer {
+            padding: 12px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(0,0,0,0.02);
+        }
+        
+        .main-content {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-main);
+            position: relative;
+            overflow: hidden;
+        }
+        .main-header {
+            height: 56px;
+            min-height: 56px;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-main);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .header-left, .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-text {
+            font-size: 1.15rem;
+            font-weight: 500;
+        }
+
+        /* KHUNG CHAT SÂN KHẤU CHÍNH */
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            max-width: 820px;
+            width: 100%;
+            margin: 0 auto;
+            scroll-behavior: smooth;
+        }
+        .message-container {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            width: 100%;
+        }
+        .user-message {
+            background: var(--bg-msg-user);
+            padding: 14px 18px;
+            border-radius: 22px 22px 4px 22px;
+            max-width: 85%;
+            margin-left: auto;
+            box-shadow: var(--shadow);
+            line-height: 1.5;
+        }
+        .bot-message {
+            background: var(--bg-msg-bot);
+            padding: 14px 4px;
+            max-width: 100%;
+            line-height: 1.6;
+        }
+        .message-header {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .msg-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+            opacity: 0.8;
+            transition: var(--transition);
+        }
+        .action-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .action-btn:hover {
+            background: var(--primary-container);
+            color: var(--text-main);
+        }
+
+        /* KHU VỰC ĐÁY & THANH CHƠI ĐIỀU KHIỂN */
+        .bottom-input-panel {
+            flex-shrink: 0;
+            max-width: 820px;
+            width: calc(100% - 32px);
+            margin: 0 auto 16px auto;
+            background: var(--bg-card);
+            border-radius: 24px;
+            padding: 10px 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
+            z-index: 99;
+        }
+        .input-tools-scroll {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+            scrollbar-width: none;
+        }
+        .input-tools-scroll::-webkit-scrollbar { display: none; }
+        
+        .tool-chip {
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .tool-chip.highlight { color: #b06000; font-weight: 600; }
+        .tool-chip.magic { color: var(--primary); font-weight: 600; }
+        .tool-chip:hover { background: var(--border); }
+        
+        .input-container-box {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+        #user-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+            resize: none;
+            max-height: 150px;
+            min-height: 40px;
+            line-height: 1.5;
+            padding-top: 8px;
+        }
+        #send-button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            height: 40px;
+            white-space: nowrap;
+        }
+
+        /* CÁC THÀNH PHẦN MODERN UI KHÁC */
+        .modern-select, .modern-input, .modern-textarea {
+            width: 100%;
+            background: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            outline: none;
+        }
+        .modern-list-select {
+            width: 100%;
+            flex: 1;
+            background: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px;
+            outline: none;
+            font-size: 0.9rem;
+        }
+        .modern-list-select option {
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 2px;
+        }
+        .modern-list-select option:checked {
+            background-color: var(--primary-container) !important;
+            color: var(--text-main) !important;
+        }
+        
+        .btn {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-main);
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn.primary { background: var(--primary); color: white; border: none; }
+        .btn.danger { color: var(--danger); border-color: var(--danger); }
+        .btn.warning { color: #b06000; border-color: #b06000; }
+        .side-btn-row { display: flex; gap: 6px; width: 100%; }
+        .side-btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; margin-top: 6px; }
+        
+        .icon-btn {
+            background: none;
+            border: none;
+            color: var(--text-main);
+            cursor: pointer;
+            font-size: 1.3rem;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .icon-btn:hover { background: rgba(150,150,150,0.15); }
+
+        /* MODAL WINDOWS CẤU TRÚC CHUẨN */
+        .modal-box {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 92%;
+            max-width: 550px;
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+            z-index: 2005;
+            flex-direction: column;
+            max-height: 85vh;
+        }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-scroll-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .modal-overlay-bg {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            z-index: 2000;
+            backdrop-filter: blur(2px);
+        }
+        .settings-group {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+        }
+        .settings-group legend {
+            font-weight: 600;
+            padding: 0 6px;
+            color: var(--primary);
+            font-size: 0.9rem;
+        }
+        .field-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 6px;
+        }
+        .slider-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.85rem;
+        }
+        .slider-row input {
+            width: 100%;
+            accent-color: var(--primary);
+        }
+
+        .header-search-bar {
+            display: flex;
+            align-items: center;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2px 4px 2px 12px;
+        }
+        .header-search-bar input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            width: 110px;
+            transition: var(--transition);
+        }
+        .header-search-bar input:focus { width: 180px; }
+        .search-trigger-btn {
+            background: transparent; border: none; cursor: pointer; padding: 4px 8px; font-size: 1rem;
+        }
+
+        /* RESPONSIVE CONTROL PANEL */
+        .sidebar-overlay {
+            display: none; position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.3); z-index: 990;
+        }
+        .mobile-only { display: none; }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: 0; top: 0; bottom: 0;
+                transform: translateX(-100%);
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .sidebar-overlay.active {
+                display: block;
+            }
+            .mobile-only { display: block; }
+            .header-search-bar input:focus { width: 110px; }
+            .user-message { max-width: 95%; }
+            .bottom-input-panel { 
+                padding: 10px 12px; 
+                width: calc(100% - 16px); 
+                margin-bottom: env(safe-area-inset-bottom, 12px); 
+            }
+            #user-input { min-height: 44px; } 
+        }
+
+        /* CÁC ĐỊNH DẠNG TEXT MARKDOWN & PHỤ TRỢ */
+        .msg-content p { margin-bottom: 8px; }
+        .msg-content ul, .msg-content ol { margin-left: 20px; margin-bottom: 8px; }
+        .bot-message table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 0.9em; }
+        .bot-message table th, .bot-message table td { border: 1px solid var(--border); padding: 8px 12px; }
+        .bot-message table th { background: rgba(150,150,150,0.1); }
+        .bot-message pre { background: #282c34; color: #abb2bf; padding: 12px; border-radius: 8px; overflow-x: auto; margin-bottom: 10px; font-family: monospace; font-size: 0.9em; }
+        .bot-message code { background: rgba(150,150,150,0.15); padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+        .bot-message pre code { background: none; padding: 0; }
+        
+        .token-counter-bar { font-size: 0.75rem; color: var(--text-muted); text-align: right; max-width: 820px; width: 100%; margin: 2px auto; padding-right: 12px; display: flex; justify-content: flex-end; gap: 12px; }
+        
+        #snippets-container { display: none; max-width: 820px; width: 100%; margin: 4px auto; gap: 6px; flex-wrap: wrap; }
+        .snippet-chip { background: var(--primary-container); color: var(--text-main); padding: 5px 12px; border-radius: 12px; font-size: 0.8rem; cursor: pointer; border: 1px solid rgba(0,0,0,0.05); }
+        #image-preview-container { display: none; max-width: 820px; width: calc(100% - 32px); margin: 4px auto; padding: 10px; border: 1px dashed var(--border); border-radius: 12px; background: var(--bg-card); }
+        #image-preview-grid { display: flex; gap: 8px; overflow-x: auto; }
+        .toast { position: fixed; bottom: 140px; right: 20px; background: #323232; color: white; padding: 10px 18px; border-radius: 20px; z-index: 3000; opacity: 0; pointer-events: none; transition: 0.3s; font-size: 0.85rem; }
+        .toast.show { opacity: 1; pointer-events: auto; }
+        #scroll-to-top { position: fixed; bottom: 140px; left: 20px; background: var(--primary); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: 0.3s; z-index: 998; }
+        #scroll-to-top.visible { opacity: 1; pointer-events: auto; }
+        .search-result-item, .bulk-edit-item { cursor: pointer; margin: 4px 0; padding: 8px; border-radius: 8px; background: var(--input-bg); border-left: 4px solid var(--primary); font-size: 0.85rem; }
+        .bulk-edit-item { display: flex; align-items: flex-start; gap: 10px; border-left: none; border: 1px solid var(--border); }
+        .api-keys-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+        .api-keys-grid input { background: var(--input-bg); color: var(--text-main); border: 1px solid var(--border); padding: 8px; border-radius: 6px; outline: none; font-size: 0.85rem; }
+        .info-badge { font-size: 0.8rem; color: var(--text-muted); padding: 2px 4px; }
+        .btn-sidebar-action { width: 100%; padding: 10px; background: var(--primary-container); color: var(--text-main); font-weight: 600; border: none; text-align: center; justify-content: center; }
+        .streaming-indicator { color: var(--primary); font-style: italic; font-size: 0.8rem; margin-left: 8px; }
+        #camera-preview { width: 100%; max-height: 400px; background: #000; border-radius: 8px; object-fit: cover; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.4rem;">🤖</span>
+                    <h2 style="font-size: 1.1rem; font-weight: 600; color: var(--primary);">Javiss Ultimate</h2>
+                </div>
+                <button id="close-sidebar-btn" class="icon-btn mobile-only">&times;</button>
+            </div>
+
+            <div class="sidebar-scroll-content">
+                <div class="sidebar-section">
+                    <div class="section-title">📁 Thư Mục</div>
+                    <select id="folder-select" class="modern-select"></select>
+                    <div class="side-btn-row">
+                        <button id="btn-new-folder" class="btn">📁 Thêm TM</button>
+                        <button id="btn-delete-folder" class="btn danger">🗑️ Xóa TM</button>
+                    </div>
+                </div>
+
+                <div class="sidebar-section flex-grow-section">
+                    <div class="section-title">💬 Phiên Hội Thoại</div>
+                    <select id="session-select" size="8" class="modern-list-select"></select>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 10px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border);">
+                        <label style="cursor: pointer; font-size: 0.85rem; font-weight: bold; color: var(--primary); display: flex; align-items: center; gap: 6px;">
+                            <input type="checkbox" id="toggle-search" style="width: 16px; height: 16px;"> 🌐 Tìm kiếm Web
+                        </label>
+                        <label style="cursor: pointer; font-size: 0.85rem; font-weight: bold; color: var(--primary); display: flex; align-items: center; gap: 6px;">
+                            <input type="checkbox" id="toggle-memory" checked style="width: 16px; height: 16px;"> 🧠 Nhớ ngữ cảnh (20 tin)
+                        </label>
+                    </div>
+                    
+                    <div style="margin-top: 8px;">
+                        <span class="section-title" style="padding-left: 2px; font-size: 0.7rem; margin-bottom: 4px; display: block;">🤖 Mô hình xử lý chính:</span>
+                        <select id="model-select" class="modern-select">
+                            <option value="gemini-3.5-flash" selected>Gemini 3.5 Flash</option>
+                            <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite (Fallback)</option>
+                            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                        </select>
+                    </div>
+                    
+                    <div class="side-btn-grid" style="margin-top: 8px;">
+                        <button id="btn-new-session" class="btn primary">➕ Thêm</button>
+                        <button id="btn-rename-session" class="btn">✏️ Sửa</button>
+                        <button id="btn-move-session" class="btn">📂 Di chuyển</button>
+                        <button id="btn-delete-session" class="btn danger">🗑️ Xóa</button>
+                    </div>
+
+                    <div class="side-btn-row" style="margin-top: 8px;">
+                        <button id="btn-move-up" class="btn" style="flex: 1;">⬆️ Lên</button>
+                        <button id="btn-move-down" class="btn" style="flex: 1;">⬇️ Xuống</button>
+                    </div>
+                    
+                    <button id="btn-bulk-edit" class="btn warning" style="margin-top: 8px; width: 100%;">🛠️ Quản lý Lịch sử (Chọn nhiều)</button>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div id="session-msg-count" class="info-badge">0 tin nhắn</div>
+                <button id="btn-open-settings" class="btn btn-sidebar-action">⚙️ Hệ thống & Cấu hình</button>
+            </div>
+        </aside>
+
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+        <main class="main-content">
+            <header class="main-header">
+                <div class="header-left">
+                    <button id="toggle-sidebar-btn" class="icon-btn mobile-only">☰</button>
+                    <h1 class="logo-text">Gemini Workstation</h1>
+                </div>
+                <div class="header-right">
+                    <div class="header-search-bar">
+                        <input type="text" id="search-chat-input" placeholder="Tìm kiếm...">
+                        <button id="btn-global-search" class="search-trigger-btn" title="Tìm toàn bộ phiên">🔍</button>
+                    </div>
+                    <button id="btn-theme" class="btn" style="padding: 4px 8px; font-size: 0.8rem;" title="Chuyển chế độ Sáng/Tối/Tự động">🌙 Tự động</button>
+                </div>
+            </header>
+
+            <div id="chat-container"></div>
+
+            <div id="image-preview-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong style="font-size: 0.85rem; color: var(--primary);">📎 Tài liệu đính kèm đã sẵn sàng:</strong>
+                    <button id="clear-all-images" class="btn danger" style="padding: 4px 10px; font-size: 0.75rem;">Xóa tất cả</button>
+                </div>
+                <div id="image-preview-grid"></div>
+                <div id="text-files-list" style="font-size: 0.85rem; margin-top: 8px; color: var(--primary);"></div>
+            </div>
+
+            <div class="token-counter-bar">
+                <span>⏱️ Latency: <span id="latency-val">0</span>ms</span>
+                <span>~ <span id="token-count">0</span> tokens ước tính (Nhấn ↑/↓ gọi lệnh)</span>
+            </div>
+
+            <div id="snippets-container">
+                <div class="snippet-chip" onclick="applySnippet('Hãy tóm tắt ngắn gọn nội dung sau đây:')">📝 Tóm tắt</div>
+                <div class="snippet-chip" onclick="applySnippet('Giải thích chi tiết đoạn sau cho tôi:')">📖 Giải thích</div>
+                <div class="snippet-chip" onclick="applySnippet('Hãy viết mã (code) để giải quyết bài toán này:')">💻 Viết Code</div>
+                <div class="snippet-chip" onclick="applySnippet('Hãy kiểm tra lỗi logic và tối ưu hóa nội dung này:')">⚙️ Tối ưu</div>
+            </div>
+
+            <div class="bottom-input-panel">
+                <div class="input-tools-scroll">
+                    <label class="tool-chip upload-label" for="file-upload">📎 Đính(<span id="file-count">0</span>)</label>
+                    <input type="file" id="file-upload" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;">
+                    <button id="btn-enhance-prompt" class="tool-chip magic">🪄 Enhance</button>
+                    <button id="btn-camera-snap" class="tool-chip">📷 Chụp</button>
+                    <button id="btn-toggle-snippets" class="tool-chip highlight">⚡ Lệnh nhanh</button>
+                    <button id="btn-file-library" class="tool-chip">🗄️ Thư viện</button>
+                    <button id="btn-add-url" class="tool-chip">🔗 Đọc Link</button>
+                    <button id="btn-paste-clipboard" class="tool-chip">📋 Dán đặc biệt</button>
+                </div>
+                <div class="input-container-box">
+                    <textarea id="user-input" rows="1" placeholder="Nhập tin nhắn hoặc dùng lệnh: /gold, /gas, /weather, /mu..."></textarea>
+                    <button id="send-button">Gửi 📤</button>
+                </div>
+            </div>
+        </main>
+
+        <div id="settings-modal" class="modal-box" style="max-width: 750px;">
+            <div class="modal-header">
+                <h3>⚙️ Cài đặt Hệ thống & Tham số AI</h3>
+                <button id="close-settings-modal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-scroll-body">
+                
+                <fieldset class="settings-group">
+                    <legend>⚙️ Định hướng Ngữ cảnh (System Prompt)</legend>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div>
+                            <label class="field-label">System Instruction (Riêng cho phiên hiện tại):</label>
+                            <textarea id="system-instruction-input" rows="3" class="modern-textarea" placeholder="Ví dụ: Bạn là một lập trình viên cao cấp..."></textarea>
+                        </div>
+                        <div>
+                            <label class="field-label">🌍 Ngữ cảnh Toàn cục (Áp dụng cho tất cả các phiên):</label>
+                            <textarea id="global-context-input" rows="2" class="modern-textarea" placeholder="Ví dụ: Luôn phản hồi bằng tiếng Việt trang trọng..."></textarea>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="settings-group">
+                    <legend>🚀 Tùy chỉnh tham số mô hình</legend>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div class="slider-row">
+                            <label>Temperature (<span id="temp-val">0.5</span>):</label>
+                            <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.5">
+                        </div>
+
+                        <div class="slider-row">
+                            <label>TopP (<span id="topp-val">0.9</span>):</label>
+                            <input type="range" id="top-p" min="0" max="1" step="0.1" value="0.9">
+                        </div>
+
+                        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                            <label style="display:flex; align-items:center; gap:8px; font-size: 0.85rem;">TopK: <input type="number" id="top-k" min="1" max="100" value="40" class="modern-input" style="width: 70px;"></label>
+                            <label style="display:flex; align-items:center; gap:8px; font-size: 0.85rem;">Think Depth: 
+                                <select id="thinking-level" class="modern-select" style="width: 100px;">
+                                    <option value="minimal">Min</option>
+                                    <option value="low" selected>Low</option>
+                                    <option value="medium">Med</option>
+                                    <option value="high">High</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="settings-group">
+                    <legend>💾 Quản lý Dữ liệu & Xuất tệp</legend>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <button class="btn" onclick="exportCleanArticle()">📝 Bài viết sạch (MD)</button>
+                        <button class="btn" onclick="exportChatPDF()">📄 Xuất File PDF</button>
+                        <button class="btn" onclick="exportChatDoc()">📄 Xuất File Word</button>
+                        <button class="btn" onclick="exportAllSessions()">📥 Sao lưu JSON</button>
+                        <button class="btn" onclick="document.getElementById('import-all-input').click()">📤 Khôi phục JSON</button>
+                        <button id="btn-compress-context" class="btn warning">🗜️ Nén lịch sử cũ</button>
+                        <button class="btn danger" onclick="clearActiveSession()">🗑️ Xóa hết tin phiên này</button>
+                        <input type="file" id="import-all-input" accept=".json" style="display:none;">
+                    </div>
+                </fieldset>
+
+                <fieldset class="settings-group">
+                    <legend>🔑 Cấu hình 10 API Keys (Thiết lập 1 lần)</legend>
+                    <div class="api-keys-grid" id="api-keys-container" style="margin-bottom: 10px;"></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                        <button id="btn-save-keys" class="btn primary" style="padding: 8px 16px;">💾 Lưu cấu hình Keys</button>
+                        <span id="key-status-msg" style="font-size: 0.85rem; font-weight: bold;"></span>
+                    </div>
+
+                    <div style="border-top: 1px dashed var(--border); padding-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+                        <span class="section-title" style="color: var(--primary); font-weight: bold; padding-left: 0;">☁️ Kết nối Đám mây Google Drive (Tự động Sao lưu)</span>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label class="field-label" style="font-size: 0.75rem;">Google Client ID:</label>
+                                <input type="text" id="gdrive-client-id" class="modern-input" style="font-size: 0.8rem;" placeholder="Nhập Client ID OAuth2...">
+                            </div>
+                            <div>
+                                <label class="field-label" style="font-size: 0.75rem;">Google API Key:</label>
+                                <input type="password" id="gdrive-api-key" class="modern-input" style="font-size: 0.8rem;" placeholder="Nhập Cloud API Key...">
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                            <button id="btn-connect-gdrive" class="btn" style="flex: 1; font-weight: bold; color: var(--primary); border-color: var(--primary);">🔗 Kết nối Google Drive</button>
+                            <span id="gdrive-status" style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">Chưa liên kết</span>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+        </div>
+
+        <div id="search-modal" class="modal-box">
+            <div class="modal-header">
+                <h3>🔍 Tìm kiếm nâng cao</h3>
+                <button id="close-search-modal" class="close-btn">&times;</button>
+            </div>
+            <div style="padding: 20px;">
+                <input type="text" id="global-search-input" placeholder="Nhập từ khóa cần quét..." class="modern-input" style="width:100%; margin-bottom: 12px;">
+                <div id="search-results" style="max-height:350px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+        </div>
+
+        <div id="file-library-modal" class="modal-box">
+            <div class="modal-header">
+                <h3>🗄️ Thư viện Tài liệu đám mây nội bộ</h3>
+                <button id="close-library-modal" class="close-btn">&times;</button>
+            </div>
+            <div style="padding: 20px;">
+                <div style="margin-bottom: 15px;">
+                    <label class="btn primary" style="cursor:pointer; display: inline-block;">
+                        ➕ Tải tài liệu lên kho lưu trữ
+                        <input type="file" id="library-upload-input" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;">
+                    </label>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Hỗ trợ lưu trữ cục bộ tối đa 50MB/File. Dữ liệu không bao giờ rời khỏi máy của bạn.</p>
+                </div>
+                <div id="library-files-container" style="display:flex; flex-direction:column; gap:8px; max-height:350px; overflow-y:auto;"></div>
+            </div>
+        </div>
+        
+        <div id="camera-modal" class="modal-box">
+            <div class="modal-header">
+                <h3>📷 Camera</h3>
+                <button id="close-camera-modal" class="close-btn">&times;</button>
+            </div>
+            <div style="padding: 10px; display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                <video id="camera-preview" autoplay playsinline></video>
+                <button id="btn-take-photo" class="btn primary" style="width: 100%; padding: 12px; font-size: 1rem;">📸 Bấm để Chụp</button>
+            </div>
+        </div>
+
+        <div id="bulk-edit-modal" class="modal-box">
+            <div class="modal-header">
+                <h3>🛠️ Quản lý Lịch sử (Chọn nhiều)</h3>
+                <button id="close-bulk-modal" class="close-btn">&times;</button>
+            </div>
+            <div style="padding: 20px; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                <div style="margin-bottom: 10px; display: flex; justify-content: space-between;">
+                    <button id="btn-select-all-bulk" class="btn">☑️ Chọn tất cả</button>
+                    <button id="btn-delete-selected-bulk" class="btn danger">🗑️ Xóa các mục đã chọn</button>
+                </div>
+                <div id="bulk-edit-list" style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 6px;"></div>
+            </div>
+        </div>
+        
+        <div id="modal-overlay" class="modal-overlay-bg"></div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <button id="scroll-to-top" title="Lên đầu trang">▲</button>
+
+    <script type="importmap">
+    { "imports": { "@google/generative-ai": "https://esm.run/@google/generative-ai" } }
+    </script>
+    
+    <script type="module">
+        import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+
+        marked.use({ breaks: true });
+
+        let apiKeys = [];
+        let searchKeyIndex = 0;   
+        let processKeyIndex = 0;  
+        let googleTokenClient = null;
+        let gdriveAccessToken = null;
+
+        function setupUIForKeys() {
+            const container = document.getElementById('api-keys-container');
+            container.innerHTML = '';
+            for (let i = 1; i <= 10; i++) {
+                container.innerHTML += `<input type="password" id="api-key-${i}" placeholder="API Key ${i} ${i===1?'(Ưu tiên)':''}">`;
+            }
+        }
+
+        function initAPIKeys() {
+            apiKeys = [];
+            for (let i = 1; i <= 10; i++) {
+                let k = localStorage.getItem(`javiss_api_${i}`) || "";
+                document.getElementById(`api-key-${i}`).value = k;
+                if (k.trim() !== "") {
+                    apiKeys.push(k.trim());
+                }
+            }
+            
+            searchKeyIndex = 0; 
+            processKeyIndex = 0;
+            
+            const statusMsg = document.getElementById('key-status-msg');
+            if (apiKeys.length === 0) {
+                statusMsg.innerText = "⚠️ Chưa nạp API Key.";
+                statusMsg.style.color = "var(--danger)";
+            } else {
+                statusMsg.innerText = `✅ Đã nạp ${apiKeys.length} API Key.`;
+                statusMsg.style.color = "green";
+            }
+
+            // Tải cấu hình tài khoản Google Drive
+            document.getElementById('gdrive-client-id').value = localStorage.getItem('gdrive_client_id') || "";
+            document.getElementById('gdrive-api-key').value = localStorage.getItem('gdrive_api_key') || "";
+            gdriveAccessToken = localStorage.getItem('gdrive_access_token') || null;
+            if (gdriveAccessToken) {
+                document.getElementById('gdrive-status').innerText = "✅ Sẵn sàng";
+                document.getElementById('gdrive-status').style.color = "green";
+            }
+        }
+        
+        setupUIForKeys();
+        
+        document.getElementById('btn-save-keys').onclick = () => {
+            for (let i = 1; i <= 10; i++) {
+                let val = document.getElementById(`api-key-${i}`).value.trim();
+                localStorage.setItem(`javiss_api_${i}`, val);
+            }
+            localStorage.setItem('gdrive_client_id', document.getElementById('gdrive-client-id').value.trim());
+            localStorage.setItem('gdrive_api_key', document.getElementById('gdrive-api-key').value.trim());
+            initAPIKeys();
+            showToast(`Đã lưu cấu hình hệ thống!`);
+        };
+
+        // KHỞI TẠO VÀ XỬ LÝ GOOGLE DRIVE API (TỰ ĐỘNG ĐỒNG BỘ)
+        function initGoogleDriveOAuth() {
+            const clientId = document.getElementById('gdrive-client-id').value.trim();
+            if (!clientId) return;
+            try {
+                googleTokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: clientId,
+                    scope: 'https://www.googleapis.com/auth/drive.file',
+                    callback: async (tokenResponse) => {
+                        if (tokenResponse.error !== undefined) {
+                            showToast("Lỗi kết nối: " + tokenResponse.error, "error");
+                            return;
+                        }
+                        gdriveAccessToken = tokenResponse.access_token;
+                        localStorage.setItem('gdrive_access_token', gdriveAccessToken);
+                        document.getElementById('gdrive-status').innerText = "✅ Đã liên kết";
+                        document.getElementById('gdrive-status').style.color = "green";
+                        showToast("Đã đồng bộ Google Drive thành công!");
+                        await uploadBackupToGDrive(true);
+                    },
+                });
+            } catch (err) {
+                console.error("Lỗi nạp Google Client SDK:", err);
+            }
+        }
+
+        document.getElementById('btn-connect-gdrive').onclick = () => {
+            const clientId = document.getElementById('gdrive-client-id').value.trim();
+            const apiKey = document.getElementById('gdrive-api-key').value.trim();
+            localStorage.setItem('gdrive_client_id', clientId);
+            localStorage.setItem('gdrive_api_key', apiKey);
+            if (!clientId) {
+                showToast("Vui lòng nhập Google Client ID!", "warning");
+                return;
+            }
+            if (!googleTokenClient) {
+                initGoogleDriveOAuth();
+            }
+            if (googleTokenClient) {
+                googleTokenClient.requestAccessToken({ prompt: 'consent' });
+            } else {
+                showToast("Google SDK chưa sẵn sàng, hãy thử lại sau vài giây!", "error");
+            }
+        };
+
+        async function uploadBackupToGDrive(isManualTrigger = false) {
+            if (!gdriveAccessToken) return;
+            try {
+                const allSessions = await getAllFromDB();
+                const backupPayload = { backupDate: new Date().toISOString(), sessions: allSessions, activeId: activeId };
+                const contentBlobStr = JSON.stringify(backupPayload, null, 2);
+                
+                // Bước 1: Quét tìm tệp sao lưu cũ tránh tạo trùng lặp file
+                const searchUrl = `https://www.googleapis.com/drive/v3/files?q=name='Javiss_Backup.json'+and+trashed=false&fields=files(id)`;
+                const searchRes = await fetch(searchUrl, {
+                    headers: { 'Authorization': `Bearer ${gdriveAccessToken}` }
+                });
+                const searchData = await searchRes.json();
+                let fileId = (searchData.files && searchData.files.length > 0) ? searchData.files[0].id : null;
+                
+                if (fileId) {
+                    // Bước 2a: Nếu tệp tồn tại, cập nhật đè dữ liệu ngầm lên
+                    const updateUrl = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`;
+                    await fetch(updateUrl, {
+                        method: 'PATCH',
+                        headers: { 'Authorization': `Bearer ${gdriveAccessToken}`, 'Content-Type': 'application/json' },
+                        body: contentBlobStr
+                    });
+                } else {
+                    // Bước 2b: Tạo tệp mới nếu là lần đồng bộ đầu tiên
+                    const metaRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${gdriveAccessToken}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: 'Javiss_Backup.json', mimeType: 'application/json' })
+                    });
+                    const metaData = await metaRes.json();
+                    fileId = metaData.id;
+                    
+                    const uploadUrl = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`;
+                    await fetch(uploadUrl, {
+                        method: 'PATCH',
+                        headers: { 'Authorization': `Bearer ${gdriveAccessToken}`, 'Content-Type': 'application/json' },
+                        body: contentBlobStr
+                    });
+                }
+                if (isManualTrigger) showToast("☁️ Đã đồng bộ bản sao lưu lên Google Drive!");
+                console.log("Auto sync to Google Drive finished successfully.");
+            } catch (err) {
+                console.error("Cloud synchronization encountered an issue:", err);
+                // Nếu Token hết hạn (hết hiệu lực), chuyển trạng thái để người dùng liên kết lại khi cần
+                if(isManualTrigger) showToast("Lỗi đồng bộ dữ liệu đám mây!", "error");
+            }
+        }
+        
+        initAPIKeys();
+        setTimeout(initGoogleDriveOAuth, 1500); // Trì hoãn khởi tạo để SDK Google load mượt mà
+        
+        const SAFETY = [ 
+            { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE }, 
+            { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE }, 
+            { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE }, 
+            { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE } 
+        ];
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+        const DB_NAME = "JavissUltimateOS_DB";
+        const STORE_NAME = "chat_sessions";
+        const FILE_STORE = "file_library";
+        let db;
+
+        async function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 3);
+                request.onupgradeneeded = (e) => {
+                    let database = e.target.result;
+                    if (!database.objectStoreNames.contains(STORE_NAME)) {
+                        database.createObjectStore(STORE_NAME, { keyPath: "id" });
+                    }
+                    if (!database.objectStoreNames.contains(FILE_STORE)) {
+                        database.createObjectStore(FILE_STORE, { keyPath: "id" });
+                    }
+                };
+                request.onsuccess = (e) => { 
+                    db = e.target.result; 
+                    resolve(); 
+                };
+                request.onerror = (e) => { 
+                    reject(e); 
+                };
+            });
+        }
+
+        async function saveToDB(s) { 
+            return new Promise((resolve) => { 
+                const tx = db.transaction(STORE_NAME, "readwrite"); 
+                tx.objectStore(STORE_NAME).put(s); 
+                tx.oncomplete = () => {
+                    resolve();
+                    uploadBackupToGDrive(false); // Trigger tự động đồng bộ lên Drive bất cứ khi nào DB thay đổi
+                }; 
+            }); 
+        }
+
+        async function deleteFromDB(id) { 
+            return new Promise((resolve) => { 
+                const tx = db.transaction(STORE_NAME, "readwrite"); 
+                tx.objectStore(STORE_NAME).delete(id); 
+                tx.oncomplete = () => {
+                    resolve();
+                    uploadBackupToGDrive(false);
+                }; 
+            }); 
+        }
+
+        async function getAllFromDB() { 
+            return new Promise((resolve) => { 
+                const tx = db.transaction(STORE_NAME, "readonly"); 
+                const req = tx.objectStore(STORE_NAME).getAll(); 
+                req.onsuccess = () => resolve(req.result); 
+            }); 
+        }
+
+        async function clearAllDB() { 
+            return new Promise((resolve) => { 
+                const tx = db.transaction(STORE_NAME, "readwrite"); 
+                tx.objectStore(STORE_NAME).clear(); 
+                tx.oncomplete = () => resolve(); 
+            }); 
+        }
+
+        async function saveFileToLib(fObj) { 
+            return new Promise((resolve) => { 
+                const tx = db.transaction(FILE_STORE, "readwrite"); 
+                tx.objectStore(FILE_STORE).put(fObj); 
+                tx.oncomplete = () => resolve(); 
+            }); 
+        }
+
+        async function getAllFilesFromLib() { 
+            return new Promise((resolve) => { 
+                const tx = db.transaction(FILE_STORE, "readonly"); 
+                const req = tx.objectStore(FILE_STORE).getAll(); 
+                req.onsuccess = () => resolve(req.result); 
+            }); 
+        }
+
+        async function deleteFileFromLib(id) { 
+            return new Promise((resolve) => { 
+                const tx = db.transaction(FILE_STORE, "readwrite"); 
+                tx.objectStore(FILE_STORE).delete(id); 
+                tx.oncomplete = () => resolve(); 
+            }); 
+        }
+
+        const DOM = {
+            chat: document.getElementById('chat-container'), 
+            input: document.getElementById('user-input'),
+            sendBtn: document.getElementById('send-button'), 
+            fileUpload: document.getElementById('file-upload'),
+            previewBox: document.getElementById('image-preview-container'), 
+            previewGrid: document.getElementById('image-preview-grid'),
+            textFileList: document.getElementById('text-files-list'), 
+            clearFilesBtn: document.getElementById('clear-all-images'),
+            fileCount: document.getElementById('file-count'), 
+            toast: document.getElementById('toast'),
+            folderSelect: document.getElementById('folder-select'), 
+            btnNewFolder: document.getElementById('btn-new-folder'),
+            btnDeleteFolder: document.getElementById('btn-delete-folder'), 
+            selSession: document.getElementById('session-select'),
+            sysInst: document.getElementById('system-instruction-input'), 
+            globContext: document.getElementById('global-context-input'),
+            model: document.getElementById('model-select'),
+            toggleSearch: document.getElementById('toggle-search'),
+            toggleMemory: document.getElementById('toggle-memory'),
+            temp: document.getElementById('temperature'),
+            tempVal: document.getElementById('temp-val'), 
+            topP: document.getElementById('top-p'),
+            toppVal: document.getElementById('topp-val'), 
+            topK: document.getElementById('top-k'),
+            thinking: document.getElementById('thinking-level'), 
+            searchInput: document.getElementById('search-chat-input'),
+            scrollTopBtn: document.getElementById('scroll-to-top'), 
+            snippetsContainer: document.getElementById('snippets-container'),
+            btnToggleSnippets: document.getElementById('btn-toggle-snippets'), 
+            btnEnhancePrompt: document.getElementById('btn-enhance-prompt'),
+            btnFileLibrary: document.getElementById('btn-file-library'),
+            btnAddUrl: document.getElementById('btn-add-url'),
+            btnCompress: document.getElementById('btn-compress-context'), 
+            btnMoveSess: document.getElementById('btn-move-session'),
+            btnTheme: document.getElementById('btn-theme')
+        };
+
+        let sessions = [], activeId = null, chatHistory = [], filesData = [], txtContent = "";
+        let promptHistory = [], historyIndex = -1, isProcessing = false;
+        let folders = JSON.parse(localStorage.getItem('javiss_folders') || '["Mặc định"]');
+        let activeFolder = localStorage.getItem('javiss_active_folder') || "All";
+        const MAX_IMAGES = 20;
+
+        // SMART THEME 
+        function applyTheme(themeMode) {
+            let targetTheme = themeMode;
+            if (themeMode === 'auto') {
+                const hour = new Date().getHours();
+                targetTheme = (hour >= 18 || hour < 6) ? 'dark' : 'light';
+                DOM.btnTheme.innerText = "🌙 Tự động";
+            } else {
+                DOM.btnTheme.innerText = themeMode === 'dark' ? "🌙 Tối" : "☀️ Sáng";
+            }
+            document.documentElement.setAttribute('data-theme', targetTheme);
+            localStorage.setItem('theme', themeMode);
+        }
+        
+        const savedTheme = localStorage.getItem('theme') || 'auto';
+        applyTheme(savedTheme);
+
+        DOM.btnTheme.onclick = () => {
+            let current = localStorage.getItem('theme') || 'auto';
+            let nextTheme = current === 'auto' ? 'dark' : (current === 'dark' ? 'light' : 'auto');
+            applyTheme(nextTheme);
+        };
+        
+        // TỰ ĐỘNG LƯU NHÁP 
+        DOM.input.value = localStorage.getItem('javiss_draft') || '';
+        DOM.input.addEventListener('input', () => {
+            localStorage.setItem('javiss_draft', DOM.input.value);
+            DOM.input.style.height = 'auto';
+            DOM.input.style.height = (DOM.input.scrollHeight < 150 ? DOM.input.scrollHeight : 150) + 'px';
+        });
+
+        // ĐIỀU KHIỂN SIDEBAR
+        document.getElementById('toggle-sidebar-btn').onclick = () => { 
+            document.getElementById('sidebar').classList.add('active'); 
+            document.getElementById('sidebar-overlay').classList.add('active'); 
+        };
+        
+        document.getElementById('close-sidebar-btn').onclick = document.getElementById('sidebar-overlay').onclick = () => { 
+            document.getElementById('sidebar').classList.remove('active'); 
+            document.getElementById('sidebar-overlay').classList.remove('active'); 
+        };
+        
+        document.getElementById('btn-open-settings').onclick = () => { 
+            document.getElementById('settings-modal').style.display = 'flex'; 
+            document.getElementById('modal-overlay').style.display = 'block'; 
+        };
+        
+        document.getElementById('close-settings-modal').onclick = () => { 
+            document.getElementById('settings-modal').style.display = 'none'; 
+            document.getElementById('modal-overlay').style.display = 'none'; 
+        };
+
+        DOM.globContext.value = localStorage.getItem('global_context') || '';
+        DOM.globContext.addEventListener('input', () => { 
+            localStorage.setItem('global_context', DOM.globContext.value); 
+        });
+
+        window.copy = (btn) => {
+            const container = btn.closest('.message-container');
+            const msgDiv = container.querySelector('.user-message, .bot-message');
+            if (msgDiv) { 
+                navigator.clipboard.writeText(msgDiv.getAttribute('data-raw')); 
+                showToast('Đã copy tin nhắn!'); 
+            } else { 
+                showToast('Không tìm thấy nội dung!', 'error'); 
+            }
+        };
+
+        window.deleteMsg = async function(idx) {
+            if(!confirm("Xóa tin nhắn này khỏi lịch sử hội thoại?")) return;
+            chatHistory.splice(idx, 1);
+            const s = sessions.find(x => x.id === activeId);
+            s.his = chatHistory;
+            await saveToDB(s);
+            DOM.chat.innerHTML = '';
+            chatHistory.forEach((m, i) => appendMsg(m.role === 'model' ? 'bot' : 'user', m.text, i, true));
+            document.getElementById('session-msg-count').innerText = `${chatHistory.length} tin`;
+            showToast("Đã xóa tin nhắn thành công!");
+        };
+
+        function normalizeHistoryForAPI(history) {
+            let apiHistory = [];
+            for (let m of history) {
+                if (apiHistory.length === 0 && m.role === 'model') { 
+                    apiHistory.push({ role: 'user', parts: [{ text: '[Tin nhắn gốc đã bị lược bỏ do giới hạn ngữ cảnh]' }] }); 
+                }
+                if (apiHistory.length > 0 && apiHistory[apiHistory.length - 1].role === m.role) { 
+                    apiHistory[apiHistory.length - 1].parts[0].text += "\n\n" + m.text; 
+                } else { 
+                    apiHistory.push({ role: m.role, parts: [{ text: m.text }] }); 
+                }
+            }
+            if (apiHistory.length > 0 && apiHistory[apiHistory.length - 1].role === 'user') { 
+                apiHistory.push({ role: 'model', parts: [{ text: '[Đã đồng bộ ngữ cảnh]' }] }); 
+            }
+            return apiHistory;
+        }
+
+        window.forkSession = async function(idx) {
+            if(!confirm("Tạo một nhánh hội thoại mới bắt đầu từ đây?")) return;
+            const currentSession = sessions.find(s => s.id === activeId);
+            const newHistory = chatHistory.slice(0, idx + 1);
+            const newId = 's_' + Date.now();
+            const newSess = { 
+                ...currentSession, 
+                id: newId, 
+                name: currentSession.name + " (Nhánh)", 
+                his: newHistory, 
+                orderIndex: 0 
+            };
+            sessions.unshift(newSess);
+            sessions.forEach((s, i) => { s.orderIndex = i; saveToDB(s); });
+            await switchSess(newId);
+            showToast("Đã rẽ nhánh hội thoại mới!");
+        };
+
+        DOM.btnEnhancePrompt.onclick = async () => {
+            const txt = DOM.input.value.trim();
+            if(!txt) return showToast("Vui lòng nhập nội dung cần làm mượt!", "warning");
+            if(apiKeys.length === 0) return showToast("Vui lòng nạp ít nhất 1 API Key!", "error");
+            
+            const originalHTML = DOM.btnEnhancePrompt.innerHTML;
+            DOM.btnEnhancePrompt.innerHTML = "⏳ Đang tối ưu...";
+            let attempts = 0;
+            
+            while (attempts < apiKeys.length) {
+                try {
+                    const genAI = new GoogleGenerativeAI(apiKeys[processKeyIndex]);
+                    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
+                    const res = await model.generateContent(`Đóng vai trò là chuyên gia Prompt. Hãy viết lại câu lệnh sau cho chuẩn xác và có cấu trúc tốt nhất để một AI khác đọc hiểu. Chỉ trả về prompt tối ưu, không giải thích:\n\n${txt}`);
+                    DOM.input.value = res.response.text().trim();
+                    DOM.input.dispatchEvent(new Event('input'));
+                    showToast("✨ Đã tối ưu Prompt thành công!");
+                    break;
+                } catch (e) {
+                    processKeyIndex = (processKeyIndex + 1) % apiKeys.length; 
+                    attempts++;
+                    if (attempts >= apiKeys.length) showToast(`❌ Lỗi: ${e.message}`, "error");
+                }
+            }
+            DOM.btnEnhancePrompt.innerHTML = originalHTML;
+        };
+
+        window.exportCleanArticle = function() {
+            const currentSession = sessions.find(s => s.id === activeId);
+            const aiMessages = chatHistory.filter(m => m.role === 'model').map(m => m.text);
+            if(aiMessages.length === 0) return showToast("Không có phản hồi để xuất!", "warning");
+            
+            const blob = new Blob([`# Trích xuất: ${currentSession.name}\n\n` + aiMessages.join('\n\n---\n\n')], { type: 'text/markdown' });
+            const a = document.createElement('a'); 
+            a.href = URL.createObjectURL(blob); 
+            a.download = `BaiViet_${Date.now()}.md`; 
+            a.click(); 
+            showToast("Đã tải xuống Markdown");
+        };
+
+        window.applySnippet = function(prefix) { 
+            DOM.input.value = prefix + "\n" + DOM.input.value; 
+            DOM.input.dispatchEvent(new Event('input')); 
+            DOM.input.focus(); 
+            DOM.snippetsContainer.style.display = 'none'; 
+        };
+        
+        DOM.btnToggleSnippets.onclick = () => { 
+            DOM.snippetsContainer.style.display = DOM.snippetsContainer.style.display === 'flex' ? 'none' : 'flex'; 
+        };
+        
+        DOM.btnAddUrl.onclick = () => { 
+            const url = prompt("Nhập đường dẫn Web/Youtube:"); 
+            if(url && url.match(/(https?:\/\/[^\s]+)/)) { 
+                DOM.input.value += (DOM.input.value ? '\n' : '') + url + " "; 
+                DOM.input.dispatchEvent(new Event('input')); 
+                DOM.input.focus(); 
+            } 
+        };
+        
+        DOM.chat.addEventListener('scroll', () => { 
+            if (DOM.chat.scrollTop > 300) {
+                DOM.scrollTopBtn.classList.add('visible'); 
+            } else {
+                DOM.scrollTopBtn.classList.remove('visible'); 
+            }
+        });
+        
+        DOM.scrollTopBtn.onclick = () => { 
+            DOM.chat.scrollTo({ top: 0, behavior: 'smooth' }); 
+        };
+        
+        DOM.searchInput.addEventListener('input', (e) => { 
+            const val = e.target.value.toLowerCase(); 
+            DOM.chat.querySelectorAll('.message-container').forEach(m => { 
+                m.style.display = m.innerText.toLowerCase().includes(val) ? '' : 'none'; 
+            }); 
+        });
+
+        document.getElementById('btn-paste-clipboard').onclick = async () => {
+            try {
+                const clipboardItems = await navigator.clipboard.read();
+                let hasContent = false;
+                for (const item of clipboardItems) {
+                    if (item.types.includes('image/png') || item.types.includes('image/jpeg')) {
+                        const blob = await item.getType('image/png');
+                        filesData.push(new File([blob], 'clipboard-image.png', { type: blob.type }));
+                        renderFiles(); 
+                        hasContent = true;
+                    } else if (item.types.includes('text/plain')) {
+                        const text = await item.getType('text/plain').then(r => r.text());
+                        if (text) { 
+                            DOM.input.value += (DOM.input.value ? '\n' : '') + text; 
+                            hasContent = true; 
+                        }
+                    }
+                }
+                if (!hasContent) {
+                    const text = await navigator.clipboard.readText();
+                    if (text) { 
+                        DOM.input.value += (DOM.input.value ? '\n' : '') + text; 
+                        hasContent = true; 
+                    }
+                }
+                if (hasContent) { 
+                    DOM.input.dispatchEvent(new Event('input')); 
+                    showToast('✅ Đã dán'); 
+                    DOM.input.focus(); 
+                } else {
+                    showToast('❌ Không tìm thấy dữ liệu phù hợp', 'error');
+                }
+            } catch (err) { 
+                showToast('Lỗi đọc clipboard: ' + err.message, 'error'); 
+            }
+        };
+
+        const overlay = document.getElementById('modal-overlay');
+        
+        function closeAllModals() {
+            document.querySelectorAll('.modal-box').forEach(m => m.style.display = 'none');
+            overlay.style.display = 'none';
+            const video = document.getElementById('camera-preview');
+            if (video.srcObject) { 
+                video.srcObject.getTracks().forEach(track => track.stop()); 
+                video.srcObject = null; 
+            }
+        }
+        
+        document.querySelectorAll('.close-btn').forEach(btn => btn.onclick = closeAllModals);
+        overlay.onclick = closeAllModals;
+
+        // SNAP CAMERA
+        document.getElementById('btn-camera-snap').onclick = async () => {
+            document.getElementById('camera-modal').style.display = 'flex';
+            overlay.style.display = 'block';
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                document.getElementById('camera-preview').srcObject = stream;
+            } catch (e) {
+                showToast("Lỗi mở Camera: " + e.message, "error");
+            }
+        };
+
+        document.getElementById('btn-take-photo').onclick = () => {
+            const video = document.getElementById('camera-preview');
+            if (!video.srcObject) return;
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            canvas.toBlob((blob) => {
+                const file = new File([blob], `Camera_${Date.now()}.jpg`, { type: 'image/jpeg' });
+                filesData.push(file);
+                renderFiles();
+                closeAllModals();
+                showToast("Đã chụp và đính kèm ảnh!");
+            }, 'image/jpeg', 0.85);
+        };
+
+        // BULK EDIT HISTORY
+        document.getElementById('btn-bulk-edit').onclick = () => {
+            if(chatHistory.length === 0) return showToast("Lịch sử trống", "warning");
+            document.getElementById('bulk-edit-modal').style.display = 'flex';
+            overlay.style.display = 'block';
+            
+            const listDiv = document.getElementById('bulk-edit-list');
+            listDiv.innerHTML = '';
+            
+            chatHistory.forEach((msg, idx) => {
+                const preview = msg.text.substring(0, 80) + (msg.text.length > 80 ? '...' : '');
+                const roleIcon = msg.role === 'user' ? '👤' : '✨';
+                listDiv.innerHTML += `
+                    <label class="bulk-edit-item">
+                        <input type="checkbox" class="bulk-msg-check" value="${idx}" style="margin-top:4px;">
+                        <div>
+                            <strong>${roleIcon}</strong> <span style="color:var(--text-muted)">${preview}</span>
+                        </div>
+                    </label>
+                `;
+            });
+        };
+
+        document.getElementById('btn-select-all-bulk').onclick = () => {
+            const checks = document.querySelectorAll('.bulk-msg-check');
+            const allChecked = Array.from(checks).every(c => c.checked);
+            checks.forEach(c => c.checked = !allChecked);
+        };
+
+        document.getElementById('btn-delete-selected-bulk').onclick = async () => {
+            const checked = Array.from(document.querySelectorAll('.bulk-msg-check:checked')).map(c => parseInt(c.value));
+            if(checked.length === 0) return;
+            if(!confirm(`Xóa vĩnh viễn ${checked.length} tin nhắn đã chọn?`)) return;
+            
+            checked.sort((a,b) => b - a).forEach(idx => chatHistory.splice(idx, 1));
+            
+            const s = sessions.find(x => x.id === activeId);
+            s.his = chatHistory;
+            await saveToDB(s);
+            
+            DOM.chat.innerHTML = '';
+            chatHistory.forEach((m, i) => appendMsg(m.role === 'model' ? 'bot' : 'user', m.text, i, true));
+            document.getElementById('session-msg-count').innerText = `${chatHistory.length} tin`;
+            closeAllModals();
+            showToast("Đã dọn dẹp lịch sử!");
+        };
+
+        document.getElementById('btn-global-search').onclick = () => { 
+            document.getElementById('search-modal').style.display = 'flex'; 
+            overlay.style.display = 'block'; 
+        };
+        
+        DOM.btnFileLibrary.onclick = () => { 
+            document.getElementById('file-library-modal').style.display = 'flex'; 
+            overlay.style.display = 'block'; 
+            renderLibrary(); 
+        };
+
+        document.getElementById('library-upload-input').addEventListener('change', async (e) => {
+            for(let f of Array.from(e.target.files)) {
+                if(f.size > 50*1024*1024) continue;
+                await saveFileToLib({ 
+                    id: Date.now().toString() + Math.random().toString().slice(2,7), 
+                    name: f.name, 
+                    type: f.type, 
+                    size: f.size, 
+                    blob: f, 
+                    added: new Date().toISOString() 
+                });
+            }
+            showToast("Đã tải lên thư viện!"); 
+            renderLibrary(); 
+            e.target.value = '';
+        });
+
+        async function renderLibrary() {
+            const container = document.getElementById('library-files-container');
+            const files = await getAllFilesFromLib();
+            if(files.length === 0) { 
+                container.innerHTML = "<div style='padding:10px; color:#666;'><i>Thư viện trống.</i></div>"; 
+                return; 
+            }
+            
+            files.sort((a,b) => new Date(b.added) - new Date(a.added));
+            let html = '';
+            
+            files.forEach(f => {
+                const sizeMB = (f.size / 1024 / 1024).toFixed(2);
+                let thumbHTML = f.type.startsWith('image/') 
+                    ? `<img src="${URL.createObjectURL(f.blob)}" style="width:45px;height:45px;object-fit:cover;border-radius:6px;">` 
+                    : `<div style="width:45px;height:45px;background:#333;color:white;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:10px;">📄</div>`;
+                
+                html += `
+                <div class="search-result-item" style="display:flex;justify-content:space-between;align-items:center;border-left-color:var(--primary);">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        ${thumbHTML}
+                        <div style="line-height:1.3;">
+                            <strong style="font-size:0.85rem;">${f.name}</strong><br>
+                            <span style="font-size:0.7rem;color:#666;">${sizeMB} MB</span>
+                        </div>
+                    </div>
+                    <div>
+                        <button class="btn" style="color:var(--primary);border-color:var(--primary);padding:4px 8px;" onclick="addFileFromLib('${f.id}')">➕</button> 
+                        <button class="btn danger" style="padding:4px 8px;" onclick="removeFileFromLib('${f.id}')">🗑️</button>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        window.addFileFromLib = async function(id) { 
+            const files = await getAllFilesFromLib(); 
+            const r = files.find(f => f.id === id); 
+            if(r) { 
+                await processUploadFiles([new File([r.blob], r.name, {type: r.type})]); 
+                closeAllModals(); 
+                showToast(`Đã đính kèm: ${r.name}`); 
+            } 
+        };
+        
+        window.removeFileFromLib = async function(id) { 
+            if(confirm("Xóa file này?")) { 
+                await deleteFileFromLib(id); 
+                renderLibrary(); 
+            } 
+        };
+
+        let searchTimeout;
+        document.getElementById('global-search-input').addEventListener('input', (e) => { 
+            clearTimeout(searchTimeout); 
+            searchTimeout = setTimeout(() => performGlobalSearch(e.target.value), 300); 
+        });
+        
+        async function performGlobalSearch(keyword) {
+            const div = document.getElementById('search-results');
+            if (!keyword.trim()) { 
+                div.innerHTML = ''; 
+                return; 
+            }
+            
+            const allSessions = await getAllFromDB();
+            let html = '';
+            
+            allSessions.forEach(sess => {
+                const msgs = sess.his || [];
+                msgs.forEach((msg, i) => {
+                    if (msg.text && msg.text.toLowerCase().includes(keyword.toLowerCase())) {
+                        let prev = msg.text.length > 100 ? msg.text.substring(0,100)+'...' : msg.text;
+                        html += `
+                        <div class="search-result-item" onclick="jumpToSearch('${sess.id}', ${i})">
+                            <strong>${sess.folder}/${sess.name}</strong><br>
+                            ${msg.role==='user'?'Bạn':'AI'}: ${prev.replace(new RegExp(`(${keyword})`,'gi'),'<mark>$1</mark>')}
+                        </div>`;
+                    }
+                });
+            });
+            div.innerHTML = html || '<i>Không tìm thấy</i>';
+        }
+
+        window.jumpToSearch = async function(sid, idx) {
+            if (activeId !== sid) await switchSess(sid);
+            setTimeout(() => { 
+                const c = document.querySelectorAll('.message-container')[idx]; 
+                if(c) { 
+                    c.scrollIntoView({behavior:'smooth', block:'center'}); 
+                    c.style.backgroundColor='rgba(255,235,59,0.3)'; 
+                    setTimeout(() => c.style.backgroundColor='', 2000); 
+                } 
+            }, 300);
+            closeAllModals();
+        };
+
+        function renderFolders() {
+            DOM.folderSelect.innerHTML = `<option value="All">📁 Tất cả chuyên mục</option>` + folders.map(f => `<option value="${f}">📁 ${f}</option>`).join('');
+            DOM.folderSelect.value = activeFolder;
+        }
+
+        DOM.folderSelect.addEventListener('change', (e) => { 
+            activeFolder = e.target.value; 
+            localStorage.setItem('javiss_active_folder', activeFolder); 
+            renderSel(); 
+            const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder); 
+            if(v.length > 0) { 
+                if(!v.find(s => s.id === activeId)) switchSess(v[0].id); 
+            } else { 
+                DOM.chat.innerHTML = ''; 
+                document.getElementById('session-msg-count').innerText = `0 tin`; 
+            } 
+        });
+
+        DOM.btnNewFolder.onclick = () => { 
+            const n = prompt("Tên Thư mục mới:"); 
+            if(n && !folders.includes(n)) { 
+                folders.push(n); 
+                localStorage.setItem('javiss_folders', JSON.stringify(folders)); 
+                activeFolder = n; 
+                localStorage.setItem('javiss_active_folder', n); 
+                renderFolders(); 
+                renderSel(); 
+            } 
+        };
+
+        DOM.btnDeleteFolder.onclick = async () => { 
+            if(activeFolder === "All" || activeFolder === "Mặc định") return showToast("Không thể xóa TM hệ thống!"); 
+            if(confirm(`Xóa "${activeFolder}"? Phiên bên trong sẽ về "Mặc định".`)) { 
+                folders = folders.filter(f => f !== activeFolder); 
+                localStorage.setItem('javiss_folders', JSON.stringify(folders)); 
+                for(let s of sessions){ 
+                    if(s.folder === activeFolder){ 
+                        s.folder = "Mặc định"; 
+                        await saveToDB(s); 
+                    } 
+                } 
+                activeFolder = "All"; 
+                localStorage.setItem('javiss_active_folder', "All"); 
+                renderFolders(); 
+                renderSel(); 
+                showToast("Đã xóa!"); 
+            } 
+        };
+
+        DOM.btnMoveSess.onclick = async () => { 
+            const s = sessions.find(x => x.id === activeId); 
+            if(!s) return; 
+            const choice = prompt(`Chọn số thứ tự thư mục đích:\n${folders.map((f,i) => `${i+1}. ${f}`).join('\n')}`); 
+            if(choice){ 
+                let t = folders[parseInt(choice)-1] || choice.trim(); 
+                if(folders.includes(t)){ 
+                    s.folder = t; 
+                    await saveToDB(s); 
+                    showToast(`Chuyển tới: ${t}`); 
+                    renderSel(); 
+                } 
+            } 
+        };
+
+        async function loadSess() {
+            try {
+                await initDB(); 
+                let dbData = await getAllFromDB();
+                if (dbData && dbData.length > 0) {
+                    sessions = dbData.sort((a,b) => (a.orderIndex||0) - (b.orderIndex||0));
+                    renderFolders(); 
+                    activeId = localStorage.getItem('javiss_active_id');
+                    if (!sessions.find(s => s.id === activeId)) activeId = sessions[0].id;
+                    await switchSess(activeId);
+                } else { 
+                    renderFolders(); 
+                    await newSess(); 
+                }
+            } catch (e) { 
+                await newSess(); 
+            }
+        }
+        
+        async function newSess(name) {
+            const id = 's_' + Date.now();
+            const s = { 
+                id, 
+                name: name || `Hội thoại ${sessions.length+1}`, 
+                folder: activeFolder === "All" ? "Mặc định" : activeFolder, 
+                his: [], 
+                sys: '', 
+                mod: DOM.model.value || 'gemini-3.5-flash', 
+                tmp: 0.5, 
+                tpp: 0.9, 
+                top: 40, 
+                thk: 'low', 
+                sch: false, 
+                mem: true, 
+                orderIndex: 0 
+            };
+            sessions.unshift(s); 
+            sessions.forEach((sess, idx) => { 
+                sess.orderIndex = idx; 
+                saveToDB(sess); 
+            });
+            await switchSess(id);
+        }
+        
+        document.getElementById('btn-new-session').onclick = () => newSess();
+        
+        async function switchSess(id) {
+            activeId = id; 
+            localStorage.setItem('javiss_active_id', id);
+            const s = sessions.find(x => x.id === id); 
+            chatHistory = s ? [...s.his] : [];
+            if(s) { 
+                DOM.sysInst.value = s.sys || ''; 
+                DOM.model.value = s.mod || 'gemini-3.5-flash';
+                DOM.temp.value = s.tmp || 0.5; 
+                DOM.tempVal.innerText = DOM.temp.value;
+                DOM.topP.value = s.tpp || 0.9; 
+                DOM.toppVal.innerText = DOM.topP.value;
+                DOM.topK.value = s.top || 40; 
+                DOM.thinking.value = s.thk || 'low'; 
+                DOM.toggleSearch.checked = s.sch || false; 
+                DOM.toggleMemory.checked = s.mem !== false; 
+            }
+            DOM.chat.innerHTML = ''; 
+            chatHistory.forEach((m,i) => appendMsg(m.role === 'model' ? 'bot' : 'user', m.text, i, true)); 
+            DOM.chat.scrollTop = DOM.chat.scrollHeight; 
+            renderSel();
+        }
+        
+        DOM.selSession.addEventListener('change', e => switchSess(e.target.value));
+
+        function renderSel() { 
+            DOM.selSession.innerHTML = ''; 
+            const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder);
+            if(v.length === 0) {
+                DOM.selSession.innerHTML = '<option value="">-- Trống --</option>';
+            } else {
+                v.forEach(s => { 
+                    const o = document.createElement('option'); 
+                    o.value = s.id; 
+                    o.textContent = (activeFolder === "All" ? `[${s.folder}] ` : '') + s.name; 
+                    if(s.id === activeId) o.selected = true; 
+                    DOM.selSession.appendChild(o); 
+                }); 
+            }
+            document.getElementById('session-msg-count').innerText = `${chatHistory.length} tin nhắn`; 
+        }
+
+        document.getElementById('btn-rename-session').onclick = async () => { 
+            const n = prompt("Tên Phiên mới:"); 
+            if(n) { 
+                const s = sessions.find(x => x.id === activeId); 
+                s.name = n; 
+                await saveToDB(s); 
+                renderSel(); 
+            } 
+        };
+
+        document.getElementById('btn-delete-session').onclick = async () => { 
+            if (sessions.length <= 1) return showToast("Phải giữ lại ít nhất 1 phiên", "error"); 
+            if (!confirm("Xóa phiên này?")) return; 
+            
+            await deleteFromDB(activeId); 
+            sessions = sessions.filter(s => s.id !== activeId); 
+            const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder); 
+            if(v.length > 0) {
+                await switchSess(v[0].id); 
+            } else { 
+                activeFolder = "All"; 
+                localStorage.setItem('javiss_active_folder', "All"); 
+                renderFolders(); 
+                await switchSess(sessions[0].id); 
+            } 
+            showToast("Đã xóa"); 
+        };
+
+        document.getElementById('btn-move-up').onclick = async () => { 
+            const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder); 
+            const idx = v.findIndex(s => s.id === activeId); 
+            if(idx > 0) { 
+                let t = v[idx].orderIndex; 
+                v[idx].orderIndex = v[idx-1].orderIndex; 
+                v[idx-1].orderIndex = t; 
+                sessions.sort((a,b) => a.orderIndex - b.orderIndex); 
+                await saveToDB(v[idx]); 
+                await saveToDB(v[idx-1]); 
+                renderSel(); 
+            } 
+        };
+
+        document.getElementById('btn-move-down').onclick = async () => { 
+            const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder); 
+            const idx = v.findIndex(s => s.id === activeId); 
+            if(idx > -1 && idx < v.length - 1) { 
+                let t = v[idx].orderIndex; 
+                v[idx].orderIndex = v[idx+1].orderIndex; 
+                v[idx+1].orderIndex = t; 
+                sessions.sort((a,b) => a.orderIndex - b.orderIndex); 
+                await saveToDB(v[idx]); 
+                await saveToDB(v[idx+1]); 
+                renderSel(); 
+            } 
+        };
+
+        DOM.btnCompress.onclick = async () => {
+            if (chatHistory.length <= 4) return showToast("Chưa cần nén!");
+            if(!confirm(`Dùng AI nén ngữ cảnh cũ?`)) return;
+            
+            let attempts = 0;
+            while(attempts < apiKeys.length) {
+                try {
+                    const hist = chatHistory.slice(0, -2); 
+                    const recent = chatHistory.slice(-2);
+                    const txt = hist.map(m => `${m.role}: ${m.text}`).join('\n\n');
+                    
+                    const sm = new GoogleGenerativeAI(apiKeys[processKeyIndex]).getGenerativeModel({model: "gemini-3.1-flash-lite"});
+                    const res = await sm.generateContent(`Tóm tắt nội dung sau làm bối cảnh:\n\n${txt}`);
+                    
+                    chatHistory = [ 
+                        { role: 'user', text: `[Tóm tắt bối cảnh cũ]: \n${res.response.text()}` }, 
+                        { role: 'model', text: 'Đã ghi nhớ.' }, 
+                        ...recent 
+                    ];
+                    
+                    const s = sessions.find(x => x.id === activeId); 
+                    s.his = chatHistory; 
+                    await saveToDB(s);
+                    
+                    DOM.chat.innerHTML = ''; 
+                    chatHistory.forEach((m,i) => appendMsg(m.role === 'model' ? 'bot' : 'user', m.text, i, true));
+                    showToast("Đã nén thành công!"); 
+                    break;
+                } catch(e) { 
+                    processKeyIndex = (processKeyIndex + 1) % apiKeys.length; 
+                    attempts++; 
+                }
+            }
+        };
+
+        async function updateConfig() { 
+            const s = sessions.find(x => x.id === activeId); 
+            if(s) { 
+                s.sys = DOM.sysInst.value; 
+                s.mod = DOM.model.value; 
+                s.tmp = DOM.temp.value; 
+                s.tpp = DOM.topP.value; 
+                s.top = DOM.topK.value; 
+                s.thk = DOM.thinking.value; 
+                s.sch = DOM.toggleSearch.checked; 
+                s.mem = DOM.toggleMemory.checked; 
+                await saveToDB(s); 
+            } 
+        }
+
+        DOM.sysInst.addEventListener('input', updateConfig); 
+        DOM.model.addEventListener('change', updateConfig); 
+        DOM.toggleSearch.addEventListener('change', updateConfig); 
+        DOM.toggleMemory.addEventListener('change', updateConfig); 
+        DOM.topK.addEventListener('input', updateConfig); 
+        DOM.thinking.addEventListener('change', updateConfig); 
+        
+        DOM.temp.addEventListener('input', () => { 
+            DOM.tempVal.innerText = DOM.temp.value; 
+            updateConfig(); 
+        }); 
+        
+        DOM.topP.addEventListener('input', () => { 
+            DOM.toppVal.innerText = DOM.topP.value; 
+            updateConfig(); 
+        });
+
+        function getDynamicSI() {
+            const base = DOM.sysInst.value || "Bạn là Javiss AI.";
+            const glob = DOM.globContext.value;
+            const t = new Date().toLocaleString('vi-VN');
+            return `${glob ? '[QUY TẮC TOÀN CỤC]:\n' + glob + '\n\n' : ''}${base}\n\n[HỆ THỐNG]: Hiện tại là ${t}.`;
+        }
+
+        async function fetchUrlContent(url) {
+            let attempts = 0;
+            while(attempts < apiKeys.length) {
+                try { 
+                    const sm = new GoogleGenerativeAI(apiKeys[searchKeyIndex]).getGenerativeModel({model:"gemini-2.5-flash", tools:[{googleSearch:{}}]});
+                    return (await sm.generateContent(`Trích xuất nội dung: ${url}`)).response.text();
+                } catch (e) { 
+                    searchKeyIndex = (searchKeyIndex + 1) % apiKeys.length; 
+                    attempts++; 
+                }
+            }
+            return "[Lỗi đọc URL]";
+        }
+
+        // HÀM GỬI TIN NHẮN TÍCH HỢP ĐỊNH VỊ ĐỈNH CÂU TRẢ LỜI KHI STREAMING
+        DOM.sendBtn.onclick = async () => {
+            if(isProcessing) return;
+            if(apiKeys.length === 0) return showToast("Cần API Key!", "error");
+            
+            let rawMsg = DOM.input.value.trim(); 
+            let isCommand = false;
+            let overridePrompt = "";
+            
+            if (rawMsg === '/gold') {
+                overridePrompt = "Hãy tìm kiếm và cập nhật mức giá mới nhất của vàng SJC và vàng 24K tại Việt Nam hôm nay.";
+                isCommand = true; 
+                DOM.toggleSearch.checked = true;
+            } else if (rawMsg === '/gas') {
+                overridePrompt = "Hãy tìm kiếm và cập nhật mức giá bán lẻ xăng dầu mới nhất tại Việt Nam hôm nay.";
+                isCommand = true; 
+                DOM.toggleSearch.checked = true;
+            } else if (rawMsg === '/weather') {
+                overridePrompt = "Hãy cập nhật tình hình thời tiết hiện tại ở Thành phố Hồ Chí Minh.";
+                isCommand = true; 
+                DOM.toggleSearch.checked = true;
+            } else if (rawMsg === '/mu') {
+                overridePrompt = "Hãy cập nhật kết quả thi đấu, tin tức mới nhất hoặc lịch thi đấu sắp tới của câu lạc bộ Manchester United.";
+                isCommand = true; 
+                DOM.toggleSearch.checked = true;
+            }
+            
+            let msg = isCommand ? overridePrompt : rawMsg;
+
+            if(!msg && !filesData.length && !txtContent) return;
+            
+            localStorage.removeItem('javiss_draft');
+            isProcessing = true; 
+            DOM.sendBtn.innerHTML = '⏳'; 
+            promptHistory.push(msg); 
+            historyIndex = -1;
+            
+            let fullPrompt = txtContent ? msg + "\n\n" + txtContent : msg;
+            let hasUrl = msg.match(/(https?:\/\/[^\s]+)/); 
+            if(hasUrl) { 
+                DOM.sendBtn.innerHTML = '🌐'; 
+                fullPrompt += `\n\n[Dữ liệu Web]:\n${await fetchUrlContent(hasUrl[0])}`; 
+            }
+            
+            let displayMsg = isCommand ? `Lệnh thực thi: ${rawMsg}` : msg;
+            
+            appendMsg('user', displayMsg + (filesData.length ? ` [${filesData.length} tệp đính kèm]` : ''), chatHistory.length, false); 
+            DOM.input.value = ''; 
+            DOM.input.style.height = '40px';
+            const imgs = [...filesData]; 
+            DOM.clearFilesBtn.click();
+            
+            const botDiv = document.createElement('div'); 
+            botDiv.className = 'message-container';
+            botDiv.innerHTML = `
+                <div class="bot-message">
+                    <div class="message-header">Gemini <span class="streaming-indicator">Đang xử lý...</span></div>
+                    <div class="msg-content"></div>
+                </div>`;
+            DOM.chat.appendChild(botDiv); 
+            DOM.chat.scrollTop = DOM.chat.scrollHeight;
+            const contentDiv = botDiv.querySelector('.msg-content');
+            
+            let finalPrompt = fullPrompt;
+            if(DOM.toggleSearch.checked) {
+                let sAttempts = 0;
+                while(sAttempts < apiKeys.length) {
+                    try {
+                        botDiv.querySelector('.streaming-indicator').innerText = `🔍 Đang tìm kiếm thông tin...`;
+                        const smExtract = new GoogleGenerativeAI(apiKeys[searchKeyIndex]).getGenerativeModel({model: "gemini-3.1-flash-lite"});
+                        const k = (await smExtract.generateContent(`Trích xuất từ khóa tìm kiếm: ${fullPrompt}`)).response.text().trim();
+                        const smSearch = new GoogleGenerativeAI(apiKeys[searchKeyIndex]).getGenerativeModel({model:"gemini-2.5-flash", tools:[{googleSearch:{}}]});
+                        let webData = (await smSearch.generateContent(`Tìm kiếm web: ${k}\nTóm tắt trả lời cho: ${fullPrompt}`)).response.text();
+                        finalPrompt = `[DỮ LIỆU TÌM ĐƯỢC]:\n${webData}\n\n[YÊU CẦU GỐC]: ${fullPrompt}`;
+                        break; 
+                    } catch(e) { 
+                        searchKeyIndex = (searchKeyIndex + 1) % apiKeys.length; 
+                        sAttempts++; 
+                    }
+                }
+            }
+            
+            let pAttempts = 0, pSuccess = false, chatTextResult = "";
+            const startTime = Date.now(); 
+
+            while(pAttempts < apiKeys.length) {
+                try {
+                    botDiv.querySelector('.streaming-indicator').innerText = `🧠 Đang suy luận...`;
+                    const genAI = new GoogleGenerativeAI(apiKeys[processKeyIndex]);
+                    const model = genAI.getGenerativeModel({ model: DOM.model.value, systemInstruction: getDynamicSI(), safetySettings: SAFETY });
+                    
+                    let parts = [{text: finalPrompt}]; 
+                    if(imgs.length) {
+                        for(let f of imgs) parts.push(await fileToPart(f));
+                    }
+                    
+                    let historyForAPI = DOM.toggleMemory.checked ? normalizeHistoryForAPI(chatHistory.slice(-20)) : [];
+                    
+                    const chat = model.startChat({ 
+                        history: historyForAPI, 
+                        generationConfig: { 
+                            temperature: +DOM.temp.value, 
+                            topP: +DOM.topP.value, 
+                            topK: +DOM.topK.value, 
+                            thinkingConfig: { thinkingLevel: DOM.thinking.value } 
+                        } 
+                    });
+                    
+                    const result = await chat.sendMessageStream(parts);
+                    if (botDiv.querySelector('.streaming-indicator')) {
+                        botDiv.querySelector('.streaming-indicator').remove(); 
+                    }
+                    
+                    let fullResponse = "";
+                    let hasScrolledToTop = false; 
+
+                    for await (const chunk of result.stream) {
+                        fullResponse += chunk.text();
+                        let displayTxt = fullResponse.replace(/\[URL:\s*(https?:\/\/[^\s]+)\]/g, '<a href="$1" target="_blank" style="color:var(--primary)">$1</a>');
+                        contentDiv.innerHTML = marked.parse(displayTxt);
+                        
+                        // KÍCH HOẠT LỆNH CUỘN LÊN ĐỈNH ĐÚNG 1 LẦN DUY NHẤT KHI CHỮ XUẤT HIỆN
+                        if (!hasScrolledToTop && fullResponse.trim().length > 0) {
+                            DOM.chat.scrollTo({
+                                top: botDiv.offsetTop - DOM.chat.offsetTop - 15,
+                                behavior: 'smooth'
+                            });
+                            hasScrolledToTop = true;
+                        }
+                    }
+                    
+                    if (window.renderMathInElement) {
+                        renderMathInElement(contentDiv, { delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}], throwOnError: false });
+                    }
+
+                    chatTextResult = fullResponse; 
+                    pSuccess = true;
+                    
+                    document.getElementById('latency-val').innerText = (Date.now() - startTime).toString();
+                    break; 
+                } catch(e) { 
+                    processKeyIndex = (processKeyIndex + 1) % apiKeys.length; 
+                    pAttempts++; 
+                    if(pAttempts >= apiKeys.length) { 
+                        botDiv.remove(); 
+                        showToast("❌ Lỗi: " + e.message, 'error'); 
+                        break; 
+                    } 
+                }
+            }
+
+            if(pSuccess) {
+                chatHistory.push({role:'user', text: isCommand ? overridePrompt : fullPrompt}); 
+                chatHistory.push({role:'model', text: chatTextResult});
+                const s = sessions.find(x => x.id === activeId); 
+                s.his = chatHistory; 
+                await saveToDB(s);
+                
+                botDiv.querySelector('.bot-message').setAttribute('data-raw', chatTextResult);
+                const acts = document.createElement('div'); 
+                acts.className = 'msg-actions';
+                acts.innerHTML = `<button class="action-btn" onclick="copy(this)">📋 Copy</button>`;
+                acts.innerHTML += `<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${chatHistory.length-1})">🗑️ Xóa</button>`;
+                botDiv.appendChild(acts);
+            }
+            
+            isProcessing = false; 
+            DOM.sendBtn.innerText = 'Gửi 📤';
+        };
+
+        function appendMsg(sender, txt, idx, isHistoryLoad = false) {
+            const c = document.createElement('div'); 
+            c.className = 'message-container';
+            
+            const m = document.createElement('div'); 
+            m.className = sender === 'user' ? 'user-message' : 'bot-message'; 
+            m.setAttribute('data-raw', txt);
+            
+            let displayTxt = txt.replace(/\[URL:\s*(https?:\/\/[^\s]+)\]/g, '<a href="$1" target="_blank" style="color:var(--primary)">$1</a>');
+            m.innerHTML = `
+                <div class="message-header"><span>${sender === 'user' ? '👤 Bạn' : '✨ Gemini'}</span></div>
+                <div class="msg-content">${sender === 'bot' ? marked.parse(displayTxt) : displayTxt.replace(/\n/g,'<br>')}</div>
+            `;
+            
+            const acts = document.createElement('div'); 
+            acts.className = 'msg-actions';
+            acts.innerHTML = `<button class="action-btn" onclick="copy(this)">📋 Copy</button>`;
+            
+            if(sender === 'user') { 
+                acts.innerHTML += `<button class="action-btn" onclick="editMsg(${idx})">✏️ Sửa</button>`;
+                acts.innerHTML += `<button class="action-btn" onclick="forkSession(${idx})">🔀 Nhánh</button>`; 
+            }
+            
+            acts.innerHTML += `<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${idx})">🗑️ Xóa</button>`;
+            
+            c.append(m, acts); 
+            DOM.chat.appendChild(c);
+            
+            if (sender === 'bot' && window.renderMathInElement) {
+                renderMathInElement(c, { delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}], throwOnError: false });
+            }
+            
+            if(!isHistoryLoad) { 
+                if(sender === 'user') {
+                    DOM.chat.scrollTop = DOM.chat.scrollHeight; 
+                } else {
+                    setTimeout(() => DOM.chat.scrollTo({ top: c.offsetTop - DOM.chat.offsetTop - 15, behavior: 'smooth' }), 50); 
+                }
+            }
+        }
+
+        window.editMsg = async function(idx) { 
+            DOM.input.value = chatHistory[idx].text; 
+            DOM.input.dispatchEvent(new Event('input')); 
+            chatHistory = chatHistory.slice(0, idx); 
+            const s = sessions.find(x => x.id === activeId); 
+            s.his = chatHistory; 
+            await saveToDB(s); 
+            DOM.chat.innerHTML = ''; 
+            chatHistory.forEach((m,i) => appendMsg(m.role === 'model' ? 'bot' : 'user', m.text, i, true)); 
+        };
+
+        window.clearActiveSession = async function() { 
+            if (confirm("Xóa sạch toàn bộ tin nhắn trong phiên này?")) { 
+                chatHistory = []; 
+                const s = sessions.find(x => x.id === activeId); 
+                if (s) { 
+                    s.his = []; 
+                    await saveToDB(s); 
+                } 
+                DOM.chat.innerHTML = ''; 
+                document.getElementById('session-msg-count').innerText = `0 tin`; 
+                showToast('Đã xóa sạch lịch sử'); 
+            } 
+        };
+
+        window.exportAllSessions = async function() { 
+            const blob = new Blob([JSON.stringify({ backupDate: new Date().toISOString(), sessions: await getAllFromDB(), activeId }, null, 2)], { type: 'application/json' }); 
+            const a = document.createElement('a'); 
+            a.href = URL.createObjectURL(blob); 
+            a.download = `Javiss_Backup_${Date.now()}.json`; 
+            a.click(); 
+            showToast('Đã xuất file dữ liệu sao lưu'); 
+        };
+
+        document.getElementById('import-all-input').addEventListener('change', async (e) => { 
+            const f = e.target.files[0]; 
+            if(!f) return; 
+            const rd = new FileReader(); 
+            rd.onload = async (ev) => { 
+                try { 
+                    const d = JSON.parse(ev.target.result); 
+                    if(d.sessions && confirm("Ghi đè toàn bộ dữ liệu hiện tại bằng tệp tin khôi phục này?")) { 
+                        await clearAllDB(); 
+                        for(let s of d.sessions) await saveToDB(s); 
+                        await loadSess(); 
+                        showToast('Hệ thống đã khôi phục dữ liệu!'); 
+                    } 
+                } catch(err) { 
+                    showToast('Tệp tin JSON không hợp lệ!', 'error'); 
+                } 
+            }; 
+            rd.readAsText(f); 
+            e.target.value = ''; 
+        });
+
+        async function processUploadFiles(files) {
+            DOM.fileCount.innerText = "⏳"; 
+            for(let f of files) { 
+                if(f.type.startsWith('image/') || f.type === 'video/mp4') { 
+                    if(filesData.length < MAX_IMAGES) filesData.push(f); 
+                } else if(f.type === 'application/pdf') { 
+                    const p = await readPDF(f); 
+                    txtContent += `\n[Nội dung PDF: ${f.name}]:\n${p.substring(0, 50000)}\n`; 
+                    DOM.textFileList.innerHTML += `📑 ${f.name}<br>`; 
+                } else { 
+                    const t = await f.text(); 
+                    txtContent += `\n[Nội dung tệp văn bản: ${f.name}]:\n${t.substring(0, 50000)}\n`; 
+                    DOM.textFileList.innerHTML += `📄 ${f.name}<br>`; 
+                } 
+            } 
+            renderFiles(); 
+        }
+
+        DOM.fileUpload.addEventListener('change', async (e) => { 
+            await processUploadFiles(Array.from(e.target.files)); 
+            DOM.fileUpload.value = ''; 
+        });
+
+        function renderFiles() { 
+            DOM.previewGrid.innerHTML = ''; 
+            DOM.previewBox.style.display = (filesData.length || txtContent) ? 'block' : 'none'; 
+            DOM.fileCount.innerText = filesData.length + (txtContent ? 1 : 0); 
+            
+            filesData.forEach((f,i) => { 
+                const w = document.createElement('div'); 
+                w.innerHTML = `
+                    <div style="position:relative;width:50px;height:50px;background:#333;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;">
+                        ${f.type.startsWith('image') ? `<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">` : 'MP4'}
+                        <button onclick="rmImg(${i})" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;">✕</button>
+                    </div>`; 
+                DOM.previewGrid.appendChild(w); 
+            }); 
+        }
+
+        window.rmImg = (i) => { 
+            filesData.splice(i,1); 
+            renderFiles(); 
+        }; 
+        
+        DOM.clearFilesBtn.onclick = () => { 
+            filesData = []; 
+            txtContent = ""; 
+            DOM.textFileList.innerHTML = ""; 
+            renderFiles(); 
+        };
+        
+        async function readPDF(file) { 
+            const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise; 
+            let t = ""; 
+            for (let i = 1; i <= pdf.numPages; i++) {
+                t += (await (await pdf.getPage(i)).getTextContent()).items.map(i => i.str).join(' ') + "\n"; 
+            }
+            return t; 
+        }
+
+        window.exportChatDoc = function() { 
+            let h = `<html><head><meta charset='utf-8'></head><body><h2>Phiên: ${sessions.find(s=>s.id===activeId).name}</h2>`; 
+            chatHistory.forEach(m => {
+                h += `<p><b>${m.role==='user'?'Bạn':'Javiss'}:</b><br/> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</p><hr>`;
+            }); 
+            h += "</body></html>"; 
+            const a = document.createElement('a'); 
+            a.href = URL.createObjectURL(new Blob(['\ufeff', h], { type: 'application/msword' })); 
+            a.download = `Javiss_Chat_${Date.now()}.doc`; 
+            a.click(); 
+        };
+
+        window.exportChatPDF = function() { 
+            const el = document.createElement('div'); 
+            el.innerHTML = `<h2>Phiên: ${sessions.find(s=>s.id===activeId).name}</h2>`; 
+            chatHistory.forEach(m => {
+                el.innerHTML += `<div style="margin-bottom:15px; font-family:sans-serif;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</div><hr>`;
+            }); 
+            html2pdf().set({ 
+                margin: 10, 
+                filename: `Javiss_Chat_${Date.now()}.pdf`, 
+                html2canvas: { scale: 2 }, 
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+            }).from(el).save(); 
+            showToast('Đang tạo file PDF...'); 
+        };
+
+        function showToast(m, t='success') { 
+            DOM.toast.innerText = m; 
+            DOM.toast.className = `toast ${t} show`; 
+            setTimeout(() => DOM.toast.classList.remove('show'), 2000); 
+        }
+
+        async function fileToPart(f) { 
+            return new Promise(r => { 
+                const rd = new FileReader(); 
+                rd.onloadend = () => r({inlineData:{data:rd.result.split(',')[1], mimeType:f.type}}); 
+                rd.readAsDataURL(f); 
+            }); 
+        }
+        
+        loadSess();
+    </script>
+</body>
+</html>
