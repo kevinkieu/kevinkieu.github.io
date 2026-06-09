@@ -188,7 +188,7 @@
             </div>
           </div>
         </fieldset>
-        <fieldset class="settings-group"><legend>💾 Quản lý Dữ liệu & Xuất tệp (Offline)</legend>
+        <fieldset class="settings-group"><legend>💾 Quản lý Dữ liệu & Xuất tệp</legend>
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
             <button class="btn" onclick="exportCleanArticle()">📝 Bài viết sạch (MD)</button><button class="btn" onclick="exportChatPDF()">📄 Xuất File PDF</button><button class="btn" onclick="exportChatDoc()">📄 Xuất File Word</button>
             <button class="btn" onclick="exportAllSessions()">📥 Sao lưu JSON</button><button class="btn" onclick="document.getElementById('import-all-input').click()">📤 Khôi phục JSON</button>
@@ -221,7 +221,20 @@
     }
 
     function setupUIForKeys(){ const c=document.getElementById('api-keys-container'); c.innerHTML=''; for(let i=1;i<=10;i++) c.innerHTML+=`<input type="password" id="api-key-${i}" placeholder="API Key ${i} ${i===1?'(Ưu tiên)':''}">`; }
-    function initAPIKeys(){ apiKeys=[]; for(let i=1;i<=10;i++){ let k=localStorage.getItem(`javiss_api_${i}`)||""; document.getElementById(`api-key-${i}`).value=k; if(k.trim()!=="") apiKeys.push(k.trim()); } searchKeyIndex=0; processKeyIndex=0; const s=document.getElementById('key-status-msg'); if(apiKeys.length===0){ s.innerText="⚠️ Chưa nạp API Key."; s.style.color="var(--danger)"; }else{ s.innerText=`✅ Đã nạp ${apiKeys.length} API Key.`; s.style.color="green"; } }
+    function initAPIKeys(){ 
+        apiKeys=[]; 
+        for(let i=1;i<=10;i++){ 
+            let el = document.getElementById(`api-key-${i}`);
+            let k=localStorage.getItem(`javiss_api_${i}`)||""; 
+            if(el) el.value=k; 
+            if(k.trim()!=="") apiKeys.push(k.trim()); 
+        } 
+        searchKeyIndex=0; processKeyIndex=0; 
+        let s = document.getElementById('key-status-msg');
+        if(s){
+            if(apiKeys.length===0){ s.innerText="⚠️ Chưa nạp API Key."; s.style.color="var(--danger)"; }else{ s.innerText=`✅ Đã nạp ${apiKeys.length} API Key.`; s.style.color="green"; } 
+        }
+    }
     setupUIForKeys(); document.getElementById('btn-save-keys').onclick=()=>{ for(let i=1;i<=10;i++) localStorage.setItem(`javiss_api_${i}`,document.getElementById(`api-key-${i}`).value.trim()); initAPIKeys(); showToast(`Đã lưu cấu hình hệ thống!`); };
     initAPIKeys();
     pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
@@ -411,10 +424,8 @@
        a.innerHTML+=`<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})">🗑️ Xóa</button>`; 
        c.append(m,a); 
        DOM.chat.appendChild(c); 
-       if(!iHL && sd==='user'){ DOM.chat.scrollTop=DOM.chat.scrollHeight; }
        const cD = m.querySelector('.msg-content'); 
        await renderMsgContent(cD, sd==='user'?t.replace(/\n/g,'<br>'):t); 
-       if(!iHL && sd!=='user'){ setTimeout(()=>DOM.chat.scrollTo({top:c.offsetTop-DOM.chat.offsetTop-15,behavior:'smooth'}),50); }
     }
 
     DOM.sendBtn.onclick=async()=>{
@@ -424,8 +435,12 @@
       
       await appendMsg('user', msg+(filesData.length?` [${filesData.length} tệp]`:''), chatHistory.length, false); 
       DOM.input.value=''; DOM.input.style.height='40px'; const imgs=[...filesData]; DOM.clearFilesBtn.click(); 
-      const bD=document.createElement('div'); bD.className='message-container'; bD.innerHTML=`<div class="bot-message"><div class="message-header">Gemini <span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`; 
-      DOM.chat.appendChild(bD); DOM.chat.scrollTop=DOM.chat.scrollHeight; const cD=bD.querySelector('.msg-content'); 
+      
+      const bD=document.createElement('div'); bD.className='message-container'; 
+      bD.innerHTML=`<div class="bot-message"><div class="message-header">Gemini <span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`; 
+      DOM.chat.appendChild(bD);
+      const cD=bD.querySelector('.msg-content'); 
+      const bDTop = bD.offsetTop;
       
       let finalResponse = "";
       
@@ -438,7 +453,7 @@
                cD.innerHTML+=`<div class="agent-step">B1: Lập kế hoạch phân tích...</div>`;
                const step1 = await aiAgent.models.generateContent({
                    model: "gemini-3.1-flash-lite",
-                   contents: `Tạo từ khóa tìm kiếm và các bước giải quyết cho yêu cầu sau. LƯU Ý QUAN TRỌNG: TUYỆT ĐỐI GIỮ NGUYÊN tên riêng, tên sản phẩm (ví dụ: iQoo Z10 Turbo Plus). KHÔNG tự ý sửa đổi hay thay thế bằng sản phẩm khác dựa trên kiến thức cũ. Yêu cầu: ${fP}`,
+                   contents: `Tạo từ khóa tìm kiếm và các bước giải quyết cho yêu cầu sau... Yêu cầu: ${fP}`,
                    config: { temperature: 0.0, topK: 1 }
                });
                
@@ -463,13 +478,11 @@
                });
                
                if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-               let fR = "";
                for await(const ck of resStream){
-                  fR += ck.text;
-                  cD.innerHTML = marked.parse(fR);
-                  DOM.chat.scrollTop = bD.offsetTop - DOM.chat.offsetTop - 10;
+                  finalResponse += ck.text;
+                  cD.innerHTML = marked.parse(finalResponse);
+                  DOM.chat.scrollTop = bDTop - DOM.chat.offsetTop - 10;
                }
-               finalResponse = fR;
                await renderMsgContent(cD, finalResponse);
                success=true; break;
              }catch(e){ 
@@ -477,7 +490,7 @@
                if(pA>=apiKeys.length){ showToast("Lỗi Agent: "+e.message,'error'); bD.remove(); }
              }
          }
-         if(!success) { isProcessing=false; return; }
+         if(!success) { isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
       } else {
          let fnP=fP; 
          if(DOM.toggleVectorDB.checked){
@@ -496,26 +509,19 @@
             while(sA<apiKeys.length){
                 try{
                    const aiSearch = getAIInstance(searchKeyIndex);
-                   bD.querySelector('.streaming-indicator').innerText=`🔍 Đang phân tích từ khóa...`;
                    const kRes = await aiSearch.models.generateContent({
                        model: "gemini-3.1-flash-lite",
-                       contents: `Trích xuất từ khóa ngắn gọn nhất để tìm kiếm. TUYỆT ĐỐI GIỮ NGUYÊN tên riêng, tên sản phẩm, mã số. KHÔNG tự ý sửa đổi hay đổi sang tên khác dựa trên kiến thức cũ. Yêu cầu: ${fP}`,
+                       contents: `Trích xuất từ khóa ngắn gọn nhất để tìm kiếm cho yêu cầu: ${fP}`,
                        config: { temperature: 0.0, topK: 1 }
                    });
-                   const k = kRes.text.trim();
-                   
-                   bD.querySelector('.streaming-indicator').innerText=`🔍 Đang tìm Web: ${k}`;
                    const wRes = await aiSearch.models.generateContent({
                        model: "gemini-2.5-flash",
-                       contents: `Tìm kiếm: ${k}\nTóm tắt để phục vụ: ${fP}`,
+                       contents: `Tìm kiếm: ${kRes.text.trim()}\nTóm tắt để phục vụ: ${fP}`,
                        config: { tools: [{ googleSearch: {} }] }
                    }); 
-                   
                    fnP=`[DỮ LIỆU TÌM THẤY]:\n${wRes.text}\n\n[GỐC]: ${fnP}`; 
                    break;
-                }catch(e){
-                   searchKeyIndex=(searchKeyIndex+1)%apiKeys.length; sA++;
-                }
+                }catch(e){searchKeyIndex=(searchKeyIndex+1)%apiKeys.length; sA++;}
             }
          } 
 
@@ -524,12 +530,8 @@
             try{
                bD.querySelector('.streaming-indicator').innerText=`🧠 Đang suy luận...`; 
                const aiMain = getAIInstance(processKeyIndex);
-               
-               let contents = [];
                const memSize=parseInt(DOM.memLen.value)||20;
-               if(DOM.toggleMemory.checked) {
-                  contents = normalizeHistoryForAPI(chatHistory.slice(-memSize));
-               }
+               let contents = DOM.toggleMemory.checked ? normalizeHistoryForAPI(chatHistory.slice(-memSize)) : [];
                
                let currentParts = [{text:fnP}]; 
                if(imgs.length) for(let f of imgs) currentParts.push(await fileToPart(f)); 
@@ -552,20 +554,19 @@
                
                if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
                
-               let fR=""; 
                for await(const ck of resStream){
-                  fR+=ck.text; 
-                  cD.innerHTML = marked.parse(fR); 
-                  DOM.chat.scrollTop = bD.offsetTop - DOM.chat.offsetTop - 10;
+                  finalResponse += ck.text;
+                  cD.innerHTML = marked.parse(finalResponse);
+                  DOM.chat.scrollTop = bDTop - DOM.chat.offsetTop - 10;
                } 
-               finalResponse=fR; await renderMsgContent(cD, finalResponse); pS=true; 
+               await renderMsgContent(cD, finalResponse); pS=true; 
                document.getElementById('latency-val').innerText=(Date.now()-sT).toString(); break;
             }catch(e){
                processKeyIndex=(processKeyIndex+1)%apiKeys.length; pA++; 
                if(pA>=apiKeys.length){bD.remove(); showToast("❌ Lỗi API: "+e.message,'error'); break;}
             }
          }
-         if(!pS){ isProcessing=false; return; }
+         if(!pS){ isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
       }
 
       chatHistory.push({role:'user',text:fP}); chatHistory.push({role:'model',text:finalResponse}); 
