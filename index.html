@@ -188,7 +188,7 @@
             </div>
           </div>
         </fieldset>
-        <fieldset class="settings-group"><legend>💾 Quản lý Dữ liệu & Xuất tệp (Offline)</legend>
+        <fieldset class="settings-group"><legend>💾 Quản lý Dữ liệu & Xuất tệp</legend>
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
             <button class="btn" onclick="exportCleanArticle()">📝 Bài viết sạch (MD)</button><button class="btn" onclick="exportChatPDF()">📄 Xuất File PDF</button><button class="btn" onclick="exportChatDoc()">📄 Xuất File Word</button>
             <button class="btn" onclick="exportAllSessions()">📥 Sao lưu JSON</button><button class="btn" onclick="document.getElementById('import-all-input').click()">📤 Khôi phục JSON</button>
@@ -213,16 +213,26 @@
     import { GoogleGenAI } from "@google/genai";
     marked.use({ breaks: true }); mermaid.initialize({ startOnLoad: false, theme: 'default' });
     
-    // BIẾN QUAN TRỌNG: CHỈ MỤC TOÀN CỤC ĐỂ XOAY VÒNG 10 KEYS BẤT KỂ TÁC VỤ THÀNH CÔNG HAY THẤT BẠI
     let apiKeys=[], globalKeyIndex = 0;
     const SAFETY=[{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}];
     
-    // BỘ LỌC CÔ LẬP KHÓA MÃ SỐ, SỐ HIỆU, SẢN PHẨM THỰC TẾ
+    // CHỈ THỊ TRÍCH XUẤT TỪ KHÓA CHUẨN ĐỂ SỬ DỤNG CHO CÁC BƯỚC TRA CỨU INTERNET CỦA AI
     const keywordExtractionPrompt = `Bạn là chuyên gia tách lọc từ khóa Google Search nâng cao. Hãy phân tích yêu cầu của người dùng để trích xuất ra một chuỗi từ khóa tìm kiếm tối ưu nhất.
 QUY TẮC TỐI CAO:
-1. BẮT BUỘC giữ nguyên 100% các DANH TỪ RIÊNG, TÊN SẢN PHẨM, MÃ HIỆU, SỐ HIỆU, CON SỐ, THÔNG SỐ và MỐC NĂM (Ví dụ: iQoo Z10 Turbo Plus, năm 2026, mã sản phẩm...). Tuyệt đối không tự ý giản lược, thay thế hoặc bỏ qua dựa trên dữ liệu cũ của bạn.
+1. BẮT BUỘC giữ nguyên 100% các DANH TỪ RIÊNG, TÊN SẢN PHẨM, MÃ HIỆU, SỐ HIỆU, CON SỐ, THÔNG SỐ và MỐC NĂM (Ví dụ: iQoo Z10 Turbo Plus, chế độ Dry, chế độ Cool, năm 2026...). Tuyệt đối không tự ý giản lược, thay thế hoặc bỏ qua dựa trên dữ liệu cũ của bạn.
 2. Thêm các từ khóa bổ trợ thực tế như "thông số", "đánh giá mốc 2026", "mới nhất" để gom trúng thông tin thời gian thực.
 3. Chỉ xuất ra chuỗi từ khóa tìm kiếm cách nhau bằng khoảng trắng, KHÔNG giải thích, KHÔNG chào hỏi, KHÔNG bọc ngoặc kép.`;
+
+    // CHỈ THỊ TỐI ƯU HÓA PROMPT MỚI DÀNH RIÊNG CHO NÚT ENHANCE PROMPT (ĐÃ FIX LỖI RA CHUỖI TỪ KHÓA)
+    const promptEnhancementInstruction = `Bạn là bộ chuyển đổi và tối ưu hóa Prompt chuyên nghiệp. Nhiệm vụ: Biến đổi nội dung ý tưởng thô sơ ban đầu của người dùng thành một câu lệnh Prompt hoàn chỉnh, chi tiết, viết dưới góc nhìn chuyên gia và có cấu trúc chặt chẽ để nạp cho AI đạt hiệu quả phản hồi cao nhất.
+QUY TẮC TỐI CAO:
+1. BẮT BUỘC giữ nguyên 100% các danh từ riêng, tên chế độ, tên sản phẩm, mã hiệu, số hiệu sản phẩm, mốc năm (Ví dụ: chế độ Dry, chế độ Cool, iQoo Z10, năm 2026...), các con số và thuật ngữ chuyên môn gốc. Tuyệt đối không được phép loại bỏ hoặc biến đổi chúng.
+2. Không giải thích, không chào hỏi, không bọc trong dấu ngoặc kép. Chỉ trả về duy nhất đoạn prompt đã được tối ưu hoàn chỉnh.`;
+
+    function getAIInstance(idx) {
+      if (!apiKeys[idx]) return null;
+      return new GoogleGenAI({ apiKey: apiKeys[idx] });
+    }
 
     function setupUIForKeys(){ const c=document.getElementById('api-keys-container'); c.innerHTML=''; for(let i=1;i<=10;i++) c.innerHTML+=`<input type="password" id="api-key-${i}" placeholder="API Key ${i}">`; }
     
@@ -288,7 +298,7 @@ QUY TẮC TỐI CAO:
     
     window.forkSession=async i=>{if(!confirm("Tạo nhánh hội thoại từ đây?"))return; const c=sessions.find(s=>s.id===activeId), nId='s_'+Date.now(), nSess={...c,id:nId,name:c.name+" (Nhánh)",his:chatHistory.slice(0,i+1),orderIndex:0}; sessions.unshift(nSess); sessions.forEach((s,j)=>{s.orderIndex=j;saveToDB(s);}); await switchSess(nId); showToast("Đã rẽ nhánh!");};
 
-    // XOAY VÒNG CHO TÁC VỤ: ENHANCE PROMPT CỐ ĐỊNH MÃ HIỆU SẢN PHẨM KHÔNG BỊ PHAI MỜ
+    // CHỨC NĂNG ENHANCE PROMPT ĐÃ ĐƯỢC CHỈNH LẠI CHỈ THỊ CHUẨN (KHÔNG BỊ RA CHUỖI TỪ KHÓA)
     DOM.btnEnhancePrompt.onclick=async()=>{
         const t=DOM.input.value.trim(); if(!t)return showToast("Nhập nội dung!","warning"); if(!apiKeys.length)return showToast("Thiếu API Key!","error"); 
         const o=DOM.btnEnhancePrompt.innerHTML; DOM.btnEnhancePrompt.innerHTML="⏳..."; 
@@ -296,18 +306,17 @@ QUY TẮC TỐI CAO:
         while(a<apiKeys.length){
             try{
                 const currentKey = apiKeys[globalKeyIndex];
-                globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length; // Chuyển giao Key ngay lập tức
+                globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length; // Luân chuyển Key ngay lập tức
                 const ai = new GoogleGenAI({ apiKey: currentKey });
                 
-                const hardPrompt = `${keywordExtractionPrompt}\n\nĐầu vào yêu cầu để Enhance thành prompt đầy đủ chi tiết: "${t}"`;
                 const r = await ai.models.generateContent({
                     model: "gemini-3.1-flash-lite",
-                    contents: hardPrompt,
-                    config: { temperature: 0.1, topK: 1 }
+                    contents: `${promptEnhancementInstruction}\n\nÝ tưởng thô từ người dùng cần tối ưu: "${t}"`,
+                    config: { temperature: 0.3 }
                 });
                 DOM.input.value=r.text.trim(); 
                 DOM.input.dispatchEvent(new Event('input')); 
-                showToast("✨ Đã tối ưu!"); break;
+                showToast("✨ Đã tối ưu cấu trúc Prompt!"); break;
             }catch(e){
                 a++;
             }
@@ -433,7 +442,6 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
 
     function cosineSim(A,B){ let dot=0,normA=0,normB=0; for(let i=0;i<A.length;i++){dot+=A[i]*B[i];normA+=A[i]*A[i];normB+=B[i]*B[i];} return dot/(Math.sqrt(normA)*Math.sqrt(normB)); }
     
-    // EMBEDDING XOAY TUA KEY TOÀN CỤC
     async function getEmbedding(text){ 
        let a = 0;
        while(a < apiKeys.length){
@@ -487,7 +495,6 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
       
       let finalResponse = "";
       
-      // XOAY TUA KEY CHẶT CHẼ TRONG LUỒNG CHẠY CHUỖI AUTO-AGENT
       if(DOM.toggleAgent.checked){
          const step1El = document.createElement('div'); step1El.className = 'agent-step';
          step1El.innerHTML = `📋 B1: Đang tách lọc mã hiệu, số hiệu và danh từ riêng nâng cao...`; cD.appendChild(step1El);
@@ -577,7 +584,6 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
             }catch(e){}
          }
          
-         // XOAY TUA KEY CHẶT CHẼ TRONG LUỒNG TÌM KIẾM WEB THƯỜNG
          if(DOM.toggleSearch.checked){
             const step1El = document.createElement('div'); step1El.className = 'agent-step';
             step1El.innerHTML = `🔍 B1: Đang bóc tách mã số, số hiệu và danh từ riêng...`; cD.appendChild(step1El);
@@ -622,14 +628,11 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
             if(searchSuccess){ fnP=`[DỮ LIỆU TÌM THẤY TRÊN INTERNET]:\n${wDText}\n\n[GỐC]: ${fnP}`; }
          } 
 
-         // XOAY TUA KEY CHẶT CHẼ TRONG LUỒNG ĐÁP ỨNG STREAM CHÍNH
          let pA=0, pS=false, sT=Date.now(); 
          while(pA<apiKeys.length){
             try{
                const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
                const aiMain = new GoogleGenAI({ apiKey: currentKey });
-               
-               bD.querySelector('.streaming-indicator').innerText=`🧠 Đang suy luận...`; 
                const memSize=parseInt(DOM.memLen.value)||20;
                let contents = DOM.toggleMemory.checked ? normalizeHistoryForAPI(chatHistory.slice(-memSize)) : [];
                
@@ -656,7 +659,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                
                for await(const ck of resStream){
                   finalResponse += ck.text; cD.innerHTML = marked.parse(finalResponse);
-                  DOM.chat.scrollTop = bDTop - DOM.chat.offsetTop - 10; // KHÓA CỨNG CUỘN ĐẦU TIN NHẮN KHI ĐANG STREAM
+                  DOM.chat.scrollTop = bDTop - DOM.chat.offsetTop - 10;
                } 
                await renderMsgContent(cD, finalResponse); pS=true; 
                document.getElementById('latency-val').innerText=(Date.now()-sT).toString(); break;
