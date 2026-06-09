@@ -456,13 +456,20 @@
                const genConfig = { temperature:+DOM.temp.value, topP:+DOM.topP.value, topK:+DOM.topK.value, systemInstruction:getDynamicSI() };
                if(DOM.thinking && DOM.thinking.value) { genConfig.thinkingConfig = { thinkingLevel: DOM.thinking.value }; }
 
-               const res = await aiAgent.models.generateContent({
+               const resStream = await aiAgent.models.generateContentStream({
                    model: DOM.model.value,
                    contents: `Dựa trên dữ liệu: ${step2.text}\nHãy viết báo cáo chuyên sâu để trả lời: ${fP}`,
                    config: genConfig
                });
                
-               finalResponse = res.text;
+               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+               let fR = "";
+               for await(const ck of resStream){
+                  fR += ck.text;
+                  cD.innerHTML = marked.parse(fR);
+                  DOM.chat.scrollTop = bD.offsetTop - DOM.chat.offsetTop - 10;
+               }
+               finalResponse = fR;
                await renderMsgContent(cD, finalResponse);
                success=true; break;
              }catch(e){ 
@@ -545,11 +552,11 @@
                
                if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
                
-               let fR="", scr=false; 
+               let fR=""; 
                for await(const ck of resStream){
                   fR+=ck.text; 
                   cD.innerHTML = marked.parse(fR); 
-                  if(!scr&&fR.trim().length){DOM.chat.scrollTo({top:bD.offsetTop-DOM.chat.offsetTop-15,behavior:'smooth'}); scr=true;}
+                  DOM.chat.scrollTop = bD.offsetTop - DOM.chat.offsetTop - 10;
                } 
                finalResponse=fR; await renderMsgContent(cD, finalResponse); pS=true; 
                document.getElementById('latency-val').innerText=(Date.now()-sT).toString(); break;
