@@ -214,6 +214,7 @@
     marked.use({ breaks: true }); mermaid.initialize({ startOnLoad: false, theme: 'default' });
     let apiKeys=[], searchKeyIndex=0, processKeyIndex=0;
     const SAFETY=[{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}];
+    const budgetMap = { minimal: 0, low: 2048, medium: 4096, high: 8192 };
     
     function getAIInstance(idx) {
       if (!apiKeys[idx]) return null;
@@ -258,7 +259,7 @@
     function applyTheme(m){ let t=m; if(m==='auto'){const h=new Date().getHours(); t=(h>=18||h<6)?'dark':'light'; DOM.btnTheme.innerText="🌙 Tự động";}else DOM.btnTheme.innerText=m==='dark'?"🌙 Tối":"☀️ Sáng"; document.documentElement.setAttribute('data-theme',t); localStorage.setItem('theme',m); } applyTheme(localStorage.getItem('theme')||'auto'); DOM.btnTheme.onclick=()=>{let c=localStorage.getItem('theme')||'auto'; applyTheme(c==='auto'?'dark':(c==='dark'?'light':'auto'));};
     DOM.input.value=localStorage.getItem('javiss_draft')||''; DOM.input.addEventListener('input',()=>{localStorage.setItem('javiss_draft',DOM.input.value); DOM.input.style.height='auto'; DOM.input.style.height=(DOM.input.scrollHeight<150?DOM.input.scrollHeight:150)+'px';});
     document.getElementById('toggle-sidebar-btn').onclick=()=>{document.getElementById('sidebar').classList.add('active');document.getElementById('sidebar-overlay').classList.add('active');}; document.getElementById('close-sidebar-btn').onclick=document.getElementById('sidebar-overlay').onclick=()=>{document.getElementById('sidebar').classList.remove('active');document.getElementById('sidebar-overlay').classList.remove('active');};
-    document.getElementById('btn-open-settings').onclick=()=>{document.getElementById('settings-modal').style.display='flex';document.getElementById('modal-overlay').style.display='block';}; document.getElementById('close-settings-modal').onclick=()=>{document.getElementById('settings-modal').style.display='none';document.getElementById('modal-overlay').style.display='none';};
+    document.getElementById('btn-open-settings').onclick=()=>{document.getElementById('settings-modal').style.display='flex';document.getElementById('modal-overlay').style.display='block';}; document.getElementById('close-settings-modal').onclick=()=>{document.getElementById('settings-modal').style.display='none';document.getElementById('modal-overlay').style.none;};
     DOM.globContext.value=localStorage.getItem('global_context')||''; DOM.globContext.addEventListener('input',()=>localStorage.setItem('global_context',DOM.globContext.value));
     window.copy=b=>{const c=b.closest('.message-container').querySelector('.user-message, .bot-message'); if(c){navigator.clipboard.writeText(c.getAttribute('data-raw'));showToast('Đã copy!');}};
     window.deleteMsg=async i=>{if(!confirm("Xóa tin nhắn này?"))return; chatHistory.splice(i,1); const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; await saveToDB(s); DOM.chat.innerHTML=''; chatHistory.forEach((m,j)=>appendMsg(m.role==='model'?'bot':'user',m.text,j,true)); document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`; showToast("Đã xóa!");};
@@ -395,7 +396,6 @@
     async function updateConfig(){const s=sessions.find(x=>x.id===activeId); if(s){s.sys=DOM.sysInst.value; s.mod=DOM.model.value; s.tmp=DOM.temp.value; s.tpp=DOM.topP.value; s.top=DOM.topK.value; s.thk=DOM.thinking.value; s.sch=DOM.toggleSearch.checked; s.mem=DOM.toggleMemory.checked; s.memLen=DOM.memLen.value; s.vec=DOM.toggleVectorDB.checked; s.agt=DOM.toggleAgent.checked; await saveToDB(s);}}
     DOM.sysInst.addEventListener('input',updateConfig); DOM.model.addEventListener('change',updateConfig); DOM.toggleSearch.addEventListener('change',updateConfig); DOM.toggleMemory.addEventListener('change',updateConfig); DOM.memLen.addEventListener('input',updateConfig); DOM.toggleVectorDB.addEventListener('change',updateConfig); DOM.toggleAgent.addEventListener('change',updateConfig); DOM.topK.addEventListener('input',updateConfig); DOM.thinking.addEventListener('change',updateConfig); DOM.temp.addEventListener('input',()=>{DOM.tempVal.innerText=DOM.temp.value; updateConfig();}); DOM.topP.addEventListener('input',()=>{DOM.toppVal.innerText=DOM.topP.value; updateConfig();});
     
-    // HÀM SỬA LỖI LOGIC KIẾN THỨC & THỜI GIAN TOÀN DIỆN
     function getDynamicSI(){
       const b=DOM.sysInst.value||"Bạn là Javiss AI.";
       const g=DOM.globContext.value;
@@ -411,7 +411,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
 - Tuyệt đối không phủ nhận, nghi ngờ hoặc phản đối sự tồn tại của bất kỳ công nghệ, dòng mô hình AI nào (bao gồm Gemini 3.1 Flash-Lite, Gemini 3.5 Flash) hay các sự kiện xã hội, thông số phần cứng thiết bị được cấp trong ngữ cảnh. 
 - Luôn ưu tiên dùng thông tin tìm kiếm thời gian thực để cập nhật câu trả lời khi có xung đột tri thức.
 
-[THỜI GIAN HỆ THỐNG HIỆN TẠI]:
+[THỜI GIAN HỆ THỐNG HIỆT TẠI]:
 - Giờ: ${timeStr}
 - Ngày: ${dateStr}
 - Năm: ${now.getFullYear()} (Sử dụng con số năm này làm mốc chuẩn để tính toán chính xác số tuổi hoặc mốc thời gian của người dùng. Ví dụ: Người dùng ghi sinh năm 1988, thì lấy ${now.getFullYear()} - 1988 = 38 tuổi).`;
@@ -460,36 +460,47 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
       
       let finalResponse = "";
       
+      // CHUỖI ĐỊNH HƯỚNG TỪ KHÓA ĐỂ ÉP CỨNG AI KHÔNG LÀM MẤT MÃ HIỆU/DANH TỪ RIÊNG
+      const keywordExtractionPrompt = `Bạn là chuyên gia tách lọc từ khóa Google Search nâng cao. Hãy phân tích yêu cầu của người dùng để trích xuất ra một chuỗi từ khóa tìm kiếm tối ưu nhất.
+QUY TẮC TỐI CAO:
+1. BẮT BUỘC giữ nguyên 100% các DANH TỪ RIÊNG, TÊN SẢN PHẨM, MÃ HIỆU, SỐ HIỆU, CON SỐ, THÔNG SỐ và MỐC NĂM (Ví dụ: iQoo Z10 Turbo Plus, năm 2026, mã sản phẩm...). Tuyệt đối không tự ý giản lược, thay thế hoặc bỏ qua dựa trên dữ liệu cũ của bạn.
+2. Thêm các từ khóa bổ trợ thực tế như "thông số", "đánh giá mốc 2026", "mới nhất" để gom trúng thông tin thời gian thực.
+3. Chỉ xuất ra chuỗi từ khóa tìm kiếm cách nhau bằng khoảng trắng, KHÔNG giải thích, KHÔNG chào hỏi, KHÔNG bọc ngoặc kép.`;
+
       if(DOM.toggleAgent.checked){
          let pA=0; let success=false;
          while(pA<apiKeys.length){
              try{
                const aiAgent = getAIInstance(processKeyIndex);
-               bD.querySelector('.streaming-indicator').innerText=`🤖 Lên kế hoạch...`;
-               cD.innerHTML+=`<div class="agent-step">B1: Lập kế hoạch phân tích...</div>`;
+               bD.querySelector('.streaming-indicator').innerText=`🤖 Đang xử lý chuỗi Agent...`;
+               
+               // Bước 1 của Agent: Trích xuất chuỗi kế hoạch và từ khóa ép cứng
+               cD.innerHTML+=`<div class="agent-step">📋 B1: Đang cô lập từ khóa mã hiệu, danh từ riêng...</div>`;
                const step1 = await aiAgent.models.generateContent({
                    model: "gemini-3.1-flash-lite",
-                   contents: `Tạo từ khóa tìm kiếm và các bước giải quyết cho yêu cầu sau. LƯU Ý QUAN TRỌNG: TUYỆT ĐỐI GIỮ NGUYÊN tên riêng, tên sản phẩm (ví dụ: iQoo Z10 Turbo Plus). KHÔNG tự ý sửa đổi hay thay thế bằng sản phẩm khác dựa trên kiến thức cũ. Yêu cầu: ${fP}`,
+                   contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
                    config: { temperature: 0.0, topK: 1 }
                });
+               const extractedQuery = step1.text.trim();
                
+               // Bước 2 của Agent: Đổ từ khóa ra màn hình hiển thị cho người dùng theo dõi
                bD.querySelector('.streaming-indicator').innerText=`🤖 Thu thập dữ liệu...`;
-               cD.innerHTML+=`<div class="agent-step">B2: Cào dữ liệu Web & Lọc...</div>`;
+               cD.innerHTML+=`<div class="agent-step">🌐 B2: Tìm kiếm dữ liệu mạng cho cụm từ: <strong>"${extractedQuery}"</strong></div>`;
+               
                const step2 = await aiAgent.models.generateContent({
                    model: "gemini-2.5-flash",
-                   contents: `Tìm kiếm và tổng hợp thông tin cho: ${step1.text}`,
+                   contents: `Tìm kiếm thông tin chi tiết và mới nhất phục vụ cho từ khóa: ${extractedQuery}`,
                    config: { tools: [{ googleSearch: {} }] }
                });
                
-               bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo...`;
-               cD.innerHTML+=`<div class="agent-step">B3: Soạn báo cáo hoàn chỉnh...</div>`;
+               cD.innerHTML+=`<div class="agent-step">🧠 B3: Đang tổng hợp dữ liệu và sinh báo cáo...</div>`;
                
                const genConfig = { temperature:+DOM.temp.value, topP:+DOM.topP.value, topK:+DOM.topK.value, systemInstruction:getDynamicSI() };
                if(DOM.thinking && DOM.thinking.value) { genConfig.thinkingConfig = { thinkingLevel: DOM.thinking.value }; }
 
                const resStream = await aiAgent.models.generateContentStream({
                    model: DOM.model.value,
-                   contents: `Dựa trên dữ liệu: ${step2.text}\nHãy viết báo cáo chuyên sâu để trả lời: ${fP}`,
+                   contents: `Dựa trên dữ liệu mạng vừa thu thập: ${step2.text}\nHãy viết một bài phân tích chuyên sâu chi tiết để xử lý yêu cầu: ${fP}`,
                    config: genConfig
                });
                
@@ -525,18 +536,26 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
             while(sA<apiKeys.length){
                 try{
                    const aiSearch = getAIInstance(searchKeyIndex);
-                   bD.querySelector('.streaming-indicator').innerText=`🔍 Đang phân tích từ khóa...`;
+                   bD.querySelector('.streaming-indicator').innerText=`🔍 Phân tích từ khóa tìm kiếm...`;
+                   cD.innerHTML+=`<div class="agent-step">🔍 B1: Đang bóc tách mã số, số hiệu, danh từ riêng...</div>`;
+                   
                    const kRes = await aiSearch.models.generateContent({
                        model: "gemini-3.1-flash-lite",
-                       contents: `Trích xuất từ khóa ngắn gọn nhất để tìm kiếm cho yêu cầu: ${fP}`,
+                       contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
                        config: { temperature: 0.0, topK: 1 }
                    });
+                   const k = kRes.text.trim();
+                   
+                   bD.querySelector('.streaming-indicator').innerText=`🔍 Tìm Web: ${k}`;
+                   cD.innerHTML+=`<div class="agent-step">🌐 B2: Thực hiện lệnh Grounding Search cho từ khóa: <strong>"${k}"</strong></div>`;
+                   
                    const wRes = await aiSearch.models.generateContent({
                        model: "gemini-2.5-flash",
-                       contents: `Tìm kiếm: ${kRes.text.trim()}\nTóm tắt để phục vụ: ${fP}`,
+                       contents: `Tìm kiếm thông tin chính xác phục vụ cho từ khóa: ${k}`,
                        config: { tools: [{ googleSearch: {} }] }
                    }); 
-                   fnP=`[DỮ LIỆY TÌM THẤY]:\n${wRes.text}\n\n[GỐC]: ${fnP}`; 
+                   
+                   fnP=`[DỮ LIỆU TÌM THẤY TRÊN INTERNET]:\n${wRes.text}\n\n[GỐC]: ${fnP}`; 
                    break;
                 }catch(e){searchKeyIndex=(searchKeyIndex+1)%apiKeys.length; sA++;}
             }
@@ -637,7 +656,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
     function renderFiles(){DOM.previewGrid.innerHTML=''; DOM.previewBox.style.display=(filesData.length||txtContent)?'block':'none'; DOM.fileCount.innerText=filesData.length+(txtContent?1:0); filesData.forEach((f,i)=>{const w=document.createElement('div'); w.innerHTML=`<div style="position:relative;width:50px;height:50px;background:#333;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;">${f.type.startsWith('image')?`<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`:'MP4'}<button onclick="rmImg(${i})" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;">✕</button></div>`; DOM.previewGrid.appendChild(w);});}
     window.rmImg=i=>{filesData.splice(i,1); renderFiles();}; DOM.clearFilesBtn.onclick=()=>{filesData=[]; txtContent=""; DOM.textFileList.innerHTML=""; renderFiles();};
     async function readPDF(f){const p=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise; let t=""; for(let i=1;i<=p.numPages;i++)t+=(await(await p.getPage(i)).getTextContent()).items.map(x=>x.str).join(' ')+"\n"; return t;}
-    window.exportChatDoc=()=>{let h=`<html><head><meta charset='utf-8'></head><body><h2>Phiên: ${sessions.find(s=>s.id===activeId).name}</h2>`; chatHistory.forEach(m=>{h+=`<p><b>${m.role==='user'?'Bạn':'Javiss'}:</b><br/> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</p><hr>`;}); h+="</body></html>"; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff',h],{type:'application/msword'})); a.download=`Javiss_Chat_${Date.now()}.doc`; a.click();};
+    window.exportChatDoc=()=>{let h=`<html><head><meta charset='utf-8'></head><body><h2>Phiên: ${sessions.find(s=>s.id===activeId).name}</h2>`; chatHistory.forEach(m=>{h+=`<p><b>${m.role==='user'?'Bạn':'Javiss'}:</b><br/> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</p><hr>`;}); h+="</body></html>"; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff',h],{type:'text/markdown'})); a.download=`Javiss_Chat_${Date.now()}.doc`; a.click();};
     window.exportChatPDF=()=>{const e=document.createElement('div'); e.innerHTML=`<h2>Phiên: ${sessions.find(s=>s.id===activeId).name}</h2>`; chatHistory.forEach(m=>{e.innerHTML+=`<div style="margin-bottom:15px; font-family:sans-serif;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</div><hr>`;}); html2pdf().set({margin:10,filename:`Javiss_Chat_${Date.now()}.pdf`,html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(e).save(); showToast('Đang tạo PDF...');};
     function showToast(m,t='success'){DOM.toast.innerText=m; DOM.toast.className=`toast ${t} show`; setTimeout(()=>DOM.toast.classList.remove('show'),2000);}
     async function fileToPart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>r({inlineData:{data:rd.result.split(',')[1],mimeType:f.type}}); rd.readAsDataURL(f);});}
