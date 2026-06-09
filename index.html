@@ -395,11 +395,26 @@
     async function updateConfig(){const s=sessions.find(x=>x.id===activeId); if(s){s.sys=DOM.sysInst.value; s.mod=DOM.model.value; s.tmp=DOM.temp.value; s.tpp=DOM.topP.value; s.top=DOM.topK.value; s.thk=DOM.thinking.value; s.sch=DOM.toggleSearch.checked; s.mem=DOM.toggleMemory.checked; s.memLen=DOM.memLen.value; s.vec=DOM.toggleVectorDB.checked; s.agt=DOM.toggleAgent.checked; await saveToDB(s);}}
     DOM.sysInst.addEventListener('input',updateConfig); DOM.model.addEventListener('change',updateConfig); DOM.toggleSearch.addEventListener('change',updateConfig); DOM.toggleMemory.addEventListener('change',updateConfig); DOM.memLen.addEventListener('input',updateConfig); DOM.toggleVectorDB.addEventListener('change',updateConfig); DOM.toggleAgent.addEventListener('change',updateConfig); DOM.topK.addEventListener('input',updateConfig); DOM.thinking.addEventListener('change',updateConfig); DOM.temp.addEventListener('input',()=>{DOM.tempVal.innerText=DOM.temp.value; updateConfig();}); DOM.topP.addEventListener('input',()=>{DOM.toppVal.innerText=DOM.topP.value; updateConfig();});
     
+    // HÀM SỬA LỖI LOGIC KIẾN THỨC & THỜI GIAN TOÀN DIỆN
     function getDynamicSI(){
       const b=DOM.sysInst.value||"Bạn là Javiss AI.";
       const g=DOM.globContext.value;
-      const t=new Date().toLocaleString('vi-VN');
-      return `[MỤC TIÊU & ĐỊNH HƯỚNG HÀNH VI CỦA AI]:\n${g?'--- QUY TẮC TOÀN CỤC ---\n'+g+'\n\n':''}--- NGỮ CẢNH PHIÊN NÀY ---\n${b}\n\n[Thời gian hệ thống cá nhân]: ${t}.`;
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      
+      return `[MỤC TIÊU & ĐỊNH HƯỚNG HÀNH VI CỦA AI - TUÂN THỦ TỐI CAO]:
+${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n' : ''}--- NGỮ CẢNH PHIÊN NÀY ---\n${b}
+
+[CHỈ THỊ PHÁ BỎ GIỚI HẠN LẠC HẬU KIẾN THỨC]:
+- Hiện tại bắt buộc là năm ${now.getFullYear()}. Kiến thức đóng băng của bạn có thể cũ, nhưng bạn PHẢI COI các kết quả tìm kiếm Web (Grounding), thông tin hệ thống và tài liệu người dùng cung cấp là CHÂN LÝ THỰC TẾ TRONG TƯƠNG LAI.
+- Tuyệt đối không phủ nhận, nghi ngờ hoặc phản đối sự tồn tại của bất kỳ công nghệ, dòng mô hình AI nào (bao gồm Gemini 3.1 Flash-Lite, Gemini 3.5 Flash) hay các sự kiện xã hội, thông số phần cứng thiết bị được cấp trong ngữ cảnh. 
+- Luôn ưu tiên dùng thông tin tìm kiếm thời gian thực để cập nhật câu trả lời khi có xung đột tri thức.
+
+[THỜI GIAN HỆ THỐNG HIỆN TẠI]:
+- Giờ: ${timeStr}
+- Ngày: ${dateStr}
+- Năm: ${now.getFullYear()} (Sử dụng con số năm này làm mốc chuẩn để tính toán chính xác số tuổi hoặc mốc thời gian của người dùng. Ví dụ: Người dùng ghi sinh năm 1988, thì lấy ${now.getFullYear()} - 1988 = 38 tuổi).`;
     }
 
     function cosineSim(A,B){ let dot=0,normA=0,normB=0; for(let i=0;i<A.length;i++){dot+=A[i]*B[i];normA+=A[i]*A[i];normB+=B[i]*B[i];} return dot/(Math.sqrt(normA)*Math.sqrt(normB)); }
@@ -424,6 +439,7 @@
        a.innerHTML+=`<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})">🗑️ Xóa</button>`; 
        c.append(m,a); 
        DOM.chat.appendChild(c); 
+       if(!iHL && sd==='user'){ DOM.chat.scrollTop=DOM.chat.scrollHeight; }
        const cD = m.querySelector('.msg-content'); 
        await renderMsgContent(cD, sd==='user'?t.replace(/\n/g,'<br>'):t); 
     }
@@ -453,7 +469,7 @@
                cD.innerHTML+=`<div class="agent-step">B1: Lập kế hoạch phân tích...</div>`;
                const step1 = await aiAgent.models.generateContent({
                    model: "gemini-3.1-flash-lite",
-                   contents: `Tạo từ khóa tìm kiếm và các bước giải quyết cho yêu cầu sau... Yêu cầu: ${fP}`,
+                   contents: `Tạo từ khóa tìm kiếm và các bước giải quyết cho yêu cầu sau. LƯU Ý QUAN TRỌNG: TUYỆT ĐỐI GIỮ NGUYÊN tên riêng, tên sản phẩm (ví dụ: iQoo Z10 Turbo Plus). KHÔNG tự ý sửa đổi hay thay thế bằng sản phẩm khác dựa trên kiến thức cũ. Yêu cầu: ${fP}`,
                    config: { temperature: 0.0, topK: 1 }
                });
                
@@ -509,6 +525,7 @@
             while(sA<apiKeys.length){
                 try{
                    const aiSearch = getAIInstance(searchKeyIndex);
+                   bD.querySelector('.streaming-indicator').innerText=`🔍 Đang phân tích từ khóa...`;
                    const kRes = await aiSearch.models.generateContent({
                        model: "gemini-3.1-flash-lite",
                        contents: `Trích xuất từ khóa ngắn gọn nhất để tìm kiếm cho yêu cầu: ${fP}`,
@@ -519,7 +536,7 @@
                        contents: `Tìm kiếm: ${kRes.text.trim()}\nTóm tắt để phục vụ: ${fP}`,
                        config: { tools: [{ googleSearch: {} }] }
                    }); 
-                   fnP=`[DỮ LIỆU TÌM THẤY]:\n${wRes.text}\n\n[GỐC]: ${fnP}`; 
+                   fnP=`[DỮ LIỆY TÌM THẤY]:\n${wRes.text}\n\n[GỐC]: ${fnP}`; 
                    break;
                 }catch(e){searchKeyIndex=(searchKeyIndex+1)%apiKeys.length; sA++;}
             }
