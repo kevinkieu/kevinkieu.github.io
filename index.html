@@ -184,7 +184,7 @@
             <div class="slider-row"><label>TopP (<span id="topp-val">0.9</span>):</label><input type="range" id="top-p" min="0" max="1" step="0.1" value="0.9"></div>
             <div style="display:flex;gap:20px;flex-wrap:wrap;">
               <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;">TopK: <input type="number" id="top-k" min="1" max="100" value="40" class="modern-input" style="width:70px;"></label>
-              <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;">Think Depth: <select id="thinking-level" class="modern-select" style="width:100px;"><option value="minimal">Min</option><option value="low" selected>Low</option><option value="medium">Med</option><option value="high">High</option></select></label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;">Think Depth: <select id="thinking-level" class="modern-select" style="width:100px;"><option value="minimal">Min</option><option value="low">Low</option><option value="medium" selected>Med</option><option value="high">High</option></select></label>
             </div>
           </div>
         </fieldset>
@@ -214,7 +214,6 @@
     marked.use({ breaks: true }); mermaid.initialize({ startOnLoad: false, theme: 'default' });
     let apiKeys=[], searchKeyIndex=0, processKeyIndex=0;
     const SAFETY=[{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}];
-    const budgetMap = { minimal: 0, low: 2048, medium: 4096, high: 8192 };
     
     function getAIInstance(idx) {
       if (!apiKeys[idx]) return null;
@@ -350,7 +349,7 @@
     DOM.btnDeleteFolder.onclick=async()=>{if(activeFolder==="All"||activeFolder==="Mặc định")return showToast("Không xóa được TM hệ thống!"); if(confirm(`Xóa "${activeFolder}"?`)){folders=folders.filter(f=>f!==activeFolder); localStorage.setItem('javiss_folders',JSON.stringify(folders)); for(let s of sessions){if(s.folder===activeFolder){s.folder="Mặc định"; await saveToDB(s);}} activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); renderSel(); showToast("Đã xóa!");}};
     DOM.btnMoveSess.onclick=async()=>{const s=sessions.find(x=>x.id===activeId); if(!s)return; const c=prompt(`Nhập số TM đích:\n${folders.map((f,i)=>`${i+1}. ${f}`).join('\n')}`); if(c){let t=folders[parseInt(c)-1]||c.trim(); if(folders.includes(t)){s.folder=t; await saveToDB(s); showToast(`Chuyển: ${t}`); renderSel();}}};
     async function loadSess(){try{await initDB(); let d=await getAllFromDB(); if(d&&d.length){sessions=d.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0)); renderFolders(); activeId=localStorage.getItem('javiss_active_id'); if(!sessions.find(s=>s.id===activeId))activeId=sessions[0].id; await switchSess(activeId);}else{renderFolders(); await newSess();}}catch(e){await newSess();}}
-    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],sys:'',mod:DOM.model.value||'gemini-3.5-flash',tmp:0.5,tpp:0.9,top:40,thk:'low',sch:false,mem:true,memLen:20,vec:false,agt:false,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
+    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],sys:'',mod:DOM.model.value||'gemini-3.5-flash',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,memLen:20,vec:false,agt:false,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
     async function switchSess(id){
@@ -359,7 +358,7 @@
           DOM.sysInst.value=s.sys||''; DOM.model.value=s.mod||'gemini-3.5-flash'; 
           DOM.temp.value=s.tmp||0.5; DOM.tempVal.innerText=DOM.temp.value; 
           DOM.topP.value=s.tpp||0.9; DOM.toppVal.innerText=DOM.topP.value; 
-          DOM.topK.value=s.top||40; DOM.thinking.value=s.thk||'low';
+          DOM.topK.value=s.top||40; DOM.thinking.value=s.thk||'medium';
           DOM.toggleSearch.checked=s.sch||false; DOM.toggleMemory.checked=s.mem!==false; 
           DOM.memLen.value=s.memLen||20; DOM.toggleVectorDB.checked=s.vec||false; DOM.toggleAgent.checked=s.agt||false;
       } 
@@ -454,9 +453,8 @@
                bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo...`;
                cD.innerHTML+=`<div class="agent-step">B3: Soạn báo cáo hoàn chỉnh...</div>`;
                
-               const budgetBytes = budgetMap[DOM.thinking.value] || 0;
                const genConfig = { temperature:+DOM.temp.value, topP:+DOM.topP.value, topK:+DOM.topK.value, systemInstruction:getDynamicSI() };
-               if(budgetBytes > 0) { genConfig.thinkingConfig = { thinkingBudget: budgetBytes }; }
+               if(DOM.thinking && DOM.thinking.value) { genConfig.thinkingConfig = { thinkingLevel: DOM.thinking.value }; }
 
                const res = await aiAgent.models.generateContent({
                    model: DOM.model.value,
@@ -530,7 +528,6 @@
                if(imgs.length) for(let f of imgs) currentParts.push(await fileToPart(f)); 
                contents.push({ role: 'user', parts: currentParts });
 
-               const budgetBytes = budgetMap[DOM.thinking.value] || 0;
                const genConfig = { 
                    temperature: +DOM.temp.value, 
                    topP: +DOM.topP.value, 
@@ -538,7 +535,7 @@
                    systemInstruction: getDynamicSI(),
                    safetySettings: SAFETY
                }; 
-               if(budgetBytes > 0) { genConfig.thinkingConfig = { thinkingBudget: budgetBytes }; }
+               if(DOM.thinking && DOM.thinking.value) { genConfig.thinkingConfig = { thinkingLevel: DOM.thinking.value }; }
 
                const resStream = await aiMain.models.generateContentStream({
                    model: DOM.model.value,
