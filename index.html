@@ -136,6 +136,8 @@
               <option value="gemini-3.5-flash" selected>Gemini 3.5 Flash</option>
               <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
               <option value="gemini-3.5-flash-dify">Gemini 3.5 Flash (Dify)</option>
+              <option value="opus-4-dify">Claude 4 Opus (Dify)</option>
+              <option value="gpt-5.5-dify">GPT-5.5 (Dify)</option>
             </select>
           </div>
           <div class="side-btn-grid" style="margin-top:8px;"><button id="btn-new-session" class="btn primary">➕ Thêm</button><button id="btn-rename-session" class="btn">✏️ Sửa</button><button id="btn-move-session" class="btn">📂 Di chuyển</button><button id="btn-delete-session" class="btn danger">🗑️ Xóa</button></div>
@@ -206,9 +208,11 @@
           <div class="api-keys-grid" id="api-keys-container" style="margin-bottom:10px;"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;"><button id="btn-save-keys" class="btn primary" style="padding:8px 16px;">💾 Lưu cấu hình Keys</button><span id="key-status-msg" style="font-size:.85rem;font-weight:bold;"></span></div>
         </fieldset>
-        <fieldset class="settings-group"><legend>🔗 Cấu hình Dify (Gemini 3.5 Flash từ Dify)</legend>
+        <fieldset class="settings-group"><legend>🔗 Cấu hình Dify (Hệ thống 3 ứng dụng liên kết)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
-            <div><label class="field-label">Dify API Key (Key ứng dụng Completion):</label><input type="password" id="dify-key-input" placeholder="Nhập Dify API Key (app-...)" class="modern-input"></div>
+            <div><label class="field-label">Dify Key - Gemini 3.5 Flash:</label><input type="password" id="dify-key-gemini" placeholder="Nhập Key (app-...)" class="modern-input"></div>
+            <div><label class="field-label">Dify Key - Claude 4 Opus:</label><input type="password" id="dify-key-opus" placeholder="Nhập Key (app-...)" class="modern-input"></div>
+            <div><label class="field-label">Dify Key - GPT-5.5:</label><input type="password" id="dify-key-gpt" placeholder="Nhập Key (app-...)" class="modern-input"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <div><label class="field-label">Dify API Endpoint:</label><input type="text" id="dify-endpoint-input" placeholder="https://api.dify.ai/v1" value="https://api.dify.ai/v1" class="modern-input"></div>
               <div><label class="field-label">Tên biến đầu vào (Variable Key):</label>
@@ -271,10 +275,14 @@ QUY TẮC TỐI CAO:
     }
     
     function initDifyConfig() {
-        const dk = document.getElementById('dify-key-input');
+        const dkg = document.getElementById('dify-key-gemini');
+        const dko = document.getElementById('dify-key-opus');
+        const dkp = document.getElementById('dify-key-gpt');
         const de = document.getElementById('dify-endpoint-input');
         const dv = document.getElementById('dify-var-input');
-        if(dk) dk.value = localStorage.getItem('dify_api_key') || '';
+        if(dkg) dkg.value = localStorage.getItem('dify_key_gemini') || '';
+        if(dko) dko.value = localStorage.getItem('dify_key_opus') || '';
+        if(dkp) dkp.value = localStorage.getItem('dify_key_gpt') || '';
         if(de) de.value = localStorage.getItem('dify_api_endpoint') || 'https://api.dify.ai/v1';
         if(dv) dv.value = localStorage.getItem('dify_var_key') || 'query';
     }
@@ -282,7 +290,9 @@ QUY TẮC TỐI CAO:
     setupUIForKeys(); 
     document.getElementById('btn-save-keys').onclick=()=>{ 
         for(let i=1;i<=10;i++) localStorage.setItem(`javiss_api_${i}`,document.getElementById(`api-key-${i}`).value.trim()); 
-        localStorage.setItem('dify_api_key', document.getElementById('dify-key-input').value.trim());
+        localStorage.setItem('dify_key_gemini', document.getElementById('dify-key-gemini').value.trim());
+        localStorage.setItem('dify_key_opus', document.getElementById('dify-key-opus').value.trim());
+        localStorage.setItem('dify_key_gpt', document.getElementById('dify-key-gpt').value.trim());
         localStorage.setItem('dify_api_endpoint', document.getElementById('dify-endpoint-input').value.trim());
         localStorage.setItem('dify_var_key', document.getElementById('dify-var-input').value.trim());
         initAPIKeys(); 
@@ -293,9 +303,11 @@ QUY TẮC TỐI CAO:
     initDifyConfig();
     
     document.getElementById('btn-detect-dify-var').onclick = async () => {
-        const key = document.getElementById('dify-key-input').value.trim();
+        const key = document.getElementById('dify-key-gemini').value.trim() || 
+                    document.getElementById('dify-key-opus').value.trim() || 
+                    document.getElementById('dify-key-gpt').value.trim();
         let endpoint = document.getElementById('dify-endpoint-input').value.trim();
-        if (!key) return showToast("Vui lòng nhập Dify API Key trước!", "warning");
+        if (!key) return showToast("Vui lòng nhập ít nhất một Dify API Key!", "warning");
         
         document.getElementById('btn-detect-dify-var').innerText = "⏳...";
         try {
@@ -386,12 +398,21 @@ QUY TẮC TỐI CAO:
     }
 
     async function callDifyStream(promptText, onChunk, onError) {
-        const key = localStorage.getItem('dify_api_key') || '';
+        const activeModel = DOM.model.value;
+        let key = '';
+        if (activeModel === 'gemini-3.5-flash-dify') {
+            key = localStorage.getItem('dify_key_gemini') || '';
+        } else if (activeModel === 'opus-4-dify') {
+            key = localStorage.getItem('dify_key_opus') || '';
+        } else if (activeModel === 'gpt-5.5-dify') {
+            key = localStorage.getItem('dify_key_gpt') || '';
+        }
+        
         let endpoint = localStorage.getItem('dify_api_endpoint') || 'https://api.dify.ai/v1';
         const varKey = localStorage.getItem('dify_var_key') || 'query';
         
         if (!key) {
-            onError(new Error("Thiếu Dify API Key trong Cấu hình!"));
+            onError(new Error("Thiếu API Key tương ứng với ứng dụng Dify đang chọn!"));
             return;
         }
         endpoint = endpoint.replace(/\/+$/, '');
@@ -637,7 +658,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
     }
 
     DOM.sendBtn.onclick=async()=>{
-      if(isProcessing)return; if(!apiKeys.length && DOM.model.value !== 'gemini-3.5-flash-dify')return showToast("Cần API Key!","error"); let msg=DOM.input.value.trim(); if(!msg&&!filesData.length&&!txtContent)return; 
+      if(isProcessing)return; if(!apiKeys.length && !DOM.model.value.endsWith('-dify'))return showToast("Cần API Key!","error"); let msg=DOM.input.value.trim(); if(!msg&&!filesData.length&&!txtContent)return; 
       localStorage.removeItem('javiss_draft'); isProcessing=true; DOM.sendBtn.innerHTML='⏳'; 
       let fP=txtContent?msg+"\n\n"+txtContent:msg;
       
@@ -700,7 +721,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
          if(!success2) { showToast("Agent thất bại tại B2.","error"); bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
 
          let success3 = false;
-         if(DOM.model.value === 'gemini-3.5-flash-dify') {
+         if(DOM.model.value.endsWith('-dify')) {
              let agentPrompt = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
              bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo qua Dify...`;
              step3El.innerHTML = `🧠 B3: Đang kết nối mô hình Dify tổng hợp dữ liệu...`; step3El.style.display = 'block';
@@ -816,7 +837,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
             if(searchSuccess){ fnP=`[DỮ LIỆU TÌM THẤY TRÊN INTERNET]:\n${wDText}\n\n[GỐC]: ${fnP}`; }
          } 
 
-         if(DOM.model.value === 'gemini-3.5-flash-dify') {
+         if(DOM.model.value.endsWith('-dify')) {
              bD.querySelector('.streaming-indicator').innerText=`🔗 Đang gọi Dify...`;
              
              const memSize = parseInt(DOM.memLen.value) || 20;
