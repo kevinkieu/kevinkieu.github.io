@@ -199,7 +199,7 @@
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
             <button class="btn" onclick="exportCleanArticle()">📝 Bài viết sạch (MD)</button><button class="btn" onclick="exportChatPDF()">📄 Xuất File PDF</button><button class="btn" onclick="exportChatDoc()">📄 Xuất File Word</button>
             <button class="btn" onclick="exportAllSessions()">📥 Sao lưu JSON</button><button class="btn" onclick="document.getElementById('import-all-input').click()">📤 Khôi phục JSON</button>
-            <button id="btn-compress-context" class="btn warning">🗜️ Nén lịch sử cũ</button><button class="btn danger" onclick="clearActiveSession()">🗑️ Xóa hết tin phiên này</button><input type="file" id="import-all-input" accept=".json" style="none;">
+            <button id="btn-compress-context" class="btn warning">🗜️ Nén lịch sử cũ</button><button class="btn danger" onclick="clearActiveSession()">🗑️ Xóa hết tin phiên này</button><input type="file" id="import-all-input" accept=".json" style="display:none;">
           </div>
         </fieldset>
         <fieldset class="settings-group"><legend>🔑 Cấu hình 10 API Keys</legend>
@@ -371,7 +371,7 @@ QUY TẮC TỐI CAO:
         let serialized = "";
         const si = getDynamicSI();
         if (si) {
-            serialized += `[HƯỚNG DẪN HỆ THỐNG & ĐỊNH HƯỚNG BẮT BUỘC]:\n${si}\n\n====================\n\n`;
+            serialized += `<SystemInstruction>\n${si}\n</SystemInstruction>\n\nLƯU Ý: Hãy đọc kỹ và tuân thủ nghiêm ngặt mọi thông tin người dùng, ngữ cảnh và chỉ thị hệ thống trong thẻ <SystemInstruction> ở trên.\n\n====================\n\n`;
         }
         if (history && history.length > 0) {
             serialized += `[LỊCH SỬ TRÒ CHUYỆN KHỨ HỒI]:\n`;
@@ -707,7 +707,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
              
              // Prepend System Instructions
              const si = getDynamicSI();
-             let serializedAgentPrompt = `[HƯỚNG DẪN HỆ THỐNG & ĐỊNH HƯỚNG BẮT BUỘC]:\n${si}\n\n====================\n\nYêu cầu phân tích: ${agentPrompt}`;
+             let serializedAgentPrompt = `<SystemInstruction>\n${si}\n</SystemInstruction>\n\nLƯU Ý: Hãy tuân thủ nghiêm ngặt các chỉ thị hệ thống trong thẻ <SystemInstruction> để thực hiện yêu cầu phân tích sau:\n\nYêu cầu phân tích: ${agentPrompt}`;
 
              let agentDifySuccess = false;
              try {
