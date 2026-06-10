@@ -71,8 +71,8 @@
     .slider-row{display:flex;flex-direction:column;gap:4px;font-size:.85rem}
     .slider-row input{width:100%;accent-color:var(--primary)}
     .header-search-bar{display:flex;align-items:center;background:var(--input-bg);border:1px solid var(--border);border-radius:20px;padding:2px 4px 2px 12px}
-    .header-search-bar input{background:transparent;border:none;outline:none;color:var(--text-main);font-size:.85rem;width:110px;transition:var(--transition)}
-    .header-search-bar input:focus{width:180px}
+    .header-search-bar input{background:transparent;border:none;outline:none;color:var(--text-main);font-size:.85rem;width:75px;transition:var(--transition)}
+    .header-search-bar input:focus{width:120px}
     .search-trigger-btn{background:transparent;border:none;cursor:pointer;padding:4px 8px;font-size:1rem}
     .sidebar-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);z-index:990}
     .mobile-only{display:none}
@@ -132,7 +132,11 @@
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:green;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-agent" style="width:16px;height:16px;"> 🤖 Auto-Agent (Chạy chuỗi)</label>
           </div>
           <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🤖 Mô hình xử lý chính:</span>
-            <select id="model-select" class="modern-select"><option value="gemini-3.5-flash" selected>Gemini 3.5 Flash</option><option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option></select>
+            <select id="model-select" class="modern-select">
+              <option value="gemini-3.5-flash" selected>Gemini 3.5 Flash</option>
+              <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+              <option value="gemini-3.5-flash-dify">Gemini 3.5 Flash (Dify)</option>
+            </select>
           </div>
           <div class="side-btn-grid" style="margin-top:8px;"><button id="btn-new-session" class="btn primary">➕ Thêm</button><button id="btn-rename-session" class="btn">✏️ Sửa</button><button id="btn-move-session" class="btn">📂 Di chuyển</button><button id="btn-delete-session" class="btn danger">🗑️ Xóa</button></div>
           <div class="side-btn-row" style="margin-top:8px;"><button id="btn-move-up" class="btn" style="flex:1;">⬆️ Lên</button><button id="btn-move-down" class="btn" style="flex:1;">⬇️ Xuống</button></div>
@@ -147,7 +151,7 @@
         <div class="header-left"><button id="toggle-sidebar-btn" class="icon-btn mobile-only">☰</button><h1 class="logo-text">Gemini Workstation</h1></div>
         <div class="header-right">
           <div class="header-search-bar"><input type="text" id="search-chat-input" placeholder="Tìm kiếm..."><button id="btn-global-search" class="search-trigger-btn" title="Tìm toàn bộ phiên">🔍</button></div>
-          <button id="btn-theme" class="btn" style="padding:4px 8px;font-size:.8rem;" title="Chuyển chế độ Sáng/Tối/Tự động">🌙 Tự động</button>
+          <button id="btn-theme" class="btn" style="padding:6px 12px;font-size:.85rem;min-width:85px;" title="Chuyển chế độ Sáng/Tối/Tự động">🌙 Tự động</button>
         </div>
       </header>
       <div id="tabs-container"></div>
@@ -202,6 +206,17 @@
           <div class="api-keys-grid" id="api-keys-container" style="margin-bottom:10px;"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;"><button id="btn-save-keys" class="btn primary" style="padding:8px 16px;">💾 Lưu cấu hình Keys</button><span id="key-status-msg" style="font-size:.85rem;font-weight:bold;"></span></div>
         </fieldset>
+        <fieldset class="settings-group"><legend>🔗 Cấu hình Dify (Gemini 3.5 Flash từ Dify)</legend>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div><label class="field-label">Dify API Key (Key ứng dụng Completion):</label><input type="password" id="dify-key-input" placeholder="Nhập Dify API Key (app-...)" class="modern-input"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div><label class="field-label">Dify API Endpoint:</label><input type="text" id="dify-endpoint-input" placeholder="https://api.dify.ai/v1" value="https://api.dify.ai/v1" class="modern-input"></div>
+              <div><label class="field-label">Tên biến đầu vào (Variable Key):</label>
+                <div style="display:flex;gap:4px;"><input type="text" id="dify-var-input" placeholder="Ví dụ: query" value="query" class="modern-input" style="flex:1;"><button id="btn-detect-dify-var" class="btn" style="padding:4px 8px;font-size:0.75rem;" title="Tự động dò tìm biến đầu vào">🔍 Dò biến</button></div>
+              </div>
+            </div>
+          </div>
+        </fieldset>
       </div>
     </div>
     <div id="search-modal" class="modal-box"><div class="modal-header"><h3>🔍 Tìm kiếm nâng cao</h3><button id="close-search-modal" class="close-btn">&times;</button></div><div style="padding:20px;"><input type="text" id="global-search-input" placeholder="Nhập từ khóa cần quét..." class="modern-input" style="width:100%;margin-bottom:12px;"><div id="search-results" style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div></div></div>
@@ -226,7 +241,7 @@ QUY TẮC TỐI CAO:
 2. Thêm các từ khóa bổ trợ thực tế như "thông số", "đánh giá mốc 2026", "mới nhất" để gom trúng thông tin thời gian thực.
 3. Chỉ xuất ra chuỗi từ khóa tìm kiếm cách nhau bằng khoảng trắng, KHÔNG giải thích, KHÔNG chào hỏi, KHÔNG bọc ngoặc kép.`;
 
-    // CHỈ THỊ TỐI ƯU HÓA PROMPT MỚI DÀNH RIÊNG CHO NÚT ENHANCE PROMPT (ĐÃ FIX LỖI RA CHUỖI TỪ KHÓA)
+    // CHỈ THỊ TỐI ƯU HÓA PROMPT MỚI DÀNH RIÊNG CHO NÚT ENHANCE PROMPT (ĐÃ FIX LỖI RA CHUỒI TỪ KHÓA)
     const promptEnhancementInstruction = `Bạn là bộ chuyển đổi và tối ưu hóa Prompt chuyên nghiệp. Nhiệm vụ: Biến đổi nội dung ý tưởng thô sơ ban đầu của người dùng thành một câu lệnh Prompt hoàn chỉnh, chi tiết, viết dưới góc nhìn chuyên gia và có cấu trúc chặt chẽ để nạp cho AI đạt hiệu quả phản hồi cao nhất.
 QUY TẮC TỐI CAO:
 1. BẮT BUỘC giữ nguyên 100% các danh từ riêng, tên chế độ, tên sản phẩm, mã hiệu, số hiệu sản phẩm, mốc năm (Ví dụ: chế độ Dry, chế độ Cool, iQoo Z10, năm 2026...), các con số và thuật ngữ chuyên môn gốc. Tuyệt đối không được phép loại bỏ hoặc biến đổi chúng.
@@ -254,8 +269,58 @@ QUY TẮC TỐI CAO:
             else{ s.innerText=`✅ Đã nạp ${apiKeys.length} API Key xoay tua liên tục toàn cục.`; s.style.color="green"; } 
         }
     }
-    setupUIForKeys(); document.getElementById('btn-save-keys').onclick=()=>{ for(let i=1;i<=10;i++) localStorage.setItem(`javiss_api_${i}`,document.getElementById(`api-key-${i}`).value.trim()); initAPIKeys(); showToast(`Đã lưu cấu hình hệ thống!`); };
+    
+    function initDifyConfig() {
+        const dk = document.getElementById('dify-key-input');
+        const de = document.getElementById('dify-endpoint-input');
+        const dv = document.getElementById('dify-var-input');
+        if(dk) dk.value = localStorage.getItem('dify_api_key') || '';
+        if(de) de.value = localStorage.getItem('dify_api_endpoint') || 'https://api.dify.ai/v1';
+        if(dv) dv.value = localStorage.getItem('dify_var_key') || 'query';
+    }
+
+    setupUIForKeys(); 
+    document.getElementById('btn-save-keys').onclick=()=>{ 
+        for(let i=1;i<=10;i++) localStorage.setItem(`javiss_api_${i}`,document.getElementById(`api-key-${i}`).value.trim()); 
+        localStorage.setItem('dify_api_key', document.getElementById('dify-key-input').value.trim());
+        localStorage.setItem('dify_api_endpoint', document.getElementById('dify-endpoint-input').value.trim());
+        localStorage.setItem('dify_var_key', document.getElementById('dify-var-input').value.trim());
+        initAPIKeys(); 
+        initDifyConfig();
+        showToast(`Đã lưu cấu hình hệ thống!`); 
+    };
     initAPIKeys();
+    initDifyConfig();
+    
+    document.getElementById('btn-detect-dify-var').onclick = async () => {
+        const key = document.getElementById('dify-key-input').value.trim();
+        let endpoint = document.getElementById('dify-endpoint-input').value.trim();
+        if (!key) return showToast("Vui lòng nhập Dify API Key trước!", "warning");
+        
+        document.getElementById('btn-detect-dify-var').innerText = "⏳...";
+        try {
+            endpoint = endpoint.replace(/\/+$/, '');
+            const res = await fetch(`${endpoint}/parameters?user=javiss_setup`, {
+                headers: { "Authorization": `Bearer ${key}` }
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            let foundVar = "query"; 
+            if (data.user_input_form && data.user_input_form.length > 0) {
+                const firstForm = data.user_input_form[0];
+                const formType = Object.keys(firstForm)[0]; 
+                if (firstForm[formType] && firstForm[formType].variable) {
+                    foundVar = firstForm[formType].variable;
+                }
+            }
+            document.getElementById('dify-var-input').value = foundVar;
+            showToast(`✅ Tìm thấy biến: ${foundVar}`);
+        } catch (e) {
+            showToast("Lỗi hoặc không tìm thấy biến, dùng mặc định 'query'!", "warning");
+        } finally {
+            document.getElementById('btn-detect-dify-var').innerText = "🔍 Dò biến";
+        }
+    };
     
     pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
     const DB_NAME="JavissUltimateOS_DB", STORE_NAME="chat_sessions", FILE_STORE="file_library", VECTOR_STORE="vector_store"; let db;
@@ -302,6 +367,84 @@ QUY TẮC TỐI CAO:
       return a;
     }
     
+    function serializeHistoryForDify(history, currentPrompt) {
+        let serialized = "";
+        for (let m of history) {
+            const speaker = m.role === 'model' ? 'Gemini' : 'Bạn';
+            serialized += `${speaker}: ${m.text}\n\n`;
+        }
+        serialized += `Bạn: ${currentPrompt}\n\nGemini:`;
+        return serialized;
+    }
+
+    async function callDifyStream(promptText, onChunk, onError) {
+        const key = localStorage.getItem('dify_api_key') || '';
+        let endpoint = localStorage.getItem('dify_api_endpoint') || 'https://api.dify.ai/v1';
+        const varKey = localStorage.getItem('dify_var_key') || 'query';
+        
+        if (!key) {
+            onError(new Error("Thiếu Dify API Key trong Cấu hình!"));
+            return;
+        }
+        endpoint = endpoint.replace(/\/+$/, '');
+        
+        const inputs = {};
+        inputs[varKey] = promptText;
+        
+        try {
+            const response = await fetch(`${endpoint}/completion-messages`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${key}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    inputs: inputs,
+                    response_mode: "streaming",
+                    user: "javiss_user_" + Date.now()
+                })
+            });
+            
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errText}`);
+            }
+            
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                
+                const lines = buffer.split("\n");
+                buffer = lines.pop();
+                
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith("data:")) {
+                        try {
+                            const jsonStr = trimmed.slice(5).trim();
+                            if (!jsonStr) continue;
+                            const parsed = JSON.parse(jsonStr);
+                            if (parsed.event === "message" || parsed.event === "agent_message") {
+                                if (parsed.answer) {
+                                    onChunk(parsed.answer);
+                                }
+                            } else if (parsed.event === "error") {
+                                throw new Error(parsed.message || "Dify internal error");
+                            }
+                        } catch (e) {}
+                    }
+                }
+            }
+        } catch (err) {
+            onError(err);
+        }
+    }
+
     window.forkSession=async i=>{if(!confirm("Tạo nhánh hội thoại từ đây?"))return; const c=sessions.find(s=>s.id===activeId), nId='s_'+Date.now(), nSess={...c,id:nId,name:c.name+" (Nhánh)",his:chatHistory.slice(0,i+1),orderIndex:0}; sessions.unshift(nSess); sessions.forEach((s,j)=>{s.orderIndex=j;saveToDB(s);}); await switchSess(nId); showToast("Đã rẽ nhánh!");};
 
     // CHỨC NĂNG ENHANCE PROMPT ĐÃ ĐƯỢC CHỈNH LẠI CHỈ THỊ CHUẨN (KHÔNG BỊ RA CHUỖI TỪ KHÓA)
@@ -317,7 +460,7 @@ QUY TẮC TỐI CAO:
                 
                 const r = await ai.models.generateContent({
                     model: "gemini-3.1-flash-lite",
-                    contents: `${promptEnhancementInstruction}\n\nÝ tưởng thô từ người dùng cần tối ưu: "${t}"`,
+                    contents: `${promptEnhancementInstruction}\n\nYêu cầu gốc: ${t}`,
                     config: { temperature: 0.3 }
                 });
                 DOM.input.value=r.text.trim(); 
@@ -486,7 +629,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
     }
 
     DOM.sendBtn.onclick=async()=>{
-      if(isProcessing)return; if(!apiKeys.length)return showToast("Cần API Key!","error"); let msg=DOM.input.value.trim(); if(!msg&&!filesData.length&&!txtContent)return; 
+      if(isProcessing)return; if(!apiKeys.length && DOM.model.value !== 'gemini-3.5-flash-dify')return showToast("Cần API Key!","error"); let msg=DOM.input.value.trim(); if(!msg&&!filesData.length&&!txtContent)return; 
       localStorage.removeItem('javiss_draft'); isProcessing=true; DOM.sendBtn.innerHTML='⏳'; 
       let fP=txtContent?msg+"\n\n"+txtContent:msg;
       
@@ -549,31 +692,58 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
          if(!success2) { showToast("Agent thất bại tại B2.","error"); bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
 
          let success3 = false;
-         let a3 = 0;
-         while(a3 < apiKeys.length){
+         if(DOM.model.value === 'gemini-3.5-flash-dify') {
+             let agentPrompt = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
+             bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo qua Dify...`;
+             step3El.innerHTML = `🧠 B3: Đang kết nối mô hình Dify tổng hợp dữ liệu...`; step3El.style.display = 'block';
+             
+             let agentDifySuccess = false;
              try {
-                const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-                const aiAgent = new GoogleGenAI({ apiKey: currentKey });
-                bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo...`;
-                step3El.innerHTML = `🧠 B3: Đang kết nối mô hình chính tổng hợp dữ liệu...`; step3El.style.display = 'block';
-                
-                const genConfig = { temperature:+DOM.temp.value, topP:+DOM.topP.value, topK:+DOM.topK.value, systemInstruction:getDynamicSI() };
-                if(DOM.thinking && DOM.thinking.value) { genConfig.thinkingConfig = { thinkingLevel: DOM.thinking.value }; }
+                 await callDifyStream(agentPrompt, 
+                    (chunk) => {
+                       if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                       finalResponse += chunk;
+                       cD.innerHTML = marked.parse(finalResponse);
+                       DOM.chat.scrollTop = bDTop - DOM.chat.offsetTop - 10;
+                    },
+                    (err) => { showToast("❌ Lỗi Agent Dify: " + err.message, 'error'); }
+                 );
+                 if (finalResponse) {
+                     await renderMsgContent(cD, finalResponse);
+                     agentDifySuccess = true;
+                     success3 = true;
+                 }
+             } catch(err) {
+                 showToast("❌ Lỗi Agent Dify: " + err.message, 'error');
+             }
+             if(!agentDifySuccess) { bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
+         } else {
+             let a3 = 0;
+             while(a3 < apiKeys.length){
+                 try {
+                    const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                    const aiAgent = new GoogleGenAI({ apiKey: currentKey });
+                    bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo...`;
+                    step3El.innerHTML = `🧠 B3: Đang kết nối mô hình chính tổng hợp dữ liệu...`; step3El.style.display = 'block';
+                    
+                    const genConfig = { temperature:+DOM.temp.value, topP:+DOM.topP.value, topK:+DOM.topK.value, systemInstruction:getDynamicSI() };
+                    if(DOM.thinking && DOM.thinking.value) { genConfig.thinkingConfig = { thinkingLevel: DOM.thinking.value }; }
 
-                const resStream = await aiAgent.models.generateContentStream({
-                    model: DOM.model.value,
-                    contents: `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`,
-                    config: genConfig
-                });
-                
-                if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                for await(const ck of resStream){
-                   finalResponse += ck.text; cD.innerHTML = marked.parse(finalResponse);
-                   DOM.chat.scrollTop = bDTop - DOM.chat.offsetTop - 10;
-                }
-                await renderMsgContent(cD, finalResponse);
-                success3 = true; break;
-             } catch(e) { a3++; }
+                    const resStream = await aiAgent.models.generateContentStream({
+                        model: DOM.model.value,
+                        contents: `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`,
+                        config: genConfig
+                    });
+                    
+                    if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                    for await(const ck of resStream){
+                       finalResponse += ck.text; cD.innerHTML = marked.parse(finalResponse);
+                       DOM.chat.scrollTop = bDTop - DOM.chat.offsetTop - 10;
+                    }
+                    await renderMsgContent(cD, finalResponse);
+                    success3 = true; break;
+                 } catch(e) { a3++; }
+             }
          }
          if(!success3) { showToast("Agent thất bại tại B3.","error"); bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
 
@@ -634,56 +804,86 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
             if(searchSuccess){ fnP=`[DỮ LIỆU TÌM THẤY TRÊN INTERNET]:\n${wDText}\n\n[GỐC]: ${fnP}`; }
          } 
 
-         let pA=0, pS=false, sT=Date.now(); 
-         while(pA<apiKeys.length){
-            try{
-               const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-               const aiMain = new GoogleGenAI({ apiKey: currentKey });
-               const memSize=parseInt(DOM.memLen.value)||20;
-               
-               let contents = [];
-               if(DOM.toggleMemory.checked){
-                  let tempHis = [...chatHistory.slice(-memSize)];
-                  tempHis.push({role:'user', text:fnP});
-                  contents = normalizeHistoryForAPI(tempHis);
-                  if(imgs.length) {
-                     for(let f of imgs) contents[contents.length-1].parts.push(await fileToPart(f));
-                  }
-               } else {
-                  let currentParts = [{text:fnP}];
-                  if(imgs.length) for(let f of imgs) currentParts.push(await fileToPart(f));
-                  contents.push({ role: 'user', parts: currentParts });
-               }
+         if(DOM.model.value === 'gemini-3.5-flash-dify') {
+             bD.querySelector('.streaming-indicator').innerText=`🔗 Đang gọi Dify...`;
+             
+             const memSize = parseInt(DOM.memLen.value) || 20;
+             let currentHistory = DOM.toggleMemory.checked ? chatHistory.slice(-memSize) : [];
+             let serializedPrompt = serializeHistoryForDify(currentHistory, fnP);
+             
+             let difySuccess = false;
+             try {
+                await callDifyStream(serializedPrompt, 
+                   (chunk) => {
+                      if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                      finalResponse += chunk;
+                      cD.innerHTML = marked.parse(finalResponse);
+                      DOM.chat.scrollTop = bDTop - DOM.chat.offsetTop - 10;
+                   },
+                   (err) => {
+                      showToast("❌ Lỗi Dify: " + err.message, 'error');
+                   }
+                );
+                if (finalResponse) {
+                   await renderMsgContent(cD, finalResponse);
+                   difySuccess = true;
+                }
+             } catch(e) {
+                showToast("❌ Lỗi kết nối Dify: " + e.message, 'error');
+             }
+             if(!difySuccess){ bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
+         } else {
+             let pA=0, pS=false, sT=Date.now(); 
+             while(pA<apiKeys.length){
+                try{
+                   const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                   const aiMain = new GoogleGenAI({ apiKey: currentKey });
+                   const memSize=parseInt(DOM.memLen.value)||20;
+                   
+                   let contents = [];
+                   if(DOM.toggleMemory.checked){
+                      let tempHis = [...chatHistory.slice(-memSize)];
+                      tempHis.push({role:'user', text:fnP});
+                      contents = normalizeHistoryForAPI(tempHis);
+                      if(imgs.length) {
+                         for(let f of imgs) contents[contents.length-1].parts.push(await fileToPart(f));
+                      }
+                   } else {
+                      let currentParts = [{text:fnP}];
+                      if(imgs.length) for(let f of imgs) currentParts.push(await fileToPart(f));
+                      contents.push({ role: 'user', parts: currentParts });
+                   }
 
-               const genConfig = { 
-                   temperature: +DOM.temp.value, 
-                   topP: +DOM.topP.value, 
-                   topK: +DOM.topK.value, 
-                   systemInstruction: getDynamicSI(),
-                   safetySettings: SAFETY
-               }; 
-               if(DOM.thinking && DOM.thinking.value) { genConfig.thinkingConfig = { thinkingLevel: DOM.thinking.value }; }
+                   const genConfig = { 
+                       temperature: +DOM.temp.value, 
+                       topP: +DOM.topP.value, 
+                       topK: +DOM.topK.value, 
+                       systemInstruction: getDynamicSI(),
+                       safetySettings: SAFETY
+                   }; 
+                   if(DOM.thinking && DOM.thinking.value) { genConfig.thinkingConfig = { thinkingLevel: DOM.thinking.value }; }
 
-               const resStream = await aiMain.models.generateContentStream({
-                   model: DOM.model.value,
-                   contents: contents,
-                   config: genConfig
-               }); 
-               
-               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
-               
-               for await(const ck of resStream){
-                  finalResponse += ck.text; cD.innerHTML = marked.parse(finalResponse);
-                  DOM.chat.scrollTop = bDTop - DOM.chat.offsetTop - 10;
-               } 
-               await renderMsgContent(cD, finalResponse); pS=true; 
-               document.getElementById('latency-val').innerText=(Date.now()-sT).toString(); break;
-            }catch(e){
-               pA++; 
-               if(pA>=apiKeys.length){bD.remove(); showToast("❌ Lỗi API: "+e.message,'error'); break;}
-            }
+                   const resStream = await aiMain.models.generateContentStream({
+                       model: DOM.model.value,
+                       contents: contents,
+                       config: genConfig
+                   }); 
+                   
+                   if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
+                   
+                   for await(const ck of resStream){
+                      finalResponse += ck.text; cD.innerHTML = marked.parse(finalResponse);
+                      DOM.chat.scrollTop = bDTop - DOM.chat.offsetTop - 10;
+                   } 
+                   await renderMsgContent(cD, finalResponse); pS=true; 
+                   document.getElementById('latency-val').innerText=(Date.now()-sT).toString(); break;
+                }catch(e){
+                   pA++; 
+                   if(pA>=apiKeys.length){bD.remove(); showToast("❌ Lỗi API: "+e.message,'error'); break;}
+                }
+             }
+             if(!pS){ isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
          }
-         if(!pS){ isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
       }
 
       chatHistory.push({role:'user',text:fP}); chatHistory.push({role:'model',text:finalResponse}); 
