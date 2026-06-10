@@ -199,7 +199,7 @@
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
             <button class="btn" onclick="exportCleanArticle()">📝 Bài viết sạch (MD)</button><button class="btn" onclick="exportChatPDF()">📄 Xuất File PDF</button><button class="btn" onclick="exportChatDoc()">📄 Xuất File Word</button>
             <button class="btn" onclick="exportAllSessions()">📥 Sao lưu JSON</button><button class="btn" onclick="document.getElementById('import-all-input').click()">📤 Khôi phục JSON</button>
-            <button id="btn-compress-context" class="btn warning">🗜️ Nén lịch sử cũ</button><button class="btn danger" onclick="clearActiveSession()">🗑️ Xóa hết tin phiên này</button><input type="file" id="import-all-input" accept=".json" style="display:none;">
+            <button id="btn-compress-context" class="btn warning">🗜️ Nén lịch sử cũ</button><button class="btn danger" onclick="clearActiveSession()">🗑️ Xóa hết tin phiên này</button><input type="file" id="import-all-input" accept=".json" style="none;">
           </div>
         </fieldset>
         <fieldset class="settings-group"><legend>🔑 Cấu hình 10 API Keys</legend>
@@ -241,7 +241,7 @@ QUY TẮC TỐI CAO:
 2. Thêm các từ khóa bổ trợ thực tế như "thông số", "đánh giá mốc 2026", "mới nhất" để gom trúng thông tin thời gian thực.
 3. Chỉ xuất ra chuỗi từ khóa tìm kiếm cách nhau bằng khoảng trắng, KHÔNG giải thích, KHÔNG chào hỏi, KHÔNG bọc ngoặc kép.`;
 
-    // CHỈ THỊ TỐI ƯU HÓA PROMPT MỚI DÀNH RIÊNG CHO NÚT ENHANCE PROMPT (ĐÃ FIX LỖI RA CHUỒI TỪ KHÓA)
+    // CHỈ THỊ TỐI ƯU HÓA PROMPT MỚI DÀNH RIÊNG CHO NÚT ENHANCE PROMPT (ĐÃ FIX LỖI RA CHUỖI TỪ KHÓA)
     const promptEnhancementInstruction = `Bạn là bộ chuyển đổi và tối ưu hóa Prompt chuyên nghiệp. Nhiệm vụ: Biến đổi nội dung ý tưởng thô sơ ban đầu của người dùng thành một câu lệnh Prompt hoàn chỉnh, chi tiết, viết dưới góc nhìn chuyên gia và có cấu trúc chặt chẽ để nạp cho AI đạt hiệu quả phản hồi cao nhất.
 QUY TẮC TỐI CAO:
 1. BẮT BUỘC giữ nguyên 100% các danh từ riêng, tên chế độ, tên sản phẩm, mã hiệu, số hiệu sản phẩm, mốc năm (Ví dụ: chế độ Dry, chế độ Cool, iQoo Z10, năm 2026...), các con số và thuật ngữ chuyên môn gốc. Tuyệt đối không được phép loại bỏ hoặc biến đổi chúng.
@@ -369,9 +369,17 @@ QUY TẮC TỐI CAO:
     
     function serializeHistoryForDify(history, currentPrompt) {
         let serialized = "";
-        for (let m of history) {
-            const speaker = m.role === 'model' ? 'Gemini' : 'Bạn';
-            serialized += `${speaker}: ${m.text}\n\n`;
+        const si = getDynamicSI();
+        if (si) {
+            serialized += `[HƯỚNG DẪN HỆ THỐNG & ĐỊNH HƯỚNG BẮT BUỘC]:\n${si}\n\n====================\n\n`;
+        }
+        if (history && history.length > 0) {
+            serialized += `[LỊCH SỬ TRÒ CHUYỆN KHỨ HỒI]:\n`;
+            for (let m of history) {
+                const speaker = m.role === 'model' ? 'Gemini' : 'Bạn';
+                serialized += `${speaker}: ${m.text}\n\n`;
+            }
+            serialized += `====================\n\n`;
         }
         serialized += `Bạn: ${currentPrompt}\n\nGemini:`;
         return serialized;
@@ -697,9 +705,13 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
              bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo qua Dify...`;
              step3El.innerHTML = `🧠 B3: Đang kết nối mô hình Dify tổng hợp dữ liệu...`; step3El.style.display = 'block';
              
+             // Prepend System Instructions
+             const si = getDynamicSI();
+             let serializedAgentPrompt = `[HƯỚNG DẪN HỆ THỐNG & ĐỊNH HƯỚNG BẮT BUỘC]:\n${si}\n\n====================\n\nYêu cầu phân tích: ${agentPrompt}`;
+
              let agentDifySuccess = false;
              try {
-                 await callDifyStream(agentPrompt, 
+                 await callDifyStream(serializedAgentPrompt, 
                     (chunk) => {
                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
                        finalResponse += chunk;
