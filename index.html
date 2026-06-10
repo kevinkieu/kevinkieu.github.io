@@ -138,7 +138,7 @@
               <option value="gemini-3.5-flash-dify">Gemini 3.5 Flash (Dify)</option>
               <option value="opus-4-dify">Claude 4 Opus (Dify)</option>
               <option value="gpt-5.5-dify">GPT-5.5 (Dify)</option>
-              <option value="nemotron-openrouter">Nemotron 3 Ultra (OpenRouter)</option>
+              <option value="nemotron-openrouter">Nemotron 3 Nano (OpenRouter)</option>
             </select>
           </div>
           <div class="side-btn-grid" style="margin-top:8px;"><button id="btn-new-session" class="btn primary">➕ Thêm</button><button id="btn-rename-session" class="btn">✏️ Sửa</button><button id="btn-move-session" class="btn">📂 Di chuyển</button><button id="btn-delete-session" class="btn danger">🗑️ Xóa</button></div>
@@ -222,7 +222,7 @@
             </div>
           </div>
         </fieldset>
-        <fieldset class="settings-group"><legend>🔗 Cấu hình OpenRouter (Nemotron 3 Ultra)</legend>
+        <fieldset class="settings-group"><legend>🔗 Cấu hình OpenRouter (Nemotron 3 Nano)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">OpenRouter API Key:</label><input type="password" id="openrouter-key-input" placeholder="Nhập OpenRouter API Key (sk-or-...)" class="modern-input"></div>
           </div>
@@ -354,7 +354,7 @@ QUY TẮC TỐI CAO:
     async function saveFileToLib(f){ return new Promise(r=>{const t=db.transaction(FILE_STORE,"readwrite"); t.objectStore(FILE_STORE).put(f); t.oncomplete=()=>r();});}
     async function getAllFilesFromLib(){ return new Promise(r=>{const rq=db.transaction(FILE_STORE,"readonly").objectStore(FILE_STORE).getAll(); rq.onsuccess=()=>r(rq.result);});}
     async function deleteFileFromLib(i){ return new Promise(r=>{const t=db.transaction(FILE_STORE,"readwrite"); t.objectStore(FILE_STORE).delete(i); t.oncomplete=()=>r();});}
-    async function saveVector(v){ return new Promise(r=>{const t=db.transaction(VECTOR_STORE,"readwrite"); t.objectStore(VECTOR_STORE).put(v); t.oncomplete=()=>r();});}
+    async function saveVector(v){ return new Promise(r=>{const t=db.transaction(VECTOR_STORE,"readwrite"); t.objectStore(VECTOR_STORE).put(v); t.oncomplete=()=>r();} )}
     async function getAllVectors(){ return new Promise(r=>{const rq=db.transaction(VECTOR_STORE,"readonly").objectStore(VECTOR_STORE).getAll(); rq.onsuccess=()=>r(rq.result);});}
     const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleVectorDB:document.getElementById('toggle-vector-db'),toggleAgent:document.getElementById('toggle-agent'),memLen:document.getElementById('memory-length'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
     let sessions=[], activeId=null, chatHistory=[], filesData=[], txtContent="", isProcessing=false, folders=JSON.parse(localStorage.getItem('javiss_folders')||'["Mặc định"]'), activeFolder=localStorage.getItem('javiss_active_folder')||"All", openTabs=JSON.parse(localStorage.getItem('javiss_tabs')||'[]'); const MAX_IMAGES=20;
@@ -398,12 +398,12 @@ QUY TẮC TỐI CAO:
         if (history && history.length > 0) {
             serialized += `[LỊCH SỬ TRÒ CHUYỆN KHỨ HỒI]:\n`;
             for (let m of history) {
-                const speaker = m.role === 'model' ? 'Gemini' : 'Bạn';
+                const speaker = m.role === 'model' ? 'Chatbot' : 'Bạn';
                 serialized += `${speaker}: ${m.text}\n\n`;
             }
             serialized += `====================\n\n`;
         }
-        serialized += `Bạn: ${currentPrompt}\n\nGemini:`;
+        serialized += `Bạn: ${currentPrompt}\n\nChatbot:`;
         return serialized;
     }
 
@@ -484,7 +484,7 @@ QUY TẮC TỐI CAO:
         }
     }
 
-    async function callOpenRouterStream(promptText, onChunk, onError) {
+    async function callOpenRouterStream(promptText, onChunk, onError, onComment) {
         const key = localStorage.getItem('openrouter_api_key') || '';
         if (!key) {
             onError(new Error("Thiếu OpenRouter API Key trong Cấu hình!"));
@@ -496,12 +496,10 @@ QUY TẮC TỐI CAO:
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${key}`,
-                    'Content-Type': 'application/json',
-                    'HTTP-Referer': window.location.href,
-                    'X-Title': 'Javiss Workstation'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: "nvidia/nemotron-3-ultra-550b-a55b:free",
+                    model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
                     messages: [
                         {
                             role: "user",
@@ -513,8 +511,14 @@ QUY TẮC TỐI CAO:
             });
             
             if (!response.ok) {
-                const errText = await response.text();
-                throw new Error(`HTTP ${response.status}: ${errText}`);
+                let errMsg = `HTTP Lỗi ${response.status}`;
+                try {
+                    const errJSON = JSON.parse(await response.text());
+                    if (errJSON.error && errJSON.error.message) {
+                        errMsg = errJSON.error.message;
+                    }
+                } catch(e) {}
+                throw new Error(errMsg);
             }
             
             const reader = response.body.getReader();
@@ -526,16 +530,32 @@ QUY TẮC TỐI CAO:
                 if (done) break;
                 buffer += decoder.decode(value, { stream: true });
                 
+                if (buffer.trim().startsWith("{")) {
+                    try {
+                        const parsed = JSON.parse(buffer);
+                        if (parsed.error) {
+                            throw new Error(parsed.error.message || "Lỗi OpenRouter");
+                        }
+                    } catch(e) {}
+                }
+
                 const lines = buffer.split("\n");
                 buffer = lines.pop();
                 
                 for (const line of lines) {
                     const trimmed = line.trim();
-                    if (trimmed.startsWith("data:")) {
+                    if (trimmed.startsWith(":")) {
+                        if (trimmed.toLowerCase().includes("processing") && onComment) {
+                            onComment("Đang xếp hàng chờ xử lý (OpenRouter Queue)...");
+                        }
+                    } else if (trimmed.startsWith("data:")) {
                         const dataContent = trimmed.slice(5).trim();
                         if (dataContent === "[DONE]") continue;
                         try {
                             const parsed = JSON.parse(dataContent);
+                            if (parsed.error) {
+                                throw new Error(parsed.error.message || "Lỗi OpenRouter");
+                            }
                             if (parsed.choices && parsed.choices[0].delta && parsed.choices[0].delta.content) {
                                 onChunk(parsed.choices[0].delta.content);
                             }
@@ -589,7 +609,7 @@ QUY TẮC TỐI CAO:
            const ai = new GoogleGenAI({ apiKey: currentKey });
            const res = await ai.models.generateContent({
              model: "gemini-2.5-flash",
-             contents: `Hãy sử dụng công cụ tìm kiếm để thu thập thông tin, tóm tắt nội dung chi tiết 10 ý chính bao gồm cả thông số cốt lõi của video Youtube sau: ${u}`,
+             contents: `Hãy sử dụng công cụ tìm kiếm để thu thập thông tin, tóm tắt nội dung chi tiết 10 ý chính bao gồm cả thông số cốt lõi của video YouTube sau: ${u}`,
              config: { tools: [{ googleSearch: {} }] }
            });
            txtContent+=`\n[Dữ liệu YouTube tổng hợp thông qua Grounding Search cho đường dẫn ${u}]:\n${res.text}\n`;
@@ -605,7 +625,7 @@ QUY TẮC TỐI CAO:
       }catch(e){showToast("Lỗi cào dữ liệu!","error");} DOM.btnAddUrl.innerHTML="🌐 Đọc Link/YT";
     };
     DOM.chat.addEventListener('scroll',()=>DOM.scrollTopBtn.classList.toggle('visible',DOM.chat.scrollTop>300)); DOM.scrollTopBtn.onclick=()=>DOM.chat.scrollTo({top:0,behavior:'smooth'});
-    document.getElementById('btn-paste-clipboard').onclick=async()=>{try{const is=await navigator.clipboard.read(); let h=false; for(let i of is){if(i.types.includes('image/png')||i.types.includes('image/jpeg')){const b=await i.getType('image/png'); filesData.push(new File([b],'clipboard-img.png',{type:b.type})); renderFiles(); h=true;}else if(i.types.includes('text/plain')){const t=await i.getType('text/plain').then(r=>r.text()); if(t){DOM.input.value+=(DOM.input.value?'\n':'')+t; h=true;}}} if(!h){const t=await navigator.clipboard.readText(); if(t){DOM.input.value+=(DOM.input.value?'\n':'')+t; h=true;}} if(h){DOM.input.dispatchEvent(new Event('input')); showToast('✅ Đã dán'); DOM.input.focus();}else showToast('❌ Trống','error');}catch(e){showToast('Lỗi: '+e.message,'error');}};
+    document.getElementById('btn-paste-clipboard').onclick=async()=>{try{const is=await navigator.clipboard.read(); let h=false; for(let i of is){if(i.types.includes('image/png')||i.types.includes('image/jpeg')){const b=await i.getType('image/png'); filesData.push(new File([b],'clipboard-img.png',{type:b.type})); renderFiles(); h=true;}else if(i.types.includes('text/plain')){const t=await i.getType('text/plain').then(r=>r.text()); if(t){DOM.input.value+=(DOM.input.value?'\n':'')+t; h=true;}} } if(!h){const t=await navigator.clipboard.readText(); if(t){DOM.input.value+=(DOM.input.value?'\n':'')+t; h=true;}} if(h){DOM.input.dispatchEvent(new Event('input')); showToast('✅ Đã dán'); DOM.input.focus();}else showToast('❌ Trống','error');}catch(e){showToast('Lỗi: '+e.message,'error');}};
     const oLay=document.getElementById('modal-overlay'); function closeAllModals(){document.querySelectorAll('.modal-box').forEach(m=>m.style.display='none'); oLay.style.display='none'; const v=document.getElementById('camera-preview'); if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());v.srcObject=null;}} document.querySelectorAll('.close-btn').forEach(b=>b.onclick=closeAllModals); oLay.onclick=closeAllModals;
     document.getElementById('btn-camera-snap').onclick=async()=>{document.getElementById('camera-modal').style.display='flex'; oLay.style.display='block'; try{document.getElementById('camera-preview').srcObject=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});}catch(e){showToast("Lỗi Camera: "+e.message,"error");}};
     document.getElementById('btn-take-photo').onclick=()=>{const v=document.getElementById('camera-preview'); if(!v.srcObject)return; const c=document.createElement('canvas'); c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0); c.toBlob(b=>{filesData.push(new File([b],`Camera_${Date.now()}.jpg`,{type:'image/jpeg'})); renderFiles(); closeAllModals(); showToast("Đã chụp ảnh!");},'image/jpeg',0.85);};
@@ -719,7 +739,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
     async function appendMsg(sd,t,i,iHL=false){
        const c=document.createElement('div'); c.className='message-container'; 
        const m=document.createElement('div'); m.className=sd==='user'?'user-message':'bot-message'; m.setAttribute('data-raw',t); 
-       m.innerHTML=`<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Gemini'}</span></div><div class="msg-content"></div>`; 
+       m.innerHTML=`<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Chatbot'}</span></div><div class="msg-content"></div>`; 
        const a=document.createElement('div'); a.className='msg-actions'; 
        a.innerHTML=`<button class="action-btn" onclick="copy(this)">📋 Copy</button>`; 
        if(sd==='user')a.innerHTML+=`<button class="action-btn" onclick="editMsg(${i})">✏️ Sửa</button><button class="action-btn" onclick="forkSession(${i})">🔀 Nhánh</button>`; 
@@ -741,7 +761,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
       DOM.input.value=''; DOM.input.style.height='40px'; const imgs=[...filesData]; DOM.clearFilesBtn.click(); 
       
       const bD=document.createElement('div'); bD.className='message-container'; 
-      bD.innerHTML=`<div class="bot-message"><div class="message-header">Gemini <span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`; 
+      bD.innerHTML=`<div class="bot-message"><div class="message-header">Chatbot <span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`; 
       DOM.chat.appendChild(bD);
       const cD=bD.querySelector('.msg-content'); 
       const bDTop = bD.offsetTop;
@@ -814,11 +834,15 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                      DOM.chat.scrollTop = bDTop - DOM.chat.offsetTop - 10;
                  };
                  const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error'); };
+                 const onCommentCallback = (msg) => {
+                     const siEl = bD.querySelector('.streaming-indicator');
+                     if (siEl) siEl.innerText = `🔗 ${msg}`;
+                 };
 
                  if (DOM.model.value.endsWith('-dify')) {
                      await callDifyStream(serializedAgentPrompt, onChunkCallback, onErrorCallback);
                  } else {
-                     await callOpenRouterStream(serializedAgentPrompt, onChunkCallback, onErrorCallback);
+                     await callOpenRouterStream(serializedAgentPrompt, onChunkCallback, onErrorCallback, onCommentCallback);
                  }
                  
                  if (finalResponse) {
@@ -933,11 +957,15 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                    DOM.chat.scrollTop = bDTop - DOM.chat.offsetTop - 10;
                 };
                 const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error'); };
+                const onCommentCallback = (msg) => {
+                   const siEl = bD.querySelector('.streaming-indicator');
+                   if (siEl) siEl.innerText = `🔗 ${msg}`;
+                };
 
                 if (DOM.model.value.endsWith('-dify')) {
                    await callDifyStream(serializedPrompt, onChunkCallback, onErrorCallback);
                 } else {
-                   await callOpenRouterStream(serializedPrompt, onChunkCallback, onErrorCallback);
+                   await callOpenRouterStream(serializedPrompt, onChunkCallback, onErrorCallback, onCommentCallback);
                 }
 
                 if (finalResponse) {
