@@ -11,6 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10.8.0/dist/mermaid.min.js"></script>
+  <script src="https://js.puter.com/v2/"></script>
   <style>
     :root{--bg-main:#f0f4f9;--bg-sidebar:#e9eef6;--bg-card:#ffffff;--border:#c4c7c5;--text-main:#1f1f1f;--text-muted:#444746;--bg-msg-user:#d3e3fd;--bg-msg-bot:transparent;--primary:#0b57d0;--primary-container:#d3e3fd;--danger:#b3261e;--input-bg:#f0f4f9;--shadow:0 1px 3px rgba(0,0,0,0.1),0 1px 2px rgba(0,0,0,0.06);--transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}
     [data-theme="dark"]{--bg-main:#131314;--bg-sidebar:#1e1f20;--bg-card:#282a2c;--border:#444746;--text-main:#e3e3e3;--text-muted:#c4c7c5;--bg-msg-user:#004a77;--bg-msg-bot:transparent;--primary:#a8c7fa;--primary-container:#004a77;--danger:#f2b8b5;--input-bg:#1e1f20;--shadow:0 1px 3px rgba(0,0,0,0.4)}
@@ -139,6 +140,7 @@
               <option value="opus-4-dify">Claude 4 Opus (Dify)</option>
               <option value="gpt-5.5-dify">GPT-5.5 (Dify)</option>
               <option value="nemotron-openrouter">Nemotron 3 Nano (OpenRouter)</option>
+              <option value="gpt-5.4-nano-puter">GPT 5.4 Nano (Puter)</option>
             </select>
           </div>
           <div class="side-btn-grid" style="margin-top:8px;"><button id="btn-new-session" class="btn primary">➕ Thêm</button><button id="btn-rename-session" class="btn">✏️ Sửa</button><button id="btn-move-session" class="btn">📂 Di chuyển</button><button id="btn-delete-session" class="btn danger">🗑️ Xóa</button></div>
@@ -568,6 +570,27 @@ QUY TẮC TỐI CAO:
         }
     }
 
+    async function callPuterStream(promptText, onChunk, onError) {
+        try {
+            if (typeof puter === 'undefined' || !puter.ai || !puter.ai.chat) {
+                throw new Error("Thư viện Puter.js chưa được tải hoàn chỉnh hoặc bị chặn bởi trình duyệt!");
+            }
+            
+            const resp = await puter.ai.chat(promptText, {
+                model: 'gpt-5.4-nano',
+                stream: true
+            });
+            
+            for await (const part of resp) {
+                if (part && part.text) {
+                    onChunk(part.text);
+                }
+            }
+        } catch (err) {
+            onError(err);
+        }
+    }
+
     window.forkSession=async i=>{if(!confirm("Tạo nhánh hội thoại từ đây?"))return; const c=sessions.find(s=>s.id===activeId), nId='s_'+Date.now(), nSess={...c,id:nId,name:c.name+" (Nhánh)",his:chatHistory.slice(0,i+1),orderIndex:0}; sessions.unshift(nSess); sessions.forEach((s,j)=>{s.orderIndex=j;saveToDB(s);}); await switchSess(nId); showToast("Đã rẽ nhánh!");};
 
     // CHỨC NĂNG ENHANCE PROMPT ĐÃ ĐƯỢC CHỈNH LẠI CHỈ THỊ CHUẨN (KHÔNG BỊ RA CHUỖI TỪ KHÓA)
@@ -752,7 +775,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
     }
 
     DOM.sendBtn.onclick=async()=>{
-      const isExternalModel = DOM.model.value.endsWith('-dify') || DOM.model.value === 'nemotron-openrouter';
+      const isExternalModel = DOM.model.value.endsWith('-dify') || DOM.model.value === 'nemotron-openrouter' || DOM.model.value === 'gpt-5.4-nano-puter';
       if(isProcessing)return; if(!apiKeys.length && !isExternalModel)return showToast("Cần API Key!","error"); let msg=DOM.input.value.trim(); if(!msg&&!filesData.length&&!txtContent)return; 
       localStorage.removeItem('javiss_draft'); isProcessing=true; DOM.sendBtn.innerHTML='⏳'; 
       let fP=txtContent?msg+"\n\n"+txtContent:msg;
@@ -816,7 +839,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
          if(!success2) { showToast("Agent thất bại tại B2.","error"); bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
 
          let success3 = false;
-         if(DOM.model.value.endsWith('-dify') || DOM.model.value === 'nemotron-openrouter') {
+         if(DOM.model.value.endsWith('-dify') || DOM.model.value === 'nemotron-openrouter' || DOM.model.value === 'gpt-5.4-nano-puter') {
              let agentPrompt = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
              bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo...`;
              step3El.innerHTML = `🧠 B3: Đang kết nối mô hình tổng hợp dữ liệu...`; step3El.style.display = 'block';
@@ -841,8 +864,10 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
 
                  if (DOM.model.value.endsWith('-dify')) {
                      await callDifyStream(serializedAgentPrompt, onChunkCallback, onErrorCallback);
-                 } else {
+                 } else if (DOM.model.value === 'nemotron-openrouter') {
                      await callOpenRouterStream(serializedAgentPrompt, onChunkCallback, onErrorCallback, onCommentCallback);
+                 } else {
+                     await callPuterStream(serializedAgentPrompt, onChunkCallback, onErrorCallback);
                  }
                  
                  if (finalResponse) {
@@ -866,7 +891,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                     const genConfig = { temperature:+DOM.temp.value, topP:+DOM.topP.value, topK:+DOM.topK.value, systemInstruction:getDynamicSI() };
                     if(DOM.thinking && DOM.thinking.value) { genConfig.thinkingConfig = { thinkingLevel: DOM.thinking.value }; }
 
-                    const resStream = await aiAgent.models.generateContentStream({
+                    const resStream = await aiMain.models.generateContentStream({
                         model: DOM.model.value,
                         contents: `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`,
                         config: genConfig
@@ -941,7 +966,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
             if(searchSuccess){ fnP=`[DỮ LIỆU TÌM THẤY TRÊN INTERNET]:\n${wDText}\n\n[GỐC]: ${fnP}`; }
          } 
 
-         if(DOM.model.value.endsWith('-dify') || DOM.model.value === 'nemotron-openrouter') {
+         if(DOM.model.value.endsWith('-dify') || DOM.model.value === 'nemotron-openrouter' || DOM.model.value === 'gpt-5.4-nano-puter') {
              bD.querySelector('.streaming-indicator').innerText=`🔗 Đang gọi dịch vụ...`;
              
              const memSize = parseInt(DOM.memLen.value) || 20;
@@ -964,8 +989,10 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
 
                 if (DOM.model.value.endsWith('-dify')) {
                    await callDifyStream(serializedPrompt, onChunkCallback, onErrorCallback);
-                } else {
+                } else if (DOM.model.value === 'nemotron-openrouter') {
                    await callOpenRouterStream(serializedPrompt, onChunkCallback, onErrorCallback, onCommentCallback);
+                } else {
+                   await callPuterStream(serializedPrompt, onChunkCallback, onErrorCallback);
                 }
 
                 if (finalResponse) {
