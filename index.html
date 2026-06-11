@@ -140,6 +140,7 @@
               <option value="gpt-5.5-dify">GPT-5.5 (Dify)</option>
               <option value="nemotron-openrouter">Nemotron 3 Nano (OpenRouter)</option>
               <option value="llama-4-scout-groq">Llama 4 Scout (Groq)</option>
+              <option value="groq-compound">Groq Compound (Groq)</option>
             </select>
           </div>
           <div class="side-btn-grid" style="margin-top:8px;"><button id="btn-new-session" class="btn primary">➕ Thêm</button><button id="btn-rename-session" class="btn">✏️ Sửa</button><button id="btn-move-session" class="btn">📂 Di chuyển</button><button id="btn-delete-session" class="btn danger">🗑️ Xóa</button></div>
@@ -228,7 +229,7 @@
             <div><label class="field-label">OpenRouter API Key:</label><input type="password" id="openrouter-key-input" placeholder="Nhập OpenRouter API Key (sk-or-...)" class="modern-input"></div>
           </div>
         </fieldset>
-        <fieldset class="settings-group"><legend>🔗 Cấu hình Groq (Llama 4 Scout)</legend>
+        <fieldset class="settings-group"><legend>🔗 Cấu hình Groq (Llama 4 Scout & Groq Compound)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">Groq API Key:</label><input type="password" id="groq-key-input" placeholder="Nhập Groq API Key (gsk_...)" class="modern-input"></div>
           </div>
@@ -584,6 +585,12 @@ QUY TẮC TỐI CAO:
             return;
         }
         
+        const activeModel = DOM.model.value;
+        let modelSlug = "meta-llama/llama-4-scout-17b-16e-instruct";
+        if (activeModel === 'groq-compound') {
+            modelSlug = "groq/compound";
+        }
+        
         try {
             const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: 'POST',
@@ -592,13 +599,14 @@ QUY TẮC TỐI CAO:
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+                    model: modelSlug,
                     messages: [
                         {
                             role: "user",
                             content: promptText
                         }
                     ],
+                    max_tokens: 8192,
                     stream: true
                 })
             });
@@ -708,7 +716,7 @@ QUY TẮC TỐI CAO:
            const data=await res.json();
            const doc=new DOMParser().parseFromString(data.contents, "text/html");
            txtContent+=`\n[Web Scraped: ${u}]:\n${doc.body.innerText.replace(/\s+/g,' ').substring(0,30000)}\n`;
-           DOM.textFileList.innerHTML+=`🌐 Dữ liệu Web<br>`; showToast("Đã cào nội dung Web!");
+           DOM.textFileList.innerHTML+=`🌐 Dữ liệu Web<br>'; showToast("Đã cào nội dung Web!");`
         }
         DOM.previewBox.style.display='block'; DOM.fileCount.innerText=filesData.length+(txtContent?1:0);
       }catch(e){showToast("Lỗi cào dữ liệu!","error");} DOM.btnAddUrl.innerHTML="🌐 Đọc Link/YT";
@@ -841,7 +849,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
     }
 
     DOM.sendBtn.onclick=async()=>{
-      const isExternalModel = DOM.model.value.endsWith('-dify') || DOM.model.value === 'nemotron-openrouter' || DOM.model.value === 'llama-4-scout-groq';
+      const isExternalModel = DOM.model.value.endsWith('-dify') || DOM.model.value === 'nemotron-openrouter' || DOM.model.value === 'llama-4-scout-groq' || DOM.model.value === 'groq-compound';
       if(isProcessing)return; if(!apiKeys.length && !isExternalModel)return showToast("Cần API Key!","error"); let msg=DOM.input.value.trim(); if(!msg&&!filesData.length&&!txtContent)return; 
       localStorage.removeItem('javiss_draft'); isProcessing=true; DOM.sendBtn.innerHTML='⏳'; 
       let fP=txtContent?msg+"\n\n"+txtContent:msg;
@@ -905,7 +913,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
          if(!success2) { showToast("Agent thất bại tại B2.","error"); bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
 
          let success3 = false;
-         if(DOM.model.value.endsWith('-dify') || DOM.model.value === 'nemotron-openrouter' || DOM.model.value === 'llama-4-scout-groq') {
+         if(DOM.model.value.endsWith('-dify') || DOM.model.value === 'nemotron-openrouter' || DOM.model.value === 'llama-4-scout-groq' || DOM.model.value === 'groq-compound') {
              let agentPrompt = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
              bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo...`;
              step3El.innerHTML = `🧠 B3: Đang kết nối mô hình tổng hợp dữ liệu...`; step3El.style.display = 'block';
@@ -1041,7 +1049,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
             if(searchSuccess){ fnP=`[DỮ LIỆU TÌM THẤY TRÊN INTERNET]:\n${wDText}\n\n[GỐC]: ${fnP}`; }
          } 
 
-         if(DOM.model.value.endsWith('-dify') || DOM.model.value === 'nemotron-openrouter' || DOM.model.value === 'llama-4-scout-groq') {
+         if(DOM.model.value.endsWith('-dify') || DOM.model.value === 'nemotron-openrouter' || DOM.model.value === 'llama-4-scout-groq' || DOM.model.value === 'groq-compound') {
              bD.querySelector('.streaming-indicator').innerText=`🔗 Đang gọi dịch vụ...`;
              
              const memSize = parseInt(DOM.memLen.value) || 20;
