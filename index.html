@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Javiss Gemini AI - Ultimate Workstation</title>
+  <title>AI Workshop</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -27,7 +27,7 @@
     .main-content{flex:1;height:100%;display:flex;flex-direction:column;background:var(--bg-main);position:relative;overflow:hidden}
     .main-header{height:56px;min-height:56px;padding:0 20px;display:flex;justify-content:space-between;align-items:center;background:var(--bg-main);border-bottom:1px solid rgba(0,0,0,0.05)}
     .header-left,.header-right{display:flex;align-items:center;gap:12px}
-    .logo-text{font-size:1.15rem;font-weight:500}
+    .logo-text{font-size:1.05rem;font-weight:600} /* Làm nhỏ và tinh gọn chữ AI Workshop */
     #tabs-container{display:flex;overflow-x:auto;background:var(--bg-sidebar);border-bottom:1px solid var(--border);min-height:36px;scrollbar-width:none}
     #tabs-container::-webkit-scrollbar{display:none}
     .tab-item{padding:8px 14px;font-size:.85rem;color:var(--text-muted);cursor:pointer;border-right:1px solid var(--border);display:flex;align-items:center;gap:6px;white-space:nowrap;background:rgba(0,0,0,0.02)}
@@ -155,7 +155,8 @@
               <option value="gemini-3.5-flash-dify">Gemini 3.5 Flash (Dify)</option>
               <option value="opus-4-dify">Claude 4 Opus (Dify)</option>
               <option value="gpt-5.5-dify">GPT-5.5 (Dify)</option>
-              <option value="nemotron-openrouter">Nemotron 3 Nano Omni (OpenRouter - Reasoning)</option>
+              <option value="nemotron-ultra-openrouter">Nemotron 3 Ultra (OpenRouter - Free)</option>
+              <option value="nemotron-nano-openrouter">Nemotron 3 Nano (OpenRouter - Free)</option>
               <option value="llama-4-scout-groq">Llama 4 Scout (Groq)</option>
               <option value="openai/gpt-oss-120b">GPT-OSS 120B (Groq - Reasoning)</option>
               <option value="mistral-medium-latest">Mistral Medium (Mistral - Standard)</option>
@@ -174,7 +175,7 @@
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
     <main class="main-content">
       <header class="main-header">
-        <div class="header-left"><button id="toggle-sidebar-btn" class="icon-btn mobile-only">☰</button><h1 class="logo-text">Gemini Workstation</h1></div>
+        <div class="header-left"><button id="toggle-sidebar-btn" class="icon-btn mobile-only">☰</button><h1 class="logo-text">AI Workshop</h1></div>
         <div class="header-right">
           <div class="header-search-bar"><input type="text" id="search-chat-input" placeholder="Tìm kiếm..."><button id="btn-global-search" class="search-trigger-btn" title="Tìm toàn bộ phiên">🔍</button></div>
           <button id="btn-theme" class="btn" style="padding:6px 12px;font-size:.85rem;min-width:85px;" title="Chuyển chế độ Sáng/Tối/Tự động">🌙 Tự động</button>
@@ -282,7 +283,8 @@
     let apiKeys=[], globalKeyIndex = 0;
     const SAFETY=[{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}];
     const externalModels = [
-         'nemotron-openrouter',
+         'nemotron-ultra-openrouter',
+         'nemotron-nano-openrouter',
          'llama-4-scout-groq',
          'openai/gpt-oss-120b',
          'mistral-medium-latest',
@@ -580,6 +582,12 @@ QUY TẮC TỐI CAO:
         }
         
         try {
+            const activeModel = DOM.model.value;
+            let modelSlug = "nvidia/nemotron-3-ultra-550b-a55b:free";
+            if (activeModel === 'nemotron-nano-openrouter') {
+                modelSlug = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free";
+            }
+            
             const messages = buildStructuredMessages(promptText);
             const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: 'POST',
@@ -588,8 +596,7 @@ QUY TẮC TỐI CAO:
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    // Sử dụng mô hình Nemotron 3 Ultra (Free) siêu phân tích 550B
-                    model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+                    model: modelSlug,
                     messages: messages, // Truyền trực tiếp danh sách tin nhắn có phân vai chuẩn (Structured Format)
                     max_tokens: 4096, 
                     stream: true
@@ -856,7 +863,7 @@ QUY TẮC TỐI CAO:
                 buffer = lines.pop();
 
                 for (const line of lines) {
-                    const trimmed = line.trim();
+                    const trimmed = line.trimmed();
                     if (trimmed.startsWith("data:")) {
                         const dataContent = trimmed.slice(5).trim();
                         if (dataContent === "[DONE]") continue;
@@ -945,20 +952,19 @@ QUY TẮC TỐI CAO:
                 messages: messages,
                 temperature: 0.7,
                 top_p: 1.0,
-                max_completion_tokens: 8192, // Tối ưu an toàn dưới ngưỡng 30,000 TPM limit của Cerebras Free Tier
-                max_tokens: 8192, // Giữ tương thích ngược
+                max_completion_tokens: 4096, // Hạ xuống 4,096 an toàn tuyệt đối dưới ngưỡng 30,000 TPM limit
+                // TUYỆT ĐỐI không gửi trường max_tokens (đã bị Cerebras khai tử, gửi kèm sẽ gây lỗi 400 cấu trúc)
+                clear_thinking: false, // Giữ chuỗi suy nghĩ multi-turn được bảo toàn tối đa theo tài liệu Cerebras năm 2026
                 stream: true
             };
 
-            // zai-glm-4.7 hỗ trợ cấu hình suy luận thông qua reasoning_effort ("high" hoặc "none") giống Mistral
-            let reasoningEffort = "none";
+            // Z.ai GLM 4.7 kích hoạt suy luận theo mặc định. 
+            // Cấu hình chỉ chấp nhận giá trị reasoning_effort="none" để tắt suy luận. 
+            // KHÔNG ĐƯỢC phép truyền giá trị "high" hoặc "medium" (sẽ gây lỗi HTTP 400).
             const currentThinking = DOM.thinking ? DOM.thinking.value : 'medium';
             if (currentThinking === 'minimal' || currentThinking === 'low') {
-                reasoningEffort = "none";
-            } else if (currentThinking === 'medium' || currentThinking === 'high') {
-                reasoningEffort = "high";
+                payload.reasoning_effort = "none";
             }
-            payload.reasoning_effort = reasoningEffort;
 
             const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
                 method: 'POST',
@@ -1193,7 +1199,7 @@ QUY TẮC TỐI CAO:
     const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
     const ai=new GoogleGenAI({ apiKey: currentKey }); const res=await ai.models.generateContent({model:"gemini-3.1-flash-lite", contents:`Tóm tắt cấu trúc hội thoại:\n\n${t}`}); chatHistory=[{role:'user',text:`[Tóm tắt]: \n${res.text}`},{role:'model',text:'Đã nhớ.'},...r]; const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); } showToast("Nén thành công!"); break;}catch(e){a++;}}};
     
-    async function updateConfig(){const s=sessions.find(x=>x.id===activeId); if(s){s.sys=DOM.sysInst.value; s.mod=DOM.model.value; s.tmp=DOM.temp.value; s.tpp=DOM.topP.value; s.top=DOM.topK.value; s.thk=DOM.thinking.value; s.sch=DOM.toggleSearch.checked; s.mem=DOM.toggleMemory.checked; s.memLen=DOM.memLen.value; s.vec=DOM.toggleVectorDB.checked; s.agt=DOM.toggleAgent.checked; await saveToDB(s);}}
+    async function updateConfig(){const s=sessions.find(x=>x.id===activeId); if(s){s.sys=DOM.sysInst.value; s.mod=DOM.model.value; s.tmp=DOM.temp.value; s.tpp=DOM.topP.value; s.top=DOM.top=DOM.topK.value; s.thk=DOM.thinking.value; s.sch=DOM.toggleSearch.checked; s.mem=DOM.toggleMemory.checked; s.memLen=DOM.memLen.value; s.vec=DOM.toggleVectorDB.checked; s.agt=DOM.toggleAgent.checked; await saveToDB(s);}}
     DOM.sysInst.addEventListener('input',updateConfig); DOM.model.addEventListener('change',updateConfig); DOM.toggleSearch.addEventListener('change',updateConfig); DOM.toggleMemory.addEventListener('change',updateConfig); DOM.memLen.addEventListener('input',updateConfig); DOM.toggleVectorDB.addEventListener('change',updateConfig); DOM.toggleAgent.addEventListener('change',updateConfig); DOM.topK.addEventListener('input',updateConfig); DOM.thinking.addEventListener('change',updateConfig); DOM.temp.addEventListener('input',()=>{DOM.tempVal.innerText=DOM.temp.value; updateConfig();}); DOM.topP.addEventListener('input',()=>{DOM.toppVal.innerText=DOM.topP.value; updateConfig();});
     
     function getDynamicSI(){
@@ -1346,7 +1352,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                      await callDifyStream(serializedAgentPrompt, onChunkCallback, onErrorCallback);
                  } else {
                      // Đối với các API tương thích chuẩn OpenAI, truyền trực tiếp agentPrompt và để các hàm gọi tự động xây dựng mảng có phân vai chuẩn (Structured Format)
-                     if (DOM.model.value === 'nemotron-openrouter') {
+                     if (DOM.model.value === 'nemotron-ultra-openrouter' || DOM.model.value === 'nemotron-nano-openrouter') {
                          await callOpenRouterStream(agentPrompt, onChunkCallback, onErrorCallback, onCommentCallback);
                      } else if (DOM.model.value === 'mistral-medium-latest' || DOM.model.value === 'mistral-medium-3-5' || DOM.model.value === 'mistral-small-2603') {
                          await callMistralStream(agentPrompt, onChunkCallback, onErrorCallback);
@@ -1483,7 +1489,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                    await callDifyStream(serializedPrompt, onChunkCallback, onErrorCallback);
                 } else {
                    // Các nền tảng chuẩn khác truyền trực tiếp fnP. Hệ thống tự động bốc tách và đóng gói mảng tin nhắn phân vai có cấu trúc (Structured Format)
-                   if (DOM.model.value === 'nemotron-openrouter') {
+                   if (DOM.model.value === 'nemotron-ultra-openrouter' || DOM.model.value === 'nemotron-nano-openrouter') {
                       await callOpenRouterStream(fnP, onChunkCallback, onErrorCallback, onCommentCallback);
                    } else if (DOM.model.value === 'mistral-medium-latest' || DOM.model.value === 'mistral-medium-3-5' || DOM.model.value === 'mistral-small-2603') {
                       await callMistralStream(fnP, onChunkCallback, onErrorCallback);
