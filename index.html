@@ -190,10 +190,13 @@
             <select id="model-select" class="modern-select">
               <option value="gemini-3.5-flash" selected>Gemini 3.5 Flash</option>
               <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+              
+              <!-- Mô hình Dify đã được sắp xếp liền kề nhau: Gemini -> GPT -> Claude -->
               <option value="gemini-3.5-flash-dify">Gemini 3.5 Flash (Dify)</option>
-              <option value="opus-4-dify">Claude 4 Opus (Dify)</option>
-              <option value="gpt-5.5-dify">GPT-5.5 (Dify)</option>
               <option value="gemini-3.1-pro-dify">Gemini 3.1 Pro Preview (Dify)</option>
+              <option value="gpt-5.5-dify">GPT-5.5 (Dify)</option>
+              <option value="opus-4-dify">Claude 4 Opus (Dify)</option>
+              
               <option value="nemotron-ultra-openrouter">Nemotron 3 Ultra (OpenRouter - Free)</option>
               <option value="nemotron-nano-openrouter">Nemotron 3 Nano (OpenRouter - Free)</option>
               <option value="llama-4-scout-groq">Llama 4 Scout (Groq)</option>
@@ -201,9 +204,25 @@
               <option value="mistral-medium-latest">Mistral Medium (Mistral - Standard)</option>
               <option value="mistral-medium-3-5">Mistral Medium 3.5 (Mistral - Reasoning)</option>
               <option value="mistral-small-2603">Mistral Small 4 (Mistral - Reasoning)</option>
+              
+              <!-- 2 Mô hình Cohere mới được tích hợp -->
+              <option value="command-a-plus">Command A+ (Cohere - Multimodal)</option>
+              <option value="command-a-reasoning">Command A Reasoning (Cohere - Reasoning)</option>
+              
               <option value="zai-glm-4.7">Z.ai GLM 4.7 (Cerebras - Reasoning)</option>
             </select>
           </div>
+          
+          <!-- Di chuyển bộ chọn Think Depth từ cài đặt modal ra ngoài Sidebar chính để tiện sử dụng nhanh -->
+          <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🧠 Độ sâu suy nghĩ (Think Depth):</span>
+            <select id="thinking-level" class="modern-select">
+              <option value="minimal">Min</option>
+              <option value="low">Low</option>
+              <option value="medium" selected>Med</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+          
           <div class="side-btn-grid" style="margin-top:8px;"><button id="btn-new-session" class="btn primary">➕ Thêm</button><button id="btn-rename-session" class="btn">✏️ Sửa</button><button id="btn-move-session" class="btn">📂 Di chuyển</button><button id="btn-delete-session" class="btn danger">🗑️ Xóa</button></div>
           <div class="side-btn-row" style="margin-top:8px;"><button id="btn-move-up" class="btn" style="flex:1;">⬆️ Lên</button><button id="btn-move-down" class="btn" style="flex:1;">⬇️ Xuống</button></div>
           <button id="btn-bulk-edit" class="btn warning" style="margin-top:8px;width:100%;">🛠️ Quản lý Lịch sử</button>
@@ -260,7 +279,6 @@
             <div class="slider-row"><label>TopP (<span id="topp-val">0.9</span>):</label><input type="range" id="top-p" min="0" max="1" step="0.1" value="0.9"></div>
             <div style="display:flex;gap:20px;flex-wrap:wrap;">
               <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;">TopK: <input type="number" id="top-k" min="1" max="100" value="40" class="modern-input" style="width:70px;"></label>
-              <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;">Think Depth: <select id="thinking-level" class="modern-select" style="width:100px;"><option value="minimal">Min</option><option value="low">Low</option><option value="medium" selected>Med</option><option value="high">High</option></select></label>
             </div>
           </div>
         </fieldset>
@@ -309,6 +327,11 @@
             <div><label class="field-label">Cerebras API Key:</label><input type="password" id="cerebras-key-input" placeholder="Nhập Cerebras API Key (csk_...)" class="modern-input"></div>
           </div>
         </fieldset>
+        <fieldset class="settings-group"><legend>🔗 Cấu hình Cohere (Command A+ & Command A Reasoning)</legend>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div><label class="field-label">Cohere API Key:</label><input type="password" id="cohere-key-input" placeholder="Nhập Cohere API Key..." class="modern-input"></div>
+          </div>
+        </fieldset>
       </div>
     </div>
     <div id="search-modal" class="modal-box"><div class="modal-header"><h3>🔍 Tìm kiếm nâng cao</h3><button id="close-search-modal" class="close-btn">&times;</button></div><div style="padding:20px;"><input type="text" id="global-search-input" placeholder="Nhập từ khóa cần quét..." class="modern-input" style="width:100%;margin-bottom:12px;"><div id="search-results" style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div></div></div>
@@ -333,7 +356,9 @@
          'mistral-medium-latest',
          'mistral-medium-3-5',
          'mistral-small-2603',
-         'zai-glm-4.7'
+         'zai-glm-4.7',
+         'command-a-plus',
+         'command-a-reasoning'
     ];
     
     // CHỈ THỊ TRÍCH XUẤT TỪ KHÓA CHUẨN ĐỂ SỬ DỤNG CHO CÁC BƯỚC TRA CỨU INTERNET CỦA AI
@@ -415,6 +440,7 @@ QUY TẮC TỐI CAO:
         const grk = document.getElementById('groq-key-input');
         const msk = document.getElementById('mistral-key-input');
         const crk = document.getElementById('cerebras-key-input');
+        const cok = document.getElementById('cohere-key-input');
         
         if(dkg) dkg.value = localStorage.getItem('dify_key_gemini') || '';
         if(dko) dko.value = localStorage.getItem('dify_key_opus') || '';
@@ -426,6 +452,7 @@ QUY TẮC TỐI CAO:
         if(grk) grk.value = localStorage.getItem('groq_api_key') || '';
         if(msk) msk.value = localStorage.getItem('mistral_api_key') || '';
         if(crk) crk.value = localStorage.getItem('cerebras_api_key') || '';
+        if(cok) cok.value = localStorage.getItem('cohere_api_key') || '';
     }
 
     setupUIForKeys(); 
@@ -441,6 +468,7 @@ QUY TẮC TỐI CAO:
         localStorage.setItem('groq_api_key', document.getElementById('groq-key-input').value.trim());
         localStorage.setItem('mistral_api_key', document.getElementById('mistral-key-input').value.trim());
         localStorage.setItem('cerebras_api_key', document.getElementById('cerebras-key-input').value.trim());
+        localStorage.setItem('cohere_api_key', document.getElementById('cohere-key-input').value.trim());
         initAPIKeys(); 
         initDifyConfig();
         showToast(`Đã lưu cấu hình hệ thống!`); 
@@ -1124,6 +1152,149 @@ QUY TẮC TỐI CAO:
         }
     }
 
+    async function callCohereStream(promptText, onChunk, onError) {
+        const key = localStorage.getItem('cohere_api_key') || '';
+        if (!key) {
+            onError(new Error("Thiếu Cohere API Key trong Cấu hình!"));
+            return;
+        }
+
+        try {
+            const activeModel = DOM.model.value;
+            let modelSlug = "command-a-plus-05-2026";
+            if (activeModel === 'command-a-reasoning') {
+                modelSlug = "command-a-reasoning-08-2025";
+            }
+
+            const messages = buildStructuredMessages(promptText);
+            const payload = {
+                model: modelSlug,
+                messages: messages,
+                temperature: 0.7,
+                top_p: 1.0,
+                max_tokens: 4096, // Cấu hình giới hạn đầu ra tối ưu cho Cohere Free API
+                stream: true
+            };
+
+            const response = await fetch("https://api.cohere.ai/compatibility/v1/chat/completions", {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${key}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                let errMsg = `HTTP Lỗi ${response.status}`;
+                try {
+                    const errJSON = JSON.parse(await response.text());
+                    if (errJSON.error && errJSON.error.message) {
+                        errMsg = errJSON.error.message;
+                    }
+                } catch(e) {}
+                throw new Error(errMsg);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            let inThinkingState = false;
+            let thinkingPlaceholderAdded = false;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    if (inThinkingState) {
+                        onChunk("\n</think>\n\n");
+                    }
+                    break;
+                }
+                buffer += decoder.decode(value, { stream: true });
+
+                const lines = buffer.split("\n");
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith("data:")) {
+                        const dataContent = trimmed.slice(5).trim();
+                        if (dataContent === "[DONE]") continue;
+                        try {
+                            const parsed = JSON.parse(dataContent);
+                            const delta = parsed.choices[0].delta;
+                            if (delta) {
+                                let chunkText = "";
+                                
+                                // Hỗ trợ gộp luồng suy luận của Cohere (Command A / Command A Reasoning)
+                                let isReasoningChunk = false;
+                                if (delta.reasoning_content || delta.reasoning) {
+                                    isReasoningChunk = true;
+                                }
+
+                                if (delta.content) {
+                                    if (typeof delta.content === 'string') {
+                                        if (delta.content.includes('<think>')) {
+                                            isReasoningChunk = true;
+                                        }
+                                        chunkText += delta.content;
+                                    } else if (Array.isArray(delta.content)) {
+                                        for (const item of delta.content) {
+                                            if (item.type === 'thinking') {
+                                                isReasoningChunk = true;
+                                            }
+                                        }
+                                    } else if (typeof delta.content === 'object' && delta.content !== null) {
+                                        if (delta.content.type === 'thinking') {
+                                            isReasoningChunk = true;
+                                        }
+                                    }
+                                }
+
+                                if (isReasoningChunk) {
+                                    if (!thinkingPlaceholderAdded) {
+                                        chunkText = "<think>Đang suy luận...</think>\n\n";
+                                        thinkingPlaceholderAdded = true;
+                                        inThinkingState = true;
+                                    } else {
+                                        chunkText = "";
+                                    }
+                                } else {
+                                    if (inThinkingState) {
+                                        inThinkingState = false;
+                                    }
+                                    
+                                    if (delta.content) {
+                                        if (typeof delta.content === 'string') {
+                                            chunkText = delta.content.replace(/<\/think>/g, ""); // Dọn dẹp thẻ đóng nếu bị tràn
+                                        } else if (Array.isArray(delta.content)) {
+                                            chunkText = "";
+                                            for (const item of delta.content) {
+                                                if (item.type === 'text' && item.text) {
+                                                    chunkText += item.text;
+                                                }
+                                            }
+                                        } else if (typeof delta.content === 'object' && delta.content !== null) {
+                                            if (delta.content.type === 'text' && delta.content.text) {
+                                                chunkText = delta.content.text;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (chunkText) {
+                                    onChunk(chunkText);
+                                }
+                            }
+                        } catch (e) {}
+                    }
+                }
+            }
+        } catch (err) {
+            onError(err);
+        }
+    }
+
     window.forkSession=async i=>{if(!confirm("Tạo nhánh hội thoại từ đây?"))return; const c=sessions.find(s=>s.id===activeId), nId='s_'+Date.now(), nSess={...c,id:nId,name:c.name+" (Nhánh)",his:chatHistory.slice(0,i+1),orderIndex:0}; sessions.unshift(nSess); sessions.forEach((s,j)=>{s.orderIndex=j;saveToDB(s);}); await switchSess(nId); showToast("Đã rẽ nhánh!");};
 
     // CHỨC NĂNG ENHANCE PROMPT ĐÃ ĐƯỢC CHỈNH LẠI CHỈ THỊ CHUẨN (KHÔNG BỊ RA CHUỒI TỪ KHÓA)
@@ -1401,6 +1572,8 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                          await callOpenRouterStream(agentPrompt, onChunkCallback, onErrorCallback, onCommentCallback);
                      } else if (DOM.model.value === 'mistral-medium-latest' || DOM.model.value === 'mistral-medium-3-5' || DOM.model.value === 'mistral-small-2603') {
                          await callMistralStream(agentPrompt, onChunkCallback, onErrorCallback);
+                     } else if (DOM.model.value === 'command-a-plus' || DOM.model.value === 'command-a-reasoning') {
+                         await callCohereStream(agentPrompt, onChunkCallback, onErrorCallback);
                      } else if (DOM.model.value === 'zai-glm-4.7') {
                          await callCerebrasStream(agentPrompt, onChunkCallback, onErrorCallback);
                      } else {
@@ -1538,6 +1711,8 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                       await callOpenRouterStream(fnP, onChunkCallback, onErrorCallback, onCommentCallback);
                    } else if (DOM.model.value === 'mistral-medium-latest' || DOM.model.value === 'mistral-medium-3-5' || DOM.model.value === 'mistral-small-2603') {
                       await callMistralStream(fnP, onChunkCallback, onErrorCallback);
+                   } else if (DOM.model.value === 'command-a-plus' || DOM.model.value === 'command-a-reasoning') {
+                      await callCohereStream(fnP, onChunkCallback, onErrorCallback);
                    } else if (DOM.model.value === 'zai-glm-4.7') {
                       await callCerebrasStream(fnP, onChunkCallback, onErrorCallback);
                    } else {
