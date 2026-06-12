@@ -231,7 +231,7 @@
         </fieldset>
         <fieldset class="settings-group"><legend>🔑 Cấu hình 10 API Keys</legend>
           <div class="api-keys-grid" id="api-keys-container" style="margin-bottom:10px;"></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;"><button id="btn-save-keys" class="btn primary" style="padding:8px 16px;">💾 Lưu cấu hình Keys</button><span id="key-status-msg" style="font-size:.85rem;font-weight:bold;"></span></div>
+          <div style="display:flex;justify-between;align-items:center;flex-wrap:wrap;gap:10px;"><button id="btn-save-keys" class="btn primary" style="padding:8px 16px;">💾 Lưu cấu hình Keys</button><span id="key-status-msg" style="font-size:.85rem;font-weight:bold;"></span></div>
         </fieldset>
         <fieldset class="settings-group"><legend>🔗 Cấu hình Dify (Hệ thống 3 ứng dụng liên kết)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
@@ -863,7 +863,7 @@ QUY TẮC TỐI CAO:
                 buffer = lines.pop();
 
                 for (const line of lines) {
-                    const trimmed = line.trimmed();
+                    const trimmed = line.trim(); // Đã hiệu chỉnh sửa hoàn toàn lỗi cú pháp từ line.trimmed() thành line.trim()
                     if (trimmed.startsWith("data:")) {
                         const dataContent = trimmed.slice(5).trim();
                         if (dataContent === "[DONE]") continue;
@@ -1580,7 +1580,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
     function renderFiles(){DOM.previewGrid.innerHTML=''; DOM.previewBox.style.display=(filesData.length||txtContent)?'block':'none'; DOM.fileCount.innerText=filesData.length+(txtContent?1:0); filesData.forEach((f,i)=>{const w=document.createElement('div'); w.innerHTML=`<div style="position:relative;width:50px;height:50px;background:#333;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;">${f.type.startsWith('image')?`<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`:'MP4'}<button onclick="rmImg(${i})" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;">✕</button></div>`; DOM.previewGrid.appendChild(w);});}
     window.rmImg=i=>{filesData.splice(i,1); renderFiles();}; DOM.clearFilesBtn.onclick=()=>{filesData=[]; txtContent=""; DOM.textFileList.innerHTML=""; renderFiles();};
     async function readPDF(f){const p=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise; let t=""; for(let i=1;i<=p.numPages;i++)t+=(await(await p.getPage(i)).getTextContent()).items.map(x=>x.str).join(' ')+"\n"; return t;}
-    window.exportChatDoc=()=>{let h=`<html><head><meta charset='utf-8'></head><body><h2>Phiên: ${sessions.find(s=>s.id===activeId).name}</h2>`; chatHistory.forEach(m=>{h+=`<p><b>${m.role==='user'?'Bạn':'Javiss'}:</b><br/> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</p><hr>`;}); h+="</body></html>"; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff',h],{type:'text/html'})); a.download=`Javiss_Chat_${Date.now()}.doc`; a.click();};
+    window.exportChatDoc=()=>{let h=`<html><head><meta charset='utf-8'></head><body><h2>Phiên: ${sessions.find(s=>s.id===activeId).name}</h2>`; chatHistory.forEach(m=>{h+=`<p><b>${m.role==='user'?'Bạn':'Javiss'}:</b><br/> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</p><hr>`;}); h+="</body></html>"; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff',h],{type:'text/html'})); a.download=$`Javiss_Chat_${Date.now()}.doc`; a.click();};
     window.exportChatPDF=()=>{const e=document.createElement('div'); e.innerHTML=`<h2>Phiên: ${sessions.find(s=>s.id===activeId).name}</h2>`; chatHistory.forEach(m=>{e.innerHTML+=`<div style="margin-bottom:15px; font-family:sans-serif;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</div><hr>`;}); html2pdf().set({margin:10,filename:`Javiss_Chat_${Date.now()}.pdf`,html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(e).save(); showToast('Đang tạo PDF...');};
     function showToast(m,t='success'){DOM.toast.innerText=m; DOM.toast.className=`toast ${t==='error'?'danger':t} show`; setTimeout(()=>DOM.toast.classList.remove('show'),2000);}
     async function fileToPart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>r({inlineData:{data:rd.result.split(',')[1],mimeType:f.type}}); rd.readAsDataURL(f);});}
