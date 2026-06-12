@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AI Workshop</title>
+  <title>HK Workshop</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -27,7 +27,10 @@
     .main-content{flex:1;height:100%;display:flex;flex-direction:column;background:var(--bg-main);position:relative;overflow:hidden}
     .main-header{height:56px;min-height:56px;padding:0 20px;display:flex;justify-content:space-between;align-items:center;background:var(--bg-main);border-bottom:1px solid rgba(0,0,0,0.05)}
     .header-left,.header-right{display:flex;align-items:center;gap:12px}
-    .logo-text{font-size:1.05rem;font-weight:600} /* Làm nhỏ và tinh gọn chữ AI Workshop */
+    
+    /* Thiết kế tiêu đề HK Workshop mảnh mai, thanh thoát và hiện đại */
+    .logo-text{font-size:0.95rem;font-weight:300;text-transform:uppercase;letter-spacing:0.5px} 
+    
     #tabs-container{display:flex;overflow-x:auto;background:var(--bg-sidebar);border-bottom:1px solid var(--border);min-height:36px;scrollbar-width:none}
     #tabs-container::-webkit-scrollbar{display:none}
     .tab-item{padding:8px 14px;font-size:.85rem;color:var(--text-muted);cursor:pointer;border-right:1px solid var(--border);display:flex;align-items:center;gap:6px;white-space:nowrap;background:rgba(0,0,0,0.02)}
@@ -70,10 +73,45 @@
     .field-label{font-size:.85rem;font-weight:600;display:block;margin-bottom:6px}
     .slider-row{display:flex;flex-direction:column;gap:4px;font-size:.85rem}
     .slider-row input{width:100%;accent-color:var(--primary)}
-    .header-search-bar{display:flex;align-items:center;background:var(--input-bg);border:1px solid var(--border);border-radius:20px;padding:2px 4px 2px 12px}
-    .header-search-bar input{background:transparent;border:none;outline:none;color:var(--text-main);font-size:.85rem;width:75px;transition:var(--transition)}
-    .header-search-bar input:focus{width:120px}
-    .search-trigger-btn{background:transparent;border:none;cursor:pointer;padding:4px 8px;font-size:1rem}
+    
+    /* Thiết kế thanh tìm kiếm thu gọn thông minh (UX Expandable Search) */
+    .header-search-bar {
+      display: flex;
+      align-items: center;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2px;
+      transition: var(--transition);
+      position: relative;
+    }
+    .header-search-bar input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-main);
+      font-size: .85rem;
+      width: 0px;
+      opacity: 0;
+      transition: var(--transition);
+      padding: 0;
+    }
+    .header-search-bar.active input {
+      width: 120px;
+      opacity: 1;
+      padding-left: 10px;
+    }
+    .search-trigger-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 6px 10px;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
     .sidebar-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);z-index:990}
     .mobile-only{display:none}
     @media(max-width:768px){.sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%)}.sidebar.active{transform:translateX(0)}.sidebar-overlay.active{display:block}.mobile-only{display:block}.user-message{max-width:95%}.bottom-input-panel{padding:10px 12px;width:calc(100% - 16px);margin-bottom:env(safe-area-inset-bottom,12px)}#user-input{min-height:44px}}
@@ -155,6 +193,7 @@
               <option value="gemini-3.5-flash-dify">Gemini 3.5 Flash (Dify)</option>
               <option value="opus-4-dify">Claude 4 Opus (Dify)</option>
               <option value="gpt-5.5-dify">GPT-5.5 (Dify)</option>
+              <option value="gemini-3.1-pro-dify">Gemini 3.1 Pro Preview (Dify)</option>
               <option value="nemotron-ultra-openrouter">Nemotron 3 Ultra (OpenRouter - Free)</option>
               <option value="nemotron-nano-openrouter">Nemotron 3 Nano (OpenRouter - Free)</option>
               <option value="llama-4-scout-groq">Llama 4 Scout (Groq)</option>
@@ -175,9 +214,12 @@
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
     <main class="main-content">
       <header class="main-header">
-        <div class="header-left"><button id="toggle-sidebar-btn" class="icon-btn mobile-only">☰</button><h1 class="logo-text">AI Workshop</h1></div>
+        <div class="header-left"><button id="toggle-sidebar-btn" class="icon-btn mobile-only">☰</button><h1 class="logo-text">HK Workshop</h1></div>
         <div class="header-right">
-          <div class="header-search-bar"><input type="text" id="search-chat-input" placeholder="Tìm kiếm..."><button id="btn-global-search" class="search-trigger-btn" title="Tìm toàn bộ phiên">🔍</button></div>
+          <div class="header-search-bar">
+            <input type="text" id="search-chat-input" placeholder="Tìm kiếm...">
+            <button id="btn-global-search" class="search-trigger-btn" title="Tìm toàn bộ phiên">🔍</button>
+          </div>
           <button id="btn-theme" class="btn" style="padding:6px 12px;font-size:.85rem;min-width:85px;" title="Chuyển chế độ Sáng/Tối/Tự động">🌙 Tự động</button>
         </div>
       </header>
@@ -231,13 +273,14 @@
         </fieldset>
         <fieldset class="settings-group"><legend>🔑 Cấu hình 10 API Keys</legend>
           <div class="api-keys-grid" id="api-keys-container" style="margin-bottom:10px;"></div>
-          <div style="display:flex;justify-between;align-items:center;flex-wrap:wrap;gap:10px;"><button id="btn-save-keys" class="btn primary" style="padding:8px 16px;">💾 Lưu cấu hình Keys</button><span id="key-status-msg" style="font-size:.85rem;font-weight:bold;"></span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;"><button id="btn-save-keys" class="btn primary" style="padding:8px 16px;">💾 Lưu cấu hình Keys</button><span id="key-status-msg" style="font-size:.85rem;font-weight:bold;"></span></div>
         </fieldset>
-        <fieldset class="settings-group"><legend>🔗 Cấu hình Dify (Hệ thống 3 ứng dụng liên kết)</legend>
+        <fieldset class="settings-group"><legend>🔗 Cấu hình Dify (Hệ thống ứng dụng liên kết)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">Dify Key - Gemini 3.5 Flash:</label><input type="password" id="dify-key-gemini" placeholder="Nhập Key (app-...)" class="modern-input"></div>
             <div><label class="field-label">Dify Key - Claude 4 Opus:</label><input type="password" id="dify-key-opus" placeholder="Nhập Key (app-...)" class="modern-input"></div>
             <div><label class="field-label">Dify Key - GPT-5.5:</label><input type="password" id="dify-key-gpt" placeholder="Nhập Key (app-...)" class="modern-input"></div>
+            <div><label class="field-label">Dify Key - Gemini 3.1 Pro Preview:</label><input type="password" id="dify-key-pro" placeholder="Nhập Key (app-...)" class="modern-input"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <div><label class="field-label">Dify API Endpoint:</label><input type="text" id="dify-endpoint-input" placeholder="https://api.dify.ai/v1" value="https://api.dify.ai/v1" class="modern-input"></div>
               <div><label class="field-label">Tên biến đầu vào (Variable Key):</label>
@@ -365,6 +408,7 @@ QUY TẮC TỐI CAO:
         const dkg = document.getElementById('dify-key-gemini');
         const dko = document.getElementById('dify-key-opus');
         const dkp = document.getElementById('dify-key-gpt');
+        const dkp_pro = document.getElementById('dify-key-pro');
         const de = document.getElementById('dify-endpoint-input');
         const dv = document.getElementById('dify-var-input');
         const ork = document.getElementById('openrouter-key-input');
@@ -375,6 +419,7 @@ QUY TẮC TỐI CAO:
         if(dkg) dkg.value = localStorage.getItem('dify_key_gemini') || '';
         if(dko) dko.value = localStorage.getItem('dify_key_opus') || '';
         if(dkp) dkp.value = localStorage.getItem('dify_key_gpt') || '';
+        if(dkp_pro) dkp_pro.value = localStorage.getItem('dify_key_pro') || '';
         if(de) de.value = localStorage.getItem('dify_api_endpoint') || 'https://api.dify.ai/v1';
         if(dv) dv.value = localStorage.getItem('dify_var_key') || 'query';
         if(ork) ork.value = localStorage.getItem('openrouter_api_key') || '';
@@ -389,6 +434,7 @@ QUY TẮC TỐI CAO:
         localStorage.setItem('dify_key_gemini', document.getElementById('dify-key-gemini').value.trim());
         localStorage.setItem('dify_key_opus', document.getElementById('dify-key-opus').value.trim());
         localStorage.setItem('dify_key_gpt', document.getElementById('dify-key-gpt').value.trim());
+        localStorage.setItem('dify_key_pro', document.getElementById('dify-key-pro').value.trim());
         localStorage.setItem('dify_api_endpoint', document.getElementById('dify-endpoint-input').value.trim());
         localStorage.setItem('dify_var_key', document.getElementById('dify-var-input').value.trim());
         localStorage.setItem('openrouter_api_key', document.getElementById('openrouter-key-input').value.trim());
@@ -405,7 +451,8 @@ QUY TẮC TỐI CAO:
     document.getElementById('btn-detect-dify-var').onclick = async () => {
         const key = document.getElementById('dify-key-gemini').value.trim() || 
                     document.getElementById('dify-key-opus').value.trim() || 
-                    document.getElementById('dify-key-gpt').value.trim();
+                    document.getElementById('dify-key-gpt').value.trim() ||
+                    document.getElementById('dify-key-pro').value.trim();
         let endpoint = document.getElementById('dify-endpoint-input').value.trim();
         if (!key) return showToast("Vui lòng nhập ít nhất một Dify API Key!", "warning");
         
@@ -506,6 +553,8 @@ QUY TẮC TỐI CAO:
             key = localStorage.getItem('dify_key_opus') || '';
         } else if (activeModel === 'gpt-5.5-dify') {
             key = localStorage.getItem('dify_key_gpt') || '';
+        } else if (activeModel === 'gemini-3.1-pro-dify') {
+            key = localStorage.getItem('dify_key_pro') || '';
         }
         
         let endpoint = localStorage.getItem('dify_api_endpoint') || 'https://api.dify.ai/v1';
@@ -637,11 +686,7 @@ QUY TẮC TỐI CAO:
                 
                 for (const line of lines) {
                     const trimmed = line.trim();
-                    if (trimmed.startsWith(":")) {
-                        if (trimmed.toLowerCase().includes("processing") && onComment) {
-                            onComment("Đang xếp hàng chờ xử lý (OpenRouter Queue)...");
-                        }
-                    } else if (trimmed.startsWith("data:")) {
+                    if (trimmed.startsWith("data:")) {
                         const dataContent = trimmed.slice(5).trim();
                         if (dataContent === "[DONE]") continue;
                         try {
@@ -1580,10 +1625,37 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
     function renderFiles(){DOM.previewGrid.innerHTML=''; DOM.previewBox.style.display=(filesData.length||txtContent)?'block':'none'; DOM.fileCount.innerText=filesData.length+(txtContent?1:0); filesData.forEach((f,i)=>{const w=document.createElement('div'); w.innerHTML=`<div style="position:relative;width:50px;height:50px;background:#333;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;">${f.type.startsWith('image')?`<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`:'MP4'}<button onclick="rmImg(${i})" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;">✕</button></div>`; DOM.previewGrid.appendChild(w);});}
     window.rmImg=i=>{filesData.splice(i,1); renderFiles();}; DOM.clearFilesBtn.onclick=()=>{filesData=[]; txtContent=""; DOM.textFileList.innerHTML=""; renderFiles();};
     async function readPDF(f){const p=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise; let t=""; for(let i=1;i<=p.numPages;i++)t+=(await(await p.getPage(i)).getTextContent()).items.map(x=>x.str).join(' ')+"\n"; return t;}
-    window.exportChatDoc=()=>{let h=`<html><head><meta charset='utf-8'></head><body><h2>Phiên: ${sessions.find(s=>s.id===activeId).name}</h2>`; chatHistory.forEach(m=>{h+=`<p><b>${m.role==='user'?'Bạn':'Javiss'}:</b><br/> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</p><hr>`;}); h+="</body></html>"; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff',h],{type:'text/html'})); a.download=$`Javiss_Chat_${Date.now()}.doc`; a.click();};
+    window.exportChatDoc=()=>{let h=`<html><head><meta charset='utf-8'></head><body><h2>Phiên: ${sessions.find(s=>s.id===activeId).name}</h2>`; chatHistory.forEach(m=>{h+=`<p><b>${m.role==='user'?'Bạn':'Javiss'}:</b><br/> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</p><hr>`;}); h+="</body></html>"; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff',h],{type:'text/html'})); a.download=`Javiss_Chat_${Date.now()}.doc`; a.click();};
     window.exportChatPDF=()=>{const e=document.createElement('div'); e.innerHTML=`<h2>Phiên: ${sessions.find(s=>s.id===activeId).name}</h2>`; chatHistory.forEach(m=>{e.innerHTML+=`<div style="margin-bottom:15px; font-family:sans-serif;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</div><hr>`;}); html2pdf().set({margin:10,filename:`Javiss_Chat_${Date.now()}.pdf`,html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(e).save(); showToast('Đang tạo PDF...');};
     function showToast(m,t='success'){DOM.toast.innerText=m; DOM.toast.className=`toast ${t==='error'?'danger':t} show`; setTimeout(()=>DOM.toast.classList.remove('show'),2000);}
     async function fileToPart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>r({inlineData:{data:rd.result.split(',')[1],mimeType:f.type}}); rd.readAsDataURL(f);});}
+    
+    // Xử lý đóng/mở thanh tìm kiếm thông minh ở Header
+    const searchBar = document.querySelector('.header-search-bar');
+    const searchInput = document.getElementById('search-chat-input');
+    const searchBtn = document.getElementById('btn-global-search');
+    
+    if (searchBtn && searchBar && searchInput) {
+        searchBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (!searchBar.classList.contains('active')) {
+                searchBar.classList.add('active');
+                searchInput.focus();
+            } else {
+                // Nếu thanh tìm kiếm đã mở, nhấp vào nút kính lúp lần nữa để kích hoạt bảng tìm kiếm nâng cao toàn cục
+                document.getElementById('search-modal').style.display = 'flex';
+                oLay.style.display = 'block';
+            }
+        };
+        
+        // Tự động thu gọn thanh tìm kiếm khi người dùng nhấp ra bất kỳ khu vực nào ngoài thanh tìm kiếm
+        document.addEventListener('click', (e) => {
+            if (!searchBar.contains(e.target)) {
+                searchBar.classList.remove('active');
+            }
+        });
+    }
+
     loadSess();
   </script>
 </body>
