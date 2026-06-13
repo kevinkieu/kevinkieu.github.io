@@ -28,7 +28,7 @@
     .main-header{height:56px;min-height:56px;padding:0 20px;display:flex;justify-content:space-between;align-items:center;background:var(--bg-main);border-bottom:1px solid rgba(0,0,0,0.05)}
     .header-left,.header-right{display:flex;align-items:center;gap:12px}
     
-    /* Thiết kế tiêu đề HK Workshop mảnh mai, thanh thoát và hiện đại */
+    /* Thiết đề tiêu đề HK Workshop mảnh mai, thanh thoát và hiện đại */
     .logo-text{font-size:0.95rem;font-weight:300;text-transform:uppercase;letter-spacing:0.5px} 
     
     #tabs-container{display:flex;overflow-x:auto;background:var(--bg-sidebar);border-bottom:1px solid var(--border);min-height:36px;scrollbar-width:none}
@@ -291,7 +291,7 @@
         </fieldset>
         <fieldset class="settings-group"><legend>🔑 Cấu hình 10 API Keys</legend>
           <div class="api-keys-grid" id="api-keys-container" style="margin-bottom:10px;"></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;"><button id="btn-save-keys" class="btn primary" style="padding:8px 16px;">💾 Lưu cấu hình Keys</button><span id="key-status-msg" style="font-size:.85rem;font-weight:bold;"></span></div>
+          <div style="display:flex;justify-between;align-items:center;flex-wrap:wrap;gap:10px;"><button id="btn-save-keys" class="btn primary" style="padding:8px 16px;">💾 Lưu cấu hình Keys</button><span id="key-status-msg" style="font-size:.85rem;font-weight:bold;"></span></div>
         </fieldset>
         <fieldset class="settings-group"><legend>🔗 Cấu hình Dify (Hệ thống ứng dụng liên kết)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
@@ -379,14 +379,9 @@ QUY TẮC TỐI CAO:
       return new GoogleGenAI({ apiKey: apiKeys[idx] });
     }
 
-    // Hàm cuộn trang thông minh (Smart Scroll) khi đang stream hội thoại
+    // Hàm cập nhật nội dung chat thông minh - Giữ tĩnh vị trí để người dùng đọc từ đầu tin nhắn AI không bị giật màn hình
     function updateChatContentAndScroll(el, htmlContent) {
-        const threshold = 60; // Ngưỡng nhạy bén (60px) - Tránh giật trang khi người dùng chủ động cuộn lên đọc tin cũ
-        const wasAtBottom = (DOM.chat.scrollHeight - DOM.chat.scrollTop - DOM.chat.clientHeight) <= threshold;
         el.innerHTML = htmlContent;
-        if (wasAtBottom) {
-            DOM.chat.scrollTop = DOM.chat.scrollHeight;
-        }
     }
 
     // Hàm xây dựng mảng tin nhắn phân vai chuẩn OpenAI (Structured Chat History)
@@ -1433,7 +1428,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
 - Tuyệt đối không phủ nhận, nghi ngờ hoặc phản đối sự tồn tại của bất kỳ công nghệ, dòng mô hình AI nào (bao gồm Gemini 3.1 Flash-Lite, Gemini 3.5 Flash) hay các sự kiện xã hội, thông số phần cứng thiết bị được cấp trong ngữ cảnh. 
 - Luôn ưu tiên dùng thông tin tìm kiếm thời gian thực để cập nhật câu trả lời khi có xung đột tri thức.
 
-[THỜI GIAN HỆ THỐNG HIỆN TẠI]:
+[THỜI GIAN HỆ THỐNG HIỆY TẠI]:
 - Giờ: ${timeStr}
 - Ngày: ${dateStr}
 - Năm: ${now.getFullYear()} (Sử dụng con số năm này làm mốc chuẩn để tính toán chính xác số tuổi hoặc mốc thời gian của người dùng. Ví dụ: Người dùng ghi sinh năm 1988, thì lấy ${now.getFullYear()} - 1988 = 38 tuổi).`;
