@@ -83,6 +83,20 @@
       border-radius: 6px !important;
     }
     
+    /* Định dạng và bọc gọn đẹp cho các thẻ phân nhóm optgroup trên desktop */
+    .sidebar select.modern-select optgroup {
+      background: var(--bg-sidebar);
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.75rem;
+    }
+    .sidebar select.modern-select option {
+      background: var(--bg-card);
+      color: var(--text-main);
+      font-weight: normal;
+      font-size: 0.8rem;
+    }
+    
     /* Thiết kế thanh tìm kiếm thu gọn thông minh (UX Expandable Search) */
     .header-search-bar {
       display: flex;
@@ -196,30 +210,46 @@
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:green;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-agent" style="width:16px;height:16px;"> 🤖 Auto-Agent (Chạy chuỗi)</label>
           </div>
           <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🤖 Mô hình xử lý chính:</span>
+            
+            <!-- Đã cấu trúc phân nhóm optgroup chuẩn hóa cho Menu chọn mô hình -->
             <select id="model-select" class="modern-select">
-              <option value="gemini-3.5-flash" selected>Gemini 3.5 Flash</option>
-              <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+              <optgroup label="🌐 Nền tảng Dify">
+                <option value="gemini-3.5-flash-dify" selected>Gemini 3.5 Flash (Dify)</option>
+                <option value="gemini-3.1-flash-lite-dify">Gemini 3.1 Flash Lite (Dify)</option>
+                <option value="gemini-3.1-pro-dify">Gemini 3.1 Pro Preview (Dify)</option>
+                <option value="gpt-5.5-dify">GPT-5.5 (Dify)</option>
+                <option value="opus-4-dify">Claude 4 Opus (Dify)</option>
+              </optgroup>
               
-              <!-- Mô hình Dify đã được sắp xếp liền kề nhau: Gemini -> GPT -> Claude -->
-              <option value="gemini-3.5-flash-dify">Gemini 3.5 Flash (Dify)</option>
-              <option value="gemini-3.1-flash-lite-dify">Gemini 3.1 Flash Lite (Dify)</option>
-              <option value="gemini-3.1-pro-dify">Gemini 3.1 Pro Preview (Dify)</option>
-              <option value="gpt-5.5-dify">GPT-5.5 (Dify)</option>
-              <option value="opus-4-dify">Claude 4 Opus (Dify)</option>
+              <optgroup label="✨ Google Gemini (Trực tiếp)">
+                <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+              </optgroup>
               
-              <option value="nemotron-ultra-openrouter">Nemotron 3 Ultra (OpenRouter - Free)</option>
-              <option value="nemotron-nano-openrouter">Nemotron 3 Nano (OpenRouter - Free)</option>
-              <option value="llama-4-scout-groq">Llama 4 Scout (Groq)</option>
-              <option value="openai/gpt-oss-120b">GPT-OSS 120B (Groq - Reasoning)</option>
-              <option value="mistral-medium-latest">Mistral Medium (Mistral - Standard)</option>
-              <option value="mistral-medium-3-5">Mistral Medium 3.5 (Mistral - Reasoning)</option>
-              <option value="mistral-small-2603">Mistral Small 4 (Mistral - Reasoning)</option>
+              <optgroup label="🚀 OpenRouter (Free)">
+                <option value="nemotron-ultra-openrouter">Nemotron 3 Ultra (OpenRouter - Free)</option>
+                <option value="nemotron-nano-openrouter">Nemotron 3 Nano (OpenRouter - Free)</option>
+              </optgroup>
               
-              <!-- 2 Mô hình Cohere mới được tích hợp -->
-              <option value="command-a-plus">Command A+ (Cohere - Multimodal)</option>
-              <option value="command-a-reasoning">Command A Reasoning (Cohere - Reasoning)</option>
+              <optgroup label="⚡ Groq Inference">
+                <option value="llama-4-scout-groq">Llama 4 Scout (Groq)</option>
+                <option value="openai/gpt-oss-120b">GPT-OSS 120B (Groq - Reasoning)</option>
+              </optgroup>
               
-              <option value="zai-glm-4.7">Z.ai GLM 4.7 (Cerebras - Reasoning)</option>
+              <optgroup label="🌀 Mistral AI">
+                <option value="mistral-medium-latest">Mistral Medium (Mistral - Standard)</option>
+                <option value="mistral-medium-3-5">Mistral Medium 3.5 (Mistral - Reasoning)</option>
+                <option value="mistral-small-2603">Mistral Small 4 (Mistral - Reasoning)</option>
+              </optgroup>
+              
+              <optgroup label="🍁 Nền tảng Cohere">
+                <option value="command-a-plus">Command A+ (Cohere - Multimodal)</option>
+                <option value="command-a-reasoning">Command A Reasoning (Cohere - Reasoning)</option>
+              </optgroup>
+              
+              <optgroup label="🧠 Cerebras (Z.ai)">
+                <option value="zai-glm-4.7">Z.ai GLM 4.7 (Cerebras - Reasoning)</option>
+              </optgroup>
             </select>
           </div>
           
@@ -318,7 +348,7 @@
             </div>
           </div>
         </fieldset>
-        <fieldset class="settings-group"><legend>🔗 Cấu hình OpenRouter (Nemotron 3 Nano)</legend>
+        <fieldset class="settings-group"><legend>🔗 Cấu hình OpenRouter (Nemotron & Qwen 3)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">OpenRouter API Key:</label><input type="password" id="openrouter-key-input" placeholder="Nhập OpenRouter API Key (sk-or-...)" class="modern-input"></div>
           </div>
@@ -359,6 +389,8 @@
     
     let apiKeys=[], globalKeyIndex = 0;
     const SAFETY=[{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}];
+    
+    // Đã gỡ bỏ qwen-next-openrouter để tránh lỗi bảo mật origin file:// của Android WebView
     const externalModels = [
          'nemotron-ultra-openrouter',
          'nemotron-nano-openrouter',
@@ -387,7 +419,7 @@ QUY TẮC TỐI CAO:
 
     function getAIInstance(idx) {
       if (!apiKeys[idx]) return null;
-      return new GoogleGenAI({ apiKey: apiKeys[idx] });
+      return new GoogleGenAI({ apiKey: currentKey });
     }
 
     // Hàm cập nhật nội dung chat thông minh - Giữ tĩnh vị trí để người dùng đọc từ đầu tin nhắn AI không bị giật màn hình
@@ -706,7 +738,7 @@ QUY TẮC TỐI CAO:
         }
         
         try {
-            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash';
+            const activeModel = DOM.model ? DOM.model.value : '';
             let modelSlug = "nvidia/nemotron-3-ultra-550b-a55b:free";
             if (activeModel === 'nemotron-nano-openrouter') {
                 modelSlug = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free";
@@ -717,7 +749,9 @@ QUY TẮC TỐI CAO:
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${key}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': window.location.origin || 'https://hkworkshop.ai', // Đã bọc định danh an toàn để WebView không bị Cloudflare quét chặn
+                    'X-Title': 'HK Workshop'
                 },
                 body: JSON.stringify({
                     model: modelSlug,
@@ -1446,7 +1480,7 @@ QUY TẮC TỐI CAO:
           if(DOM.topK) DOM.topK.value=s.top||40; 
           if(DOM.thinking) DOM.thinking.value=s.thk||'medium';
           if(DOM.toggleSearch) DOM.toggleSearch.checked=s.sch||false; 
-          if(DOM.toggleMemory) DOM.toggleMemory.checked=DOM.toggleMemory.checked=s.mem!==false; 
+          if(DOM.toggleMemory) DOM.toggleMemory.checked=s.mem!==false; 
           if(DOM.memLen) DOM.memLen.value=s.memLen||20; 
           if(DOM.toggleVectorDB) DOM.toggleVectorDB.checked=s.vec||false; 
           if(DOM.toggleAgent) DOM.toggleAgent.checked=s.agt||false;
