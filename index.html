@@ -18,7 +18,7 @@
     body{display:flex;width:100vw;height:100dvh;background:var(--bg-main);color:var(--text-main);overflow:hidden}
     .app-container{display:flex;width:100%;height:100%;position:relative}
     .sidebar{width:280px;min-width:280px;background:var(--bg-sidebar);height:100%;display:flex;flex-direction:column;border-right:1px solid var(--border);z-index:999;transition:var(--transition)}
-    .sidebar-header{padding:18px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(0,0,0,0.05)}
+    .sidebar-header{padding:18px 16px;display:flex;justify-between:space-between;align-items:center;border-bottom:1px solid rgba(0,0,0,0.05)}
     .sidebar-scroll-content{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:16px}
     .sidebar-section{display:flex;flex-direction:column;gap:6px}
     .flex-grow-section{flex:1;display:flex;flex-direction:column}
@@ -419,7 +419,7 @@ QUY TẮC TỐI CAO:
 
     function getAIInstance(idx) {
       if (!apiKeys[idx]) return null;
-      return new GoogleGenAI({ apiKey: currentKey });
+      return new GoogleGenAI({ apiKey: apiKeys[idx] });
     }
 
     // Hàm cập nhật nội dung chat thông minh - Giữ tĩnh vị trí để người dùng đọc từ đầu tin nhắn AI không bị giật màn hình
@@ -649,7 +649,37 @@ QUY TẮC TỐI CAO:
         return serialized;
     }
 
-    async function callDifyStream(promptText, onChunk, onError) {
+    // Các hàm phụ trợ hỗ trợ tải tệp độc lập cho Dify Vision
+    async function uploadFileToDify(file, endpoint, apiKey) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('user', "javiss_user_" + Date.now());
+
+        const res = await fetch(`${endpoint}/files/upload`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: formData
+        });
+
+        if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`Upload file lên Dify thất bại: ${res.status} - ${errText}`);
+        }
+
+        return await res.json();
+    }
+
+    function getDifyFileType(mimeType) {
+        if (!mimeType) return 'document';
+        if (mimeType.startsWith('image/')) return 'image';
+        if (mimeType.startsWith('audio/')) return 'audio';
+        if (mimeType.startsWith('video/')) return 'video';
+        return 'document';
+    }
+
+    async function callDifyStream(promptText, onChunk, onError, attachedFiles = []) {
         const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash';
         let key = '';
         if (activeModel === 'gemini-3.5-flash-dify') {
@@ -673,21 +703,43 @@ QUY TẮC TỐI CAO:
         }
         endpoint = endpoint.replace(/\/+$/, '');
         
-        const inputs = {};
-        inputs[varKey] = promptText;
-        
         try {
+            // Bước 1: Upload tuần tự các file đính kèm lên máy chủ Dify (nếu có) để lấy upload_file_id
+            const difyFiles = [];
+            if (attachedFiles && attachedFiles.length > 0) {
+                for (const file of attachedFiles) {
+                    const uploadResult = await uploadFileToDify(file, endpoint, key);
+                    if (uploadResult && uploadResult.id) {
+                        difyFiles.push({
+                            type: getDifyFileType(file.type),
+                            transfer_method: "local_file",
+                            upload_file_id: uploadResult.id
+                        });
+                    }
+                }
+            }
+
+            // Bước 2: Đóng gói biến đầu vào và danh sách file ID gửi yêu cầu sinh văn bản
+            const inputs = {};
+            inputs[varKey] = promptText;
+            
+            const payload = {
+                inputs: inputs,
+                response_mode: "streaming",
+                user: "javiss_user_" + Date.now()
+            };
+            
+            if (difyFiles.length > 0) {
+                payload.files = difyFiles;
+            }
+
             const response = await fetch(`${endpoint}/completion-messages`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${key}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    inputs: inputs,
-                    response_mode: "streaming",
-                    user: "javiss_user_" + Date.now()
-                })
+                body: JSON.stringify(payload)
             });
             
             if (!response.ok) {
@@ -1504,7 +1556,7 @@ QUY TẮC TỐI CAO:
     const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
     const ai=new GoogleGenAI({ apiKey: currentKey }); const res=await ai.models.generateContent({model:"gemini-3.1-flash-lite", contents:`Tóm tắt cấu trúc hội thoại:\n\n${t}`}); chatHistory=[{role:'user',text:`[Tóm tắt]: \n${res.text}`},{role:'model',text:'Đã nhớ.'},...r]; const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); } showToast("Nén thành công!"); break;}catch(e){a++;}}};
     
-    // Đã vá triệt để lỗi s.top=DOM.top=DOM.topK.value bằng cú pháp an toàn mới kiểm tra Null
+    // Đã vá triệt độ lỗi s.top=DOM.top=DOM.topK.value bằng cú pháp an toàn mới kiểm tra Null
     async function updateConfig(){
       const s=sessions.find(x=>x.id===activeId); 
       if(s){
@@ -1682,7 +1734,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                      // Dify chỉ nhận tham số đầu vào duy nhất dạng văn bản thô
                      const si = getDynamicSI();
                      let serializedAgentPrompt = `<SystemInstruction>\n${si}\n</SystemInstruction>\n\nLƯU Ý: Hãy tuân thủ nghiêm ngặt các chỉ thị hệ thống trong thẻ <SystemInstruction> để thực hiện yêu cầu phân tích sau:\n\nYêu cầu phân tích: ${agentPrompt}`;
-                     await callDifyStream(serializedAgentPrompt, onChunkCallback, onErrorCallback);
+                     await callDifyStream(serializedAgentPrompt, onChunkCallback, onErrorCallback, imgs); // Gửi kèm imgs để tự động upload lên Dify Vision
                  } else {
                      // Đối với các API tương thích chuẩn OpenAI, truyền trực tiếp agentPrompt và để các hàm gọi tự động xây dựng mảng có phân vai chuẩn (Structured Format)
                      if (activeModel === 'nemotron-ultra-openrouter' || activeModel === 'nemotron-nano-openrouter') {
@@ -1821,7 +1873,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                    const memSize = parseInt(DOM.memLen.value) || 20;
                    let currentHistory = DOM.toggleMemory && DOM.toggleMemory.checked ? chatHistory.slice(-memSize) : [];
                    let serializedPrompt = serializeHistoryForDify(currentHistory, fnP);
-                   await callDifyStream(serializedPrompt, onChunkCallback, onErrorCallback);
+                   await callDifyStream(serializedPrompt, onChunkCallback, onErrorCallback, imgs); // Gửi kèm imgs để tự động upload lên Dify Vision
                 } else {
                    // Các nền tảng chuẩn khác truyền trực tiếp fnP. Hệ thống tự động bốc tách và đóng gói mảng tin nhắn phân vai có cấu trúc (Structured Format)
                    if (activeModel === 'nemotron-ultra-openrouter' || activeModel === 'nemotron-nano-openrouter') {
