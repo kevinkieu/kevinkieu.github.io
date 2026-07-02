@@ -28,7 +28,6 @@
     .main-header{height:56px;min-height:56px;padding:0 20px;display:flex;justify-content:space-between;align-items:center;background:var(--bg-main);border-bottom:1px solid rgba(0,0,0,0.05)}
     .header-left,.header-right{display:flex;align-items:center;gap:12px}
     
-    /* Thiết kế tiêu đề HK Workshop mảnh mai, thanh thoát và hiện đại */
     .logo-text{font-size:0.95rem;font-weight:300;text-transform:uppercase;letter-spacing:0.5px} 
     
     #tabs-container{display:flex;overflow-x:auto;background:var(--bg-sidebar);border-bottom:1px solid var(--border);min-height:36px;scrollbar-width:none}
@@ -74,7 +73,6 @@
     .slider-row{display:flex;flex-direction:column;gap:4px;font-size:.85rem}
     .slider-row input{width:100%;accent-color:var(--primary)}
     
-    /* Thiết kế các thanh chọn dropdown ở sidebar cực kỳ mảnh dẻ, gọn gàng và thanh thoát khi hiển thị */
     .sidebar select.modern-select {
       font-size: 0.8rem !important;
       padding: 5px 8px !important;
@@ -83,7 +81,6 @@
       border-radius: 6px !important;
     }
     
-    /* Định dạng và bọc gọn đẹp cho các thẻ phân nhóm optgroup trên desktop */
     .sidebar select.modern-select optgroup {
       background: var(--bg-sidebar);
       color: var(--text-muted);
@@ -97,7 +94,6 @@
       font-size: 0.8rem;
     }
     
-    /* Thiết kế thanh tìm kiếm thu gọn thông minh (UX Expandable Search) */
     .header-search-bar {
       display: flex;
       align-items: center;
@@ -147,7 +143,6 @@
     .bot-message code{background:rgba(150,150,150,0.15);padding:2px 4px;border-radius:4px;font-family:monospace;font-size:.9em}
     .bot-message pre code{background:none;padding:0}
 
-    /* Thiết kế riêng để phân tách luồng suy nghĩ của AI đẹp mắt */
     think {
       display: block;
       background: rgba(120, 120, 120, 0.05);
@@ -211,7 +206,6 @@
           </div>
           <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🤖 Mô hình xử lý chính:</span>
             
-            <!-- Đã cấu trúc phân nhóm optgroup chuẩn hóa cho Menu chọn mô hình -->
             <select id="model-select" class="modern-select">
               <optgroup label="🌐 Nền tảng Dify">
                 <option value="gemini-3.5-flash-dify" selected>Gemini 3.5 Flash (Dify)</option>
@@ -221,8 +215,8 @@
                 <option value="opus-4-dify">Claude 4 Opus (Dify)</option>
               </optgroup>
               
-              <optgroup label="✨ Google Gemini (Trực tiếp)">
-                <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+              <optgroup label="✨❤️❤️ Google">
+                                <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
                 <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
               </optgroup>
               
@@ -253,7 +247,6 @@
             </select>
           </div>
           
-          <!-- Di chuyển bộ chọn Think Depth từ cài đặt modal ra ngoài Sidebar chính để tiện sử dụng nhanh -->
           <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🧠 Độ sâu suy nghĩ (Think Depth):</span>
             <select id="thinking-level" class="modern-select">
               <option value="minimal">Min</option>
@@ -390,7 +383,6 @@
     let apiKeys=[], globalKeyIndex = 0;
     const SAFETY=[{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}];
     
-    // Đã gỡ bỏ qwen-next-openrouter để tránh lỗi bảo mật origin file:// của Android WebView
     const externalModels = [
          'nemotron-ultra-openrouter',
          'nemotron-nano-openrouter',
@@ -404,14 +396,12 @@
          'command-a-reasoning'
     ];
     
-    // CHỈ THỊ TRÍCH XUẤT TỪ KHÓA CHUỒI TỪ KHÓA TÌM KIẾM
     const keywordExtractionPrompt = `Bạn là chuyên gia tách lọc từ khóa Google Search nâng cao. Hãy phân tích yêu cầu của người dùng để trích xuất ra một chuỗi từ khóa tìm kiếm tối ưu nhất.
 QUY TẮC TỐI CAO:
 1. BẮT BUỘC giữ nguyên 100% các DANH TỪ RIÊNG, TÊN SẢN PHẨM, MÃ HIỆU, SỐ HIỆU, CON SỐ, THÔNG SỐ và MỐC NĂM (Ví dụ: iQoo Z10 Turbo Plus, chế độ Dry, chế độ Cool, năm 2026...). Tuyệt đối không tự ý giản lược, thay thế hoặc bỏ qua dựa trên dữ liệu cũ của bạn.
 2. Thêm các từ khóa bổ trợ thực tế như "thông số", "đánh giá mốc 2026", "mới nhất" để gom trúng thông tin thời gian thực.
 3. Chỉ xuất ra chuỗi từ khóa tìm kiếm cách nhau bằng khoảng trắng, KHÔNG giải thích, KHÔNG chào hỏi, KHÔNG bọc ngoặc kép.`;
 
-    // CHỈ THỊ TỐI ƯU HÓA PROMPT MỚI DÀNH RIÊNG CHO NÚT ENHANCE PROMPT
     const promptEnhancementInstruction = `Bạn là bộ chuyển đổi và tối ưu hóa Prompt chuyên nghiệp. Nhiệm vụ: Biến đổi nội dung ý tưởng thô sơ ban đầu của người dùng thành một câu lệnh Prompt hoàn chỉnh, chi tiết, viết dưới góc nhìn chuyên gia và có cấu trúc chặt chẽ để nạp cho AI đạt hiệu quả phản hồi cao nhất.
 QUY TẮC TỐI CAO:
 1. BẮT BUỘC giữ nguyên 100% các danh từ riêng, tên chế độ, tên sản phẩm, mã hiệu, số hiệu sản phẩm, mốc năm (Ví dụ: chế độ Dry, chế độ Cool, iQoo Z10, năm 2026...), các con số và thuật ngữ chuyên môn gốc. Tuyệt đối không được phép loại bỏ hoặc biến đổi chúng.
@@ -422,13 +412,10 @@ QUY TẮC TỐI CAO:
       return new GoogleGenAI({ apiKey: apiKeys[idx] });
     }
 
-    // Hàm cập nhật nội dung chat thông minh - Giữ tĩnh vị trí để người dùng đọc từ đầu tin nhắn AI không bị giật màn hình
     function updateChatContentAndScroll(el, htmlContent) {
         el.innerHTML = htmlContent;
     }
 
-    // Hàm xây dựng mảng tin nhắn phân vai chuẩn OpenAI (Structured Chat History)
-    // Giúp loại bỏ triệt để lỗi "Role Confusion" của các mô hình API bên thứ ba
     function buildStructuredMessages(promptText) {
         const messages = [];
         const si = getDynamicSI();
@@ -503,7 +490,6 @@ QUY TẮC TỐI CAO:
 
     setupUIForKeys(); 
     
-    // Đã bọc an toàn tuyệt đối các sự kiện lưu cấu hình Dify/API để tránh lỗi Cannot read properties of null
     document.getElementById('btn-save-keys').onclick=()=>{ 
         for(let i=1;i<=10;i++) {
             const el = document.getElementById(`api-key-${i}`);
@@ -592,7 +578,6 @@ QUY TẮC TỐI CAO:
 
     function applyTheme(m){ let t=m; if(m==='auto'){const h=new Date().getHours(); t=(h>=18||h<6)?'dark':'light'; DOM.btnTheme.innerText="🌙 Tự động";}else DOM.btnTheme.innerText=m==='dark'?"🌙 Tối":"☀️ Sáng"; document.documentElement.setAttribute('data-theme',t); localStorage.setItem('theme',m); } applyTheme(localStorage.getItem('theme')||'auto'); DOM.btnTheme.onclick=()=>{let c=localStorage.getItem('theme')||'auto'; applyTheme(c==='auto'?'dark':(c==='dark'?'light':'auto'));};
     
-    // Tránh lỗi nạp value rỗng nếu một số DOM di động tải chậm
     if (DOM.input) {
         DOM.input.value=localStorage.getItem('javiss_draft')||''; 
         DOM.input.addEventListener('input',()=>{
@@ -649,11 +634,10 @@ QUY TẮC TỐI CAO:
         return serialized;
     }
 
-    // Các hàm phụ trợ hỗ trợ tải tệp độc lập cho Dify Vision
     async function uploadFileToDify(file, endpoint, apiKey, userIdentifier) {
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('user', userIdentifier); // Dùng chung mã userIdentifier đồng bộ 100% để vượt qua cơ chế FileAccessScope
+        formData.append('user', userIdentifier); 
 
         const res = await fetch(`${endpoint}/files/upload`, {
             method: 'POST',
@@ -703,11 +687,9 @@ QUY TẮC TỐI CAO:
         }
         endpoint = endpoint.replace(/\/+$/, '');
         
-        // Tạo định danh người dùng đồng nhất ngay từ đầu để dùng chung cho cả khâu upload tệp và khâu tạo chat message
         const userIdentifier = "javiss_user_" + Date.now();
         
         try {
-            // Bước 1: Upload tuần tự các file đính kèm lên máy chủ Dify (nếu có) để lấy upload_file_id
             const difyFiles = [];
             if (attachedFiles && attachedFiles.length > 0) {
                 for (const file of attachedFiles) {
@@ -722,14 +704,13 @@ QUY TẮC TỐI CAO:
                 }
             }
 
-            // Bước 2: Đóng gói biến đầu vào và danh sách file ID gửi yêu cầu sinh văn bản
             const inputs = {};
             inputs[varKey] = promptText;
             
             const payload = {
                 inputs: inputs,
                 response_mode: "streaming",
-                user: userIdentifier // Đảm bảo trùng khớp hoàn toàn với user ở khâu upload tệp
+                user: userIdentifier 
             };
             
             if (difyFiles.length > 0) {
@@ -805,12 +786,12 @@ QUY TẮC TỐI CAO:
                 headers: {
                     'Authorization': `Bearer ${key}`,
                     'Content-Type': 'application/json',
-                    'HTTP-Referer': window.location.origin || 'https://hkworkshop.ai', // Đã bọc định danh an toàn để WebView không bị Cloudflare quét chặn
+                    'HTTP-Referer': window.location.origin || 'https://hkworkshop.ai', 
                     'X-Title': 'HK Workshop'
                 },
                 body: JSON.stringify({
                     model: modelSlug,
-                    messages: messages, // Truyền trực tiếp danh sách tin nhắn có phân vai chuẩn (Structured Format)
+                    messages: messages, 
                     max_tokens: 4096, 
                     stream: true
                 })
@@ -879,16 +860,15 @@ QUY TẮC TỐI CAO:
         
         const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash';
         let modelSlug = "meta-llama/llama-4-scout-17b-16e-instruct";
-        let maxTokens = 4096; // Giới hạn phản hồi tối đa kịch trần an toàn cho Llama 4 Scout trên Groq
+        let maxTokens = 4096; 
         const payload = {
             stream: true
         };
 
         if (activeModel === 'openai/gpt-oss-120b') {
             modelSlug = "openai/gpt-oss-120b";
-            maxTokens = 4096; // Giới hạn tối đa (kịch trần 4k output tokens) cho mô hình GPT-OSS 120B trên Groq dùng gói Free
+            maxTokens = 4096; 
             
-            // Ánh xạ an toàn ngân sách suy luận tương thích Groq API cho GPT-OSS
             let reasoningEffort = "medium";
             const currentThinking = DOM.thinking ? DOM.thinking.value : 'medium';
             if (currentThinking === 'minimal') reasoningEffort = "low";
@@ -901,7 +881,7 @@ QUY TẮC TỐI CAO:
         
         payload.model = modelSlug;
         payload.max_tokens = maxTokens;
-        payload.messages = buildStructuredMessages(promptText); // Truyền mảng cấu trúc phân vai chuẩn
+        payload.messages = buildStructuredMessages(promptText); 
         
         try {
             const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -966,7 +946,6 @@ QUY TẮC TỐI CAO:
                             if (delta) {
                                 let chunkText = "";
                                 
-                                // Kiểm tra và bọc logic suy luận tĩnh của Groq GPT-OSS chống hoàn toàn lỗi [object Object]
                                 let isReasoningChunk = false;
                                 if (delta.reasoning_content || delta.reasoning) {
                                     isReasoningChunk = true;
@@ -1009,13 +988,13 @@ QUY TẮC TỐI CAO:
 
         try {
             const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash';
-            const messages = buildStructuredMessages(promptText); // Truyền mảng cấu trúc phân vai chuẩn
+            const messages = buildStructuredMessages(promptText); 
             const payload = {
                 model: activeModel,
                 messages: messages,
                 temperature: 0.7,
                 top_p: 1.0,
-                max_tokens: 4096, // Thiết lập tối ưu an toàn chống tràn TPM của Mistral AI API
+                max_tokens: 4096, 
                 stream: true
             };
 
@@ -1023,7 +1002,6 @@ QUY TẮC TỐI CAO:
             if (reasoningCapableModels.includes(activeModel)) {
                 let reasoningEffort = "none";
                 const currentThinking = DOM.thinking ? DOM.thinking.value : 'medium';
-                // Ánh xạ an toàn chống lỗi 400: Mistral API chỉ chấp nhận duy nhất "none" hoặc "high"
                 if (currentThinking === 'minimal' || currentThinking === 'low') {
                     reasoningEffort = "none";
                 } else if (currentThinking === 'medium' || currentThinking === 'high') {
@@ -1072,7 +1050,7 @@ QUY TẮC TỐI CAO:
                 buffer = lines.pop();
 
                 for (const line of lines) {
-                    const trimmed = line.trim(); // Đã hiệu chỉnh sửa hoàn toàn lỗi cú pháp từ line.trimmed() thành line.trim()
+                    const trimmed = line.trim(); 
                     if (trimmed.startsWith("data:")) {
                         const dataContent = trimmed.slice(5).trim();
                         if (dataContent === "[DONE]") continue;
@@ -1082,7 +1060,6 @@ QUY TẮC TỐI CAO:
                             if (delta) {
                                 let chunkText = "";
                                 
-                                // Kiểm tra xem chunk này có chứa nội dung suy luận không
                                 let isReasoningChunk = false;
                                 if (delta.reasoning_content || delta.reasoning) {
                                     isReasoningChunk = true;
@@ -1104,18 +1081,15 @@ QUY TẮC TỐI CAO:
 
                                 if (isReasoningChunk) {
                                     if (!thinkingPlaceholderAdded) {
-                                        // Ghi đè hiển thị gọn thành duy nhất 1 dòng tĩnh "Đang suy luận..." tránh in object rác ra màn hình
                                         chunkText += "<think>Đang suy luận...</think>\n\n";
                                         thinkingPlaceholderAdded = true;
                                         inThinkingState = true;
                                     }
-                                    // Bỏ qua nội dung text suy luận thô, không cộng dồn để chống hoàn toàn lỗi [object Object]
                                 } else {
                                     if (inThinkingState) {
                                         inThinkingState = false;
                                     }
                                     
-                                    // Trích xuất văn bản trả lời chuẩn
                                     if (delta.content) {
                                         if (typeof delta.content === 'string') {
                                             chunkText += delta.content;
@@ -1155,21 +1129,17 @@ QUY TẮC TỐI CAO:
 
         try {
             const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash';
-            const messages = buildStructuredMessages(promptText); // Truyền mảng cấu trúc phân vai chuẩn
+            const messages = buildStructuredMessages(promptText); 
             const payload = {
                 model: activeModel,
                 messages: messages,
                 temperature: 0.7,
                 top_p: 1.0,
-                max_completion_tokens: 4096, // Hạ xuống 4,096 an toàn tuyệt đối dưới ngưỡng 30,000 TPM limit
-                // TUYỆT ĐỐI không gửi trường max_tokens (đã bị Cerebras khai tử, gửi kèm sẽ gây lỗi 400 cấu trúc)
-                clear_thinking: false, // Giữ chuỗi suy nghĩ multi-turn được bảo toàn tối đa theo tài liệu Cerebras năm 2026
+                max_completion_tokens: 4096, 
+                clear_thinking: false, 
                 stream: true
             };
 
-            // Z.ai GLM 4.7 kích hoạt suy luận theo mặc định. 
-            // Cấu hình chỉ chấp nhận giá trị reasoning_effort="none" để tắt suy luận. 
-            // KHÔNG ĐƯỢC phép truyền giá trị "high" hoặc "medium" (sẽ gây lỗi HTTP 400).
             const currentThinking = DOM.thinking ? DOM.thinking.value : 'medium';
             if (currentThinking === 'minimal' || currentThinking === 'low') {
                 payload.reasoning_effort = "none";
@@ -1225,7 +1195,6 @@ QUY TẮC TỐI CAO:
                             if (delta) {
                                 let chunkText = "";
                                 
-                                // Kiểm tra dữ liệu suy luận
                                 let isReasoningChunk = false;
                                 if (delta.reasoning_content || delta.reasoning) {
                                     isReasoningChunk = true;
@@ -1251,13 +1220,11 @@ QUY TẮC TỐI CAO:
                                         thinkingPlaceholderAdded = true;
                                         inThinkingState = true;
                                     }
-                                    // Bỏ qua hiển thị chuỗi đối tượng thô để chống lỗi [object Object]
                                 } else {
                                     if (inThinkingState) {
                                         inThinkingState = false;
                                     }
                                     
-                                    // Trích xuất phản hồi thực tế
                                     if (delta.content) {
                                         if (typeof delta.content === 'string') {
                                             chunkText += delta.content;
@@ -1308,7 +1275,7 @@ QUY TẮC TỐI CAO:
                 messages: messages,
                 temperature: 0.7,
                 top_p: 1.0,
-                max_tokens: 4096, // Cấu hình giới hạn đầu ra tối ưu cho Cohere Free API
+                max_tokens: 4096, 
                 stream: true
             };
 
@@ -1362,7 +1329,6 @@ QUY TẮC TỐI CAO:
                             if (delta) {
                                 let chunkText = "";
                                 
-                                // Hỗ trợ gộp luồng suy luận của Cohere (Command A / Command A Reasoning)
                                 let isReasoningChunk = false;
                                 if (delta.reasoning_content || delta.reasoning) {
                                     isReasoningChunk = true;
@@ -1402,7 +1368,7 @@ QUY TẮC TỐI CAO:
                                     
                                     if (delta.content) {
                                         if (typeof delta.content === 'string') {
-                                            chunkText = delta.content.replace(/<\/think>/g, ""); // Dọn dẹp thẻ đóng nếu bị tràn
+                                            chunkText = delta.content.replace(/<\/think>/g, ""); 
                                         } else if (Array.isArray(delta.content)) {
                                             chunkText = "";
                                             for (const item of delta.content) {
@@ -1433,7 +1399,6 @@ QUY TẮC TỐI CAO:
 
     window.forkSession=async i=>{if(!confirm("Tạo nhánh hội thoại từ đây?"))return; const c=sessions.find(s=>s.id===activeId), nId='s_'+Date.now(), nSess={...c,id:nId,name:c.name+" (Nhánh)",his:chatHistory.slice(0,i+1),orderIndex:0}; sessions.unshift(nSess); sessions.forEach((s,j)=>{s.orderIndex=j;saveToDB(s);}); await switchSess(nId); showToast("Đã rẽ nhánh!");};
 
-    // CHỨC NĂNG ENHANCE PROMPT ĐÃ ĐƯỢC CHỈNH LẠI CHỈ THỊ CHUỒI TỪ KHÓA
     DOM.btnEnhancePrompt.onclick=async()=>{
         const t=DOM.input ? DOM.input.value.trim() : ''; if(!t)return showToast("Nhập nội dung!","warning"); if(!apiKeys.length)return showToast("Thiếu API Key!","error"); 
         const o=DOM.btnEnhancePrompt.innerHTML; DOM.btnEnhancePrompt.innerHTML="⏳..."; 
@@ -1441,11 +1406,11 @@ QUY TẮC TỐI CAO:
         while(a<apiKeys.length){
             try{
                 const currentKey = apiKeys[globalKeyIndex];
-                globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length; // Luân chuyển Key ngay lập tức
+                globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length; 
                 const ai = new GoogleGenAI({ apiKey: currentKey });
                 
                 const r = await ai.models.generateContent({
-                    model: "gemini-3.1-flash-lite",
+                    model: "gemini-3.1-flash-lite", // Đổi sang live-preview
                     contents: `${promptEnhancementInstruction}\n\nYêu cầu gốc: ${t}`,
                     config: { temperature: 0.3 }
                 });
@@ -1473,7 +1438,7 @@ QUY TẮC TỐI CAO:
            globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
            const ai = new GoogleGenAI({ apiKey: currentKey });
            const res = await ai.models.generateContent({
-             model: "gemini-2.5-flash",
+             model: "gemini-3.1-flash-lite", // Đổi sang live-preview
              contents: `Hãy sử dụng công cụ tìm kiếm để thu thập thông tin, tóm tắt nội dung chi tiết 10 ý chính bao gồm cả thông số cốt lõi của video YouTube sau: ${u}`,
              config: { tools: [{ googleSearch: {} }] }
            });
@@ -1524,7 +1489,6 @@ QUY TẮC TỐI CAO:
     async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],sys:'',mod:DOM.model.value||'gemini-3.5-flash',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,memLen:20,vec:false,agt:false,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
-    // Đã bọc an toàn tuyệt đối các thao tác gán trị từ Sessions tránh lỗi Cannot read properties of null
     async function switchSess(id){
       activeId=id; localStorage.setItem('javiss_active_id',id); const s=sessions.find(x=>x.id===id); chatHistory=s?[...s.his]:[]; 
       if(s){
@@ -1559,7 +1523,6 @@ QUY TẮC TỐI CAO:
     const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
     const ai=new GoogleGenAI({ apiKey: currentKey }); const res=await ai.models.generateContent({model:"gemini-3.1-flash-lite", contents:`Tóm tắt cấu trúc hội thoại:\n\n${t}`}); chatHistory=[{role:'user',text:`[Tóm tắt]: \n${res.text}`},{role:'model',text:'Đã nhớ.'},...r]; const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); } showToast("Nén thành công!"); break;}catch(e){a++;}}};
     
-    // Đã vá triệt độ lỗi s.top=DOM.top=DOM.topK.value bằng cú pháp an toàn mới kiểm tra Null
     async function updateConfig(){
       const s=sessions.find(x=>x.id===activeId); 
       if(s){
@@ -1652,7 +1615,14 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
     DOM.sendBtn.onclick=async()=>{
       const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash';
       const isExternalModel = activeModel.endsWith('-dify') || externalModels.includes(activeModel);
-      if(isProcessing)return; if(!apiKeys.length && !isExternalModel)return showToast("Cần API Key!","error"); let msg=DOM.input ? DOM.input.value.trim() : ''; if(!msg&&!filesData.length&&!txtContent)return; 
+      if(isProcessing)return; if(!apiKeys.length && !isExternalModel)return showToast("Cần API Key!","error"); 
+      
+      let msg=DOM.input ? DOM.input.value.trim() : ''; 
+      if(!msg&&!filesData.length&&!txtContent)return; 
+      
+      // Khai báo biến kiểm tra để Tối ưu hóa Fast-path (Bỏ qua bóc tách khi câu ngắn)
+      const shouldExtract = msg.length >= 77;
+      
       localStorage.removeItem('javiss_draft'); isProcessing=true; DOM.sendBtn.innerHTML='⏳'; 
       let fP=txtContent?msg+"\n\n"+txtContent:msg;
       
@@ -1668,27 +1638,32 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
       let finalResponse = "";
       
       if(DOM.toggleAgent && DOM.toggleAgent.checked){
-         const step1El = document.createElement('div'); step1El.className = 'agent-step';
-         step1El.innerHTML = `📋 B1: Đang tách lọc mã hiệu, số hiệu và danh từ riêng nâng cao...`; cD.appendChild(step1El);
-
+         const step1El = document.createElement('div'); step1El.className = 'agent-step'; cD.appendChild(step1El);
          const step2El = document.createElement('div'); step2El.className = 'agent-step'; step2El.style.display = 'none'; cD.appendChild(step2El);
          const step3El = document.createElement('div'); step3El.className = 'agent-step'; step3El.style.display = 'none'; cD.appendChild(step3El);
 
-         let success1 = false, extractedQuery = "";
-         let a1 = 0;
-         while(a1 < apiKeys.length){
-             try {
-                const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-                const aiAgent = new GoogleGenAI({ apiKey: currentKey });
-                bD.querySelector('.streaming-indicator').innerText=`🤖 Đang lên kế hoạch...`;
-                const step1 = await aiAgent.models.generateContent({
-                    model: "gemini-3.1-flash-lite",
-                    contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
-                    config: { temperature: 0.0, topK: 1 }
-                });
-                extractedQuery = step1.text.trim();
-                success1 = true; break;
-             } catch(e) { a1++; }
+         let success1 = false, extractedQuery = msg; // Mặc định gán bằng msg gốc
+         
+         if (shouldExtract) {
+             step1El.innerHTML = `📋 B1: Đang tách lọc mã hiệu, số hiệu và danh từ riêng nâng cao...`;
+             let a1 = 0;
+             while(a1 < apiKeys.length){
+                 try {
+                    const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                    const aiAgent = new GoogleGenAI({ apiKey: currentKey });
+                    bD.querySelector('.streaming-indicator').innerText=`🤖 Đang lên kế hoạch...`;
+                    const step1 = await aiAgent.models.generateContent({
+                        model: "gemini-3.1-flash-lite", 
+                        contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
+                        config: { temperature: 0.0, topK: 1 }
+                    });
+                    extractedQuery = step1.text.trim();
+                    success1 = true; break;
+                 } catch(e) { a1++; }
+             }
+         } else {
+             step1El.innerHTML = `📋 B1: Câu lệnh ngắn, dùng trực tiếp từ khóa...`;
+             success1 = true;
          }
          
          if(!success1) { showToast("Agent thất bại tại B1.","error"); bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
@@ -1703,7 +1678,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                 step2El.innerHTML = `🌐 B2: Tìm kiếm dữ liệu mạng cho cụm từ: <strong>"${extractedQuery}"</strong>`; step2El.style.display = 'block';
                 
                 const step2 = await aiAgent.models.generateContent({
-                    model: "gemini-2.5-flash",
+                    model: "gemini-2.5-flash", // Giữ nguyên gemini-2.5-flash để grounding như yêu cầu
                     contents: `Tìm kiếm thông tin chi tiết và mới nhất phục vụ cho từ khóa: ${extractedQuery}`,
                     config: { tools: [{ googleSearch: {} }] }
                 });
@@ -1734,12 +1709,10 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                  };
 
                  if (activeModel.endsWith('-dify')) {
-                     // Dify chỉ nhận tham số đầu vào duy nhất dạng văn bản thô
                      const si = getDynamicSI();
                      let serializedAgentPrompt = `<SystemInstruction>\n${si}\n</SystemInstruction>\n\nLƯU Ý: Hãy tuân thủ nghiêm ngặt các chỉ thị hệ thống trong thẻ <SystemInstruction> để thực hiện yêu cầu phân tích sau:\n\nYêu cầu phân tích: ${agentPrompt}`;
-                     await callDifyStream(serializedAgentPrompt, onChunkCallback, onErrorCallback, imgs); // Gửi kèm imgs để tự động upload lên Dify Vision
+                     await callDifyStream(serializedAgentPrompt, onChunkCallback, onErrorCallback, imgs); 
                  } else {
-                     // Đối với các API tương thích chuẩn OpenAI, truyền trực tiếp agentPrompt và để các hàm gọi tự động xây dựng mảng có phân vai chuẩn (Structured Format)
                      if (activeModel === 'nemotron-ultra-openrouter' || activeModel === 'nemotron-nano-openrouter') {
                          await callOpenRouterStream(agentPrompt, onChunkCallback, onErrorCallback, onCommentCallback);
                      } else if (activeModel === 'mistral-medium-latest' || activeModel === 'mistral-medium-3-5' || activeModel === 'mistral-small-2603') {
@@ -1776,7 +1749,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                        topP:DOM.topP ? +DOM.topP.value : 0.9, 
                        topK:DOM.topK ? +DOM.topK.value : 40, 
                        systemInstruction:getDynamicSI(),
-                       maxOutputTokens: 8192 // Thiết lập giới hạn phản hồi tối đa kịch trần cho Gemini SDK
+                       maxOutputTokens: 8192 
                     };
                     if(DOM.thinking && DOM.thinking.value) { genConfig.thinkingConfig = { thinkingLevel: DOM.thinking.value }; }
 
@@ -1812,26 +1785,32 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
          }
          
          if(DOM.toggleSearch && DOM.toggleSearch.checked){
-            const step1El = document.createElement('div'); step1El.className = 'agent-step';
-            step1El.innerHTML = `🔍 B1: Đang bóc tách mã số, số hiệu và danh từ riêng...`; cD.appendChild(step1El);
-
+            const step1El = document.createElement('div'); step1El.className = 'agent-step'; cD.appendChild(step1El);
             const step2El = document.createElement('div'); step2El.className = 'agent-step'; step2El.style.display = 'none'; cD.appendChild(step2El);
 
-            let sA1 = 0, kSuccess = false, kText = "";
-            while(sA1 < apiKeys.length){
-                try{
-                   const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-                   const aiSearch = new GoogleGenAI({ apiKey: currentKey });
-                   bD.querySelector('.streaming-indicator').innerText=`🔍 Phân tích dữ liệu...`;
-                   
-                   const kRes = await aiSearch.models.generateContent({
-                       model: "gemini-3.1-flash-lite",
-                       contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
-                       config: { temperature: 0.0, topK: 1 }
-                   });
-                   kText = kRes.text.trim();
-                   kSuccess = true; break;
-                }catch(e){ sA1++; }
+            let kSuccess = false, kText = msg; // Mặc định gán bằng msg gốc
+            
+            if (shouldExtract) {
+                step1El.innerHTML = `🔍 B1: Đang bóc tách mã số, số hiệu và danh từ riêng...`;
+                let sA1 = 0;
+                while(sA1 < apiKeys.length){
+                    try{
+                       const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                       const aiSearch = new GoogleGenAI({ apiKey: currentKey });
+                       bD.querySelector('.streaming-indicator').innerText=`🔍 Phân tích dữ liệu...`;
+                       
+                       const kRes = await aiSearch.models.generateContent({
+                           model: "gemini-3.1-flash-lite",
+                           contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
+                           config: { temperature: 0.0, topK: 1 }
+                       });
+                       kText = kRes.text.trim();
+                       kSuccess = true; break;
+                    }catch(e){ sA1++; }
+                }
+            } else {
+                step1El.innerHTML = `🔍 B1: Câu lệnh ngắn, dùng trực tiếp từ khóa...`;
+                kSuccess = true;
             }
             
             let sA2 = 0, searchSuccess = false, wDText = "";
@@ -1844,7 +1823,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                        step2El.innerHTML = `🌐 B2: Khởi chạy lệnh Grounding Search cho từ khóa: <strong>"${kText}"</strong>`; step2El.style.display = 'block';
                        
                        const wRes = await aiSearch.models.generateContent({
-                           model: "gemini-2.5-flash",
+                           model: "gemini-2.5-flash", // Giữ nguyên gemini-2.5-flash để grounding
                            contents: `Tìm kiếm thông tin chính xác phục vụ cho từ khóa: ${kText}`,
                            config: { tools: [{ googleSearch: {} }] }
                         }); 
@@ -1872,13 +1851,11 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                 };
 
                 if (activeModel.endsWith('-dify')) {
-                   // Chỉ Dify mới dùng cấu trúc chuỗi tuần tự hóa thô do cơ chế tiếp nhận một dòng tham số của Dify
                    const memSize = parseInt(DOM.memLen.value) || 20;
                    let currentHistory = DOM.toggleMemory && DOM.toggleMemory.checked ? chatHistory.slice(-memSize) : [];
                    let serializedPrompt = serializeHistoryForDify(currentHistory, fnP);
-                   await callDifyStream(serializedPrompt, onChunkCallback, onErrorCallback, imgs); // Gửi kèm imgs để tự động upload lên Dify Vision
+                   await callDifyStream(serializedPrompt, onChunkCallback, onErrorCallback, imgs); 
                 } else {
-                   // Các nền tảng chuẩn khác truyền trực tiếp fnP. Hệ thống tự động bốc tách và đóng gói mảng tin nhắn phân vai có cấu trúc (Structured Format)
                    if (activeModel === 'nemotron-ultra-openrouter' || activeModel === 'nemotron-nano-openrouter') {
                       await callOpenRouterStream(fnP, onChunkCallback, onErrorCallback, onCommentCallback);
                    } else if (activeModel === 'mistral-medium-latest' || activeModel === 'mistral-medium-3-5' || activeModel === 'mistral-small-2603') {
@@ -1928,7 +1905,7 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                        topK: DOM.topK ? +DOM.topK.value : 40, 
                        systemInstruction: getDynamicSI(),
                        safetySettings: SAFETY,
-                       maxOutputTokens: 8192 // Cấu hình kịch trần giới hạn đầu ra cho dòng Gemini SDK
+                       maxOutputTokens: 8192 
                    }; 
                    if(DOM.thinking && DOM.thinking.value) { genConfig.thinkingConfig = { thinkingLevel: DOM.thinking.value }; }
 
@@ -1977,7 +1954,6 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
     function showToast(m,t='success'){DOM.toast.innerText=m; DOM.toast.className=`toast ${t==='error'?'danger':t} show`; setTimeout(()=>DOM.toast.classList.remove('show'),2000);}
     async function fileToPart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>r({inlineData:{data:rd.result.split(',')[1],mimeType:f.type}}); rd.readAsDataURL(f);});}
     
-    // Xử lý đóng/mở thanh tìm kiếm thông minh ở Header
     const searchBar = document.querySelector('.header-search-bar');
     const searchInput = document.getElementById('search-chat-input');
     const searchBtn = document.getElementById('btn-global-search');
@@ -1989,13 +1965,11 @@ ${g ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n'
                 searchBar.classList.add('active');
                 searchInput.focus();
             } else {
-                // Nếu thanh tìm kiếm đã mở, nhấp vào nút kính lúp lần nữa để kích hoạt bảng tìm kiếm nâng cao toàn cục
                 document.getElementById('search-modal').style.display = 'flex';
                 oLay.style.display = 'block';
             }
         };
         
-        // Tự động thu gọn thanh tìm kiếm khi người dùng nhấp ra bất kỳ khu vực nào ngoài thanh tìm kiếm
         document.addEventListener('click', (e) => {
             if (!searchBar.contains(e.target)) {
                 searchBar.classList.remove('active');
