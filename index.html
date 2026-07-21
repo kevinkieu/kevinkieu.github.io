@@ -2,7 +2,7 @@
 <html lang="vi" data-theme="auto">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HK Workshop</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -209,9 +209,9 @@
             
             <select id="model-select" class="modern-select">            
               <optgroup label="✨❤️❤️ Google">
-                                <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
                 <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
-                </optgroup>
+              </optgroup>
               
               <optgroup label="🌐 Nền tảng Dify">
                 <option value="gemini-3.5-flash-dify" selected>Gemini 3.5 Flash (Dify)</option>
@@ -298,7 +298,7 @@
       </div>
     </main>
     <div id="settings-modal" class="modal-box" style="max-width:750px;">
-      <div class="modal-header"><h3>⚙️ Cài đặt Hệ thống & Tham số AI</h3><button id="close-settings-modal" class="close-btn">&times;</button></div>
+      <div class="modal-header"><h3>⚙️ Cài đặt Hệ thống & Tham số AI</h3><button class="close-btn">&times;</button></div>
       <div class="modal-scroll-body">
         <fieldset class="settings-group"><legend>⚙️ Định hướng Ngữ cảnh (System Prompt)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
@@ -368,10 +368,10 @@
         </fieldset>
       </div>
     </div>
-    <div id="search-modal" class="modal-box"><div class="modal-header"><h3>🔍 Tìm kiếm nâng cao</h3><button id="close-search-modal" class="close-btn">&times;</button></div><div style="padding:20px;"><input type="text" id="global-search-input" placeholder="Nhập từ khóa cần quét..." class="modern-input" style="width:100%;margin-bottom:12px;"><div id="search-results" style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div></div></div>
-    <div id="file-library-modal" class="modal-box"><div class="modal-header"><h3>🗄️ Thư viện Tài liệu</h3><button id="close-library-modal" class="close-btn">&times;</button></div><div style="padding:20px;"><div style="margin-bottom:15px;"><label class="btn primary" style="cursor:pointer;display:inline-block;">➕ Tải tài liệu lên<input type="file" id="library-upload-input" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;"></label></div><div id="library-files-container" style="display:flex;flex-direction:column;gap:8px;max-height:350px;overflow-y:auto;"></div></div></div>
-    <div id="camera-modal" class="modal-box"><div class="modal-header"><h3>📷 Camera</h3><button id="close-camera-modal" class="close-btn">&times;</button></div><div style="padding:10px;display:flex;flex-direction:column;gap:10px;align-items:center;"><video id="camera-preview" autoplay playsinline></video><button id="btn-take-photo" class="btn primary" style="width:100%;padding:12px;font-size:1rem;">📸 Bấm để Chụp</button></div></div>
-    <div id="bulk-edit-modal" class="modal-box"><div class="modal-header"><h3>🛠️ Quản lý Lịch sử</h3><button id="close-bulk-modal" class="close-btn">&times;</button></div><div style="padding:20px;flex:1;display:flex;flex-direction:column;overflow:hidden;"><div style="margin-bottom:10px;display:flex;justify-content:space-between;"><button id="btn-select-all-bulk" class="btn">☑️ Chọn tất cả</button><button id="btn-delete-selected-bulk" class="btn danger">🗑️ Xóa</button></div><div id="bulk-edit-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:6px;"></div></div></div>
+    <div id="search-modal" class="modal-box"><div class="modal-header"><h3>🔍 Tìm kiếm nâng cao</h3><button class="close-btn">&times;</button></div><div style="padding:20px;"><input type="text" id="global-search-input" placeholder="Nhập từ khóa cần quét..." class="modern-input" style="width:100%;margin-bottom:12px;"><div id="search-results" style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div></div></div>
+    <div id="file-library-modal" class="modal-box"><div class="modal-header"><h3>🗄️ Thư viện Tài liệu</h3><button class="close-btn">&times;</button></div><div style="padding:20px;"><div style="margin-bottom:15px;"><label class="btn primary" style="cursor:pointer;display:inline-block;">➕ Tải tài liệu lên<input type="file" id="library-upload-input" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;"></label></div><div id="library-files-container" style="display:flex;flex-direction:column;gap:8px;max-height:350px;overflow-y:auto;"></div></div></div>
+    <div id="camera-modal" class="modal-box"><div class="modal-header"><h3>📷 Camera</h3><button class="close-btn">&times;</button></div><div style="padding:10px;display:flex;flex-direction:column;gap:10px;align-items:center;"><video id="camera-preview" autoplay playsinline></video><button id="btn-take-photo" class="btn primary" style="width:100%;padding:12px;font-size:1rem;">📸 Bấm để Chụp</button></div></div>
+    <div id="bulk-edit-modal" class="modal-box"><div class="modal-header"><h3>🛠️ Quản lý Lịch sử</h3><button class="close-btn">&times;</button></div><div style="padding:20px;flex:1;display:flex;flex-direction:column;overflow:hidden;"><div style="margin-bottom:10px;display:flex;justify-content:space-between;"><button id="btn-select-all-bulk" class="btn">☑️ Chọn tất cả</button><button id="btn-delete-selected-bulk" class="btn danger">🗑️ Xóa</button></div><div id="bulk-edit-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:6px;"></div></div></div>
     <div id="modal-overlay" class="modal-overlay-bg"></div>
   </div>
   <div id="toast" class="toast"></div><button id="scroll-to-top" title="Lên đầu trang">▲</button>
@@ -590,7 +590,6 @@ QUY TẮC TỐI CAO:
     document.getElementById('toggle-sidebar-btn').onclick=()=>{document.getElementById('sidebar').classList.add('active');document.getElementById('sidebar-overlay').classList.add('active');}; document.getElementById('close-sidebar-btn').onclick=document.getElementById('sidebar-overlay').onclick=()=>{document.getElementById('sidebar').classList.remove('active');document.getElementById('sidebar-overlay').classList.remove('active');};
     
     document.getElementById('btn-open-settings').onclick=()=>{document.getElementById('settings-modal').style.display='flex';document.getElementById('modal-overlay').style.display='block';}; 
-    document.getElementById('close-settings-modal').onclick=()=>{document.getElementById('settings-modal').style.display='none';document.getElementById('modal-overlay').style.none;};
     
     if (DOM.globContext) {
         DOM.globContext.value=localStorage.getItem('global_context')||''; 
@@ -781,12 +780,14 @@ QUY TẮC TỐI CAO:
             }
             
             const messages = buildStructuredMessages(promptText);
+            const refererUrl = (window.location.origin && window.location.origin !== 'null') ? window.location.origin : 'https://hkworkshop.ai';
+            
             const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${key}`,
                     'Content-Type': 'application/json',
-                    'HTTP-Referer': window.location.origin || 'https://hkworkshop.ai', 
+                    'HTTP-Referer': refererUrl, 
                     'X-Title': 'HK Workshop'
                 },
                 body: JSON.stringify({
@@ -1410,7 +1411,7 @@ QUY TẮC TỐI CAO:
                 const ai = new GoogleGenAI({ apiKey: currentKey });
                 
                 const r = await ai.models.generateContent({
-                    model: "gemini-3.1-flash-lite", // Đổi sang live-preview
+                    model: "gemini-3.1-flash-lite",
                     contents: `${promptEnhancementInstruction}\n\nYêu cầu gốc: ${t}`,
                     config: { temperature: 0.3 }
                 });
@@ -1428,6 +1429,7 @@ QUY TẮC TỐI CAO:
 
     window.exportCleanArticle=()=>{const m=chatHistory.filter(x=>x.role==='model').map(x=>x.text); if(!m.length)return showToast("Trống!","warning"); const b=new Blob([`# Trích xuất\n\n`+m.join('\n\n---\n\n')],{type:'text/markdown'}), a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`BaiViet_${Date.now()}.md`; a.click();};
     window.applySnippet=p=>{ if(DOM.input) { DOM.input.value=p+"\n"+DOM.input.value; DOM.input.dispatchEvent(new Event('input')); DOM.input.focus(); } DOM.snippetsContainer.style.display='none';}; DOM.btnToggleSnippets.onclick=()=>DOM.snippetsContainer.style.display=DOM.snippetsContainer.style.display==='flex'?'none':'flex';
+    
     DOM.btnAddUrl.onclick=async()=>{
       const u=prompt("Nhập URL Web hoặc YouTube cần cào dữ liệu:"); if(!u||!u.match(/(https?:\/\/[^\s]+)/))return;
       if(!apiKeys.length) return showToast("Cần cấu hình API Key để kích hoạt tính năng đọc link!","error");
@@ -1438,22 +1440,25 @@ QUY TẮC TỐI CAO:
            globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
            const ai = new GoogleGenAI({ apiKey: currentKey });
            const res = await ai.models.generateContent({
-             model: "gemini-3.1-flash-lite", // Đổi sang live-preview
+             model: "gemini-3.1-flash-lite",
              contents: `Hãy sử dụng công cụ tìm kiếm để thu thập thông tin, tóm tắt nội dung chi tiết 10 ý chính bao gồm cả thông số cốt lõi của video YouTube sau: ${u}`,
              config: { tools: [{ googleSearch: {} }] }
            });
            txtContent+=`\n[Dữ liệu YouTube tổng hợp thông qua Grounding Search cho đường dẫn ${u}]:\n${res.text}\n`;
-           DOM.textFileList.innerHTML+=`📺 Dữ liệu YouTube<br>`; showToast("Đã phân tích YT!");
+           DOM.textFileList.innerHTML+=`📺 Dữ liệu YouTube<br>`; 
+           showToast("Đã phân tích YT!");
         } else {
            const res=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`);
            const data=await res.json();
            const doc=new DOMParser().parseFromString(data.contents, "text/html");
            txtContent+=`\n[Web Scraped: ${u}]:\n${doc.body.innerText.replace(/\s+/g,' ').substring(0,30000)}\n`;
-           DOM.textFileList.innerHTML+=`🌐 Dữ liệu Web<br>'; showToast("Đã cào nội dung Web!");`
+           DOM.textFileList.innerHTML+=`🌐 Dữ liệu Web<br>`; 
+           showToast("Đã cào nội dung Web!");
         }
         DOM.previewBox.style.display='block'; DOM.fileCount.innerText=filesData.length+(txtContent?1:0);
       }catch(e){showToast("Lỗi cào dữ liệu!","error");} DOM.btnAddUrl.innerHTML="🌐 Đọc Link/YT";
     };
+
     DOM.chat.addEventListener('scroll',()=>DOM.scrollTopBtn.classList.toggle('visible',DOM.chat.scrollTop>300)); DOM.scrollTopBtn.onclick=()=>DOM.chat.scrollTo({top:0,behavior:'smooth'});
     document.getElementById('btn-paste-clipboard').onclick=async()=>{try{const is=await navigator.clipboard.read(); let h=false; for(let i of is){if(i.types.includes('image/png')||i.types.includes('image/jpeg')){const b=await i.getType('image/png'); filesData.push(new File([b],'clipboard-img.png',{type:b.type})); renderFiles(); h=true;}else if(i.types.includes('text/plain')){const t=await i.getType('text/plain').then(r=>r.text()); if(t && DOM.input){DOM.input.value+=(DOM.input.value?'\n':'')+t; h=true;}} } if(!h){const t=await navigator.clipboard.readText(); if(t && DOM.input){DOM.input.value+=(DOM.input.value?'\n':'')+t; h=true;}} if(h){ if(DOM.input) { DOM.input.dispatchEvent(new Event('input')); DOM.input.focus(); } showToast('✅ Đã dán'); }else showToast('❌ Trống','error');}catch(e){showToast('Lỗi: '+e.message,'error');}};
     const oLay=document.getElementById('modal-overlay'); function closeAllModals(){document.querySelectorAll('.modal-box').forEach(m=>m.style.display='none'); oLay.style.display='none'; const v=document.getElementById('camera-preview'); if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());v.srcObject=null;}} document.querySelectorAll('.close-btn').forEach(b=>b.onclick=closeAllModals); oLay.onclick=closeAllModals;
@@ -1624,7 +1629,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
       let msg=DOM.input ? DOM.input.value.trim() : ''; 
       if(!msg&&!filesData.length&&!txtContent)return; 
       
-      // Khai báo biến kiểm tra để Tối ưu hóa Fast-path (Bỏ qua bóc tách khi câu ngắn)
       const shouldExtract = msg.length >= 77;
       
       localStorage.removeItem('javiss_draft'); isProcessing=true; DOM.sendBtn.innerHTML='⏳'; 
@@ -1637,7 +1641,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
       bD.innerHTML=`<div class="bot-message"><div class="message-header">Chatbot <span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`; 
       DOM.chat.appendChild(bD);
       const cD=bD.querySelector('.msg-content'); 
-      const bDTop = bD.offsetTop;
       
       let finalResponse = "";
       
@@ -1646,7 +1649,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
          const step2El = document.createElement('div'); step2El.className = 'agent-step'; step2El.style.display = 'none'; cD.appendChild(step2El);
          const step3El = document.createElement('div'); step3El.className = 'agent-step'; step3El.style.display = 'none'; cD.appendChild(step3El);
 
-         let success1 = false, extractedQuery = msg; // Mặc định gán bằng msg gốc
+         let success1 = false, extractedQuery = msg; 
          
          if (shouldExtract) {
              step1El.innerHTML = `📋 B1: Đang tách lọc mã hiệu, số hiệu và danh từ riêng nâng cao...`;
@@ -1682,7 +1685,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                 step2El.innerHTML = `🌐 B2: Tìm kiếm dữ liệu mạng cho cụm từ: <strong>"${extractedQuery}"</strong>`; step2El.style.display = 'block';
                 
                 const step2 = await aiAgent.models.generateContent({
-                    model: "gemini-2.5-flash", // Giữ nguyên gemini-2.5-flash để grounding như yêu cầu
+                    model: "gemini-2.5-flash", 
                     contents: `Tìm kiếm thông tin chi tiết và mới nhất phục vụ cho từ khóa: ${extractedQuery}`,
                     config: { tools: [{ googleSearch: {} }] }
                 });
@@ -1792,7 +1795,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
             const step1El = document.createElement('div'); step1El.className = 'agent-step'; cD.appendChild(step1El);
             const step2El = document.createElement('div'); step2El.className = 'agent-step'; step2El.style.display = 'none'; cD.appendChild(step2El);
 
-            let kSuccess = false, kText = msg; // Mặc định gán bằng msg gốc
+            let kSuccess = false, kText = msg; 
             
             if (shouldExtract) {
                 step1El.innerHTML = `🔍 B1: Đang bóc tách mã số, số hiệu và danh từ riêng...`;
@@ -1827,7 +1830,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                        step2El.innerHTML = `🌐 B2: Khởi chạy lệnh Grounding Search cho từ khóa: <strong>"${kText}"</strong>`; step2El.style.display = 'block';
                        
                        const wRes = await aiSearch.models.generateContent({
-                           model: "gemini-2.5-flash", // Giữ nguyên gemini-2.5-flash để grounding
+                           model: "gemini-2.5-flash", 
                            contents: `Tìm kiếm thông tin chính xác phục vụ cho từ khóa: ${kText}`,
                            config: { tools: [{ googleSearch: {} }] }
                         }); 
@@ -1953,8 +1956,27 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     function renderFiles(){DOM.previewGrid.innerHTML=''; DOM.previewBox.style.display=(filesData.length||txtContent)?'block':'none'; DOM.fileCount.innerText=filesData.length+(txtContent?1:0); filesData.forEach((f,i)=>{const w=document.createElement('div'); w.innerHTML=`<div style="position:relative;width:50px;height:50px;background:#333;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;">${f.type.startsWith('image')?`<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`:'MP4'}<button onclick="rmImg(${i})" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;">✕</button></div>`; DOM.previewGrid.appendChild(w);});}
     window.rmImg=i=>{filesData.splice(i,1); renderFiles();}; DOM.clearFilesBtn.onclick=()=>{filesData=[]; txtContent=""; DOM.textFileList.innerHTML=""; renderFiles();};
     async function readPDF(f){const p=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise; let t=""; for(let i=1;i<=p.numPages;i++)t+=(await(await p.getPage(i)).getTextContent()).items.map(x=>x.str).join(' ')+"\n"; return t;}
-    window.exportChatDoc=()=>{let h=`<html><head><meta charset='utf-8'></head><body><h2>Phiên: ${sessions.find(s=>s.id===activeId).name}</h2>`; chatHistory.forEach(m=>{h+=`<p><b>${m.role==='user'?'Bạn':'Javiss'}:</b><br/> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</p><hr>`;}); h+="</body></html>"; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff',h],{type:'text/html'})); a.download=`Javiss_Chat_${Date.now()}.doc`; a.click();};
-    window.exportChatPDF=()=>{const e=document.createElement('div'); e.innerHTML=`<h2>Phiên: ${sessions.find(s=>s.id===activeId).name}</h2>`; chatHistory.forEach(m=>{e.innerHTML+=`<div style="margin-bottom:15px; font-family:sans-serif;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</div><hr>`;}); html2pdf().set({margin:10,filename:`Javiss_Chat_${Date.now()}.pdf`,html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(e).save(); showToast('Đang tạo PDF...');};
+    
+    window.exportChatDoc=()=>{
+      const currentSessName = sessions.find(s => s.id === activeId)?.name || 'Hội thoại';
+      let h=`<html><head><meta charset='utf-8'></head><body><h2>Phiên: ${currentSessName}</h2>`; 
+      chatHistory.forEach(m=>{h+=`<p><b>${m.role==='user'?'Bạn':'Javiss'}:</b><br/> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</p><hr>`;}); 
+      h+="</body></html>"; 
+      const a=document.createElement('a'); 
+      a.href=URL.createObjectURL(new Blob(['\ufeff',h],{type:'text/html'})); 
+      a.download=`Javiss_Chat_${Date.now()}.doc`; 
+      a.click();
+    };
+
+    window.exportChatPDF=()=>{
+      const currentSessName = sessions.find(s => s.id === activeId)?.name || 'Hội thoại';
+      const e=document.createElement('div'); 
+      e.innerHTML=`<h2>Phiên: ${currentSessName}</h2>`; 
+      chatHistory.forEach(m=>{e.innerHTML+=`<div style="margin-bottom:15px; font-family:sans-serif;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</div><hr>`;}); 
+      html2pdf().set({margin:10,filename:`Javiss_Chat_${Date.now()}.pdf`,html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(e).save(); 
+      showToast('Đang tạo PDF...');
+    };
+
     function showToast(m,t='success'){DOM.toast.innerText=m; DOM.toast.className=`toast ${t==='error'?'danger':t} show`; setTimeout(()=>DOM.toast.classList.remove('show'),2000);}
     async function fileToPart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>r({inlineData:{data:rd.result.split(',')[1],mimeType:f.type}}); rd.readAsDataURL(f);});}
     
