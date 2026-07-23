@@ -215,8 +215,7 @@
 
               <optgroup label="🐱 GitHub Models (Free)">
                 <option value="llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B 16E Instruct</option>
-                <option value="gpt-5-mini">OpenAI gpt-5-mini</option>
-                <option value="phi-4-mini-reasoning">Phi-4-mini-reasoning</option>
+                <option value="gpt-4o-mini">OpenAI gpt-4o-mini</option>
               </optgroup>
               
               <optgroup label="🌐 Nền tảng Dify">
@@ -332,7 +331,7 @@
           <div class="api-keys-grid" id="api-keys-container" style="margin-bottom:10px;"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;"><button id="btn-save-keys" class="btn primary" style="padding:8px 16px;">💾 Lưu cấu hình Keys</button><span id="key-status-msg" style="font-size:.85rem;font-weight:bold;"></span></div>
         </fieldset>
-        <fieldset class="settings-group"><legend>🐱 Cấu hình GitHub Models (GPT-5 Mini, Llama 4, Phi-4)</legend>
+        <fieldset class="settings-group"><legend>🐱 Cấu hình GitHub Models (GPT-4o Mini & Llama 4 Scout)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">GitHub Token (PAT):</label><input type="password" id="github-key-input" placeholder="Nhập GitHub Personal Access Token (ghp_... hoặc github_pat_...)" class="modern-input"></div>
           </div>
@@ -396,8 +395,7 @@
     
     const externalModels = [
          'llama-4-scout-17b-16e-instruct',
-         'gpt-5-mini',
-         'phi-4-mini-reasoning',
+         'gpt-4o-mini',
          'gpt-oss-20b-openrouter',
          'nemotron-nano-openrouter',
          'qwen/qwen3.6-27b',
@@ -1850,7 +1848,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                  } else {
                      if (activeModel === 'gpt-oss-20b-openrouter' || activeModel === 'nemotron-nano-openrouter') {
                          await callOpenRouterStream(agentPrompt, onChunkCallback, onErrorCallback, onCommentCallback);
-                     } else if (activeModel === 'llama-4-scout-17b-16e-instruct' || activeModel === 'gpt-5-mini' || activeModel === 'phi-4-mini-reasoning') {
+                     } else if (activeModel === 'llama-4-scout-17b-16e-instruct' || activeModel === 'gpt-4o-mini') {
                          await callGitHubModelsStream(agentPrompt, onChunkCallback, onErrorCallback);
                      } else if (activeModel === 'mistral-medium-latest' || activeModel === 'mistral-medium-3-5' || activeModel === 'mistral-small-2603') {
                          await callMistralStream(agentPrompt, onChunkCallback, onErrorCallback);
@@ -1995,7 +1993,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                 } else {
                    if (activeModel === 'gpt-oss-20b-openrouter' || activeModel === 'nemotron-nano-openrouter') {
                       await callOpenRouterStream(fnP, onChunkCallback, onErrorCallback, onCommentCallback);
-                   } else if (activeModel === 'llama-4-scout-17b-16e-instruct' || activeModel === 'gpt-5-mini' || activeModel === 'phi-4-mini-reasoning') {
+                   } else if (activeModel === 'llama-4-scout-17b-16e-instruct' || activeModel === 'gpt-4o-mini') {
                       await callGitHubModelsStream(fnP, onChunkCallback, onErrorCallback);
                    } else if (activeModel === 'mistral-medium-latest' || activeModel === 'mistral-medium-3-5' || activeModel === 'mistral-small-2603') {
                       await callMistralStream(fnP, onChunkCallback, onErrorCallback);
