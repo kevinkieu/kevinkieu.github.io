@@ -221,7 +221,7 @@
                 <option value="opus-4-dify">Claude 4 Opus (Dify)</option>
               </optgroup>
               <optgroup label="🚀 OpenRouter (Free)">
-                <option value="nemotron-ultra-openrouter">Nemotron 3 Ultra (OpenRouter - Free)</option>
+                <option value="gpt-oss-20b-openrouter">GPT-OSS 20B (OpenRouter - Free)</option>
                 <option value="nemotron-nano-openrouter">Nemotron 3 Nano (OpenRouter - Free)</option>
               </optgroup>
               
@@ -384,7 +384,7 @@
     const SAFETY=[{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}];
     
     const externalModels = [
-         'nemotron-ultra-openrouter',
+         'gpt-oss-20b-openrouter',
          'nemotron-nano-openrouter',
          'qwen/qwen3.6-27b',
          'openai/gpt-oss-120b',
@@ -774,7 +774,7 @@ QUY TẮC TỐI CAO:
         
         try {
             const activeModel = DOM.model ? DOM.model.value : '';
-            let modelSlug = "nvidia/nemotron-3-ultra-550b-a55b:free";
+            let modelSlug = "openai/gpt-oss-20b:free";
             if (activeModel === 'nemotron-nano-openrouter') {
                 modelSlug = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free";
             }
@@ -1440,7 +1440,7 @@ QUY TẮC TỐI CAO:
            globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
            const ai = new GoogleGenAI({ apiKey: currentKey });
            const res = await ai.models.generateContent({
-             model: "gemini-3.5-flash-lite",
+             model: "gemini-2.5-flash",
              contents: `Hãy sử dụng công cụ tìm kiếm để thu thập thông tin, tóm tắt nội dung chi tiết 10 ý chính bao gồm cả thông số cốt lõi của video YouTube sau: ${u}`,
              config: { tools: [{ googleSearch: {} }] }
            });
@@ -1720,7 +1720,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                      let serializedAgentPrompt = `<SystemInstruction>\n${si}\n</SystemInstruction>\n\nLƯU Ý: Hãy tuân thủ nghiêm ngặt các chỉ thị hệ thống trong thẻ <SystemInstruction> để thực hiện yêu cầu phân tích sau:\n\nYêu cầu phân tích: ${agentPrompt}`;
                      await callDifyStream(serializedAgentPrompt, onChunkCallback, onErrorCallback, imgs); 
                  } else {
-                     if (activeModel === 'nemotron-ultra-openrouter' || activeModel === 'nemotron-nano-openrouter') {
+                     if (activeModel === 'gpt-oss-20b-openrouter' || activeModel === 'nemotron-nano-openrouter') {
                          await callOpenRouterStream(agentPrompt, onChunkCallback, onErrorCallback, onCommentCallback);
                      } else if (activeModel === 'mistral-medium-latest' || activeModel === 'mistral-medium-3-5' || activeModel === 'mistral-small-2603') {
                          await callMistralStream(agentPrompt, onChunkCallback, onErrorCallback);
@@ -1863,7 +1863,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                    let serializedPrompt = serializeHistoryForDify(currentHistory, fnP);
                    await callDifyStream(serializedPrompt, onChunkCallback, onErrorCallback, imgs); 
                 } else {
-                   if (activeModel === 'nemotron-ultra-openrouter' || activeModel === 'nemotron-nano-openrouter') {
+                   if (activeModel === 'gpt-oss-20b-openrouter' || activeModel === 'nemotron-nano-openrouter') {
                       await callOpenRouterStream(fnP, onChunkCallback, onErrorCallback, onCommentCallback);
                    } else if (activeModel === 'mistral-medium-latest' || activeModel === 'mistral-medium-3-5' || activeModel === 'mistral-small-2603') {
                       await callMistralStream(fnP, onChunkCallback, onErrorCallback);
