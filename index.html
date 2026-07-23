@@ -217,6 +217,12 @@
                 <option value="llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B 16E Instruct</option>
                 <option value="gpt-4o-mini">OpenAI gpt-4o-mini</option>
               </optgroup>
+
+              <optgroup label="🟠 Cloudflare Workers AI">
+                <option value="@cf/zai-org/glm-4.7-flash">Z.ai GLM 4.7 Flash (Cloudflare)</option>
+                <option value="@cf/meta/llama-3.3-70b-instruct-fp8-fast">Llama 3.3 70B Instruct Fast (Cloudflare)</option>
+                <option value="@cf/ibm-granite/granite-4.0-h-micro">IBM Granite 4.0 H-Micro (Cloudflare)</option>
+              </optgroup>
               
               <optgroup label="🌐 Nền tảng Dify">
                 <option value="gemini-3.5-flash-dify" selected>Gemini 3.5 Flash (Dify)</option>
@@ -336,6 +342,13 @@
             <div><label class="field-label">GitHub Token (PAT):</label><input type="password" id="github-key-input" placeholder="Nhập GitHub Personal Access Token (ghp_... hoặc github_pat_...)" class="modern-input"></div>
           </div>
         </fieldset>
+        <fieldset class="settings-group"><legend>🟠 Cấu hình Cloudflare Workers AI (Free Tier 10k Neurons)</legend>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div><label class="field-label">Cloudflare Account ID:</label><input type="password" id="cf-account-id-input" placeholder="Nhập Cloudflare Account ID..." class="modern-input"></div>
+            <div><label class="field-label">Cloudflare API Token:</label><input type="password" id="cf-api-token-input" placeholder="Nhập Cloudflare Workers AI API Token..." class="modern-input"></div>
+            <div><label class="field-label">Cloudflare Worker Proxy URL (Chống lỗi CORS):</label><input type="text" id="cf-proxy-url-input" placeholder="Ví dụ: https://javiss-cors-proxy.myuser.workers.dev" class="modern-input"></div>
+          </div>
+        </fieldset>
         <fieldset class="settings-group"><legend>🔗 Cấu hình Dify (Hệ thống ứng dụng liên kết)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">Dify Key - Gemini 3.5 Flash:</label><input type="password" id="dify-key-gemini" placeholder="Nhập Key (app-...)" class="modern-input"></div>
@@ -394,6 +407,9 @@
     const SAFETY=[{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}];
     
     const externalModels = [
+         '@cf/zai-org/glm-4.7-flash',
+         '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+         '@cf/ibm-granite/granite-4.0-h-micro',
          'llama-4-scout-17b-16e-instruct',
          'gpt-4o-mini',
          'gpt-oss-20b-openrouter',
@@ -481,6 +497,9 @@ QUY TẮC TỐI CAO:
         const de = document.getElementById('dify-endpoint-input');
         const dv = document.getElementById('dify-var-input');
         const ghk = document.getElementById('github-key-input');
+        const cfacc = document.getElementById('cf-account-id-input');
+        const cftok = document.getElementById('cf-api-token-input');
+        const cfproxy = document.getElementById('cf-proxy-url-input');
         const ork = document.getElementById('openrouter-key-input');
         const grk = document.getElementById('groq-key-input');
         const msk = document.getElementById('mistral-key-input');
@@ -495,6 +514,9 @@ QUY TẮC TỐI CAO:
         if(de) de.value = localStorage.getItem('dify_api_endpoint') || 'https://api.dify.ai/v1';
         if(dv) dv.value = localStorage.getItem('dify_var_key') || 'query';
         if(ghk) ghk.value = localStorage.getItem('github_api_key') || '';
+        if(cfacc) cfacc.value = localStorage.getItem('cf_account_id') || '';
+        if(cftok) cftok.value = localStorage.getItem('cf_api_token') || '';
+        if(cfproxy) cfproxy.value = localStorage.getItem('cf_proxy_url') || '';
         if(ork) ork.value = localStorage.getItem('openrouter_api_key') || '';
         if(grk) grk.value = localStorage.getItem('groq_api_key') || '';
         if(msk) msk.value = localStorage.getItem('mistral_api_key') || '';
@@ -523,6 +545,9 @@ QUY TẮC TỐI CAO:
         saveKey('dify-endpoint-input', 'dify_api_endpoint');
         saveKey('dify-var-input', 'dify_var_key');
         saveKey('github-key-input', 'github_api_key');
+        saveKey('cf-account-id-input', 'cf_account_id');
+        saveKey('cf-api-token-input', 'cf_api_token');
+        saveKey('cf-proxy-url-input', 'cf_proxy_url');
         saveKey('openrouter-key-input', 'openrouter_api_key');
         saveKey('groq-key-input', 'groq_api_key');
         saveKey('mistral-key-input', 'mistral_api_key');
@@ -675,6 +700,121 @@ QUY TẮC TỐI CAO:
         if (mimeType.startsWith('audio/')) return 'audio';
         if (mimeType.startsWith('video/')) return 'video';
         return 'document';
+    }
+
+    async function callCloudflareStream(promptText, onChunk, onError) {
+        const accountId = localStorage.getItem('cf_account_id') || '';
+        const token = localStorage.getItem('cf_api_token') || '';
+        const customProxy = (localStorage.getItem('cf_proxy_url') || '').replace(/\/+$/, '');
+
+        if (!accountId || !token) {
+            onError(new Error("Thiếu Cloudflare Account ID hoặc API Token trong Cấu hình!"));
+            return;
+        }
+
+        try {
+            const activeModel = DOM.model ? DOM.model.value : '@cf/zai-org/glm-4.7-flash';
+            const messages = buildStructuredMessages(promptText); 
+            const payload = {
+                model: activeModel,
+                messages: messages,
+                max_tokens: 4096, 
+                stream: true
+            };
+
+            const targetUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1/chat/completions`;
+            
+            let requestUrl = targetUrl;
+            if (customProxy) {
+                requestUrl = `${customProxy}?url=` + encodeURIComponent(targetUrl);
+            }
+
+            const response = await fetch(requestUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                let errMsg = `HTTP Lỗi ${response.status}`;
+                try {
+                    const errJSON = await response.json();
+                    if (errJSON.errors && errJSON.errors.length > 0) {
+                        errMsg = errJSON.errors[0].message || JSON.stringify(errJSON.errors[0]);
+                    } else if (errJSON.message) {
+                        errMsg = errJSON.message;
+                    }
+                } catch(e) {}
+                throw new Error(errMsg);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            let inThinkingState = false;
+            let thinkingPlaceholderAdded = false;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    if (inThinkingState) {
+                        onChunk("\n</think>\n\n");
+                    }
+                    break;
+                }
+                buffer += decoder.decode(value, { stream: true });
+
+                const lines = buffer.split("\n");
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith("data:")) {
+                        const dataContent = trimmed.slice(5).trim();
+                        if (dataContent === "[DONE]") continue;
+                        try {
+                            const parsed = JSON.parse(dataContent);
+                            if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta) {
+                                const delta = parsed.choices[0].delta;
+                                let chunkText = "";
+                                let isReasoningChunk = false;
+                                if (delta.reasoning_content || delta.reasoning) {
+                                    isReasoningChunk = true;
+                                }
+
+                                if (isReasoningChunk) {
+                                    if (!thinkingPlaceholderAdded) {
+                                        chunkText += "<think>Đang suy luận...</think>\n\n";
+                                        thinkingPlaceholderAdded = true;
+                                        inThinkingState = true;
+                                    }
+                                } else {
+                                    if (inThinkingState) {
+                                        inThinkingState = false;
+                                    }
+                                    if (delta.content) {
+                                        if (typeof delta.content === 'string') {
+                                            chunkText += delta.content;
+                                        }
+                                    }
+                                }
+
+                                if (chunkText) {
+                                    onChunk(chunkText);
+                                }
+                            } else if (parsed.response) {
+                                onChunk(parsed.response);
+                            }
+                        } catch (e) {}
+                    }
+                }
+            }
+        } catch (err) {
+            onError(err);
+        }
     }
 
     async function callGitHubModelsStream(promptText, onChunk, onError) {
@@ -1846,7 +1986,9 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                      let serializedAgentPrompt = `<SystemInstruction>\n${si}\n</SystemInstruction>\n\nLƯU Ý: Hãy tuân thủ nghiêm ngặt các chỉ thị hệ thống trong thẻ <SystemInstruction> để thực hiện yêu cầu phân tích sau:\n\nYêu cầu phân tích: ${agentPrompt}`;
                      await callDifyStream(serializedAgentPrompt, onChunkCallback, onErrorCallback, imgs); 
                  } else {
-                     if (activeModel === 'gpt-oss-20b-openrouter' || activeModel === 'nemotron-nano-openrouter') {
+                     if (activeModel.startsWith('@cf/')) {
+                         await callCloudflareStream(agentPrompt, onChunkCallback, onErrorCallback);
+                     } else if (activeModel === 'gpt-oss-20b-openrouter' || activeModel === 'nemotron-nano-openrouter') {
                          await callOpenRouterStream(agentPrompt, onChunkCallback, onErrorCallback, onCommentCallback);
                      } else if (activeModel === 'llama-4-scout-17b-16e-instruct' || activeModel === 'gpt-4o-mini') {
                          await callGitHubModelsStream(agentPrompt, onChunkCallback, onErrorCallback);
@@ -1991,7 +2133,9 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                    let serializedPrompt = serializeHistoryForDify(currentHistory, fnP);
                    await callDifyStream(serializedPrompt, onChunkCallback, onErrorCallback, imgs); 
                 } else {
-                   if (activeModel === 'gpt-oss-20b-openrouter' || activeModel === 'nemotron-nano-openrouter') {
+                   if (activeModel.startsWith('@cf/')) {
+                      await callCloudflareStream(fnP, onChunkCallback, onErrorCallback);
+                   } else if (activeModel === 'gpt-oss-20b-openrouter' || activeModel === 'nemotron-nano-openrouter') {
                       await callOpenRouterStream(fnP, onChunkCallback, onErrorCallback, onCommentCallback);
                    } else if (activeModel === 'llama-4-scout-17b-16e-instruct' || activeModel === 'gpt-4o-mini') {
                       await callGitHubModelsStream(fnP, onChunkCallback, onErrorCallback);
