@@ -209,7 +209,7 @@
             
             <select id="model-select" class="modern-select">            
               <optgroup label="✨❤️❤️ Google">
-                <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
                 <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
               </optgroup>
               
@@ -663,7 +663,7 @@ QUY TẮC TỐI CAO:
     }
 
     async function callDifyStream(promptText, onChunk, onError, attachedFiles = []) {
-        const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash';
+        const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash-lite';
         let key = '';
         if (activeModel === 'gemini-3.5-flash-dify') {
             key = localStorage.getItem('dify_key_gemini') || '';
@@ -859,7 +859,7 @@ QUY TẮC TỐI CAO:
             return;
         }
         
-        const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash';
+        const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash-lite';
         let modelSlug = "groq/compound";
         let maxTokens = 4096; 
         const payload = {
@@ -988,7 +988,7 @@ QUY TẮC TỐI CAO:
         }
 
         try {
-            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash';
+            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash-lite';
             const messages = buildStructuredMessages(promptText); 
             const payload = {
                 model: activeModel,
@@ -1129,7 +1129,7 @@ QUY TẮC TỐI CAO:
         }
 
         try {
-            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash';
+            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash-lite';
             const messages = buildStructuredMessages(promptText); 
             const payload = {
                 model: activeModel,
@@ -1264,7 +1264,7 @@ QUY TẮC TỐI CAO:
         }
 
         try {
-            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash';
+            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash-lite';
             let modelSlug = "command-a-plus-05-2026";
             if (activeModel === 'command-a-reasoning') {
                 modelSlug = "command-a-reasoning-08-2025";
@@ -1491,14 +1491,14 @@ QUY TẮC TỐI CAO:
     DOM.btnDeleteFolder.onclick=async()=>{if(activeFolder==="All"||activeFolder==="Mặc định")return showToast("Không xóa được TM hệ thống!"); if(confirm(`Xóa "${activeFolder}"?`)){folders=folders.filter(f=>f!==activeFolder); localStorage.setItem('javiss_folders',JSON.stringify(folders)); for(let s of sessions){if(s.folder===activeFolder){s.folder="Mặc định"; await saveToDB(s);}} activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); renderSel(); showToast("Đã xóa!");}};
     DOM.btnMoveSess.onclick=async()=>{const s=sessions.find(x=>x.id===activeId); if(!s)return; const c=prompt(`Nhập số TM đích:\n${folders.map((f,i)=>`${i+1}. ${f}`).join('\n')}`); if(c){let t=folders[parseInt(c)-1]||c.trim(); if(folders.includes(t)){s.folder=t; await saveToDB(s); showToast(`Chuyển: ${t}`); renderSel();}}};
     async function loadSess(){try{await initDB(); let d=await getAllFromDB(); if(d&&d.length){sessions=d.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0)); renderFolders(); activeId=localStorage.getItem('javiss_active_id'); if(!sessions.find(s=>s.id===activeId))activeId=sessions[0].id; await switchSess(activeId);}else{renderFolders(); await newSess();}}catch(e){await newSess();}}
-    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],sys:'',mod:DOM.model.value||'gemini-3.5-flash',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,memLen:20,vec:false,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
+    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],sys:'',mod:DOM.model.value||'gemini-3.5-flash-lite',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,memLen:20,vec:false,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
     async function switchSess(id){
       activeId=id; localStorage.setItem('javiss_active_id',id); const s=sessions.find(x=>x.id===id); chatHistory=s?[...s.his]:[]; 
       if(s){
           if(DOM.sysInst) DOM.sysInst.value=s.sys||''; 
-          if(DOM.model) DOM.model.value=s.mod||'gemini-3.5-flash'; 
+          if(DOM.model) DOM.model.value=s.mod||'gemini-3.5-flash-lite'; 
           if(DOM.temp) { DOM.temp.value=s.tmp||0.5; DOM.tempVal.innerText=DOM.temp.value; }
           if(DOM.topP) { DOM.topP.value=s.tpp||0.9; DOM.toppVal.innerText=DOM.topP.value; }
           if(DOM.topK) DOM.topK.value=s.top||40; 
@@ -1533,7 +1533,7 @@ QUY TẮC TỐI CAO:
       const s=sessions.find(x=>x.id===activeId); 
       if(s){
           s.sys = DOM.sysInst ? DOM.sysInst.value : ''; 
-          s.mod = DOM.model ? DOM.model.value : 'gemini-3.5-flash'; 
+          s.mod = DOM.model ? DOM.model.value : 'gemini-3.5-flash-lite'; 
           s.tmp = DOM.temp ? DOM.temp.value : 0.5; 
           s.tpp = DOM.topP ? DOM.topP.value : 0.9; 
           s.top = DOM.topK ? DOM.topK.value : 40; 
@@ -1622,7 +1622,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     }
 
     DOM.sendBtn.onclick=async()=>{
-      const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash';
+      const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash-lite';
       const isExternalModel = activeModel.endsWith('-dify') || externalModels.includes(activeModel);
       if(isProcessing)return; if(!apiKeys.length && !isExternalModel)return showToast("Cần API Key!","error"); 
       
