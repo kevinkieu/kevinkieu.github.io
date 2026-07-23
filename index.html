@@ -210,12 +210,12 @@
             <select id="model-select" class="modern-select">            
               <optgroup label="✨❤️❤️ Google">
                 <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
-                <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
               </optgroup>
               
               <optgroup label="🌐 Nền tảng Dify">
                 <option value="gemini-3.5-flash-dify" selected>Gemini 3.5 Flash (Dify)</option>
-                <option value="gemini-3.1-flash-lite-dify">Gemini 3.1 Flash Lite (Dify)</option>
+                <option value="gemini-3.5-flash-lite-dify">Gemini 3.5 Flash Lite (Dify)</option>
                 <option value="gemini-3.1-pro-dify">Gemini 3.1 Pro Preview (Dify)</option>
                 <option value="gpt-5.5-dify">GPT-5.5 (Dify)</option>
                 <option value="opus-4-dify">Claude 4 Opus (Dify)</option>
@@ -329,7 +329,7 @@
         <fieldset class="settings-group"><legend>🔗 Cấu hình Dify (Hệ thống ứng dụng liên kết)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">Dify Key - Gemini 3.5 Flash:</label><input type="password" id="dify-key-gemini" placeholder="Nhập Key (app-...)" class="modern-input"></div>
-            <div><label class="field-label">Dify Key - Gemini 3.1 Flash Lite:</label><input type="password" id="dify-key-lite" placeholder="Nhập Key (app-...)" class="modern-input"></div>
+            <div><label class="field-label">Dify Key - Gemini 3.5 Flash Lite:</label><input type="password" id="dify-key-lite" placeholder="Nhập Key (app-...)" class="modern-input"></div>
             <div><label class="field-label">Dify Key - Gemini 3.1 Pro Preview:</label><input type="password" id="dify-key-pro" placeholder="Nhập Key (app-...)" class="modern-input"></div>
             <div><label class="field-label">Dify Key - GPT-5.5:</label><input type="password" id="dify-key-gpt" placeholder="Nhập Key (app-...)" class="modern-input"></div>
             <div><label class="field-label">Dify Key - Claude 4 Opus:</label><input type="password" id="dify-key-opus" placeholder="Nhập Key (app-...)" class="modern-input"></div>
@@ -667,7 +667,7 @@ QUY TẮC TỐI CAO:
         let key = '';
         if (activeModel === 'gemini-3.5-flash-dify') {
             key = localStorage.getItem('dify_key_gemini') || '';
-        } else if (activeModel === 'gemini-3.1-flash-lite-dify') {
+        } else if (activeModel === 'gemini-3.5-flash-lite-dify') {
             key = localStorage.getItem('dify_key_lite') || '';
         } else if (activeModel === 'gemini-3.1-pro-dify') {
             key = localStorage.getItem('dify_key_pro') || '';
@@ -1411,7 +1411,7 @@ QUY TẮC TỐI CAO:
                 const ai = new GoogleGenAI({ apiKey: currentKey });
                 
                 const r = await ai.models.generateContent({
-                    model: "gemini-3.1-flash-lite",
+                    model: "gemini-3.5-flash-lite",
                     contents: `${promptEnhancementInstruction}\n\nYêu cầu gốc: ${t}`,
                     config: { temperature: 0.3 }
                 });
@@ -1440,7 +1440,7 @@ QUY TẮC TỐI CAO:
            globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
            const ai = new GoogleGenAI({ apiKey: currentKey });
            const res = await ai.models.generateContent({
-             model: "gemini-3.1-flash-lite",
+             model: "gemini-3.5-flash-lite",
              contents: `Hãy sử dụng công cụ tìm kiếm để thu thập thông tin, tóm tắt nội dung chi tiết 10 ý chính bao gồm cả thông số cốt lõi của video YouTube sau: ${u}`,
              config: { tools: [{ googleSearch: {} }] }
            });
@@ -1527,7 +1527,7 @@ QUY TẮC TỐI CAO:
     
     DOM.btnCompress.onclick=async()=>{if(chatHistory.length<=4)return showToast("Chưa cần nén!"); if(!confirm(`Nén ngữ cảnh cũ?`))return; let a=0; while(a<apiKeys.length){try{const h=chatHistory.slice(0,-2), r=chatHistory.slice(-2), t=h.map(m=>`${m.role}: ${m.text}`).join('\n\n'); 
     const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-    const ai=new GoogleGenAI({ apiKey: currentKey }); const res=await ai.models.generateContent({model:"gemini-3.1-flash-lite", contents:`Tóm tắt cấu trúc hội thoại:\n\n${t}`}); chatHistory=[{role:'user',text:`[Tóm tắt]: \n${res.text}`},{role:'model',text:'Đã nhớ.'},...r]; const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); } showToast("Nén thành công!"); break;}catch(e){a++;}}};
+    const ai=new GoogleGenAI({ apiKey: currentKey }); const res=await ai.models.generateContent({model:"gemini-3.5-flash-lite", contents:`Tóm tắt cấu trúc hội thoại:\n\n${t}`}); chatHistory=[{role:'user',text:`[Tóm tắt]: \n${res.text}`},{role:'model',text:'Đã nhớ.'},...r]; const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); } showToast("Nén thành công!"); break;}catch(e){a++;}}};
     
     async function updateConfig(){
       const s=sessions.find(x=>x.id===activeId); 
@@ -1660,7 +1660,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                     const aiAgent = new GoogleGenAI({ apiKey: currentKey });
                     bD.querySelector('.streaming-indicator').innerText=`🤖 Đang lên kế hoạch...`;
                     const step1 = await aiAgent.models.generateContent({
-                        model: "gemini-3.1-flash-lite", 
+                        model: "gemini-3.5-flash-lite", 
                         contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
                         config: { temperature: 0.0, topK: 1 }
                     });
@@ -1807,7 +1807,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                        bD.querySelector('.streaming-indicator').innerText=`🔍 Phân tích dữ liệu...`;
                        
                        const kRes = await aiSearch.models.generateContent({
-                           model: "gemini-3.1-flash-lite",
+                           model: "gemini-3.5-flash-lite",
                            contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
                            config: { temperature: 0.0, topK: 1 }
                        });
