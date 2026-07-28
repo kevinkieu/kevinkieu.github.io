@@ -173,7 +173,7 @@
     .search-result-item,.bulk-edit-item{cursor:pointer;margin:4px 0;padding:8px;border-radius:8px;background:var(--input-bg);border-left:4px solid var(--primary);font-size:.85rem}
     .bulk-edit-item{display:flex;align-items:flex-start;gap:10px;border-left:none;border:1px solid var(--border)}
     .api-keys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
-    .api-keys-grid input{background:var(--input-bg);color:var(--text-main);border:1px solid var(--border);padding:8px;border-radius:6px;outline:none;font-size:.85rem}
+    .api-keys-grid input{background:var(--input-bg);color:var(--text-main);border:1px solid var(--border);padding:8px;border-radius:6px;outline:none;font-size:.85rem;transition:var(--transition)}
     .info-badge{font-size:.8rem;color:var(--text-muted);padding:2px 4px}
     .btn-sidebar-action{width:100%;padding:10px;background:var(--primary-container);color:var(--text-main);font-weight:600;border:none;text-align:center;justify-content:center}
     .streaming-indicator{color:var(--primary);font-style:italic;font-size:.8rem;margin-left:8px}
@@ -210,7 +210,9 @@
             <select id="model-select" class="modern-select">            
               <optgroup label="✨❤️❤️ Google">
                 <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+                <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
                 <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+                <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
               </optgroup>
 
               <optgroup label="🐱 GitHub Models (Free)">
@@ -335,7 +337,13 @@
         </fieldset>
         <fieldset class="settings-group"><legend>🔑 Cấu hình 10 API Keys</legend>
           <div class="api-keys-grid" id="api-keys-container" style="margin-bottom:10px;"></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;"><button id="btn-save-keys" class="btn primary" style="padding:8px 16px;">💾 Lưu cấu hình Keys</button><span id="key-status-msg" style="font-size:.85rem;font-weight:bold;"></span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button id="btn-save-keys" class="btn primary" style="padding:8px 16px;">💾 Lưu cấu hình Keys</button>
+              <button id="btn-check-keys" class="btn" style="padding:8px 16px;background:var(--bg-card);border:1px solid var(--primary);color:var(--primary);font-weight:600;">🔍 Kiểm tra Keys</button>
+            </div>
+            <span id="key-status-msg" style="font-size:.85rem;font-weight:bold;"></span>
+          </div>
         </fieldset>
         <fieldset class="settings-group"><legend>🐱 Cấu hình GitHub Models (GPT-4o Mini & Llama 4 Scout)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
@@ -477,7 +485,11 @@ QUY TẮC TỐI CAO:
         for(let i=1;i<=10;i++){ 
             let el = document.getElementById(`api-key-${i}`);
             let k=localStorage.getItem(`javiss_api_${i}`)||""; 
-            if(el) el.value=k; 
+            if(el) {
+                el.value=k;
+                el.style.border = "1px solid var(--border)";
+                el.title = "";
+            } 
             if(k.trim()!=="") apiKeys.push(k.trim());
         } 
         globalKeyIndex = 0; 
@@ -486,6 +498,61 @@ QUY TẮC TỐI CAO:
             if(apiKeys.length===0){ s.innerText="⚠️ Chưa nạp API Key."; s.style.color="var(--danger)"; }
             else{ s.innerText=`✅ Đã nạp ${apiKeys.length} API Key xoay tua liên tục toàn cục.`; s.style.color="green"; } 
         }
+    }
+
+    async function checkAllAPIKeys() {
+        const btn = document.getElementById('btn-check-keys');
+        const statusMsg = document.getElementById('key-status-msg');
+        if (btn) btn.innerText = "⏳ Đang kiểm tra...";
+        
+        let validCount = 0;
+        let totalChecked = 0;
+        
+        for (let i = 1; i <= 10; i++) {
+            const el = document.getElementById(`api-key-${i}`);
+            if (!el) continue;
+            const key = el.value.trim();
+            
+            if (!key) {
+                el.style.border = "1px solid var(--border)";
+                el.title = "";
+                continue;
+            }
+            
+            totalChecked++;
+            el.style.border = "2px solid #f57c00";
+            el.title = "Đang kết nối kiểm tra...";
+            
+            try {
+                const ai = new GoogleGenAI({ apiKey: key });
+                await ai.models.generateContent({
+                    model: "gemini-3.1-flash-lite",
+                    contents: "ping",
+                    config: { maxOutputTokens: 1 }
+                });
+                el.style.border = "2px solid #2e7d32";
+                el.title = "✅ Key hoạt động bình thường";
+                validCount++;
+            } catch (err) {
+                el.style.border = "2px solid #c62828";
+                let errMsg = err.message || "Lỗi không xác định";
+                if (errMsg.includes("API_KEY_INVALID") || errMsg.includes("400")) errMsg = "API Key không hợp lệ";
+                else if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) errMsg = "Hết Quota / Bị giới hạn rate limit";
+                el.title = `❌ Lỗi: ${errMsg}`;
+            }
+        }
+        
+        if (btn) btn.innerText = "🔍 Kiểm tra Keys";
+        if (statusMsg) {
+            if (totalChecked === 0) {
+                statusMsg.innerText = "⚠️ Chưa nhập API Key nào.";
+                statusMsg.style.color = "var(--danger)";
+            } else {
+                statusMsg.innerText = `📊 Kiểm tra xong: ${validCount}/${totalChecked} Keys hoạt động tốt.`;
+                statusMsg.style.color = validCount > 0 ? "green" : "var(--danger)";
+            }
+        }
+        showToast(`Đã kiểm tra xong ${totalChecked} API Keys!`);
     }
     
     function initDifyConfig() {
@@ -558,6 +625,9 @@ QUY TẮC TỐI CAO:
         initDifyConfig();
         showToast(`Đã lưu cấu hình hệ thống!`); 
     };
+
+    document.getElementById('btn-check-keys').onclick = checkAllAPIKeys;
+
     initAPIKeys();
     initDifyConfig();
     
@@ -929,7 +999,7 @@ QUY TẮC TỐI CAO:
     }
 
     async function callDifyStream(promptText, onChunk, onError, attachedFiles = []) {
-        const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash-lite';
+        const activeModel = DOM.model ? DOM.model.value : 'gemini-3.1-flash-lite';
         let key = '';
         if (activeModel === 'gemini-3.5-flash-dify') {
             key = localStorage.getItem('dify_key_gemini') || '';
@@ -1125,7 +1195,7 @@ QUY TẮC TỐI CAO:
             return;
         }
         
-        const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash-lite';
+        const activeModel = DOM.model ? DOM.model.value : 'gemini-3.1-flash-lite';
         let modelSlug = "groq/compound";
         let maxTokens = 4096; 
         const payload = {
@@ -1254,7 +1324,7 @@ QUY TẮC TỐI CAO:
         }
 
         try {
-            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash-lite';
+            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.1-flash-lite';
             const messages = buildStructuredMessages(promptText); 
             const payload = {
                 model: activeModel,
@@ -1395,7 +1465,7 @@ QUY TẮC TỐI CAO:
         }
 
         try {
-            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash-lite';
+            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.1-flash-lite';
             const messages = buildStructuredMessages(promptText); 
             const payload = {
                 model: activeModel,
@@ -1530,7 +1600,7 @@ QUY TẮC TỐI CAO:
         }
 
         try {
-            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash-lite';
+            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.1-flash-lite';
             let modelSlug = "command-a-plus-05-2026";
             if (activeModel === 'command-a-reasoning') {
                 modelSlug = "command-a-reasoning-08-2025";
@@ -1677,7 +1747,7 @@ QUY TẮC TỐI CAO:
                 const ai = new GoogleGenAI({ apiKey: currentKey });
                 
                 const r = await ai.models.generateContent({
-                    model: "gemini-3.5-flash-lite",
+                    model: "gemini-3.1-flash-lite",
                     contents: `${promptEnhancementInstruction}\n\nYêu cầu gốc: ${t}`,
                     config: { temperature: 0.3 }
                 });
@@ -1757,14 +1827,14 @@ QUY TẮC TỐI CAO:
     DOM.btnDeleteFolder.onclick=async()=>{if(activeFolder==="All"||activeFolder==="Mặc định")return showToast("Không xóa được TM hệ thống!"); if(confirm(`Xóa "${activeFolder}"?`)){folders=folders.filter(f=>f!==activeFolder); localStorage.setItem('javiss_folders',JSON.stringify(folders)); for(let s of sessions){if(s.folder===activeFolder){s.folder="Mặc định"; await saveToDB(s);}} activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); renderSel(); showToast("Đã xóa!");}};
     DOM.btnMoveSess.onclick=async()=>{const s=sessions.find(x=>x.id===activeId); if(!s)return; const c=prompt(`Nhập số TM đích:\n${folders.map((f,i)=>`${i+1}. ${f}`).join('\n')}`); if(c){let t=folders[parseInt(c)-1]||c.trim(); if(folders.includes(t)){s.folder=t; await saveToDB(s); showToast(`Chuyển: ${t}`); renderSel();}}};
     async function loadSess(){try{await initDB(); let d=await getAllFromDB(); if(d&&d.length){sessions=d.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0)); renderFolders(); activeId=localStorage.getItem('javiss_active_id'); if(!sessions.find(s=>s.id===activeId))activeId=sessions[0].id; await switchSess(activeId);}else{renderFolders(); await newSess();}}catch(e){await newSess();}}
-    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],sys:'',mod:DOM.model.value||'gemini-3.5-flash-lite',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,memLen:20,vec:false,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
+    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],sys:'',mod:DOM.model.value||'gemini-3.1-flash-lite',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,memLen:20,vec:false,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
     async function switchSess(id){
       activeId=id; localStorage.setItem('javiss_active_id',id); const s=sessions.find(x=>x.id===id); chatHistory=s?[...s.his]:[]; 
       if(s){
           if(DOM.sysInst) DOM.sysInst.value=s.sys||''; 
-          if(DOM.model) DOM.model.value=s.mod||'gemini-3.5-flash-lite'; 
+          if(DOM.model) DOM.model.value=s.mod||'gemini-3.1-flash-lite'; 
           if(DOM.temp) { DOM.temp.value=s.tmp||0.5; DOM.tempVal.innerText=DOM.temp.value; }
           if(DOM.topP) { DOM.topP.value=s.tpp||0.9; DOM.toppVal.innerText=DOM.topP.value; }
           if(DOM.topK) DOM.topK.value=s.top||40; 
@@ -1793,13 +1863,13 @@ QUY TẮC TỐI CAO:
     
     DOM.btnCompress.onclick=async()=>{if(chatHistory.length<=4)return showToast("Chưa cần nén!"); if(!confirm(`Nén ngữ cảnh cũ?`))return; let a=0; while(a<apiKeys.length){try{const h=chatHistory.slice(0,-2), r=chatHistory.slice(-2), t=h.map(m=>`${m.role}: ${m.text}`).join('\n\n'); 
     const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-    const ai=new GoogleGenAI({ apiKey: currentKey }); const res=await ai.models.generateContent({model:"gemini-3.5-flash-lite", contents:`Tóm tắt cấu trúc hội thoại:\n\n${t}`}); chatHistory=[{role:'user',text:`[Tóm tắt]: \n${res.text}`},{role:'model',text:'Đã nhớ.'},...r]; const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); } showToast("Nén thành công!"); break;}catch(e){a++;}}};
+    const ai=new GoogleGenAI({ apiKey: currentKey }); const res=await ai.models.generateContent({model:"gemini-3.1-flash-lite", contents:`Tóm tắt cấu trúc hội thoại:\n\n${t}`}); chatHistory=[{role:'user',text:`[Tóm tắt]: \n${res.text}`},{role:'model',text:'Đã nhớ.'},...r]; const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); } showToast("Nén thành công!"); break;}catch(e){a++;}}};
     
     async function updateConfig(){
       const s=sessions.find(x=>x.id===activeId); 
       if(s){
           s.sys = DOM.sysInst ? DOM.sysInst.value : ''; 
-          s.mod = DOM.model ? DOM.model.value : 'gemini-3.5-flash-lite'; 
+          s.mod = DOM.model ? DOM.model.value : 'gemini-3.1-flash-lite'; 
           s.tmp = DOM.temp ? DOM.temp.value : 0.5; 
           s.tpp = DOM.topP ? DOM.topP.value : 0.9; 
           s.top = DOM.topK ? DOM.topK.value : 40; 
@@ -1888,7 +1958,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     }
 
     DOM.sendBtn.onclick=async()=>{
-      const activeModel = DOM.model ? DOM.model.value : 'gemini-3.5-flash-lite';
+      const activeModel = DOM.model ? DOM.model.value : 'gemini-3.1-flash-lite';
       const isExternalModel = activeModel.endsWith('-dify') || externalModels.includes(activeModel);
       if(isProcessing)return; if(!apiKeys.length && !isExternalModel)return showToast("Cần API Key!","error"); 
       
@@ -1926,7 +1996,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                     const aiAgent = new GoogleGenAI({ apiKey: currentKey });
                     bD.querySelector('.streaming-indicator').innerText=`🤖 Đang lên kế hoạch...`;
                     const step1 = await aiAgent.models.generateContent({
-                        model: "gemini-3.5-flash-lite", 
+                        model: "gemini-3.1-flash-lite", 
                         contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
                         config: { temperature: 0.0, topK: 1 }
                     });
@@ -2077,7 +2147,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                        bD.querySelector('.streaming-indicator').innerText=`🔍 Phân tích dữ liệu...`;
                        
                        const kRes = await aiSearch.models.generateContent({
-                           model: "gemini-3.5-flash-lite",
+                           model: "gemini-3.1-flash-lite",
                            contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
                            config: { temperature: 0.0, topK: 1 }
                        });
