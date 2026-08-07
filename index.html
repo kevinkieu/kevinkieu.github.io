@@ -71,8 +71,8 @@
     .slider-row{display:flex;flex-direction:column;gap:4px;font-size:.85rem}
     .slider-row input{width:100%;accent-color:var(--primary)}
     .sidebar select.modern-select { font-size: 0.8rem !important; padding: 5px 8px !important; height: 32px !important; line-height: 1.4 !important; border-radius: 6px !important; }
-    .sidebar select.modern-select optgroup { background: var(--bg-sidebar); color: var(--text-muted); font-weight: 700; font-size: 0.75rem; }
-    .sidebar select.modern-select option { background: var(--bg-card); color: var(--text-main); font-weight: normal; font-size: 0.8rem; }
+    .sidebar select.modern-select optgroup { background: var(--bg-sidebar); color: var(--text-muted); font-weight: bold; font-style: italic; font-size: 0.75rem; }
+    .sidebar select.modern-select option { background: var(--bg-card); color: var(--text-main); font-weight: normal; font-style: normal; font-size: 0.8rem; }
     .header-search-bar { display: flex; align-items: center; background: var(--input-bg); border: 1px solid var(--border); border-radius: 20px; padding: 2px; transition: var(--transition); position: relative; }
     .header-search-bar input { background: transparent; border: none; outline: none; color: var(--text-main); font-size: .85rem; width: 0px; opacity: 0; transition: var(--transition); padding: 0; }
     .header-search-bar.active input { width: 120px; opacity: 1; padding-left: 10px; }
@@ -165,8 +165,9 @@
                 <option value="command-a-plus">Command A+ (Cohere - Multimodal)</option>
                 <option value="command-a-reasoning">Command A Reasoning (Cohere - Reasoning)</option>
               </optgroup>
-              <optgroup label="🧠 Cerebras (Z.ai)">
-                <option value="zai-glm-4.7">Z.ai GLM 4.7 (Cerebras - Reasoning)</option>
+              <optgroup label="🧠 Cerebras Inference">
+                <option value="gpt-oss-120b-cerebras">GPT-OSS 120B (Cerebras)</option>
+                <option value="gemma-4-31b-cerebras">Gemma 4 31B (Cerebras)</option>
               </optgroup>
             </select>
           </div>
@@ -281,7 +282,7 @@
             <div><label class="field-label">Mistral API Key:</label><input type="password" id="mistral-key-input" placeholder="Nhập Mistral API Key..." class="modern-input"></div>
           </div>
         </fieldset>
-        <fieldset class="settings-group"><legend>🔗 Cấu hình Cerebras Inference (Z.ai GLM 4.7)</legend>
+        <fieldset class="settings-group"><legend>🔗 Cấu hình Cerebras Inference (GPT-OSS 120B & Gemma 4 31B)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">Cerebras API Key:</label><input type="password" id="cerebras-key-input" placeholder="Nhập Cerebras API Key..." class="modern-input"></div>
           </div>
@@ -314,7 +315,8 @@
          'mistral-medium-latest',
          'mistral-medium-3-5',
          'mistral-small-2603',
-         'zai-glm-4.7',
+         'gpt-oss-120b-cerebras',
+         'gemma-4-31b-cerebras',
          'command-a-plus',
          'command-a-reasoning'
     ];
@@ -870,11 +872,19 @@ QUY TẮC TỐI CAO:
 
         try {
             const activeModel = DOM.model ? DOM.model.value : 'gemini-3.1-flash-lite';
-            const messages = buildStructuredMessages(promptText); 
-            const payload = { model: activeModel, messages: messages, temperature: 0.7, top_p: 1.0, max_completion_tokens: 4096, clear_thinking: false, stream: true };
+            let modelSlug = activeModel;
+            if (activeModel === 'gpt-oss-120b-cerebras') modelSlug = 'gpt-oss-120b';
+            else if (activeModel === 'gemma-4-31b-cerebras') modelSlug = 'gemma-4-31b';
 
-            const currentThinking = DOM.thinking ? DOM.thinking.value : 'medium';
-            if (currentThinking === 'minimal' || currentThinking === 'low') payload.reasoning_effort = "none";
+            const messages = buildStructuredMessages(promptText); 
+            const payload = {
+                model: modelSlug,
+                messages: messages,
+                temperature: 0.7,
+                top_p: 1.0,
+                max_tokens: 4096,
+                stream: true
+            };
 
             const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
                 method: 'POST',
@@ -1318,7 +1328,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                      await callMistralStream(agentPrompt, onChunkCallback, onErrorCallback);
                  } else if (activeModel === 'command-a-plus' || activeModel === 'command-a-reasoning') {
                      await callCohereStream(agentPrompt, onChunkCallback, onErrorCallback);
-                 } else if (activeModel === 'zai-glm-4.7') {
+                 } else if (activeModel === 'gpt-oss-120b-cerebras' || activeModel === 'gemma-4-31b-cerebras') {
                      await callCerebrasStream(agentPrompt, onChunkCallback, onErrorCallback);
                  } else {
                      await callGroqStream(agentPrompt, onChunkCallback, onErrorCallback);
@@ -1359,7 +1369,18 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                         interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
                     }
 
-                    const resStream = await aiMain.interactions.create(interactionPayload);
+                    let resStream;
+                    try {
+                        resStream = await aiMain.interactions.create(interactionPayload);
+                    } catch(errInt) {
+                        if (interactionPayload.previous_interaction_id) {
+                            delete interactionPayload.previous_interaction_id;
+                            if (currentSession) currentSession.lastInteractionId = null;
+                            resStream = await aiMain.interactions.create(interactionPayload);
+                        } else {
+                            throw errInt;
+                        }
+                    }
                     
                     if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
                     for await(const ck of resStream){
@@ -1461,7 +1482,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                    await callMistralStream(fnP, onChunkCallback, onErrorCallback);
                 } else if (activeModel === 'command-a-plus' || activeModel === 'command-a-reasoning') {
                    await callCohereStream(fnP, onChunkCallback, onErrorCallback);
-                } else if (activeModel === 'zai-glm-4.7') {
+                } else if (activeModel === 'gpt-oss-120b-cerebras' || activeModel === 'gemma-4-31b-cerebras') {
                    await callCerebrasStream(fnP, onChunkCallback, onErrorCallback);
                 } else {
                    await callGroqStream(fnP, onChunkCallback, onErrorCallback);
@@ -1535,7 +1556,18 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                        interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
                    }
 
-                   const resStream = await aiMain.interactions.create(interactionPayload); 
+                   let resStream;
+                   try {
+                       resStream = await aiMain.interactions.create(interactionPayload); 
+                   } catch(errInt) {
+                       if (interactionPayload.previous_interaction_id) {
+                           delete interactionPayload.previous_interaction_id;
+                           if (currentSession) currentSession.lastInteractionId = null;
+                           resStream = await aiMain.interactions.create(interactionPayload);
+                       } else {
+                           throw errInt;
+                       }
+                   }
                    
                    if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
                    
@@ -1599,7 +1631,13 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     };
 
     function showToast(m,t='success'){DOM.toast.innerText=m; DOM.toast.className=`toast ${t==='error'?'danger':t} show`; setTimeout(()=>DOM.toast.classList.remove('show'),2000);}
-    async function fileToPart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>r({inlineData:{data:rd.result.split(',')[1],mimeType:f.type}}); rd.readAsDataURL(f);});}
+    async function fileToPart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>{
+      const base64Data = rd.result.split(',')[1];
+      r({
+        inline_data: { data: base64Data, mime_type: f.type },
+        inlineData: { data: base64Data, mimeType: f.type }
+      });
+    }; rd.readAsDataURL(f);});}
     
     const searchBar = document.querySelector('.header-search-bar');
     const searchInput = document.getElementById('search-chat-input');
