@@ -130,10 +130,7 @@
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;padding:10px;background:var(--bg-card);border-radius:8px;border:1px solid var(--border);">
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:var(--text-main);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-global-context" checked style="width:16px;height:16px;"> 🌍 Bật Ngữ cảnh Toàn cục</label>
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:var(--primary);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-search" style="width:16px;height:16px;"> 🌐 Tìm kiếm Web</label>
-            <div style="display:flex;align-items:center;gap:6px;font-size:.85rem;font-weight:bold;color:var(--primary);">
-              <label style="cursor:pointer;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-memory" checked style="width:16px;height:16px;"> 🧠 Nhớ</label>
-              <input type="number" id="memory-length" value="20" min="2" max="200" class="modern-input" style="width:55px;padding:2px 4px;font-size:.8rem;height:24px;"> <span style="font-size:.8rem">tin</span>
-            </div>
+            <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:red;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-memory" checked style="width:16px;height:16px;"> 🧠 Bật Interactions API</label>
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:#b06000;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-vector-db" style="width:16px;height:16px;"> 🗄️ Nhớ dài hạn (Vector DB)</label>
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:green;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-agent" style="width:16px;height:16px;"> 🤖 Auto-Agent (Chạy chuỗi)</label>
           </div>
@@ -259,6 +256,7 @@
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button id="btn-save-keys" class="btn primary" style="padding:8px 16px;">💾 Lưu cấu hình Keys</button>
               <button id="btn-check-keys" class="btn" style="padding:8px 16px;background:var(--bg-card);border:1px solid var(--primary);color:var(--primary);font-weight:600;">🔍 Kiểm tra Keys</button>
+              <button id="btn-check-duplicates" class="btn" style="padding:8px 16px;background:var(--bg-card);border:1px solid #b06000;color:#b06000;font-weight:600;">👯 Kiểm tra trùng lặp</button>
             </div>
             <span id="key-status-msg" style="font-size:.85rem;font-weight:bold;"></span>
           </div>
@@ -354,7 +352,7 @@ QUY TẮC TỐI CAO:
             messages.push({ role: "system", content: si });
         }
         if (DOM.toggleMemory && DOM.toggleMemory.checked) {
-            const memSize = parseInt(DOM.memLen.value) || 20;
+            const memSize = 20;
             const slicedHistory = chatHistory.slice(-memSize);
             for (const m of slicedHistory) {
                 messages.push({
@@ -412,6 +410,54 @@ QUY TẮC TỐI CAO:
         }
         if ([...sel.options].some(o => o.value === currentVal)) {
             sel.value = currentVal;
+        }
+    }
+
+    function checkDuplicateAPIKeys() {
+        const map = {};
+        let duplicateCount = 0;
+        let dupDetails = [];
+
+        for (let i = 1; i <= 10; i++) {
+            const el = document.getElementById(`api-key-${i}`);
+            if (!el) continue;
+            el.style.border = "1px solid var(--border)";
+            el.title = "";
+            const val = el.value.trim();
+            if (val !== "") {
+                if (!map[val]) map[val] = [];
+                map[val].push(i);
+            }
+        }
+
+        for (const keyVal in map) {
+            if (map[keyVal].length > 1) {
+                const indices = map[keyVal];
+                duplicateCount += (indices.length - 1);
+                dupDetails.push(`Key trùng ở các ô: ${indices.join(', ')}`);
+                indices.forEach(idx => {
+                    const el = document.getElementById(`api-key-${idx}`);
+                    if (el) {
+                        el.style.border = "2px solid #b3261e";
+                        el.title = "⚠️ API Key này bị trùng với ô khác!";
+                    }
+                });
+            }
+        }
+
+        const statusMsg = document.getElementById('key-status-msg');
+        if (duplicateCount > 0) {
+            if (statusMsg) {
+                statusMsg.innerText = `⚠️ Phát hiện trùng lặp! ${dupDetails.join(' | ')}`;
+                statusMsg.style.color = "var(--danger)";
+            }
+            showToast(`⚠️ Phát hiện ${duplicateCount} key bị trùng lặp!`, "danger");
+        } else {
+            if (statusMsg) {
+                statusMsg.innerText = "✅ Không phát hiện API Key nào bị trùng lặp.";
+                statusMsg.style.color = "green";
+            }
+            showToast("✅ Tất cả các API Key đã nhập là duy nhất!");
         }
     }
 
@@ -527,6 +573,7 @@ QUY TẮC TỐI CAO:
     };
 
     document.getElementById('btn-check-keys').onclick = checkAllAPIKeys;
+    document.getElementById('btn-check-duplicates').onclick = checkDuplicateAPIKeys;
 
     initAPIKeys();
     initDifyConfig();
@@ -580,7 +627,7 @@ QUY TẮC TỐI CAO:
     async function deleteFileFromLib(i){ return new Promise(r=>{const t=db.transaction(FILE_STORE,"readwrite"); t.objectStore(FILE_STORE).delete(i); t.oncomplete=()=>r();});}
     async function saveVector(v){ return new Promise(r=>{const t=db.transaction(VECTOR_STORE,"readwrite"); t.objectStore(VECTOR_STORE).put(v); t.oncomplete=()=>r();} )}
     async function getAllVectors(){ return new Promise(r=>{const rq=db.transaction(VECTOR_STORE,"readonly").objectStore(VECTOR_STORE).getAll(); rq.onsuccess=()=>r(rq.result);});}
-    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleVectorDB:document.getElementById('toggle-vector-db'),toggleAgent:document.getElementById('toggle-agent'),memLen:document.getElementById('memory-length'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
+    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleVectorDB:document.getElementById('toggle-vector-db'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
     let sessions=[], activeId=null, chatHistory=[], filesData=[], txtContent="", isProcessing=false, folders=JSON.parse(localStorage.getItem('javiss_folders')||'["Mặc định"]'), activeFolder=localStorage.getItem('javiss_active_folder')||"All", openTabs=JSON.parse(localStorage.getItem('javiss_tabs')||'[]'); const MAX_IMAGES=20;
     
     window.switchSess = switchSess;
@@ -1125,7 +1172,7 @@ QUY TẮC TỐI CAO:
     DOM.btnDeleteFolder.onclick=async()=>{if(activeFolder==="All"||activeFolder==="Mặc định")return showToast("Không xóa được TM hệ thống!"); if(confirm(`Xóa "${activeFolder}"?`)){folders=folders.filter(f=>f!==activeFolder); localStorage.setItem('javiss_folders',JSON.stringify(folders)); for(let s of sessions){if(s.folder===activeFolder){s.folder="Mặc định"; await saveToDB(s);}} activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); renderSel(); showToast("Đã xóa!");}};
     DOM.btnMoveSess.onclick=async()=>{const s=sessions.find(x=>x.id===activeId); if(!s)return; const c=prompt(`Nhập số TM đích:\n${folders.map((f,i)=>`${i+1}. ${f}`).join('\n')}`); if(c){let t=folders[parseInt(c)-1]||c.trim(); if(folders.includes(t)){s.folder=t; await saveToDB(s); showToast(`Chuyển: ${t}`); renderSel();}}};
     async function loadSess(){try{await initDB(); let d=await getAllFromDB(); if(d&&d.length){sessions=d.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0)); renderFolders(); activeId=localStorage.getItem('javiss_active_id'); if(!sessions.find(s=>s.id===activeId))activeId=sessions[0].id; await switchSess(activeId);}else{renderFolders(); await newSess();}}catch(e){await newSess();}}
-    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.1-flash-lite',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,memLen:20,vec:false,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
+    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.1-flash-lite',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,vec:false,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
     async function switchSess(id){
@@ -1141,7 +1188,6 @@ QUY TẮC TỐI CAO:
           if(DOM.toggleGlob) DOM.toggleGlob.checked = s.useGlob !== false;
           if(DOM.toggleSearch) DOM.toggleSearch.checked=s.sch||false; 
           if(DOM.toggleMemory) DOM.toggleMemory.checked=s.mem!==false; 
-          if(DOM.memLen) DOM.memLen.value=s.memLen||20; 
           if(DOM.toggleVectorDB) DOM.toggleVectorDB.checked=s.vec||false; 
           if(DOM.toggleAgent) DOM.toggleAgent.checked=s.agt||false;
       } 
@@ -1177,7 +1223,6 @@ QUY TẮC TỐI CAO:
           s.useGlob = DOM.toggleGlob ? DOM.toggleGlob.checked : true;
           s.sch = DOM.toggleSearch ? DOM.toggleSearch.checked : false; 
           s.mem = DOM.toggleMemory ? DOM.toggleMemory.checked : true; 
-          s.memLen = DOM.memLen ? DOM.memLen.value : 20; 
           s.vec = DOM.toggleVectorDB ? DOM.toggleVectorDB.checked : false; 
           s.agt = DOM.toggleAgent ? DOM.toggleAgent.checked : false; 
           await saveToDB(s);
@@ -1189,7 +1234,6 @@ QUY TẮC TỐI CAO:
     if(DOM.toggleGlob) DOM.toggleGlob.addEventListener('change',updateConfig); 
     if(DOM.toggleSearch) DOM.toggleSearch.addEventListener('change',updateConfig); 
     if(DOM.toggleMemory) DOM.toggleMemory.addEventListener('change',updateConfig); 
-    if(DOM.memLen) DOM.memLen.addEventListener('input',updateConfig); 
     if(DOM.toggleVectorDB) DOM.toggleVectorDB.addEventListener('change',updateConfig); 
     if(DOM.toggleAgent) DOM.toggleAgent.addEventListener('change',updateConfig); 
     if(DOM.topK) DOM.topK.addEventListener('input',updateConfig); 
@@ -1381,16 +1425,24 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                  const kIdx = parseInt(selectedKeyIdx);
                  const kVal = localStorage.getItem(`javiss_api_${kIdx + 1}`) || "";
                  if (kVal.trim()) keysToTry = [kVal.trim()];
+             } else {
+                 if (currentSession && currentSession.assignedApiKey) {
+                     keysToTry = [currentSession.assignedApiKey];
+                 } else {
+                     keysToTry = [...apiKeys];
+                 }
              }
-             if (keysToTry.length === 0) keysToTry = [...apiKeys];
 
              while(a3 < keysToTry.length){
                  try {
                     let currentKey;
-                    if (selectedKeyIdx !== 'auto' && keysToTry.length === 1) {
+                    if (selectedKeyIdx !== 'auto') {
                         currentKey = keysToTry[0];
+                    } else if (currentSession && currentSession.assignedApiKey) {
+                        currentKey = currentSession.assignedApiKey;
                     } else {
                         currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                        if (currentSession) currentSession.assignedApiKey = currentKey;
                     }
                     const aiMain = new GoogleGenAI({ apiKey: currentKey });
                     bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo (Interactions API)...`;
@@ -1426,13 +1478,17 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                     }
                     
                     if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                    let capturedInteractionId = null;
                     for await(const ck of resStream){
                        const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
                        finalResponse += textChunk;
+                       if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
+                           capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
+                       }
                        updateChatContentAndScroll(cD, marked.parse(finalResponse));
                     }
-                    if (resStream && (resStream.id || resStream.interaction_id || resStream.interactionId)) {
-                        currentSession.lastInteractionId = resStream.id || resStream.interaction_id || resStream.interactionId;
+                    if (capturedInteractionId && currentSession) {
+                        currentSession.lastInteractionId = capturedInteractionId;
                     }
                     await renderMsgContent(cD, finalResponse);
                     success3 = true; break;
@@ -1517,7 +1573,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                 const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error'); };
 
                 if (activeModel.endsWith('-dify')) {
-                   const memSize = parseInt(DOM.memLen.value) || 20;
+                   const memSize = 20;
                    let currentHistory = DOM.toggleMemory && DOM.toggleMemory.checked ? chatHistory.slice(-memSize) : [];
                    let serializedPrompt = serializeHistoryForDify(currentHistory, fnP);
                    await callDifyStream(serializedPrompt, onChunkCallback, onErrorCallback, imgs); 
@@ -1548,53 +1604,34 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                  const kIdx = parseInt(selectedKeyIdx);
                  const kVal = localStorage.getItem(`javiss_api_${kIdx + 1}`) || "";
                  if (kVal.trim()) keysToTry = [kVal.trim()];
+             } else {
+                 if (currentSession && currentSession.assignedApiKey) {
+                     keysToTry = [currentSession.assignedApiKey];
+                 } else {
+                     keysToTry = [...apiKeys];
+                 }
              }
-             if (keysToTry.length === 0) keysToTry = [...apiKeys];
 
              while(pA<keysToTry.length){
                 try{
                    let currentKey;
-                   if (selectedKeyIdx !== 'auto' && keysToTry.length === 1) {
+                   if (selectedKeyIdx !== 'auto') {
                        currentKey = keysToTry[0];
+                   } else if (currentSession && currentSession.assignedApiKey) {
+                       currentKey = currentSession.assignedApiKey;
                    } else {
                        currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                       if (currentSession) currentSession.assignedApiKey = currentKey;
                    }
                    const aiMain = new GoogleGenAI({ apiKey: currentKey });
                    
                    let interactionInput;
-                   let usePreviousId = DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId;
-
-                   if (usePreviousId) {
-                       if (imgs.length > 0) {
-                           let parts = [{ text: fnP }];
-                           for (let f of imgs) parts.push(await fileToPart(f));
-                           interactionInput = parts;
-                       } else {
-                           interactionInput = fnP;
-                       }
+                   if (imgs.length > 0) {
+                       let parts = [{ text: fnP }];
+                       for (let f of imgs) parts.push(await fileToPart(f));
+                       interactionInput = parts;
                    } else {
-                       if (DOM.toggleMemory && DOM.toggleMemory.checked && chatHistory.length > 0) {
-                           const memSize = parseInt(DOM.memLen.value) || 20;
-                           let tempHis = chatHistory.slice(-memSize);
-                           let historyContext = tempHis.map(m => `${m.role === 'model' ? 'Chatbot' : 'Bạn'}: ${m.text}`).join('\n\n');
-                           let fullPrompt = `[LỊCH SỬ TRÒ CHUYỆN KHỨ HỒI]:\n${historyContext}\n\n[CÂU HỎI MỚI]:\n${fnP}`;
-                           
-                           if (imgs.length > 0) {
-                               let parts = [{ text: fullPrompt }];
-                               for (let f of imgs) parts.push(await fileToPart(f));
-                               interactionInput = parts;
-                           } else {
-                               interactionInput = fullPrompt;
-                           }
-                       } else {
-                           if (imgs.length > 0) {
-                               let parts = [{ text: fnP }];
-                               for (let f of imgs) parts.push(await fileToPart(f));
-                               interactionInput = parts;
-                           } else {
-                               interactionInput = fnP;
-                           }
-                       }
+                       interactionInput = fnP;
                    }
 
                    const interactionPayload = {
@@ -1609,7 +1646,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                        stream: true
                    };
 
-                   if (usePreviousId) {
+                   if (DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId) {
                        interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
                    }
 
@@ -1628,14 +1665,18 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                    
                    if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
                    
+                   let capturedInteractionId = null;
                    for await(const ck of resStream){
                       const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
                       finalResponse += textChunk;
+                      if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
+                          capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
+                      }
                       updateChatContentAndScroll(cD, marked.parse(finalResponse));
                    } 
 
-                   if (resStream && (resStream.id || resStream.interaction_id || resStream.interactionId)) {
-                       currentSession.lastInteractionId = resStream.id || resStream.interaction_id || resStream.interactionId;
+                   if (capturedInteractionId && currentSession) {
+                       currentSession.lastInteractionId = capturedInteractionId;
                    }
 
                    await renderMsgContent(cD, finalResponse); pS=true; 
