@@ -180,6 +180,12 @@
               <option value="high">High</option>
             </select>
           </div>
+
+          <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🔑 Google API Key (Model chính):</span>
+            <select id="api-key-select" class="modern-select">
+              <option value="auto">🔄 Tự động xoay tua</option>
+            </select>
+          </div>
           
           <div class="side-btn-grid" style="margin-top:8px;"><button id="btn-new-session" class="btn primary">➕ Thêm</button><button id="btn-rename-session" class="btn">✏️ Sửa</button><button id="btn-move-session" class="btn">📂 Di chuyển</button><button id="btn-delete-session" class="btn danger">🗑️ Xóa</button></div>
           <div class="side-btn-row" style="margin-top:8px;"><button id="btn-move-up" class="btn" style="flex:1;">⬆️ Lên</button><button id="btn-move-down" class="btn" style="flex:1;">⬇️ Xuống</button></div>
@@ -387,6 +393,26 @@ QUY TẮC TỐI CAO:
             if(apiKeys.length===0){ s.innerText="⚠️ Chưa nạp API Key."; s.style.color="var(--danger)"; }
             else{ s.innerText=`✅ Đã nạp ${apiKeys.length} API Key xoay tua liên tục toàn cục.`; s.style.color="green"; } 
         }
+        updateApiKeyDropdown();
+    }
+
+    function updateApiKeyDropdown() {
+        const sel = document.getElementById('api-key-select');
+        if (!sel) return;
+        const currentVal = sel.value;
+        sel.innerHTML = '<option value="auto">🔄 Tự động xoay tua</option>';
+        for (let i = 1; i <= 10; i++) {
+            const k = localStorage.getItem(`javiss_api_${i}`) || "";
+            if (k.trim() !== "") {
+                const opt = document.createElement('option');
+                opt.value = (i - 1).toString();
+                opt.textContent = `🔑 Key ${i} (${k.trim().substring(0, 6)}...)`;
+                sel.appendChild(opt);
+            }
+        }
+        if ([...sel.options].some(o => o.value === currentVal)) {
+            sel.value = currentVal;
+        }
     }
 
     async function checkAllAPIKeys() {
@@ -554,7 +580,7 @@ QUY TẮC TỐI CAO:
     async function deleteFileFromLib(i){ return new Promise(r=>{const t=db.transaction(FILE_STORE,"readwrite"); t.objectStore(FILE_STORE).delete(i); t.oncomplete=()=>r();});}
     async function saveVector(v){ return new Promise(r=>{const t=db.transaction(VECTOR_STORE,"readwrite"); t.objectStore(VECTOR_STORE).put(v); t.oncomplete=()=>r();} )}
     async function getAllVectors(){ return new Promise(r=>{const rq=db.transaction(VECTOR_STORE,"readonly").objectStore(VECTOR_STORE).getAll(); rq.onsuccess=()=>r(rq.result);});}
-    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleVectorDB:document.getElementById('toggle-vector-db'),toggleAgent:document.getElementById('toggle-agent'),memLen:document.getElementById('memory-length'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
+    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleVectorDB:document.getElementById('toggle-vector-db'),toggleAgent:document.getElementById('toggle-agent'),memLen:document.getElementById('memory-length'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
     let sessions=[], activeId=null, chatHistory=[], filesData=[], txtContent="", isProcessing=false, folders=JSON.parse(localStorage.getItem('javiss_folders')||'["Mặc định"]'), activeFolder=localStorage.getItem('javiss_active_folder')||"All", openTabs=JSON.parse(localStorage.getItem('javiss_tabs')||'[]'); const MAX_IMAGES=20;
     
     window.switchSess = switchSess;
@@ -1099,7 +1125,7 @@ QUY TẮC TỐI CAO:
     DOM.btnDeleteFolder.onclick=async()=>{if(activeFolder==="All"||activeFolder==="Mặc định")return showToast("Không xóa được TM hệ thống!"); if(confirm(`Xóa "${activeFolder}"?`)){folders=folders.filter(f=>f!==activeFolder); localStorage.setItem('javiss_folders',JSON.stringify(folders)); for(let s of sessions){if(s.folder===activeFolder){s.folder="Mặc định"; await saveToDB(s);}} activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); renderSel(); showToast("Đã xóa!");}};
     DOM.btnMoveSess.onclick=async()=>{const s=sessions.find(x=>x.id===activeId); if(!s)return; const c=prompt(`Nhập số TM đích:\n${folders.map((f,i)=>`${i+1}. ${f}`).join('\n')}`); if(c){let t=folders[parseInt(c)-1]||c.trim(); if(folders.includes(t)){s.folder=t; await saveToDB(s); showToast(`Chuyển: ${t}`); renderSel();}}};
     async function loadSess(){try{await initDB(); let d=await getAllFromDB(); if(d&&d.length){sessions=d.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0)); renderFolders(); activeId=localStorage.getItem('javiss_active_id'); if(!sessions.find(s=>s.id===activeId))activeId=sessions[0].id; await switchSess(activeId);}else{renderFolders(); await newSess();}}catch(e){await newSess();}}
-    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.1-flash-lite',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,memLen:20,vec:false,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
+    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.1-flash-lite',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,memLen:20,vec:false,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
     async function switchSess(id){
@@ -1107,6 +1133,7 @@ QUY TẮC TỐI CAO:
       if(s){
           if(DOM.sysInst) DOM.sysInst.value=s.sys||''; 
           if(DOM.model) DOM.model.value=s.mod||'gemini-3.1-flash-lite'; 
+          if(DOM.apiKeySel) DOM.apiKeySel.value=s.keySel||'auto';
           if(DOM.temp) { DOM.temp.value=s.tmp||0.5; DOM.tempVal.innerText=DOM.temp.value; }
           if(DOM.topP) { DOM.topP.value=s.tpp||0.9; DOM.toppVal.innerText=DOM.topP.value; }
           if(DOM.topK) DOM.topK.value=s.top||40; 
@@ -1142,6 +1169,7 @@ QUY TẮC TỐI CAO:
       if(s){
           s.sys = DOM.sysInst ? DOM.sysInst.value : ''; 
           s.mod = DOM.model ? DOM.model.value : 'gemini-3.1-flash-lite'; 
+          s.keySel = DOM.apiKeySel ? DOM.apiKeySel.value : 'auto';
           s.tmp = DOM.temp ? DOM.temp.value : 0.5; 
           s.tpp = DOM.topP ? DOM.topP.value : 0.9; 
           s.top = DOM.topK ? DOM.topK.value : 40; 
@@ -1157,6 +1185,7 @@ QUY TẮC TỐI CAO:
     }
     if(DOM.sysInst) DOM.sysInst.addEventListener('input',updateConfig); 
     if(DOM.model) DOM.model.addEventListener('change',updateConfig); 
+    if(DOM.apiKeySel) DOM.apiKeySel.addEventListener('change',updateConfig);
     if(DOM.toggleGlob) DOM.toggleGlob.addEventListener('change',updateConfig); 
     if(DOM.toggleSearch) DOM.toggleSearch.addEventListener('change',updateConfig); 
     if(DOM.toggleMemory) DOM.toggleMemory.addEventListener('change',updateConfig); 
@@ -1346,9 +1375,23 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
          } else {
              // INTERACTIONS API CHO GOOGLE MODEL TRONG AGENT MODE
              let a3 = 0;
-             while(a3 < apiKeys.length){
+             const selectedKeyIdx = DOM.apiKeySel ? DOM.apiKeySel.value : 'auto';
+             let keysToTry = [];
+             if (selectedKeyIdx !== 'auto') {
+                 const kIdx = parseInt(selectedKeyIdx);
+                 const kVal = localStorage.getItem(`javiss_api_${kIdx + 1}`) || "";
+                 if (kVal.trim()) keysToTry = [kVal.trim()];
+             }
+             if (keysToTry.length === 0) keysToTry = [...apiKeys];
+
+             while(a3 < keysToTry.length){
                  try {
-                    const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                    let currentKey;
+                    if (selectedKeyIdx !== 'auto' && keysToTry.length === 1) {
+                        currentKey = keysToTry[0];
+                    } else {
+                        currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                    }
                     const aiMain = new GoogleGenAI({ apiKey: currentKey });
                     bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo (Interactions API)...`;
                     step3El.innerHTML = `🧠 B3: Đang kết nối Interactions API tổng hợp dữ liệu...`; step3El.style.display = 'block';
@@ -1499,9 +1542,23 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
          } else {
              // GOOGLE MODELS CHÍNH - INTERACTIONS API
              let pA=0, pS=false, sT=Date.now(); 
-             while(pA<apiKeys.length){
+             const selectedKeyIdx = DOM.apiKeySel ? DOM.apiKeySel.value : 'auto';
+             let keysToTry = [];
+             if (selectedKeyIdx !== 'auto') {
+                 const kIdx = parseInt(selectedKeyIdx);
+                 const kVal = localStorage.getItem(`javiss_api_${kIdx + 1}`) || "";
+                 if (kVal.trim()) keysToTry = [kVal.trim()];
+             }
+             if (keysToTry.length === 0) keysToTry = [...apiKeys];
+
+             while(pA<keysToTry.length){
                 try{
-                   const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                   let currentKey;
+                   if (selectedKeyIdx !== 'auto' && keysToTry.length === 1) {
+                       currentKey = keysToTry[0];
+                   } else {
+                       currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                   }
                    const aiMain = new GoogleGenAI({ apiKey: currentKey });
                    
                    let interactionInput;
@@ -1585,7 +1642,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                    document.getElementById('latency-val').innerText=(Date.now()-sT).toString(); break;
                 }catch(e){
                    pA++; 
-                   if(pA>=apiKeys.length){bD.remove(); showToast("❌ Lỗi API: "+e.message,'error'); break;}
+                   if(pA>=keysToTry.length){bD.remove(); showToast("❌ Lỗi API: "+e.message,'error'); break;}
                 }
              }
              if(!pS){ isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
