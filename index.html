@@ -1453,7 +1453,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                     if (imgs.length > 0) {
                         let parts = [{ text: agentInputText }];
                         for (let f of imgs) parts.push(await fileToPart(f));
-                        interactionInput = [{ role: 'user', parts: parts }];
+                        interactionInput = [{ role: 'user', content: parts }];
                     } else {
                         interactionInput = agentInputText;
                     }
@@ -1640,7 +1640,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                    if (imgs.length > 0) {
                        let parts = [{ text: fnP }];
                        for (let f of imgs) parts.push(await fileToPart(f));
-                       interactionInput = [{ role: 'user', parts: parts }];
+                       interactionInput = [{ role: 'user', content: parts }];
                    } else {
                        interactionInput = fnP;
                    }
@@ -1744,7 +1744,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     async function fileToPart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>{
       const base64Data = rd.result.split(',')[1];
       r({
-        inlineData: { data: base64Data, mimeType: f.type },
         inline_data: { data: base64Data, mime_type: f.type }
       });
     }; rd.readAsDataURL(f);});}
