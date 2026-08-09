@@ -1451,9 +1451,9 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                     let agentInputText = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
                     let interactionInput;
                     if (imgs.length > 0) {
-                        let parts = [{ text: agentInputText }];
-                        for (let f of imgs) parts.push(await fileToPart(f));
-                        interactionInput = [{ role: 'user', content: parts }];
+                        let parts = [{ type: 'text', text: agentInputText }];
+                        for (let f of imgs) parts.push(await fileToInteractionPart(f));
+                        interactionInput = parts;
                     } else {
                         interactionInput = agentInputText;
                     }
@@ -1607,7 +1607,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
              }
              if(!extSuccess){ bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
          } else {
-             // GOOGLE MODELS CHÍNH - INTERACTIONS API (CHUẨN HÓA BỌC ROLE 'USER' CHO ĐA PHƯƠNG THỨC & TỐI ĐA 8192 OUTPUT TOKENS)
+             // GOOGLE MODELS CHÍNH - INTERACTIONS API
              let pA=0, pS=false, sT=Date.now(); 
              const selectedKeyIdx = DOM.apiKeySel ? DOM.apiKeySel.value : 'auto';
              let keysToTry = [];
@@ -1638,9 +1638,9 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                    
                    let interactionInput;
                    if (imgs.length > 0) {
-                       let parts = [{ text: fnP }];
-                       for (let f of imgs) parts.push(await fileToPart(f));
-                       interactionInput = [{ role: 'user', content: parts }];
+                       let parts = [{ type: 'text', text: fnP }];
+                       for (let f of imgs) parts.push(await fileToInteractionPart(f));
+                       interactionInput = parts;
                    } else {
                        interactionInput = fnP;
                    }
@@ -1741,10 +1741,25 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     };
 
     function showToast(m,t='success'){DOM.toast.innerText=m; DOM.toast.className=`toast ${t==='error'?'danger':t} show`; setTimeout(()=>DOM.toast.classList.remove('show'),2000);}
+    
     async function fileToPart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>{
       const base64Data = rd.result.split(',')[1];
       r({
         inline_data: { data: base64Data, mime_type: f.type }
+      });
+    }; rd.readAsDataURL(f);});}
+
+    async function fileToInteractionPart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>{
+      const base64Data = rd.result.split(',')[1];
+      let pType = 'document';
+      if (f.type.startsWith('image/')) pType = 'image';
+      else if (f.type.startsWith('video/')) pType = 'video';
+      else if (f.type.startsWith('audio/')) pType = 'audio';
+
+      r({
+        type: pType,
+        mime_type: f.type,
+        data: base64Data
       });
     }; rd.readAsDataURL(f);});}
     
