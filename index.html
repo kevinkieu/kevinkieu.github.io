@@ -73,13 +73,16 @@
     .sidebar select.modern-select { font-size: 0.8rem !important; padding: 5px 8px !important; height: 32px !important; line-height: 1.4 !important; border-radius: 6px !important; }
     .sidebar select.modern-select optgroup { background: var(--bg-sidebar); color: var(--text-muted); font-weight: bold; font-style: italic; font-size: 0.75rem; }
     .sidebar select.modern-select option { background: var(--bg-card); color: var(--text-main); font-weight: normal; font-style: normal; font-size: 0.8rem; }
-    .header-search-bar { display: flex; align-items: center; background: var(--input-bg); border: 1px solid var(--border); border-radius: 20px; padding: 2px; transition: var(--transition); position: relative; }
+    
+    .header-search-bar { display: flex; align-items: center; background: var(--input-bg); border: 1px solid var(--border); border-radius: 20px; padding: 2px 6px; transition: var(--transition); position: relative; }
     .header-search-bar input { background: transparent; border: none; outline: none; color: var(--text-main); font-size: .85rem; width: 0px; opacity: 0; transition: var(--transition); padding: 0; }
-    .header-search-bar.active input { width: 120px; opacity: 1; padding-left: 10px; }
-    .search-trigger-btn { background: transparent; border: none; cursor: pointer; padding: 6px 10px; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
+    .header-search-bar.active { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-container); }
+    .header-search-bar.active input { width: 220px; opacity: 1; padding: 0 8px; }
+    
+    .search-trigger-btn { background: transparent; border: none; cursor: pointer; padding: 6px 8px; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
     .sidebar-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);z-index:990}
     .mobile-only{display:none}
-    @media(max-width:768px){.sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%)}.sidebar.active{transform:translateX(0)}.sidebar-overlay.active{display:block}.mobile-only{display:block}.user-message{max-width:95%}.bottom-input-panel{padding:10px 12px;width:calc(100% - 16px);margin-bottom:env(safe-area-inset-bottom,12px)}#user-input{min-height:44px}}
+    @media(max-width:768px){.sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%)}.sidebar.active{transform:translateX(0)}.sidebar-overlay.active{display:block}.mobile-only{display:block}.user-message{max-width:95%}.bottom-input-panel{padding:10px 12px;width:calc(100% - 16px);margin-bottom:env(safe-area-inset-bottom,12px)}#user-input{min-height:44px}.header-search-bar.active input{width:140px}}
     .msg-content p{margin-bottom:8px}
     .msg-content ul,.msg-content ol{margin-left:20px;margin-bottom:8px}
     .bot-message table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:.9em}
@@ -131,7 +134,6 @@
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:var(--text-main);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-global-context" checked style="width:16px;height:16px;"> 🌍 Bật Ngữ cảnh Toàn cục</label>
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:var(--primary);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-search" style="width:16px;height:16px;"> 🌐 Tìm kiếm Web</label>
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:red;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-memory" checked style="width:16px;height:16px;"> 🧠 Bật Interactions API</label>
-            <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:#b06000;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-vector-db" style="width:16px;height:16px;"> 🗄️ Nhớ dài hạn (Vector DB)</label>
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:green;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-agent" style="width:16px;height:16px;"> 🤖 Auto-Agent (Chạy chuỗi)</label>
           </div>
           <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🤖 Mô hình xử lý chính:</span>
@@ -197,7 +199,7 @@
         <div class="header-left"><button id="toggle-sidebar-btn" class="icon-btn mobile-only">☰</button><h1 class="logo-text">HK Workshop</h1></div>
         <div class="header-right">
           <div class="header-search-bar">
-            <input type="text" id="search-chat-input" placeholder="Tìm kiếm...">
+            <input type="text" id="search-chat-input" placeholder="Tìm kiếm phiên...">
             <button id="btn-global-search" class="search-trigger-btn" title="Tìm toàn bộ phiên">🔍</button>
           </div>
           <button id="btn-theme" class="btn" style="padding:6px 12px;font-size:.85rem;min-width:85px;" title="Chuyển chế độ Sáng/Tối/Tự động">🌙 Tự động</button>
@@ -311,7 +313,6 @@
     marked.use({ breaks: true }); mermaid.initialize({ startOnLoad: false, theme: 'default' });
     
     let apiKeys=[], globalKeyIndex = 0;
-    const SAFETY=[{category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},{category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'}];
     
     const externalModels = [
          'qwen/qwen3.6-27b',
@@ -327,19 +328,14 @@
     
     const keywordExtractionPrompt = `Bạn là chuyên gia tách lọc từ khóa Google Search nâng cao. Hãy phân tích yêu cầu của người dùng để trích xuất ra một chuỗi từ khóa tìm kiếm tối ưu nhất.
 QUY TẮC TỐI CAO:
-1. BẮT BUỘC giữ nguyên 100% các DANH TỪ RIÊNG, TÊN SẢN PHẨM, MÃ HIỆU, SỐ HIỆU, CON SỐ, THÔNG SỐ và MỐC NĂM (Ví dụ: iQoo Z10 Turbo Plus, chế độ Dry, chế độ Cool, năm 2026...). Tuyệt đối không tự ý giản lược, thay thế hoặc bỏ qua dựa trên dữ liệu cũ của bạn.
-2. Thêm các từ khóa bổ trợ thực tế như "thông số", "đánh giá mốc 2026", "mới nhất" để gom trúng thông tin thời gian thực.
+1. BẮT BUỘC giữ nguyên 100% các DANH TỪ RIÊNG, TÊN SẢN PHẨM, MÃ HIỆU, SỐ HIỆU, CON SỐ, THÔNG SỐ và MỐC NĂM. Tuyệt đối không tự ý giản lược, thay thế hoặc bỏ qua dựa trên dữ liệu cũ của bạn.
+2. Thêm các từ khóa bổ trợ thực tế như "thông số", "đánh giá", "mới nhất" để gom trúng thông tin thời gian thực.
 3. Chỉ xuất ra chuỗi từ khóa tìm kiếm cách nhau bằng khoảng trắng, KHÔNG giải thích, KHÔNG chào hỏi, KHÔNG bọc ngoặc kép.`;
 
     const promptEnhancementInstruction = `Bạn là bộ chuyển đổi và tối ưu hóa Prompt chuyên nghiệp. Nhiệm vụ: Biến đổi nội dung ý tưởng thô sơ ban đầu của người dùng thành một câu lệnh Prompt hoàn chỉnh, chi tiết, viết dưới góc nhìn chuyên gia và có cấu trúc chặt chẽ để nạp cho AI đạt hiệu quả phản hồi cao nhất.
 QUY TẮC TỐI CAO:
-1. BẮT BUỘC giữ nguyên 100% các danh từ riêng, tên chế độ, tên sản phẩm, mã hiệu, số hiệu sản phẩm, mốc năm (Ví dụ: chế độ Dry, chế độ Cool, iQoo Z10, năm 2026...), các con số và thuật ngữ chuyên môn gốc. Tuyệt đối không được phép loại bỏ hoặc biến đổi chúng.
+1. BẮT BUỘC giữ nguyên 100% các danh từ riêng, tên chế độ, tên sản phẩm, mã hiệu, số hiệu sản phẩm, mốc năm, các con số và thuật ngữ chuyên môn gốc.
 2. Không giải thích, không chào hỏi, không bọc trong dấu ngoặc kép. Chỉ trả về duy nhất đoạn prompt đã được tối ưu hoàn chỉnh.`;
-
-    function getAIInstance(idx) {
-      if (!apiKeys[idx]) return null;
-      return new GoogleGenAI({ apiKey: apiKeys[idx] });
-    }
 
     function updateChatContentAndScroll(el, htmlContent) {
         el.innerHTML = htmlContent;
@@ -616,8 +612,9 @@ QUY TẮC TỐI CAO:
     };
     
     pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-    const DB_NAME="JavissUltimateOS_DB", STORE_NAME="chat_sessions", FILE_STORE="file_library", VECTOR_STORE="vector_store"; let db;
-    async function initDB(){ return new Promise((res,rej)=>{ const rq=indexedDB.open(DB_NAME,4); rq.onupgradeneeded=e=>{let d=e.target.result; if(!d.objectStoreNames.contains(STORE_NAME))d.createObjectStore(STORE_NAME,{keyPath:"id"}); if(!d.objectStoreNames.contains(FILE_STORE))d.createObjectStore(FILE_STORE,{keyPath:"id"}); if(!d.objectStoreNames.contains(VECTOR_STORE))d.createObjectStore(VECTOR_STORE,{keyPath:"id"});}; rq.onsuccess=e=>{db=e.target.result;res();}; rq.onerror=e=>rej(e);});}
+    
+    const DB_NAME="JavissUltimateOS_DB", STORE_NAME="chat_sessions", FILE_STORE="file_library"; let db;
+    async function initDB(){ return new Promise((res,rej)=>{ const rq=indexedDB.open(DB_NAME,5); rq.onupgradeneeded=e=>{let d=e.target.result; if(!d.objectStoreNames.contains(STORE_NAME))d.createObjectStore(STORE_NAME,{keyPath:"id"}); if(!d.objectStoreNames.contains(FILE_STORE))d.createObjectStore(FILE_STORE,{keyPath:"id"});}; rq.onsuccess=e=>{db=e.target.result;res();}; rq.onerror=e=>rej(e);});}
     async function saveToDB(s){ return new Promise(r=>{const t=db.transaction(STORE_NAME,"readwrite"); t.objectStore(STORE_NAME).put(s); t.oncomplete=()=>{r();};});}
     async function deleteFromDB(i){ return new Promise(r=>{const t=db.transaction(STORE_NAME,"readwrite"); t.objectStore(STORE_NAME).delete(i); t.oncomplete=()=>{r();};});}
     async function getAllFromDB(){ return new Promise(r=>{const rq=db.transaction(STORE_NAME,"readonly").objectStore(STORE_NAME).getAll(); rq.onsuccess=()=>r(rq.result);});}
@@ -625,11 +622,18 @@ QUY TẮC TỐI CAO:
     async function saveFileToLib(f){ return new Promise(r=>{const t=db.transaction(FILE_STORE,"readwrite"); t.objectStore(FILE_STORE).put(f); t.oncomplete=()=>r();});}
     async function getAllFilesFromLib(){ return new Promise(r=>{const rq=db.transaction(FILE_STORE,"readonly").objectStore(FILE_STORE).getAll(); rq.onsuccess=()=>r(rq.result);});}
     async function deleteFileFromLib(i){ return new Promise(r=>{const t=db.transaction(FILE_STORE,"readwrite"); t.objectStore(FILE_STORE).delete(i); t.oncomplete=()=>r();});}
-    async function saveVector(v){ return new Promise(r=>{const t=db.transaction(VECTOR_STORE,"readwrite"); t.objectStore(VECTOR_STORE).put(v); t.oncomplete=()=>r();} )}
-    async function getAllVectors(){ return new Promise(r=>{const rq=db.transaction(VECTOR_STORE,"readonly").objectStore(VECTOR_STORE).getAll(); rq.onsuccess=()=>r(rq.result);});}
-    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleVectorDB:document.getElementById('toggle-vector-db'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
+    
+    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
     let sessions=[], activeId=null, chatHistory=[], filesData=[], txtContent="", isProcessing=false, folders=JSON.parse(localStorage.getItem('javiss_folders')||'["Mặc định"]'), activeFolder=localStorage.getItem('javiss_active_folder')||"All", openTabs=JSON.parse(localStorage.getItem('javiss_tabs')||'[]'); const MAX_IMAGES=20;
     
+    function updateTokenCount() {
+        const inputVal = DOM.input ? DOM.input.value : '';
+        const totalChars = inputVal.length + (txtContent ? txtContent.length : 0);
+        const estTokens = Math.ceil(totalChars / 3.2);
+        const tokenEl = document.getElementById('token-count');
+        if (tokenEl) tokenEl.innerText = estTokens.toLocaleString('vi-VN');
+    }
+
     window.switchSess = switchSess;
     window.closeTab = (id,e)=>{ e.stopPropagation(); openTabs=openTabs.filter(x=>x!==id); if(id===activeId){ if(openTabs.length) switchSess(openTabs[0]); else newSess(); } else renderTabs(); }
 
@@ -637,10 +641,12 @@ QUY TẮC TỐI CAO:
     
     if (DOM.input) {
         DOM.input.value=localStorage.getItem('javiss_draft')||''; 
+        updateTokenCount();
         DOM.input.addEventListener('input',()=>{
             localStorage.setItem('javiss_draft',DOM.input.value); 
             DOM.input.style.height='auto'; 
             DOM.input.style.height=(DOM.input.scrollHeight<150?DOM.input.scrollHeight:150)+'px';
+            updateTokenCount();
         });
     }
     
@@ -656,22 +662,30 @@ QUY TẮC TỐI CAO:
     window.copy=b=>{const c=b.closest('.message-container').querySelector('.user-message, .bot-message'); if(c){navigator.clipboard.writeText(c.getAttribute('data-raw'));showToast('Đã copy!');}};
     window.deleteMsg=async i=>{if(!confirm("Xóa tin nhắn này?"))return; chatHistory.splice(i,1); const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; s.lastInteractionId = null; await saveToDB(s); DOM.chat.innerHTML=''; chatHistory.forEach((m,j)=>appendMsg(m.role==='model'?'bot':'user',m.text,j,true)); document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`; showToast("Đã xóa!");};
     
-    function normalizeHistoryForAPI(h){
-      let a=[]; 
-      for(let m of h){
-        let r = m.role === 'model' ? 'model' : 'user';
-        if(a.length===0 && r==='model'){
-          a.push({role:'user', parts:[{text:'[Bắt đầu ngữ cảnh hội thoại]'}]});
-        }
-        if(a.length>0 && a[a.length-1].role===r){
-          a[a.length-1].parts[0].text += "\n\n" + m.text;
+    window.retryMsg = async (botMsgIndex) => {
+        if (isProcessing) return showToast("Hệ thống đang xử lý tin nhắn khác!", "warning");
+        let userPromptText = "";
+        if (botMsgIndex > 0 && chatHistory[botMsgIndex - 1].role === 'user') {
+            userPromptText = chatHistory[botMsgIndex - 1].text;
         } else {
-          a.push({role: r, parts:[{text: m.text}]});
+            return showToast("Không tìm thấy tin nhắn gốc!", "error");
         }
-      } 
-      return a;
-    }
-    
+        
+        chatHistory.splice(botMsgIndex, 1);
+        const s = sessions.find(x => x.id === activeId);
+        if (s) { s.his = chatHistory; await saveToDB(s); }
+        DOM.chat.innerHTML = '';
+        for (let j = 0; j < chatHistory.length; j++) {
+            await appendMsg(chatHistory[j].role === 'model' ? 'bot' : 'user', chatHistory[j].text, j, true);
+        }
+        
+        if (DOM.input) {
+            DOM.input.value = userPromptText;
+            DOM.input.dispatchEvent(new Event('input'));
+        }
+        DOM.sendBtn.click();
+    };
+
     function serializeHistoryForDify(history, currentPrompt) {
         let serialized = "";
         const si = getDynamicSI();
@@ -697,9 +711,7 @@ QUY TẮC TỐI CAO:
 
         const res = await fetch(`${endpoint}/files/upload`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`
-            },
+            headers: { 'Authorization': `Bearer ${apiKey}` },
             body: formData
         });
 
@@ -1104,7 +1116,10 @@ QUY TẮC TỐI CAO:
                     DOM.input.dispatchEvent(new Event('input')); 
                 }
                 showToast("✨ Đã tối ưu cấu trúc Prompt!"); break;
-            }catch(e){ a++; }
+            }catch(e){ 
+                a++;
+                if (a < apiKeys.length) showToast("⚠️ API Key gặp lỗi, đang thử Key tiếp theo...", "warning");
+            }
         } 
         DOM.btnEnhancePrompt.innerHTML=o;
     };
@@ -1137,6 +1152,7 @@ QUY TẮC TỐI CAO:
            showToast("Đã cào nội dung Web!");
         }
         DOM.previewBox.style.display='block'; DOM.fileCount.innerText=filesData.length+(txtContent?1:0);
+        updateTokenCount();
       }catch(e){showToast("Lỗi cào dữ liệu!","error");} DOM.btnAddUrl.innerHTML="🌐 Đọc Link/YT";
     };
 
@@ -1172,7 +1188,7 @@ QUY TẮC TỐI CAO:
     DOM.btnDeleteFolder.onclick=async()=>{if(activeFolder==="All"||activeFolder==="Mặc định")return showToast("Không xóa được TM hệ thống!"); if(confirm(`Xóa "${activeFolder}"?`)){folders=folders.filter(f=>f!==activeFolder); localStorage.setItem('javiss_folders',JSON.stringify(folders)); for(let s of sessions){if(s.folder===activeFolder){s.folder="Mặc định"; await saveToDB(s);}} activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); renderSel(); showToast("Đã xóa!");}};
     DOM.btnMoveSess.onclick=async()=>{const s=sessions.find(x=>x.id===activeId); if(!s)return; const c=prompt(`Nhập số TM đích:\n${folders.map((f,i)=>`${i+1}. ${f}`).join('\n')}`); if(c){let t=folders[parseInt(c)-1]||c.trim(); if(folders.includes(t)){s.folder=t; await saveToDB(s); showToast(`Chuyển: ${t}`); renderSel();}}};
     async function loadSess(){try{await initDB(); let d=await getAllFromDB(); if(d&&d.length){sessions=d.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0)); renderFolders(); activeId=localStorage.getItem('javiss_active_id'); if(!sessions.find(s=>s.id===activeId))activeId=sessions[0].id; await switchSess(activeId);}else{renderFolders(); await newSess();}}catch(e){await newSess();}}
-    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.1-flash-lite',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,vec:false,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
+    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.1-flash-lite',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
     async function switchSess(id){
@@ -1188,7 +1204,6 @@ QUY TẮC TỐI CAO:
           if(DOM.toggleGlob) DOM.toggleGlob.checked = s.useGlob !== false;
           if(DOM.toggleSearch) DOM.toggleSearch.checked=s.sch||false; 
           if(DOM.toggleMemory) DOM.toggleMemory.checked=s.mem!==false; 
-          if(DOM.toggleVectorDB) DOM.toggleVectorDB.checked=s.vec||false; 
           if(DOM.toggleAgent) DOM.toggleAgent.checked=s.agt||false;
       } 
       DOM.chat.innerHTML=''; 
@@ -1204,11 +1219,11 @@ QUY TẮC TỐI CAO:
     document.getElementById('btn-rename-session').onclick=async()=>{const n=prompt("Tên mới:"); if(n){const s=sessions.find(x=>x.id===activeId); s.name=n; await saveToDB(s); renderSel(); renderTabs();}};
     document.getElementById('btn-delete-session').onclick=async()=>{if(sessions.length<=1)return showToast("Phải giữ lại 1 phiên","error"); if(!confirm("Xóa phiên này?"))return; await deleteFromDB(activeId); sessions=sessions.filter(s=>s.id!==activeId); openTabs=openTabs.filter(x=>x!==activeId); const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder); if(v.length)await switchSess(v[0].id); else{activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); await switchSess(sessions[0].id);} showToast("Đã xóa");};
     document.getElementById('btn-move-up').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>0){let t=v[i].orderIndex; v[i].orderIndex=v[i-1].orderIndex; v[i-1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
-    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i+1]); renderSel();}};
+    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder==="All")?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i+1]); renderSel();}};
     
     DOM.btnCompress.onclick=async()=>{if(chatHistory.length<=4)return showToast("Chưa cần nén!"); if(!confirm(`Nén ngữ cảnh cũ?`))return; let a=0; while(a<apiKeys.length){try{const h=chatHistory.slice(0,-2), r=chatHistory.slice(-2), t=h.map(m=>`${m.role}: ${m.text}`).join('\n\n'); 
     const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-    const ai=new GoogleGenAI({ apiKey: currentKey }); const res=await ai.models.generateContent({model:"gemini-3.1-flash-lite", contents:`Tóm tắt cấu trúc hội thoại:\n\n${t}`}); chatHistory=[{role:'user',text:`[Tóm tắt]: \n${res.text}`},{role:'model',text:'Đã nhớ.'},...r]; const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; s.lastInteractionId = null; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); } showToast("Nén thành công!"); break;}catch(e){a++;}}};
+    const ai=new GoogleGenAI({ apiKey: currentKey }); const res=await ai.models.generateContent({model:"gemini-3.1-flash-lite", contents:`Tóm tắt cấu trúc hội thoại:\n\n${t}`}); chatHistory=[{role:'user',text:`[Tóm tắt]: \n${res.text}`},{role:'model',text:'Đã nhớ.'},...r]; const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; s.lastInteractionId = null; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); } showToast("Nén thành công!"); break;}catch(e){a++; if(a < apiKeys.length) showToast("⚠️ API Key gặp lỗi, đang thử Key tiếp theo...", "warning");}}};
     
     async function updateConfig(){
       const s=sessions.find(x=>x.id===activeId); 
@@ -1223,7 +1238,6 @@ QUY TẮC TỐI CAO:
           s.useGlob = DOM.toggleGlob ? DOM.toggleGlob.checked : true;
           s.sch = DOM.toggleSearch ? DOM.toggleSearch.checked : false; 
           s.mem = DOM.toggleMemory ? DOM.toggleMemory.checked : true; 
-          s.vec = DOM.toggleVectorDB ? DOM.toggleVectorDB.checked : false; 
           s.agt = DOM.toggleAgent ? DOM.toggleAgent.checked : false; 
           await saveToDB(s);
       }
@@ -1234,7 +1248,6 @@ QUY TẮC TỐI CAO:
     if(DOM.toggleGlob) DOM.toggleGlob.addEventListener('change',updateConfig); 
     if(DOM.toggleSearch) DOM.toggleSearch.addEventListener('change',updateConfig); 
     if(DOM.toggleMemory) DOM.toggleMemory.addEventListener('change',updateConfig); 
-    if(DOM.toggleVectorDB) DOM.toggleVectorDB.addEventListener('change',updateConfig); 
     if(DOM.toggleAgent) DOM.toggleAgent.addEventListener('change',updateConfig); 
     if(DOM.topK) DOM.topK.addEventListener('input',updateConfig); 
     if(DOM.thinking) DOM.thinking.addEventListener('change',updateConfig); 
@@ -1263,21 +1276,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
 - Năm: ${now.getFullYear()} (Sử dụng con số năm này làm mốc chuẩn để tính toán chính xác số tuổi hoặc mốc thời gian của người dùng. Ví dụ: Người dùng ghi sinh năm 1988, thì lấy ${now.getFullYear()} - 1988 = 38 tuổi).`;
     }
 
-    function cosineSim(A,B){ let dot=0,normA=0,normB=0; for(let i=0;i<A.length;i++){dot+=A[i]*B[i];normA+=A[i]*A[i];normB+=B[i]*B[i];} return dot/(Math.sqrt(normA)*Math.sqrt(normB)); }
-    
-    async function getEmbedding(text){ 
-       let a = 0;
-       while(a < apiKeys.length){
-          try {
-             const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-             const ai = new GoogleGenAI({ apiKey: currentKey });
-             const res = await ai.models.embedContent({model:"text-embedding-004", contents: text}); 
-             return res.embedding.values;
-          } catch(e) { a++; }
-       }
-       throw new Error("Tất cả API Keys đều lỗi khi tạo Embedding.");
-    }
-
     async function renderMsgContent(el, text){
        el.innerHTML = marked.parse(text.replace(/\[URL:\s*(https?:\/\/[^\s]+)\]/g,'<a href="$1" target="_blank" style="color:var(--primary)">$1</a>'));
        if(window.renderMathInElement) renderMathInElement(el,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
@@ -1293,7 +1291,11 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
        m.innerHTML=`<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Chatbot'}</span></div><div class="msg-content"></div>`; 
        const a=document.createElement('div'); a.className='msg-actions'; 
        a.innerHTML=`<button class="action-btn" onclick="copy(this)">📋 Copy</button>`; 
-       if(sd==='user')a.innerHTML+=`<button class="action-btn" onclick="editMsg(${i})">✏️ Sửa</button><button class="action-btn" onclick="forkSession(${i})">🔀 Nhánh</button>`; 
+       if(sd==='user') {
+           a.innerHTML+=`<button class="action-btn" onclick="editMsg(${i})">✏️ Sửa</button><button class="action-btn" onclick="forkSession(${i})">🔀 Nhánh</button>`; 
+       } else {
+           a.innerHTML+=`<button class="action-btn" onclick="retryMsg(${i})" style="color:var(--primary);">🔄 Thử lại</button>`;
+       }
        a.innerHTML+=`<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})">🗑️ Xóa</button>`; 
        c.append(m,a); 
        DOM.chat.appendChild(c); 
@@ -1317,7 +1319,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
       let fP=txtContent?msg+"\n\n"+txtContent:msg;
       
       await appendMsg('user', msg+(filesData.length?` [${filesData.length} tệp]`:''), chatHistory.length, false); 
-      if(DOM.input) { DOM.input.value=''; DOM.input.style.height='40px'; } const imgs=[...filesData]; DOM.clearFilesBtn.click(); 
+      if(DOM.input) { DOM.input.value=''; DOM.input.style.height='40px'; updateTokenCount(); } const imgs=[...filesData]; DOM.clearFilesBtn.click(); 
       
       const bD=document.createElement('div'); bD.className='message-container'; 
       bD.innerHTML=`<div class="bot-message"><div class="message-header">Chatbot <span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`; 
@@ -1348,7 +1350,10 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                     });
                     extractedQuery = step1.text.trim();
                     success1 = true; break;
-                 } catch(e) { a1++; }
+                 } catch(e) { 
+                    a1++;
+                    if (a1 < apiKeys.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
+                 }
              }
          } else {
              step1El.innerHTML = `📋 B1: Câu lệnh ngắn, dùng trực tiếp từ khóa...`;
@@ -1373,7 +1378,10 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                 });
                 step2Text = step2.text;
                 success2 = true; break;
-             } catch(e) { a2++; }
+             } catch(e) { 
+                a2++;
+                if (a2 < apiKeys.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
+             }
          }
 
          if(!success2) { showToast("Agent thất bại tại B2.","error"); bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
@@ -1417,8 +1425,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
              }
              if(!extSuccess) { bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
          } else {
-             // INTERACTIONS API CHO GOOGLE MODEL TRONG AGENT MODE
-             let a3 = 0;
+             // INTERACTIONS API CHO GOOGLE MODEL TRONG AGENT MODE (KÈM ROTATION & FALLBACK)
              const selectedKeyIdx = DOM.apiKeySel ? DOM.apiKeySel.value : 'auto';
              let keysToTry = [];
              if (selectedKeyIdx !== 'auto') {
@@ -1433,93 +1440,99 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                  }
              }
 
-             while(a3 < keysToTry.length){
-                 try {
-                    let currentKey;
-                    if (selectedKeyIdx !== 'auto') {
-                        currentKey = keysToTry[0];
-                    } else if (currentSession && currentSession.assignedApiKey) {
-                        currentKey = currentSession.assignedApiKey;
-                    } else {
-                        currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-                        if (currentSession) currentSession.assignedApiKey = currentKey;
-                    }
-                    const aiMain = new GoogleGenAI({ apiKey: currentKey });
-                    bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo (Interactions API)...`;
-                    step3El.innerHTML = `🧠 B3: Đang kết nối Interactions API tổng hợp dữ liệu...`; step3El.style.display = 'block';
-                    
-                    let agentInputText = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
-                    let interactionInput;
-                    if (imgs.length > 0) {
-                        let parts = [{ type: 'text', text: agentInputText }];
-                        for (let f of imgs) parts.push(await fileToInteractionPart(f));
-                        interactionInput = parts;
-                    } else {
-                        interactionInput = agentInputText;
-                    }
+             let agentInputText = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
 
-                    const interactionPayload = {
-                        model: activeModel,
-                        input: interactionInput,
-                        system_instruction: getDynamicSI(),
-                        generation_config: {
-                            temperature: DOM.temp ? +DOM.temp.value : 0.5,
-                            top_p: DOM.topP ? +DOM.topP.value : 0.9,
-                            top_k: DOM.topK ? +DOM.topK.value : 40,
-                            max_output_tokens: 8192
-                        },
-                        stream: true
-                    };
-
-                    if (DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId) {
-                        interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
-                    }
-
-                    let resStream;
-                    try {
-                        resStream = await aiMain.interactions.create(interactionPayload);
-                    } catch(errInt) {
-                        if (interactionPayload.previous_interaction_id) {
-                            delete interactionPayload.previous_interaction_id;
-                            if (currentSession) currentSession.lastInteractionId = null;
-                            resStream = await aiMain.interactions.create(interactionPayload);
+             async function tryGoogleCallAgent(modelToRun) {
+                 let attempt = 0;
+                 while(attempt < keysToTry.length){
+                     try {
+                        let currentKey;
+                        if (selectedKeyIdx !== 'auto') {
+                            currentKey = keysToTry[0];
+                        } else if (currentSession && currentSession.assignedApiKey) {
+                            currentKey = currentSession.assignedApiKey;
                         } else {
-                            throw errInt;
+                            currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                            if (currentSession) currentSession.assignedApiKey = currentKey;
                         }
-                    }
-                    
-                    if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                    let capturedInteractionId = null;
-                    for await(const ck of resStream){
-                       const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
-                       finalResponse += textChunk;
-                       if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
-                           capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
-                       }
-                       updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                    }
-                    if (capturedInteractionId && currentSession) {
-                        currentSession.lastInteractionId = capturedInteractionId;
-                    }
-                    await renderMsgContent(cD, finalResponse);
-                    success3 = true; break;
-                 } catch(e) { a3++; }
+                        const aiMain = new GoogleGenAI({ apiKey: currentKey });
+                        bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo (${modelToRun})...`;
+                        step3El.innerHTML = `🧠 B3: Đang kết nối Interactions API (${modelToRun}) tổng hợp dữ liệu...`; step3El.style.display = 'block';
+                        
+                        let interactionInput;
+                        if (imgs.length > 0) {
+                            let parts = [{ type: 'text', text: agentInputText }];
+                            for (let f of imgs) parts.push(await fileToInteractionPart(f));
+                            interactionInput = parts;
+                        } else {
+                            interactionInput = agentInputText;
+                        }
+
+                        const interactionPayload = {
+                            model: modelToRun,
+                            input: interactionInput,
+                            system_instruction: getDynamicSI(),
+                            generation_config: {
+                                temperature: DOM.temp ? +DOM.temp.value : 0.5,
+                                top_p: DOM.topP ? +DOM.topP.value : 0.9,
+                                top_k: DOM.topK ? +DOM.topK.value : 40,
+                                max_output_tokens: 8192
+                            },
+                            stream: true
+                        };
+
+                        if (DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId) {
+                            interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
+                        }
+
+                        let resStream;
+                        try {
+                            resStream = await aiMain.interactions.create(interactionPayload);
+                        } catch(errInt) {
+                            if (interactionPayload.previous_interaction_id) {
+                                delete interactionPayload.previous_interaction_id;
+                                if (currentSession) currentSession.lastInteractionId = null;
+                                resStream = await aiMain.interactions.create(interactionPayload);
+                            } else {
+                                throw errInt;
+                            }
+                        }
+                        
+                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                        let capturedInteractionId = null;
+                        for await(const ck of resStream){
+                           const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
+                           finalResponse += textChunk;
+                           if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
+                               capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
+                           }
+                           updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                        }
+                        if (capturedInteractionId && currentSession) {
+                            currentSession.lastInteractionId = capturedInteractionId;
+                        }
+                        await renderMsgContent(cD, finalResponse);
+                        return true;
+                     } catch(e) { 
+                        attempt++;
+                        if (attempt < keysToTry.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
+                     }
+                 }
+                 return false;
+             }
+
+             success3 = await tryGoogleCallAgent(activeModel);
+
+             if (!success3 && activeModel !== 'gemini-3.1-flash-lite') {
+                 showToast(`⚠️ Mô hình ${activeModel} bị lỗi! Tự động chuyển về Gemini 3.1 Flash Lite...`, "warning");
+                 finalResponse = "";
+                 success3 = await tryGoogleCallAgent('gemini-3.1-flash-lite');
              }
          }
          if(!success3) { showToast("Agent thất bại tại B3.","error"); bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
 
       } else {
          let fnP=fP; 
-         if(DOM.toggleVectorDB && DOM.toggleVectorDB.checked){
-            try{
-               bD.querySelector('.streaming-indicator').innerText=`🗄️ Đang lục tìm ký ức...`;
-               const vInput = await getEmbedding(fP); const allV = await getAllVectors();
-               if(allV.length){
-                  let scored = allV.map(v=>({text:v.text, score:cosineSim(vInput, v.vec)})).sort((a,b)=>b.score-a.score).slice(0,3);
-                  fnP=`[KÝ ỨC DÀI HẠN TỪ VECTOR DB]:\n${scored.map(x=>x.text).join('\n---\n')}\n\n[GỐC]: ${fP}`;
-               }
-            }catch(e){}
-         }
          
          if(DOM.toggleSearch && DOM.toggleSearch.checked){
             const step1El = document.createElement('div'); step1El.className = 'agent-step'; cD.appendChild(step1El);
@@ -1543,7 +1556,10 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                        });
                        kText = kRes.text.trim();
                        kSuccess = true; break;
-                    }catch(e){ sA1++; }
+                    }catch(e){ 
+                       sA1++;
+                       if (sA1 < apiKeys.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
+                    }
                 }
             } else {
                 step1El.innerHTML = `🔍 B1: Câu lệnh ngắn, dùng trực tiếp từ khóa...`;
@@ -1565,7 +1581,10 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                            config: { tools: [{ googleSearch: {} }] }
                         }); 
                        wDText = wRes.text; searchSuccess = true; break;
-                    } catch(e) { sA2++; }
+                    } catch(e) { 
+                       sA2++;
+                       if (sA2 < apiKeys.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
+                    }
                 }
             }
             if(searchSuccess){ fnP=`[DỮ LIỆU TÌM THẤY TRÊN INTERNET]:\n${wDText}\n\n[GỐC]: ${fnP}`; }
@@ -1607,8 +1626,8 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
              }
              if(!extSuccess){ bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
          } else {
-             // GOOGLE MODELS CHÍNH - INTERACTIONS API
-             let pA=0, pS=false, sT=Date.now(); 
+             // GOOGLE MODELS CHÍNH - INTERACTIONS API (CÓ XOAY TUA KEY & FALLBACK VỀ FLASH LITE)
+             let pS=false, sT=Date.now(), lastErr=null; 
              const selectedKeyIdx = DOM.apiKeySel ? DOM.apiKeySel.value : 'auto';
              let keysToTry = [];
              if (selectedKeyIdx !== 'auto') {
@@ -1623,90 +1642,110 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                  }
              }
 
-             while(pA<keysToTry.length){
-                try{
-                   let currentKey;
-                   if (selectedKeyIdx !== 'auto') {
-                       currentKey = keysToTry[0];
-                   } else if (currentSession && currentSession.assignedApiKey) {
-                       currentKey = currentSession.assignedApiKey;
-                   } else {
-                       currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-                       if (currentSession) currentSession.assignedApiKey = currentKey;
-                   }
-                   const aiMain = new GoogleGenAI({ apiKey: currentKey });
-                   
-                   let interactionInput;
-                   if (imgs.length > 0) {
-                       let parts = [{ type: 'text', text: fnP }];
-                       for (let f of imgs) parts.push(await fileToInteractionPart(f));
-                       interactionInput = parts;
-                   } else {
-                       interactionInput = fnP;
-                   }
-
-                   const interactionPayload = {
-                       model: activeModel,
-                       input: interactionInput,
-                       system_instruction: getDynamicSI(),
-                       generation_config: {
-                           temperature: DOM.temp ? +DOM.temp.value : 0.5,
-                           top_p: DOM.topP ? +DOM.topP.value : 0.9,
-                           top_k: DOM.topK ? +DOM.topK.value : 40,
-                           max_output_tokens: 8192
-                       },
-                       stream: true
-                   };
-
-                   if (DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId) {
-                       interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
-                   }
-
-                   let resStream;
-                   try {
-                       resStream = await aiMain.interactions.create(interactionPayload); 
-                   } catch(errInt) {
-                       if (interactionPayload.previous_interaction_id) {
-                           delete interactionPayload.previous_interaction_id;
-                           if (currentSession) currentSession.lastInteractionId = null;
-                           resStream = await aiMain.interactions.create(interactionPayload);
-                       } else {
-                           throw errInt;
-                       }
-                   }
-                   
-                   if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
-                   
-                   let capturedInteractionId = null;
-                   for await(const ck of resStream){
-                      const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
-                      finalResponse += textChunk;
-                      if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
-                          capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
+             async function tryGoogleCall(modelToRun) {
+                let attempt = 0;
+                while(attempt < keysToTry.length){
+                   try{
+                      let currentKey;
+                      if (selectedKeyIdx !== 'auto') {
+                          currentKey = keysToTry[0];
+                      } else if (currentSession && currentSession.assignedApiKey) {
+                          currentKey = currentSession.assignedApiKey;
+                      } else {
+                          currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                          if (currentSession) currentSession.assignedApiKey = currentKey;
                       }
-                      updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                   } 
+                      const aiMain = new GoogleGenAI({ apiKey: currentKey });
+                      
+                      let interactionInput;
+                      if (imgs.length > 0) {
+                          let parts = [{ type: 'text', text: fnP }];
+                          for (let f of imgs) parts.push(await fileToInteractionPart(f));
+                          interactionInput = parts;
+                      } else {
+                          interactionInput = fnP;
+                      }
 
-                   if (capturedInteractionId && currentSession) {
-                       currentSession.lastInteractionId = capturedInteractionId;
+                      const interactionPayload = {
+                          model: modelToRun,
+                          input: interactionInput,
+                          system_instruction: getDynamicSI(),
+                          generation_config: {
+                              temperature: DOM.temp ? +DOM.temp.value : 0.5,
+                              top_p: DOM.topP ? +DOM.topP.value : 0.9,
+                              top_k: DOM.topK ? +DOM.topK.value : 40,
+                              max_output_tokens: 8192
+                          },
+                          stream: true
+                      };
+
+                      if (DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId) {
+                          interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
+                      }
+
+                      let resStream;
+                      try {
+                          resStream = await aiMain.interactions.create(interactionPayload); 
+                      } catch(errInt) {
+                          if (interactionPayload.previous_interaction_id) {
+                              delete interactionPayload.previous_interaction_id;
+                              if (currentSession) currentSession.lastInteractionId = null;
+                              resStream = await aiMain.interactions.create(interactionPayload);
+                          } else {
+                              throw errInt;
+                          }
+                      }
+                      
+                      if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
+                      
+                      let capturedInteractionId = null;
+                      for await(const ck of resStream){
+                         const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
+                         finalResponse += textChunk;
+                         if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
+                             capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
+                         }
+                         updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                      } 
+
+                      if (capturedInteractionId && currentSession) {
+                          currentSession.lastInteractionId = capturedInteractionId;
+                      }
+
+                      await renderMsgContent(cD, finalResponse);
+                      return true;
+                   } catch(e){
+                      lastErr = e;
+                      attempt++;
+                      if (attempt < keysToTry.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
                    }
-
-                   await renderMsgContent(cD, finalResponse); pS=true; 
-                   document.getElementById('latency-val').innerText=(Date.now()-sT).toString(); break;
-                }catch(e){
-                   pA++; 
-                   if(pA>=keysToTry.length){bD.remove(); showToast("❌ Lỗi API: "+e.message,'error'); break;}
                 }
+                return false;
              }
-             if(!pS){ isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
+
+             pS = await tryGoogleCall(activeModel);
+
+             if (!pS && activeModel !== 'gemini-3.1-flash-lite') {
+                 showToast(`⚠️ Mô hình ${activeModel} bị lỗi! Tự động chuyển về Gemini 3.1 Flash Lite...`, "warning");
+                 finalResponse = "";
+                 pS = await tryGoogleCall('gemini-3.1-flash-lite');
+             }
+
+             if(!pS){ 
+                 bD.remove(); 
+                 showToast("❌ Lỗi API: " + (lastErr ? lastErr.message : "Không thể phản hồi"), 'error'); 
+                 isProcessing=false; 
+                 DOM.sendBtn.innerText='Gửi 📤'; 
+                 return; 
+             }
+             document.getElementById('latency-val').innerText=(Date.now()-sT).toString();
          }
       }
 
       chatHistory.push({role:'user',text:fP}); chatHistory.push({role:'model',text:finalResponse}); 
       const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; await saveToDB(s); 
-      bD.querySelector('.bot-message').setAttribute('data-raw',finalResponse); const a=document.createElement('div'); a.className='msg-actions'; a.innerHTML=`<button class="action-btn" onclick="copy(this)">📋 Copy</button><button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${chatHistory.length-1})">🗑️ Xóa</button>`; bD.appendChild(a);
+      bD.querySelector('.bot-message').setAttribute('data-raw',finalResponse); const a=document.createElement('div'); a.className='msg-actions'; a.innerHTML=`<button class="action-btn" onclick="copy(this)">📋 Copy</button><button class="action-btn" onclick="retryMsg(${chatHistory.length-1})" style="color:var(--primary);">🔄 Thử lại</button><button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${chatHistory.length-1})">🗑️ Xóa</button>`; bD.appendChild(a);
       
-      if(DOM.toggleVectorDB && DOM.toggleVectorDB.checked){ try { const hText=`Bạn: ${fP}\nAI: ${finalResponse}`; const vRes=await getEmbedding(hText); await saveVector({id:'v_'+Date.now(), text:hText, vec:vRes}); }catch(e){} }
       isProcessing=false; DOM.sendBtn.innerText='Gửi 📤';
     };
 
@@ -1714,10 +1753,10 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     window.clearActiveSession=async()=>{if(confirm("Xóa sạch phiên này?")){chatHistory=[]; const s=sessions.find(x=>x.id===activeId); if(s){s.his=[]; s.lastInteractionId = null; await saveToDB(s);} DOM.chat.innerHTML=''; document.getElementById('session-msg-count').innerText=`0 tin nhắn`; showToast('Đã xóa sạch');}};
     window.exportAllSessions=async()=>{const b={backupDate:new Date().toISOString(),sessions:await getAllFromDB(),activeId,globalContext: localStorage.getItem('global_context') || ""}; const bBlob=new Blob([JSON.stringify(b,null,2)],{type:'application/json'}), a=document.createElement('a'); a.href=URL.createObjectURL(bBlob); a.download=`Javiss_Backup_${Date.now()}.json`; a.click(); showToast('Đã xuất file kèm Ngữ cảnh!');};
     document.getElementById('import-all-input').addEventListener('change',async e=>{const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async ev=>{try{const d=JSON.parse(ev.target.result); if(d.sessions&&confirm("Ghi đè dữ liệu khôi phục?")){await clearAllDB(); for(let s of d.sessions)await saveToDB(s); if(d.globalContext !== undefined){localStorage.setItem('global_context', d.globalContext); DOM.globContext.value = d.globalContext;} await loadSess(); showToast('Đã khôi phục hoàn chỉnh!');}}catch(e){showToast('File lỗi!','error');}}; r.readAsText(f); e.target.value='';});
-    async function processUploadFiles(fs){DOM.fileCount.innerText="⏳"; for(let f of fs){if(f.type.startsWith('image/')||f.type==='video/mp4'){if(filesData.length<MAX_IMAGES)filesData.push(f);}else if(f.type==='application/pdf'){const p=await readPDF(f); txtContent+=`\n[PDF: ${f.name}]:\n${p.substring(0,50000)}\n`; DOM.textFileList.innerHTML+=`📑 ${f.name}<br>`;}else{const t=await f.text(); txtContent+=`\n[Văn bản: ${f.name}]:\n${t.substring(0,50000)}\n`; DOM.textFileList.innerHTML+=`📄 ${f.name}<br>`;}} renderFiles();}
+    async function processUploadFiles(fs){DOM.fileCount.innerText="⏳"; for(let f of fs){if(f.type.startsWith('image/')||f.type==='video/mp4'){if(filesData.length<MAX_IMAGES)filesData.push(f);}else if(f.type==='application/pdf'){const p=await readPDF(f); txtContent+=`\n[PDF: ${f.name}]:\n${p.substring(0,50000)}\n`; DOM.textFileList.innerHTML+=`📑 ${f.name}<br>`;}else{const t=await f.text(); txtContent+=`\n[Văn bản: ${f.name}]:\n${t.substring(0,50000)}\n`; DOM.textFileList.innerHTML+=`📄 ${f.name}<br>`;}} renderFiles(); updateTokenCount();}
     DOM.fileUpload.addEventListener('change',async e=>{await processUploadFiles(Array.from(e.target.files)); DOM.fileUpload.value='';});
     function renderFiles(){DOM.previewGrid.innerHTML=''; DOM.previewBox.style.display=(filesData.length||txtContent)?'block':'none'; DOM.fileCount.innerText=filesData.length+(txtContent?1:0); filesData.forEach((f,i)=>{const w=document.createElement('div'); w.innerHTML=`<div style="position:relative;width:50px;height:50px;background:#333;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;">${f.type.startsWith('image')?`<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`:'MP4'}<button onclick="rmImg(${i})" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;">✕</button></div>`; DOM.previewGrid.appendChild(w);});}
-    window.rmImg=i=>{filesData.splice(i,1); renderFiles();}; DOM.clearFilesBtn.onclick=()=>{filesData=[]; txtContent=""; DOM.textFileList.innerHTML=""; renderFiles();};
+    window.rmImg=i=>{filesData.splice(i,1); renderFiles(); updateTokenCount();}; DOM.clearFilesBtn.onclick=()=>{filesData=[]; txtContent=""; DOM.textFileList.innerHTML=""; renderFiles(); updateTokenCount();};
     async function readPDF(f){const p=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise; let t=""; for(let i=1;i<=p.numPages;i++)t+=(await(await p.getPage(i)).getTextContent()).items.map(x=>x.str).join(' ')+"\n"; return t;}
     
     window.exportChatDoc=()=>{
@@ -1741,13 +1780,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     };
 
     function showToast(m,t='success'){DOM.toast.innerText=m; DOM.toast.className=`toast ${t==='error'?'danger':t} show`; setTimeout(()=>DOM.toast.classList.remove('show'),2000);}
-    
-    async function fileToPart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>{
-      const base64Data = rd.result.split(',')[1];
-      r({
-        inline_data: { data: base64Data, mime_type: f.type }
-      });
-    }; rd.readAsDataURL(f);});}
 
     async function fileToInteractionPart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>{
       const base64Data = rd.result.split(',')[1];
