@@ -1449,11 +1449,14 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                     step3El.innerHTML = `🧠 B3: Đang kết nối Interactions API tổng hợp dữ liệu...`; step3El.style.display = 'block';
                     
                     let agentInputText = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
-                    let parts = [{ text: agentInputText }];
+                    let interactionInput;
                     if (imgs.length > 0) {
+                        let parts = [{ text: agentInputText }];
                         for (let f of imgs) parts.push(await fileToPart(f));
+                        interactionInput = [{ role: 'user', parts: parts }];
+                    } else {
+                        interactionInput = agentInputText;
                     }
-                    let interactionInput = imgs.length > 0 ? [{ role: 'user', parts: parts }] : agentInputText;
 
                     const interactionPayload = {
                         model: activeModel,
@@ -1604,7 +1607,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
              }
              if(!extSuccess){ bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
          } else {
-             // GOOGLE MODELS CHÍNH - INTERACTIONS API (SẠCH SẼ & CHÍNH XÁC CẤU TRÚC TURN)
+             // GOOGLE MODELS CHÍNH - INTERACTIONS API (CHUẨN HÓA BỌC ROLE 'USER' CHO ĐA PHƯƠNG THỨC & TỐI ĐA 8192 OUTPUT TOKENS)
              let pA=0, pS=false, sT=Date.now(); 
              const selectedKeyIdx = DOM.apiKeySel ? DOM.apiKeySel.value : 'auto';
              let keysToTry = [];
@@ -1633,12 +1636,14 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                    }
                    const aiMain = new GoogleGenAI({ apiKey: currentKey });
                    
-                   let parts = [{ text: fnP }];
+                   let interactionInput;
                    if (imgs.length > 0) {
+                       let parts = [{ text: fnP }];
                        for (let f of imgs) parts.push(await fileToPart(f));
+                       interactionInput = [{ role: 'user', parts: parts }];
+                   } else {
+                       interactionInput = fnP;
                    }
-
-                   let interactionInput = imgs.length > 0 ? [{ role: 'user', parts: parts }] : fnP;
 
                    const interactionPayload = {
                        model: activeModel,
@@ -1739,8 +1744,8 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     async function fileToPart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>{
       const base64Data = rd.result.split(',')[1];
       r({
-        inline_data: { data: base64Data, mime_type: f.type },
-        inlineData: { data: base64Data, mimeType: f.type }
+        inlineData: { data: base64Data, mimeType: f.type },
+        inline_data: { data: base64Data, mime_type: f.type }
       });
     }; rd.readAsDataURL(f);});}
     
