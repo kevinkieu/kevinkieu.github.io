@@ -1448,14 +1448,22 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                     bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo (Interactions API)...`;
                     step3El.innerHTML = `🧠 B3: Đang kết nối Interactions API tổng hợp dữ liệu...`; step3El.style.display = 'block';
                     
+                    let agentInputText = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
+                    let parts = [{ text: agentInputText }];
+                    if (imgs.length > 0) {
+                        for (let f of imgs) parts.push(await fileToPart(f));
+                    }
+                    let interactionInput = imgs.length > 0 ? [{ role: 'user', parts: parts }] : agentInputText;
+
                     const interactionPayload = {
                         model: activeModel,
-                        input: `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`,
+                        input: interactionInput,
                         system_instruction: getDynamicSI(),
                         generation_config: {
                             temperature: DOM.temp ? +DOM.temp.value : 0.5,
                             top_p: DOM.topP ? +DOM.topP.value : 0.9,
-                            top_k: DOM.topK ? +DOM.topK.value : 40
+                            top_k: DOM.topK ? +DOM.topK.value : 40,
+                            max_output_tokens: 8192
                         },
                         stream: true
                     };
@@ -1596,7 +1604,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
              }
              if(!extSuccess){ bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
          } else {
-             // GOOGLE MODELS CHÍNH - INTERACTIONS API
+             // GOOGLE MODELS CHÍNH - INTERACTIONS API (SẠCH SẼ & CHÍNH XÁC CẤU TRÚC TURN)
              let pA=0, pS=false, sT=Date.now(); 
              const selectedKeyIdx = DOM.apiKeySel ? DOM.apiKeySel.value : 'auto';
              let keysToTry = [];
@@ -1625,14 +1633,12 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                    }
                    const aiMain = new GoogleGenAI({ apiKey: currentKey });
                    
-                   let interactionInput;
+                   let parts = [{ text: fnP }];
                    if (imgs.length > 0) {
-                       let parts = [{ text: fnP }];
                        for (let f of imgs) parts.push(await fileToPart(f));
-                       interactionInput = parts;
-                   } else {
-                       interactionInput = fnP;
                    }
+
+                   let interactionInput = imgs.length > 0 ? [{ role: 'user', parts: parts }] : fnP;
 
                    const interactionPayload = {
                        model: activeModel,
@@ -1641,7 +1647,8 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                        generation_config: {
                            temperature: DOM.temp ? +DOM.temp.value : 0.5,
                            top_p: DOM.topP ? +DOM.topP.value : 0.9,
-                           top_k: DOM.topK ? +DOM.topK.value : 40
+                           top_k: DOM.topK ? +DOM.topK.value : 40,
+                           max_output_tokens: 8192
                        },
                        stream: true
                    };
