@@ -314,6 +314,14 @@
     
     let apiKeys=[], globalKeyIndex = 0;
     
+    const SAFETY = [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' }
+    ];
+
     const externalModels = [
          'qwen/qwen3.6-27b',
          'openai/gpt-oss-120b',
@@ -485,7 +493,7 @@ QUY TẮC TỐI CAO:
                 await ai.models.generateContent({
                     model: "gemini-3.1-flash-lite",
                     contents: "ping",
-                    config: { maxOutputTokens: 1 }
+                    config: { maxOutputTokens: 1, safetySettings: SAFETY }
                 });
                 el.style.border = "2px solid #2e7d32";
                 el.title = "✅ Key hoạt động bình thường";
@@ -1109,7 +1117,7 @@ QUY TẮC TỐI CAO:
                 const r = await ai.models.generateContent({
                     model: "gemini-3.1-flash-lite",
                     contents: `${promptEnhancementInstruction}\n\nYêu cầu gốc: ${t}`,
-                    config: { temperature: 0.3 }
+                    config: { temperature: 0.3, safetySettings: SAFETY }
                 });
                 if(DOM.input) {
                     DOM.input.value=r.text.trim(); 
@@ -1138,7 +1146,7 @@ QUY TẮC TỐI CAO:
            const res = await ai.models.generateContent({
              model: "gemini-2.5-flash",
              contents: `Hãy sử dụng công cụ tìm kiếm để thu thập thông tin, tóm tắt nội dung chi tiết 10 ý chính bao gồm cả thông số cốt lõi của video YouTube sau: ${u}`,
-             config: { tools: [{ googleSearch: {} }] }
+             config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
            });
            txtContent+=`\n[Dữ liệu YouTube tổng hợp thông qua Grounding Search cho đường dẫn ${u}]:\n${res.text}\n`;
            DOM.textFileList.innerHTML+=`📺 Dữ liệu YouTube<br>`; 
@@ -1223,7 +1231,7 @@ QUY TẮC TỐI CAO:
     
     DOM.btnCompress.onclick=async()=>{if(chatHistory.length<=4)return showToast("Chưa cần nén!"); if(!confirm(`Nén ngữ cảnh cũ?`))return; let a=0; while(a<apiKeys.length){try{const h=chatHistory.slice(0,-2), r=chatHistory.slice(-2), t=h.map(m=>`${m.role}: ${m.text}`).join('\n\n'); 
     const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-    const ai=new GoogleGenAI({ apiKey: currentKey }); const res=await ai.models.generateContent({model:"gemini-3.1-flash-lite", contents:`Tóm tắt cấu trúc hội thoại:\n\n${t}`}); chatHistory=[{role:'user',text:`[Tóm tắt]: \n${res.text}`},{role:'model',text:'Đã nhớ.'},...r]; const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; s.lastInteractionId = null; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); } showToast("Nén thành công!"); break;}catch(e){a++; if(a < apiKeys.length) showToast("⚠️ API Key gặp lỗi, đang thử Key tiếp theo...", "warning");}}};
+    const ai=new GoogleGenAI({ apiKey: currentKey }); const res=await ai.models.generateContent({model:"gemini-3.1-flash-lite", contents:`Tóm tắt cấu trúc hội thoại:\n\n${t}`, config: { safetySettings: SAFETY }}); chatHistory=[{role:'user',text:`[Tóm tắt]: \n${res.text}`},{role:'model',text:'Đã nhớ.'},...r]; const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; s.lastInteractionId = null; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); } showToast("Nén thành công!"); break;}catch(e){a++; if(a < apiKeys.length) showToast("⚠️ API Key gặp lỗi, đang thử Key tiếp theo...", "warning");}}};
     
     async function updateConfig(){
       const s=sessions.find(x=>x.id===activeId); 
@@ -1312,441 +1320,457 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
       let msg=DOM.input ? DOM.input.value.trim() : ''; 
       if(!msg&&!filesData.length&&!txtContent)return; 
       
-      const shouldExtract = msg.length >= 77;
       const currentSession = sessions.find(x => x.id === activeId);
       
       localStorage.removeItem('javiss_draft'); isProcessing=true; DOM.sendBtn.innerHTML='⏳'; 
-      let fP=txtContent?msg+"\n\n"+txtContent:msg;
       
-      await appendMsg('user', msg+(filesData.length?` [${filesData.length} tệp]`:''), chatHistory.length, false); 
-      if(DOM.input) { DOM.input.value=''; DOM.input.style.height='40px'; updateTokenCount(); } const imgs=[...filesData]; DOM.clearFilesBtn.click(); 
-      
-      const bD=document.createElement('div'); bD.className='message-container'; 
-      bD.innerHTML=`<div class="bot-message"><div class="message-header">Chatbot <span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`; 
-      DOM.chat.appendChild(bD);
-      const cD=bD.querySelector('.msg-content'); 
-      
-      let finalResponse = "";
-      
-      if(DOM.toggleAgent && DOM.toggleAgent.checked){
-         const step1El = document.createElement('div'); step1El.className = 'agent-step'; cD.appendChild(step1El);
-         const step2El = document.createElement('div'); step2El.className = 'agent-step'; step2El.style.display = 'none'; cD.appendChild(step2El);
-         const step3El = document.createElement('div'); step3El.className = 'agent-step'; step3El.style.display = 'none'; cD.appendChild(step3El);
+      try {
+          const defaultMediaPrompt = "Hãy phân tích và mô tả chi tiết nội dung tệp/hình ảnh đính kèm này.";
+          let userDisplayText = msg || (filesData.length || txtContent ? "📎 [Gửi tệp đính kèm]" : "");
+          let fP = txtContent ? (msg ? msg + "\n\n" + txtContent : txtContent) : msg;
+          if (!fP.trim() && (filesData.length || txtContent)) {
+              fP = defaultMediaPrompt;
+          }
 
-         let success1 = false, extractedQuery = msg; 
-         
-         if (shouldExtract) {
-             step1El.innerHTML = `📋 B1: Đang tách lọc mã hiệu, số hiệu và danh từ riêng nâng cao...`;
-             let a1 = 0;
-             while(a1 < apiKeys.length){
+          const shouldExtract = fP.length >= 77;
+          
+          await appendMsg('user', userDisplayText+(filesData.length?` [${filesData.length} tệp]`:''), chatHistory.length, false); 
+          if(DOM.input) { DOM.input.value=''; DOM.input.style.height='40px'; updateTokenCount(); } const imgs=[...filesData]; DOM.clearFilesBtn.click(); 
+          
+          const bD=document.createElement('div'); bD.className='message-container'; 
+          bD.innerHTML=`<div class="bot-message"><div class="message-header">Chatbot <span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`; 
+          DOM.chat.appendChild(bD);
+          const cD=bD.querySelector('.msg-content'); 
+          
+          let finalResponse = "";
+          
+          if(DOM.toggleAgent && DOM.toggleAgent.checked){
+             const step1El = document.createElement('div'); step1El.className = 'agent-step'; cD.appendChild(step1El);
+             const step2El = document.createElement('div'); step2El.className = 'agent-step'; step2El.style.display = 'none'; cD.appendChild(step2El);
+             const step3El = document.createElement('div'); step3El.className = 'agent-step'; step3El.style.display = 'none'; cD.appendChild(step3El);
+
+             let success1 = false, extractedQuery = fP; 
+             
+             if (shouldExtract) {
+                 step1El.innerHTML = `📋 B1: Đang tách lọc mã hiệu, số hiệu và danh từ riêng nâng cao...`;
+                 let a1 = 0;
+                 while(a1 < apiKeys.length){
+                     try {
+                        const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                        const aiAgent = new GoogleGenAI({ apiKey: currentKey });
+                        bD.querySelector('.streaming-indicator').innerText=`🤖 Đang lên kế hoạch...`;
+                        const step1 = await aiAgent.models.generateContent({
+                            model: "gemini-3.1-flash-lite", 
+                            contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
+                            config: { temperature: 0.0, topK: 1, safetySettings: SAFETY }
+                        });
+                        extractedQuery = step1.text.trim();
+                        success1 = true; break;
+                     } catch(e) { 
+                        a1++;
+                        if (a1 < apiKeys.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
+                     }
+                 }
+             } else {
+                 step1El.innerHTML = `📋 B1: Câu lệnh ngắn, dùng trực tiếp từ khóa...`;
+                 success1 = true;
+             }
+             
+             if(!success1) { showToast("Agent thất bại tại B1.","error"); bD.remove(); return; }
+
+             let success2 = false, step2Text = "";
+             let a2 = 0;
+             while(a2 < apiKeys.length){
                  try {
                     const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
                     const aiAgent = new GoogleGenAI({ apiKey: currentKey });
-                    bD.querySelector('.streaming-indicator').innerText=`🤖 Đang lên kế hoạch...`;
-                    const step1 = await aiAgent.models.generateContent({
-                        model: "gemini-3.1-flash-lite", 
-                        contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
-                        config: { temperature: 0.0, topK: 1 }
+                    bD.querySelector('.streaming-indicator').innerText=`🤖 Đang tìm kiếm Web...`;
+                    step2El.innerHTML = `🌐 B2: Tìm kiếm dữ liệu mạng cho cụm từ: <strong>"${extractedQuery}"</strong>`; step2El.style.display = 'block';
+                    
+                    const step2 = await aiAgent.models.generateContent({
+                        model: "gemini-2.5-flash", 
+                        contents: `Tìm kiếm thông tin chi tiết và mới nhất phục vụ cho từ khóa: ${extractedQuery}`,
+                        config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
                     });
-                    extractedQuery = step1.text.trim();
-                    success1 = true; break;
+                    step2Text = step2.text;
+                    success2 = true; break;
                  } catch(e) { 
-                    a1++;
-                    if (a1 < apiKeys.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
+                    a2++;
+                    if (a2 < apiKeys.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
                  }
              }
-         } else {
-             step1El.innerHTML = `📋 B1: Câu lệnh ngắn, dùng trực tiếp từ khóa...`;
-             success1 = true;
-         }
-         
-         if(!success1) { showToast("Agent thất bại tại B1.","error"); bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
 
-         let success2 = false, step2Text = "";
-         let a2 = 0;
-         while(a2 < apiKeys.length){
-             try {
-                const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-                const aiAgent = new GoogleGenAI({ apiKey: currentKey });
-                bD.querySelector('.streaming-indicator').innerText=`🤖 Đang tìm kiếm Web...`;
-                step2El.innerHTML = `🌐 B2: Tìm kiếm dữ liệu mạng cho cụm từ: <strong>"${extractedQuery}"</strong>`; step2El.style.display = 'block';
-                
-                const step2 = await aiAgent.models.generateContent({
-                    model: "gemini-2.5-flash", 
-                    contents: `Tìm kiếm thông tin chi tiết và mới nhất phục vụ cho từ khóa: ${extractedQuery}`,
-                    config: { tools: [{ googleSearch: {} }] }
-                });
-                step2Text = step2.text;
-                success2 = true; break;
-             } catch(e) { 
-                a2++;
-                if (a2 < apiKeys.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
-             }
-         }
+             if(!success2) { showToast("Agent thất bại tại B2.","error"); bD.remove(); return; }
 
-         if(!success2) { showToast("Agent thất bại tại B2.","error"); bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
-
-         let success3 = false;
-         if(activeModel.endsWith('-dify') || externalModels.includes(activeModel)) {
-             let agentPrompt = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
-             bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo...`;
-             step3El.innerHTML = `🧠 B3: Đang kết nối mô hình tổng hợp dữ liệu...`; step3El.style.display = 'block';
-             
-             let extSuccess = false;
-             try {
-                 const onChunkCallback = (chunk) => {
-                     if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                     finalResponse += chunk;
-                     updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                 };
-                 const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error'); };
-
-                 if (activeModel.endsWith('-dify')) {
-                     const si = getDynamicSI();
-                     let serializedAgentPrompt = `<SystemInstruction>\n${si}\n</SystemInstruction>\n\nLƯU Ý: Hãy tuân thủ nghiêm ngặt các chỉ thị hệ thống trong thẻ <SystemInstruction> để thực hiện yêu cầu phân tích sau:\n\nYêu cầu phân tích: ${agentPrompt}`;
-                     await callDifyStream(serializedAgentPrompt, onChunkCallback, onErrorCallback, imgs); 
-                 } else if (activeModel === 'mistral-medium-latest' || activeModel === 'mistral-medium-3-5' || activeModel === 'mistral-small-2603') {
-                     await callMistralStream(agentPrompt, onChunkCallback, onErrorCallback);
-                 } else if (activeModel === 'command-a-plus' || activeModel === 'command-a-reasoning') {
-                     await callCohereStream(agentPrompt, onChunkCallback, onErrorCallback);
-                 } else if (activeModel === 'gpt-oss-120b-cerebras' || activeModel === 'gemma-4-31b-cerebras') {
-                     await callCerebrasStream(agentPrompt, onChunkCallback, onErrorCallback);
-                 } else {
-                     await callGroqStream(agentPrompt, onChunkCallback, onErrorCallback);
-                 }
+             let success3 = false;
+             if(activeModel.endsWith('-dify') || externalModels.includes(activeModel)) {
+                 let agentPrompt = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
+                 bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo...`;
+                 step3El.innerHTML = `🧠 B3: Đang kết nối mô hình tổng hợp dữ liệu...`; step3El.style.display = 'block';
                  
-                 if (finalResponse) {
-                     await renderMsgContent(cD, finalResponse);
-                     extSuccess = true;
-                     success3 = true;
+                 let extSuccess = false;
+                 try {
+                     const onChunkCallback = (chunk) => {
+                         if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                         finalResponse += chunk;
+                         updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                     };
+                     const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error'); };
+
+                     if (activeModel.endsWith('-dify')) {
+                         const si = getDynamicSI();
+                         let serializedAgentPrompt = `<SystemInstruction>\n${si}\n</SystemInstruction>\n\nLƯU Ý: Hãy tuân thủ nghiêm ngặt các chỉ thị hệ thống trong thẻ <SystemInstruction> để thực hiện yêu cầu phân tích sau:\n\nYêu cầu phân tích: ${agentPrompt}`;
+                         await callDifyStream(serializedAgentPrompt, onChunkCallback, onErrorCallback, imgs); 
+                     } else if (activeModel === 'mistral-medium-latest' || activeModel === 'mistral-medium-3-5' || activeModel === 'mistral-small-2603') {
+                         await callMistralStream(agentPrompt, onChunkCallback, onErrorCallback);
+                     } else if (activeModel === 'command-a-plus' || activeModel === 'command-a-reasoning') {
+                         await callCohereStream(agentPrompt, onChunkCallback, onErrorCallback);
+                     } else if (activeModel === 'gpt-oss-120b-cerebras' || activeModel === 'gemma-4-31b-cerebras') {
+                         await callCerebrasStream(agentPrompt, onChunkCallback, onErrorCallback);
+                     } else {
+                         await callGroqStream(agentPrompt, onChunkCallback, onErrorCallback);
+                     }
+                     
+                     if (finalResponse) {
+                         await renderMsgContent(cD, finalResponse);
+                         extSuccess = true;
+                         success3 = true;
+                     }
+                 } catch(err) {
+                     showToast("❌ Lỗi: " + err.message, 'error');
                  }
-             } catch(err) {
-                 showToast("❌ Lỗi: " + err.message, 'error');
-             }
-             if(!extSuccess) { bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
-         } else {
-             // INTERACTIONS API CHO GOOGLE MODEL TRONG AGENT MODE (KÈM ROTATION & FALLBACK)
-             const selectedKeyIdx = DOM.apiKeySel ? DOM.apiKeySel.value : 'auto';
-             let keysToTry = [];
-             if (selectedKeyIdx !== 'auto') {
-                 const kIdx = parseInt(selectedKeyIdx);
-                 const kVal = localStorage.getItem(`javiss_api_${kIdx + 1}`) || "";
-                 if (kVal.trim()) keysToTry = [kVal.trim()];
+                 if(!extSuccess) { bD.remove(); return; }
              } else {
-                 if (currentSession && currentSession.assignedApiKey) {
-                     keysToTry = [currentSession.assignedApiKey];
+                 const selectedKeyIdx = DOM.apiKeySel ? DOM.apiKeySel.value : 'auto';
+                 let keysToTry = [];
+                 if (selectedKeyIdx !== 'auto') {
+                     const kIdx = parseInt(selectedKeyIdx);
+                     const kVal = localStorage.getItem(`javiss_api_${kIdx + 1}`) || "";
+                     if (kVal.trim()) keysToTry = [kVal.trim()];
                  } else {
-                     keysToTry = [...apiKeys];
-                 }
-             }
-
-             let agentInputText = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
-
-             async function tryGoogleCallAgent(modelToRun) {
-                 let attempt = 0;
-                 while(attempt < keysToTry.length){
-                     try {
-                        let currentKey;
-                        if (selectedKeyIdx !== 'auto') {
-                            currentKey = keysToTry[0];
-                        } else if (currentSession && currentSession.assignedApiKey) {
-                            currentKey = currentSession.assignedApiKey;
-                        } else {
-                            currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-                            if (currentSession) currentSession.assignedApiKey = currentKey;
-                        }
-                        const aiMain = new GoogleGenAI({ apiKey: currentKey });
-                        bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo (${modelToRun})...`;
-                        step3El.innerHTML = `🧠 B3: Đang kết nối Interactions API (${modelToRun}) tổng hợp dữ liệu...`; step3El.style.display = 'block';
-                        
-                        let interactionInput;
-                        if (imgs.length > 0) {
-                            let parts = [{ type: 'text', text: agentInputText }];
-                            for (let f of imgs) parts.push(await fileToInteractionPart(f));
-                            interactionInput = parts;
-                        } else {
-                            interactionInput = agentInputText;
-                        }
-
-                        const interactionPayload = {
-                            model: modelToRun,
-                            input: interactionInput,
-                            system_instruction: getDynamicSI(),
-                            generation_config: {
-                                temperature: DOM.temp ? +DOM.temp.value : 0.5,
-                                top_p: DOM.topP ? +DOM.topP.value : 0.9,
-                                top_k: DOM.topK ? +DOM.topK.value : 40,
-                                max_output_tokens: 8192
-                            },
-                            stream: true
-                        };
-
-                        if (DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId) {
-                            interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
-                        }
-
-                        let resStream;
-                        try {
-                            resStream = await aiMain.interactions.create(interactionPayload);
-                        } catch(errInt) {
-                            if (interactionPayload.previous_interaction_id) {
-                                delete interactionPayload.previous_interaction_id;
-                                if (currentSession) currentSession.lastInteractionId = null;
-                                resStream = await aiMain.interactions.create(interactionPayload);
-                            } else {
-                                throw errInt;
-                            }
-                        }
-                        
-                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                        let capturedInteractionId = null;
-                        for await(const ck of resStream){
-                           const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
-                           finalResponse += textChunk;
-                           if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
-                               capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
-                           }
-                           updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                        }
-                        if (capturedInteractionId && currentSession) {
-                            currentSession.lastInteractionId = capturedInteractionId;
-                        }
-                        await renderMsgContent(cD, finalResponse);
-                        return true;
-                     } catch(e) { 
-                        attempt++;
-                        if (attempt < keysToTry.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
+                     if (currentSession && currentSession.assignedApiKey) {
+                         keysToTry = [currentSession.assignedApiKey];
+                     } else {
+                         keysToTry = [...apiKeys];
                      }
                  }
-                 return false;
-             }
 
-             success3 = await tryGoogleCallAgent(activeModel);
+                 let agentInputText = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
 
-             if (!success3 && activeModel !== 'gemini-3.1-flash-lite') {
-                 showToast(`⚠️ Mô hình ${activeModel} bị lỗi! Tự động chuyển về Gemini 3.1 Flash Lite...`, "warning");
-                 finalResponse = "";
-                 success3 = await tryGoogleCallAgent('gemini-3.1-flash-lite');
-             }
-         }
-         if(!success3) { showToast("Agent thất bại tại B3.","error"); bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
+                 async function tryGoogleCallAgent(modelToRun) {
+                     let attempt = 0;
+                     while(attempt < keysToTry.length){
+                         try {
+                            let currentKey;
+                            if (selectedKeyIdx !== 'auto') {
+                                currentKey = keysToTry[0];
+                            } else if (currentSession && currentSession.assignedApiKey) {
+                                currentKey = currentSession.assignedApiKey;
+                            } else {
+                                currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                                if (currentSession) currentSession.assignedApiKey = currentKey;
+                            }
+                            const aiMain = new GoogleGenAI({ apiKey: currentKey });
+                            bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo (${modelToRun})...`;
+                            step3El.innerHTML = `🧠 B3: Đang kết nối Interactions API (${modelToRun}) tổng hợp dữ liệu...`; step3El.style.display = 'block';
+                            
+                            let interactionInput;
+                            let textContentPart = agentInputText.trim() ? agentInputText : defaultMediaPrompt;
+                            if (imgs.length > 0) {
+                                let parts = [{ type: 'text', text: textContentPart }];
+                                for (let f of imgs) parts.push(...(await processAndSplitImage(f)));
+                                interactionInput = parts;
+                            } else {
+                                interactionInput = textContentPart;
+                            }
 
-      } else {
-         let fnP=fP; 
-         
-         if(DOM.toggleSearch && DOM.toggleSearch.checked){
-            const step1El = document.createElement('div'); step1El.className = 'agent-step'; cD.appendChild(step1El);
-            const step2El = document.createElement('div'); step2El.className = 'agent-step'; step2El.style.display = 'none'; cD.appendChild(step2El);
+                            const interactionPayload = {
+                                model: modelToRun,
+                                input: interactionInput,
+                                system_instruction: getDynamicSI(),
+                                generation_config: {
+                                    temperature: DOM.temp ? +DOM.temp.value : 0.5,
+                                    top_p: DOM.topP ? +DOM.topP.value : 0.9,
+                                    top_k: DOM.topK ? +DOM.topK.value : 40
+                                },
+                                stream: true
+                            };
 
-            let kSuccess = false, kText = msg; 
-            
-            if (shouldExtract) {
-                step1El.innerHTML = `🔍 B1: Đang bóc tách mã số, số hiệu và danh từ riêng...`;
-                let sA1 = 0;
-                while(sA1 < apiKeys.length){
-                    try{
-                       const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-                       const aiSearch = new GoogleGenAI({ apiKey: currentKey });
-                       bD.querySelector('.streaming-indicator').innerText=`🔍 Phân tích dữ liệu...`;
-                       
-                       const kRes = await aiSearch.models.generateContent({
-                           model: "gemini-3.1-flash-lite",
-                           contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
-                           config: { temperature: 0.0, topK: 1 }
-                       });
-                       kText = kRes.text.trim();
-                       kSuccess = true; break;
-                    }catch(e){ 
-                       sA1++;
-                       if (sA1 < apiKeys.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
-                    }
-                }
-            } else {
-                step1El.innerHTML = `🔍 B1: Câu lệnh ngắn, dùng trực tiếp từ khóa...`;
-                kSuccess = true;
-            }
-            
-            let sA2 = 0, searchSuccess = false, wDText = "";
-            if(kSuccess) {
-                while(sA2 < apiKeys.length){
-                    try {
-                       const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-                       const aiSearch = new GoogleGenAI({ apiKey: currentKey });
-                       bD.querySelector('.streaming-indicator').innerText=`🔍 Tìm Web: ${kText}`;
-                       step2El.innerHTML = `🌐 B2: Khởi chạy lệnh Grounding Search cho từ khóa: <strong>"${kText}"</strong>`; step2El.style.display = 'block';
-                       
-                       const wRes = await aiSearch.models.generateContent({
-                           model: "gemini-2.5-flash", 
-                           contents: `Tìm kiếm thông tin chính xác phục vụ cho từ khóa: ${kText}`,
-                           config: { tools: [{ googleSearch: {} }] }
-                        }); 
-                       wDText = wRes.text; searchSuccess = true; break;
-                    } catch(e) { 
-                       sA2++;
-                       if (sA2 < apiKeys.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
-                    }
-                }
-            }
-            if(searchSuccess){ fnP=`[DỮ LIỆU TÌM THẤY TRÊN INTERNET]:\n${wDText}\n\n[GỐC]: ${fnP}`; }
-         } 
+                            if (DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId) {
+                                interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
+                            }
 
-         if(activeModel.endsWith('-dify') || externalModels.includes(activeModel)) {
-             bD.querySelector('.streaming-indicator').innerText=`🔗 Đang gọi dịch vụ...`;
-             
-             let extSuccess = false;
-             try {
-                const onChunkCallback = (chunk) => {
-                   if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                   finalResponse += chunk;
-                   updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                };
-                const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error'); };
+                            let resStream;
+                            try {
+                                resStream = await aiMain.interactions.create(interactionPayload);
+                            } catch(errInt) {
+                                if (interactionPayload.previous_interaction_id) {
+                                    delete interactionPayload.previous_interaction_id;
+                                    if (currentSession) currentSession.lastInteractionId = null;
+                                    resStream = await aiMain.interactions.create(interactionPayload);
+                                } else {
+                                    throw errInt;
+                                }
+                            }
+                            
+                            if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                            let capturedInteractionId = null;
+                            for await(const ck of resStream){
+                               const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
+                               finalResponse += textChunk;
+                               if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
+                                   capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
+                               }
+                               updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                            }
+                            if (capturedInteractionId && currentSession) {
+                                currentSession.lastInteractionId = capturedInteractionId;
+                            }
+                            await renderMsgContent(cD, finalResponse);
+                            return true;
+                         } catch(e) { 
+                            attempt++;
+                            if (attempt < keysToTry.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
+                         }
+                     }
+                     return false;
+                 }
 
-                if (activeModel.endsWith('-dify')) {
-                   const memSize = 20;
-                   let currentHistory = DOM.toggleMemory && DOM.toggleMemory.checked ? chatHistory.slice(-memSize) : [];
-                   let serializedPrompt = serializeHistoryForDify(currentHistory, fnP);
-                   await callDifyStream(serializedPrompt, onChunkCallback, onErrorCallback, imgs); 
-                } else if (activeModel === 'mistral-medium-latest' || activeModel === 'mistral-medium-3-5' || activeModel === 'mistral-small-2603') {
-                   await callMistralStream(fnP, onChunkCallback, onErrorCallback);
-                } else if (activeModel === 'command-a-plus' || activeModel === 'command-a-reasoning') {
-                   await callCohereStream(fnP, onChunkCallback, onErrorCallback);
-                } else if (activeModel === 'gpt-oss-120b-cerebras' || activeModel === 'gemma-4-31b-cerebras') {
-                   await callCerebrasStream(fnP, onChunkCallback, onErrorCallback);
-                } else {
-                   await callGroqStream(fnP, onChunkCallback, onErrorCallback);
-                }
+                 success3 = await tryGoogleCallAgent(activeModel);
 
-                if (finalResponse) {
-                   await renderMsgContent(cD, finalResponse);
-                   extSuccess = true;
-                }
-             } catch(e) {
-                showToast("❌ Lỗi kết nối: " + e.message, 'error');
-             }
-             if(!extSuccess){ bD.remove(); isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; return; }
-         } else {
-             // GOOGLE MODELS CHÍNH - INTERACTIONS API (CÓ XOAY TUA KEY & FALLBACK VỀ FLASH LITE)
-             let pS=false, sT=Date.now(), lastErr=null; 
-             const selectedKeyIdx = DOM.apiKeySel ? DOM.apiKeySel.value : 'auto';
-             let keysToTry = [];
-             if (selectedKeyIdx !== 'auto') {
-                 const kIdx = parseInt(selectedKeyIdx);
-                 const kVal = localStorage.getItem(`javiss_api_${kIdx + 1}`) || "";
-                 if (kVal.trim()) keysToTry = [kVal.trim()];
-             } else {
-                 if (currentSession && currentSession.assignedApiKey) {
-                     keysToTry = [currentSession.assignedApiKey];
-                 } else {
-                     keysToTry = [...apiKeys];
+                 if (!success3 && activeModel !== 'gemini-3.1-flash-lite') {
+                     showToast(`⚠️ Mô hình ${activeModel} bị lỗi! Tự động chuyển về Gemini 3.1 Flash Lite...`, "warning");
+                     finalResponse = "";
+                     success3 = await tryGoogleCallAgent('gemini-3.1-flash-lite');
                  }
              }
+             if(!success3) { showToast("Agent thất bại tại B3.","error"); bD.remove(); return; }
 
-             async function tryGoogleCall(modelToRun) {
-                let attempt = 0;
-                while(attempt < keysToTry.length){
-                   try{
-                      let currentKey;
-                      if (selectedKeyIdx !== 'auto') {
-                          currentKey = keysToTry[0];
-                      } else if (currentSession && currentSession.assignedApiKey) {
-                          currentKey = currentSession.assignedApiKey;
-                      } else {
-                          currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
-                          if (currentSession) currentSession.assignedApiKey = currentKey;
-                      }
-                      const aiMain = new GoogleGenAI({ apiKey: currentKey });
-                      
-                      let interactionInput;
-                      if (imgs.length > 0) {
-                          let parts = [{ type: 'text', text: fnP }];
-                          for (let f of imgs) parts.push(await fileToInteractionPart(f));
-                          interactionInput = parts;
-                      } else {
-                          interactionInput = fnP;
-                      }
+          } else {
+             let fnP=fP; 
+             
+             if(DOM.toggleSearch && DOM.toggleSearch.checked){
+                const step1El = document.createElement('div'); step1El.className = 'agent-step'; cD.appendChild(step1El);
+                const step2El = document.createElement('div'); step2El.className = 'agent-step'; step2El.style.display = 'none'; cD.appendChild(step2El);
 
-                      const interactionPayload = {
-                          model: modelToRun,
-                          input: interactionInput,
-                          system_instruction: getDynamicSI(),
-                          generation_config: {
-                              temperature: DOM.temp ? +DOM.temp.value : 0.5,
-                              top_p: DOM.topP ? +DOM.topP.value : 0.9,
-                              top_k: DOM.topK ? +DOM.topK.value : 40,
-                              max_output_tokens: 8192
-                          },
-                          stream: true
-                      };
-
-                      if (DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId) {
-                          interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
-                      }
-
-                      let resStream;
-                      try {
-                          resStream = await aiMain.interactions.create(interactionPayload); 
-                      } catch(errInt) {
-                          if (interactionPayload.previous_interaction_id) {
-                              delete interactionPayload.previous_interaction_id;
-                              if (currentSession) currentSession.lastInteractionId = null;
-                              resStream = await aiMain.interactions.create(interactionPayload);
-                          } else {
-                              throw errInt;
-                          }
-                      }
-                      
-                      if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
-                      
-                      let capturedInteractionId = null;
-                      for await(const ck of resStream){
-                         const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
-                         finalResponse += textChunk;
-                         if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
-                             capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
-                         }
-                         updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                      } 
-
-                      if (capturedInteractionId && currentSession) {
-                          currentSession.lastInteractionId = capturedInteractionId;
-                      }
-
-                      await renderMsgContent(cD, finalResponse);
-                      return true;
-                   } catch(e){
-                      lastErr = e;
-                      attempt++;
-                      if (attempt < keysToTry.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
-                   }
+                let kSuccess = false, kText = fnP; 
+                
+                if (shouldExtract) {
+                    step1El.innerHTML = `🔍 B1: Đang bóc tách mã số, số hiệu và danh từ riêng...`;
+                    let sA1 = 0;
+                    while(sA1 < apiKeys.length){
+                        try{
+                           const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                           const aiSearch = new GoogleGenAI({ apiKey: currentKey });
+                           bD.querySelector('.streaming-indicator').innerText=`🔍 Phân tích dữ liệu...`;
+                           
+                           const kRes = await aiSearch.models.generateContent({
+                               model: "gemini-3.1-flash-lite",
+                               contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
+                               config: { temperature: 0.0, topK: 1, safetySettings: SAFETY }
+                           });
+                           kText = kRes.text.trim();
+                           kSuccess = true; break;
+                        }catch(e){ 
+                           sA1++;
+                           if (sA1 < apiKeys.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
+                        }
+                    }
+                } else {
+                    step1El.innerHTML = `🔍 B1: Câu lệnh ngắn, dùng trực tiếp từ khóa...`;
+                    kSuccess = true;
                 }
-                return false;
-             }
+                
+                let sA2 = 0, searchSuccess = false, wDText = "";
+                if(kSuccess) {
+                    while(sA2 < apiKeys.length){
+                        try {
+                           const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                           const aiSearch = new GoogleGenAI({ apiKey: currentKey });
+                           bD.querySelector('.streaming-indicator').innerText=`🔍 Tìm Web: ${kText}`;
+                           step2El.innerHTML = `🌐 B2: Khởi chạy lệnh Grounding Search cho từ khóa: <strong>"${kText}"</strong>`; step2El.style.display = 'block';
+                           
+                           const wRes = await aiSearch.models.generateContent({
+                               model: "gemini-2.5-flash", 
+                               contents: `Tìm kiếm thông tin chính xác phục vụ cho từ khóa: ${kText}`,
+                               config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
+                            }); 
+                           wDText = wRes.text; searchSuccess = true; break;
+                        } catch(e) { 
+                           sA2++;
+                           if (sA2 < apiKeys.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
+                        }
+                    }
+                }
+                if(searchSuccess){ fnP=`[DỮ LIỆU TÌM THẤY TRÊN INTERNET]:\n${wDText}\n\n[GỐC]: ${fnP}`; }
+             } 
 
-             pS = await tryGoogleCall(activeModel);
+             if(activeModel.endsWith('-dify') || externalModels.includes(activeModel)) {
+                 bD.querySelector('.streaming-indicator').innerText=`🔗 Đang gọi dịch vụ...`;
+                 
+                 let extSuccess = false;
+                 try {
+                    const onChunkCallback = (chunk) => {
+                       if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                       finalResponse += chunk;
+                       updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                    };
+                    const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error'); };
 
-             if (!pS && activeModel !== 'gemini-3.1-flash-lite') {
-                 showToast(`⚠️ Mô hình ${activeModel} bị lỗi! Tự động chuyển về Gemini 3.1 Flash Lite...`, "warning");
-                 finalResponse = "";
-                 pS = await tryGoogleCall('gemini-3.1-flash-lite');
-             }
+                    if (activeModel.endsWith('-dify')) {
+                       const memSize = 20;
+                       let currentHistory = DOM.toggleMemory && DOM.toggleMemory.checked ? chatHistory.slice(-memSize) : [];
+                       let serializedPrompt = serializeHistoryForDify(currentHistory, fnP);
+                       await callDifyStream(serializedPrompt, onChunkCallback, onErrorCallback, imgs); 
+                    } else if (activeModel === 'mistral-medium-latest' || activeModel === 'mistral-medium-3-5' || activeModel === 'mistral-small-2603') {
+                       await callMistralStream(fnP, onChunkCallback, onErrorCallback);
+                    } else if (activeModel === 'command-a-plus' || activeModel === 'command-a-reasoning') {
+                       await callCohereStream(fnP, onChunkCallback, onErrorCallback);
+                    } else if (activeModel === 'gpt-oss-120b-cerebras' || activeModel === 'gemma-4-31b-cerebras') {
+                       await callCerebrasStream(fnP, onChunkCallback, onErrorCallback);
+                    } else {
+                       await callGroqStream(fnP, onChunkCallback, onErrorCallback);
+                    }
 
-             if(!pS){ 
-                 bD.remove(); 
-                 showToast("❌ Lỗi API: " + (lastErr ? lastErr.message : "Không thể phản hồi"), 'error'); 
-                 isProcessing=false; 
-                 DOM.sendBtn.innerText='Gửi 📤'; 
-                 return; 
+                    if (finalResponse) {
+                       await renderMsgContent(cD, finalResponse);
+                       extSuccess = true;
+                    }
+                 } catch(e) {
+                    showToast("❌ Lỗi kết nối: " + e.message, 'error');
+                 }
+                 if(!extSuccess){ bD.remove(); return; }
+             } else {
+                 let pS=false, sT=Date.now(), lastErr=null; 
+                 const selectedKeyIdx = DOM.apiKeySel ? DOM.apiKeySel.value : 'auto';
+                 let keysToTry = [];
+                 if (selectedKeyIdx !== 'auto') {
+                     const kIdx = parseInt(selectedKeyIdx);
+                     const kVal = localStorage.getItem(`javiss_api_${kIdx + 1}`) || "";
+                     if (kVal.trim()) keysToTry = [kVal.trim()];
+                 } else {
+                     if (currentSession && currentSession.assignedApiKey) {
+                         keysToTry = [currentSession.assignedApiKey];
+                     } else {
+                         keysToTry = [...apiKeys];
+                     }
+                 }
+
+                 async function tryGoogleCall(modelToRun) {
+                    let attempt = 0;
+                    while(attempt < keysToTry.length){
+                       try{
+                          let currentKey;
+                          if (selectedKeyIdx !== 'auto') {
+                              currentKey = keysToTry[0];
+                          } else if (currentSession && currentSession.assignedApiKey) {
+                              currentKey = currentSession.assignedApiKey;
+                          } else {
+                              currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+                              if (currentSession) currentSession.assignedApiKey = currentKey;
+                          }
+                          const aiMain = new GoogleGenAI({ apiKey: currentKey });
+                          
+                          let interactionInput;
+                          let textPartContent = fnP.trim() ? fnP : defaultMediaPrompt;
+                          
+                          if (imgs.length > 0) {
+                              let parts = [{ type: 'text', text: textPartContent }];
+                              for (let f of imgs) parts.push(...(await processAndSplitImage(f)));
+                              interactionInput = parts;
+                          } else {
+                              interactionInput = textPartContent;
+                          }
+
+                          const interactionPayload = {
+                              model: modelToRun,
+                              input: interactionInput,
+                              system_instruction: getDynamicSI(),
+                              generation_config: {
+                                  temperature: DOM.temp ? +DOM.temp.value : 0.5,
+                                  top_p: DOM.topP ? +DOM.topP.value : 0.9,
+                                  top_k: DOM.topK ? +DOM.topK.value : 40
+                              },
+                              stream: true
+                          };
+
+                          if (DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId) {
+                              interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
+                          }
+
+                          let resStream;
+                          try {
+                              resStream = await aiMain.interactions.create(interactionPayload); 
+                          } catch(errInt) {
+                              if (interactionPayload.previous_interaction_id) {
+                                  delete interactionPayload.previous_interaction_id;
+                                  if (currentSession) currentSession.lastInteractionId = null;
+                                  resStream = await aiMain.interactions.create(interactionPayload);
+                              } else {
+                                  throw errInt;
+                              }
+                          }
+                          
+                          if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
+                          
+                          let capturedInteractionId = null;
+                          for await(const ck of resStream){
+                             const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
+                             finalResponse += textChunk;
+                             if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
+                                 capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
+                             }
+                             updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                          } 
+
+                          if (capturedInteractionId && currentSession) {
+                              currentSession.lastInteractionId = capturedInteractionId;
+                          }
+
+                          await renderMsgContent(cD, finalResponse);
+                          return true;
+                       } catch(e){
+                          lastErr = e;
+                          attempt++;
+                          if (attempt < keysToTry.length) showToast("⚠️ Key gặp lỗi, tự động xoay tua sang Key tiếp theo...", "warning");
+                       }
+                    }
+                    return false;
+                 }
+
+                 pS = await tryGoogleCall(activeModel);
+
+                 if (!pS && activeModel !== 'gemini-3.1-flash-lite') {
+                     showToast(`⚠️ Mô hình ${activeModel} bị lỗi! Tự động chuyển về Gemini 3.1 Flash Lite...`, "warning");
+                     finalResponse = "";
+                     pS = await tryGoogleCall('gemini-3.1-flash-lite');
+                 }
+
+                 if(!pS){ 
+                     bD.remove(); 
+                     showToast("❌ Lỗi API: " + (lastErr ? lastErr.message : "Không thể phản hồi"), 'error'); 
+                     return; 
+                 }
+                 document.getElementById('latency-val').innerText=(Date.now()-sT).toString();
              }
-             document.getElementById('latency-val').innerText=(Date.now()-sT).toString();
-         }
+          }
+
+          chatHistory.push({role:'user',text:fP}); chatHistory.push({role:'model',text:finalResponse}); 
+          const s=sessions.find(x=>x.id===activeId); if(s){s.his=chatHistory; await saveToDB(s);} 
+          
+          if(bD.querySelector('.bot-message')){
+              bD.querySelector('.bot-message').setAttribute('data-raw',finalResponse); 
+              const a=document.createElement('div'); 
+              a.className='msg-actions'; 
+              a.innerHTML=`<button class="action-btn" onclick="copy(this)">📋 Copy</button><button class="action-btn" onclick="retryMsg(${chatHistory.length-1})" style="color:var(--primary);">🔄 Thử lại</button><button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${chatHistory.length-1})">🗑️ Xóa</button>`; 
+              bD.appendChild(a);
+          }
+      } catch(err) {
+          showToast("❌ Lỗi ứng dụng: " + (err.message || err), 'error');
+      } finally {
+          isProcessing=false; 
+          DOM.sendBtn.innerText='Gửi 📤';
       }
-
-      chatHistory.push({role:'user',text:fP}); chatHistory.push({role:'model',text:finalResponse}); 
-      const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; await saveToDB(s); 
-      bD.querySelector('.bot-message').setAttribute('data-raw',finalResponse); const a=document.createElement('div'); a.className='msg-actions'; a.innerHTML=`<button class="action-btn" onclick="copy(this)">📋 Copy</button><button class="action-btn" onclick="retryMsg(${chatHistory.length-1})" style="color:var(--primary);">🔄 Thử lại</button><button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${chatHistory.length-1})">🗑️ Xóa</button>`; bD.appendChild(a);
-      
-      isProcessing=false; DOM.sendBtn.innerText='Gửi 📤';
     };
 
     window.editMsg=async i=>{DOM.input.value=chatHistory[i].text; DOM.input.dispatchEvent(new Event('input')); chatHistory=chatHistory.slice(0,i); const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; s.lastInteractionId = null; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); }};
@@ -1780,6 +1804,55 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     };
 
     function showToast(m,t='success'){DOM.toast.innerText=m; DOM.toast.className=`toast ${t==='error'?'danger':t} show`; setTimeout(()=>DOM.toast.classList.remove('show'),2000);}
+
+    // Hàm tự động kiểm tra và cắt ảnh dài (Long Screenshot Slicer) giúp Gemini OCR rõ nét 100%
+    async function processAndSplitImage(f) {
+      if (!f.type.startsWith('image/')) {
+        return [await fileToInteractionPart(f)];
+      }
+
+      return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(f);
+        img.onload = async () => {
+          URL.revokeObjectURL(url);
+          const ratio = img.height / img.width;
+
+          // Nếu ảnh có chiều cao gấp 2.2 lần chiều rộng (ảnh cuộn trắc nghiệm) -> Cắt làm 2 hoặc 3 phần
+          if (ratio > 2.2) {
+            const partsCount = Math.min(Math.ceil(ratio / 1.8), 4);
+            const sliceHeight = Math.floor(img.height / partsCount);
+            const overlap = Math.floor(sliceHeight * 0.1); // Giữ lề đè 10% giữa các phần
+            const resultParts = [];
+
+            for (let i = 0; i < partsCount; i++) {
+              const canvas = document.createElement('canvas');
+              const sy = Math.max(0, i * sliceHeight - (i > 0 ? overlap : 0));
+              const sh = Math.min(img.height - sy, sliceHeight + overlap);
+              
+              canvas.width = img.width;
+              canvas.height = sh;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, sy, img.width, sh, 0, 0, img.width, sh);
+
+              const base64Data = canvas.toDataURL('image/jpeg', 0.95).split(',')[1];
+              resultParts.push({
+                type: 'image',
+                mime_type: 'image/jpeg',
+                data: base64Data
+              });
+            }
+            resolve(resultParts);
+          } else {
+            resolve([await fileToInteractionPart(f)]);
+          }
+        };
+        img.onerror = async () => {
+          resolve([await fileToInteractionPart(f)]);
+        };
+        img.src = url;
+      });
+    }
 
     async function fileToInteractionPart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>{
       const base64Data = rd.result.split(',')[1];
