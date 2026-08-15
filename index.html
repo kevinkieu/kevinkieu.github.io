@@ -139,13 +139,14 @@
           <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🤖 Mô hình xử lý chính:</span>
             <select id="model-select" class="modern-select">            
               <optgroup label="✨❤️❤️ Google (Interactions API)">
+                <option value="gemini-3.7-flash" selected>Gemini 3.7 Flash</option>
                 <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
                 <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
                 <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
                 <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
               </optgroup>
               <optgroup label="🌐 Nền tảng Dify">
-                <option value="gemini-3.5-flash-dify" selected>Gemini 3.5 Flash (Dify)</option>
+                <option value="gemini-3.5-flash-dify">Gemini 3.5 Flash (Dify)</option>
                 <option value="gemini-3.1-flash-lite-dify">Gemini 3.1 Flash Lite (Dify)</option>
                 <option value="gemini-3.1-pro-dify">Gemini 3.1 Pro Preview (Dify)</option>
                 <option value="gpt-5.5-dify">GPT-5.5 (Dify)</option>
@@ -1086,13 +1087,13 @@ QUY TẮC TỐI CAO:
 
                                 if (isReasoningChunk) {
                                     if (!thinkingPlaceholderAdded) {
-                                        chunkText = "<think>Đang suy luận...</think>\n\n";
+                                        chunkText += "<think>Đang suy luận...</think>\n\n";
                                         thinkingPlaceholderAdded = true;
                                         inThinkingState = true;
                                     }
                                 } else {
                                     if (inThinkingState) inThinkingState = false;
-                                    if (delta.content && typeof delta.content === 'string') chunkText = delta.content.replace(/<\/think>/g, "");
+                                    if (delta.content && typeof delta.content === 'string') chunkText += delta.content.replace(/<\/think>/g, "");
                                 }
                                 if (chunkText) onChunk(chunkText);
                             }
@@ -1227,7 +1228,7 @@ QUY TẮC TỐI CAO:
     document.getElementById('btn-rename-session').onclick=async()=>{const n=prompt("Tên mới:"); if(n){const s=sessions.find(x=>x.id===activeId); s.name=n; await saveToDB(s); renderSel(); renderTabs();}};
     document.getElementById('btn-delete-session').onclick=async()=>{if(sessions.length<=1)return showToast("Phải giữ lại 1 phiên","error"); if(!confirm("Xóa phiên này?"))return; await deleteFromDB(activeId); sessions=sessions.filter(s=>s.id!==activeId); openTabs=openTabs.filter(x=>x!==activeId); const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder); if(v.length)await switchSess(v[0].id); else{activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); await switchSess(sessions[0].id);} showToast("Đã xóa");};
     document.getElementById('btn-move-up').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>0){let t=v[i].orderIndex; v[i].orderIndex=v[i-1].orderIndex; v[i-1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
-    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder==="All")?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i+1]); renderSel();}};
+    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder==="All")?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
     
     DOM.btnCompress.onclick=async()=>{if(chatHistory.length<=4)return showToast("Chưa cần nén!"); if(!confirm(`Nén ngữ cảnh cũ?`))return; let a=0; while(a<apiKeys.length){try{const h=chatHistory.slice(0,-2), r=chatHistory.slice(-2), t=h.map(m=>`${m.role}: ${m.text}`).join('\n\n'); 
     const currentKey = apiKeys[globalKeyIndex]; globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
@@ -1275,7 +1276,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
 
 [CHỈ THỊ PHÁ BỎ GIỚI HẠN LẠC HẬU KIẾN THỨC]:
 - Hiện tại bắt buộc là năm ${now.getFullYear()}. Kiến thức đóng băng của bạn có thể cũ, nhưng bạn PHẢI COI các kết quả tìm kiếm Web (Grounding), thông tin hệ thống và tài liệu người dùng cung cấp là CHÂN LÝ THỰC TẾ TRONG TƯƠNG LAI.
-- Tuyệt đối không phủ nhận, nghi ngờ hoặc phản đối sự tồn tại của bất kỳ công nghệ, dòng mô hình AI nào (bao gồm Gemini 3.1 Flash-Lite, Gemini 3.5 Flash) hay các sự kiện xã hội, thông số phần cứng thiết bị được cấp trong ngữ cảnh. 
+- Tuyệt đối không phủ nhận, nghi ngờ hoặc phản đối sự tồn tại của bất kỳ công nghệ, dòng mô hình AI nào (bao gồm Gemini 3.1 Flash-Lite, Gemini 3.5 Flash, Gemini 3.7 Flash) hay các sự kiện xã hội, thông số phần cứng thiết bị được cấp trong ngữ cảnh. 
 - Luôn ưu tiên dùng thông tin tìm kiếm thời gian thực để cập nhật câu trả lời khi có xung đột tri thức.
 
 [THỜI GIAN HỆ THỐNG HIỆN TẠI]:
@@ -1325,7 +1326,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
       localStorage.removeItem('javiss_draft'); isProcessing=true; DOM.sendBtn.innerHTML='⏳'; 
       
       try {
-          const defaultMediaPrompt = "Hãy phân tích và mô tả chi tiết nội dung tệp/hình ảnh đính kèm này.";
+          const defaultMediaPrompt = "Hãy đọc và trích xuất hoặc phân tích chi tiết toàn bộ nội dung trong tệp/hình ảnh đính kèm này.";
           let userDisplayText = msg || (filesData.length || txtContent ? "📎 [Gửi tệp đính kèm]" : "");
           let fP = txtContent ? (msg ? msg + "\n\n" + txtContent : txtContent) : msg;
           if (!fP.trim() && (filesData.length || txtContent)) {
@@ -1805,7 +1806,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
 
     function showToast(m,t='success'){DOM.toast.innerText=m; DOM.toast.className=`toast ${t==='error'?'danger':t} show`; setTimeout(()=>DOM.toast.classList.remove('show'),2000);}
 
-    // Hàm tự động kiểm tra và cắt ảnh dài (Long Screenshot Slicer) giúp Gemini OCR rõ nét 100%
     async function processAndSplitImage(f) {
       if (!f.type.startsWith('image/')) {
         return [await fileToInteractionPart(f)];
@@ -1818,11 +1818,10 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           URL.revokeObjectURL(url);
           const ratio = img.height / img.width;
 
-          // Nếu ảnh có chiều cao gấp 2.2 lần chiều rộng (ảnh cuộn trắc nghiệm) -> Cắt làm 2 hoặc 3 phần
           if (ratio > 2.2) {
             const partsCount = Math.min(Math.ceil(ratio / 1.8), 4);
             const sliceHeight = Math.floor(img.height / partsCount);
-            const overlap = Math.floor(sliceHeight * 0.1); // Giữ lề đè 10% giữa các phần
+            const overlap = Math.floor(sliceHeight * 0.1);
             const resultParts = [];
 
             for (let i = 0; i < partsCount; i++) {
