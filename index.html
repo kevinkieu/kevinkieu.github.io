@@ -145,7 +145,7 @@
                 <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
                 <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
               </optgroup>
-              <optgroup label="🌐 Nền tảng OpenRouter (Free)">
+              <optgroup label="🌐 Nền tảng OpenRouter (Free Tier)">
                 <option value="nvidia/nemotron-3.5-lightning:free">Nemotron 3.5 Lightning (Free)</option>
                 <option value="openai/gpt-oss-20b:free">GPT-OSS 20B (Free)</option>
               </optgroup>
@@ -178,10 +178,10 @@
           
           <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🧠 Độ sâu suy nghĩ (Think Depth):</span>
             <select id="thinking-level" class="modern-select">
-              <option value="minimal">Min</option>
-              <option value="low">Low</option>
-              <option value="medium" selected>Med</option>
-              <option value="high">High</option>
+              <option value="minimal">Min (Tối thiểu)</option>
+              <option value="low">Low (Thấp)</option>
+              <option value="medium" selected>Med (Chuẩn)</option>
+              <option value="high">High (Sâu)</option>
             </select>
           </div>
 
@@ -382,10 +382,45 @@ QUY TẮC TỐI CAO:
         if (msg.includes("503") || msg.includes("UNAVAILABLE") || msg.toLowerCase().includes("overload")) {
             return "⚠️ Máy chủ mô hình Google đang bị quá tải (503 / Overloaded). Vui lòng thử lại sau giây lát.";
         }
-        if (msg.includes("API_KEY_INVALID") || msg.includes("400")) {
-            return "⚠️ API Key không hợp lệ hoặc cấu hình gửi sai định dạng (400).";
+        if (msg.includes("API_KEY_INVALID")) {
+            return "⚠️ API Key không hợp lệ.";
+        }
+        if (msg.includes("400") || msg.includes("INVALID_ARGUMENT")) {
+            return `⚠️ Cấu hình gửi sai định dạng (400): ${msg.substring(0, 150)}...`;
         }
         return msg ? `❌ Lỗi: ${msg}` : "❌ Không nhận được phản hồi từ máy chủ Google.";
+    }
+
+    // BỘ BÓC TÁCH VĂN BẢN VÀ THOUGHT DELTA CHUẨN XÁC TỪNG SỰ KIỆN SSE
+    function parseInteractionsEvent(ck) {
+        let contentText = "";
+        let thoughtText = "";
+
+        if (!ck) return { contentText, thoughtText };
+
+        // 1. Gói delta chuyên dụng (step.delta / content.delta)
+        if (ck.delta) {
+            const dType = ck.delta.type || "";
+            const dVal = ck.delta.text || (typeof ck.delta.content === 'string' ? ck.delta.content : ck.delta.content?.text) || "";
+            
+            if (dType === "thought_summary" || dType === "thought" || ck.delta.thought) {
+                thoughtText = dVal || ck.delta.thought || "";
+            } else if (dType === "text" || !dType) {
+                contentText = dVal;
+            }
+        } 
+        // 2. Thuộc tính trực tiếp của gói stream
+        else if (ck.thought) {
+            thoughtText = ck.thought;
+        } else if (typeof ck.text === 'string') {
+            contentText = ck.text;
+        } else if (ck.outputs && ck.outputs[0]?.text) {
+            contentText = ck.outputs[0].text;
+        } else if (ck.output_text) {
+            contentText = ck.output_text;
+        }
+
+        return { contentText, thoughtText };
     }
 
     function updateChatContentAndScroll(el, htmlContent) {
@@ -731,7 +766,37 @@ QUY TẮC TỐI CAO:
         DOM.globContext.addEventListener('input',()=>localStorage.setItem('global_context',DOM.globContext.value));
     }
     
-    window.copy=b=>{const c=b.closest('.message-container').querySelector('.user-message, .bot-message'); if(c){navigator.clipboard.writeText(c.getAttribute('data-raw'));showToast('Đã copy!');}};
+    window.copy = b => {
+      const c = b.closest('.message-container').querySelector('.user-message, .bot-message');
+      if (!c) return;
+      const rawText = c.getAttribute('data-raw') || c.innerText || '';
+      
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(rawText)
+          .then(() => showToast('📋 Đã copy nội dung!'))
+          .catch(() => fallbackCopy(rawText));
+      } else {
+        fallbackCopy(rawText);
+      }
+    };
+
+    function fallbackCopy(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showToast('📋 Đã copy nội dung!');
+      } catch (err) {
+        showToast('❌ Không thể copy, vui lòng thử lại', 'danger');
+      }
+      document.body.removeChild(textarea);
+    }
+
     window.deleteMsg=async i=>{if(!confirm("Xóa tin nhắn này?"))return; chatHistory.splice(i,1); const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; s.lastInteractionId = null; await saveToDB(s); DOM.chat.innerHTML=''; chatHistory.forEach((m,j)=>appendMsg(m.role==='model'?'bot':'user',m.text,j,true)); document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`; showToast("Đã xóa!");};
     
     window.retryMsg = async (botMsgIndex) => {
@@ -1089,7 +1154,7 @@ QUY TẮC TỐI CAO:
                                     }
                                 } else {
                                     if (inThinkingState) inThinkingState = false;
-                                    if (delta.content) chunkText += delta.content;
+                                    if (delta.content && typeof delta.content === 'string') chunkText += delta.content;
                                 }
                                 if (chunkText) onChunk(chunkText);
                             }
@@ -1258,7 +1323,10 @@ QUY TẮC TỐI CAO:
             const r = await ai.models.generateContent({
                 model: "gemini-3.1-flash-lite",
                 contents: `${promptEnhancementInstruction}\n\nYêu cầu gốc: ${t}`,
-                config: { temperature: 0.3, safetySettings: SAFETY }
+                config: { 
+                    temperature: 0.3, 
+                    safetySettings: SAFETY
+                }
             });
             if(DOM.input) {
                 DOM.input.value=r.text.trim(); 
@@ -1379,8 +1447,14 @@ QUY TẮC TỐI CAO:
 
         try{
             const h=chatHistory.slice(0,-2), r=chatHistory.slice(-2), t=h.map(m=>`${m.role}: ${m.text}`).join('\n\n'); 
-            const ai=new GoogleGenAI({ apiKey: currentKey }); 
-            const res=await ai.models.generateContent({model:"gemini-3.1-flash-lite", contents:`Tóm tắt cấu trúc hội thoại:\n\n${t}`, config: { safetySettings: SAFETY }}); 
+            const ai = new GoogleGenAI({ apiKey: currentKey }); 
+            const res=await ai.models.generateContent({
+                model: "gemini-3.1-flash-lite", 
+                contents: `Tóm tắt cấu trúc hội thoại:\n\n${t}`, 
+                config: { 
+                    safetySettings: SAFETY
+                }
+            }); 
             chatHistory=[{role:'user',text:`[Tóm tắt]: \n${res.text}`},{role:'model',text:'Đã nhớ.'},...r]; 
             if(currentSession){
                 currentSession.his=chatHistory; 
@@ -1525,7 +1599,11 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                     const step1 = await aiAgent.models.generateContent({
                         model: "gemini-3.1-flash-lite", 
                         contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
-                        config: { temperature: 0.0, topK: 1, safetySettings: SAFETY }
+                        config: { 
+                            temperature: 0.0, 
+                            topK: 1, 
+                            safetySettings: SAFETY
+                        }
                     });
                     extractedQuery = step1.text.trim();
                     success1 = true;
@@ -1619,15 +1697,21 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             interactionInput = textContentPart;
                         }
 
+                        const currentLevel = DOM.thinking ? DOM.thinking.value : 'medium';
+                        const genConfig = {
+                            temperature: DOM.temp ? +DOM.temp.value : 0.5,
+                            top_p: DOM.topP ? +DOM.topP.value : 0.9,
+                            top_k: DOM.topK ? +DOM.topK.value : 40
+                        };
+                        if (currentLevel) {
+                            genConfig.thinking_level = currentLevel;
+                        }
+
                         const interactionPayload = {
                             model: modelToRun,
                             input: interactionInput,
                             system_instruction: getDynamicSI(),
-                            generation_config: {
-                                temperature: DOM.temp ? +DOM.temp.value : 0.5,
-                                top_p: DOM.topP ? +DOM.topP.value : 0.9,
-                                top_k: DOM.topK ? +DOM.topK.value : 40
-                            },
+                            generation_config: genConfig,
                             stream: true
                         };
 
@@ -1648,21 +1732,62 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             }
                         }
                         
-                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
                         let capturedInteractionId = null;
+                        let inThought = false;
+                        let hasReceivedFirstChunk = false;
+
                         for await(const ck of resStream){
-                           const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
-                           finalResponse += textChunk;
-                           if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
-                               capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
+                           const { contentText, thoughtText } = parseInteractionsEvent(ck);
+
+                           if (thoughtText) {
+                               if (!inThought) { 
+                                   finalResponse += "<think>\n"; 
+                                   inThought = true; 
+                               }
+                               finalResponse += thoughtText;
+                           } else if (contentText) {
+                               if (inThought) { 
+                                   finalResponse += "\n</think>\n\n"; 
+                                   inThought = false; 
+                               }
+                               finalResponse += contentText;
                            }
-                           updateChatContentAndScroll(cD, marked.parse(finalResponse));
+
+                           if (!hasReceivedFirstChunk && (thoughtText || contentText)) {
+                               hasReceivedFirstChunk = true;
+                               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                           }
+
+                           if (ck && (ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id)) {
+                               capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id;
+                           }
+
+                           if (finalResponse) {
+                               updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                           }
                         }
+
+                        if (inThought) { finalResponse += "\n</think>\n\n"; }
+
+                        // Chốt chặn phục hồi nếu luồng stream không trả về ký tự nào
+                        if (!finalResponse.trim()) {
+                            delete interactionPayload.stream;
+                            const syncRes = await aiMain.interactions.create(interactionPayload);
+                            finalResponse = syncRes?.output_text || (syncRes?.outputs && syncRes.outputs[0]?.text) || "";
+                            if (syncRes?.id && currentSession) capturedInteractionId = syncRes.id;
+                        }
+
                         if (capturedInteractionId && currentSession) {
                             currentSession.lastInteractionId = capturedInteractionId;
                         }
-                        await renderMsgContent(cD, finalResponse);
-                        return true;
+
+                        if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+
+                        if (finalResponse.trim()) {
+                            await renderMsgContent(cD, finalResponse);
+                            return true;
+                        }
+                        return false;
                      } catch(e) { 
                         lastErr = e;
                         return false;
@@ -1708,7 +1833,11 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                        const kRes = await aiSearch.models.generateContent({
                            model: "gemini-3.1-flash-lite",
                            contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
-                           config: { temperature: 0.0, topK: 1, safetySettings: SAFETY }
+                           config: { 
+                               temperature: 0.0, 
+                               topK: 1, 
+                               safetySettings: SAFETY
+                           }
                        });
                        kText = kRes.text.trim();
                        kSuccess = true;
@@ -1778,7 +1907,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                  }
                  if(!extSuccess){ bD.remove(); return; }
              } else {
-                 // GOOGLE MODELS CHÍNH - INTERACTIONS API VỚI CHUỖI FALLBACK TUẦN TỰ
+                 // GOOGLE MODELS CHÍNH - INTERACTIONS API VỚI STREAMING VÀ PHỤC HỒI CHỐT CHẶN
                  let pS=false, sT=Date.now(), lastErr=null; 
                  const fallbackChain = getFallbackModelsFor(activeModel);
 
@@ -1797,15 +1926,21 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             interactionInput = textPartContent;
                         }
 
+                        const currentLevel = DOM.thinking ? DOM.thinking.value : 'medium';
+                        const genConfig = {
+                            temperature: DOM.temp ? +DOM.temp.value : 0.5,
+                            top_p: DOM.topP ? +DOM.topP.value : 0.9,
+                            top_k: DOM.topK ? +DOM.topK.value : 40
+                        };
+                        if (currentLevel) {
+                            genConfig.thinking_level = currentLevel;
+                        }
+
                         const interactionPayload = {
                             model: modelToRun,
                             input: interactionInput,
                             system_instruction: getDynamicSI(),
-                            generation_config: {
-                                temperature: DOM.temp ? +DOM.temp.value : 0.5,
-                                top_p: DOM.topP ? +DOM.topP.value : 0.9,
-                                top_k: DOM.topK ? +DOM.topK.value : 40
-                            },
+                            generation_config: genConfig,
                             stream: true
                         };
 
@@ -1826,24 +1961,62 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             }
                         }
                         
-                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
-                        
                         let capturedInteractionId = null;
+                        let inThought = false;
+                        let hasReceivedFirstChunk = false;
+
                         for await(const ck of resStream){
-                           const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
-                           finalResponse += textChunk;
-                           if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
-                               capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
+                           const { contentText, thoughtText } = parseInteractionsEvent(ck);
+
+                           if (thoughtText) {
+                               if (!inThought) { 
+                                   finalResponse += "<think>\n"; 
+                                   inThought = true; 
+                               }
+                               finalResponse += thoughtText;
+                           } else if (contentText) {
+                               if (inThought) { 
+                                   finalResponse += "\n</think>\n\n"; 
+                                   inThought = false; 
+                               }
+                               finalResponse += contentText;
                            }
-                           updateChatContentAndScroll(cD, marked.parse(finalResponse));
+
+                           if (!hasReceivedFirstChunk && (thoughtText || contentText)) {
+                               hasReceivedFirstChunk = true;
+                               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                           }
+
+                           if (ck && (ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id)) {
+                               capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id;
+                           }
+
+                           if (finalResponse) {
+                               updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                           }
                         } 
+
+                        if (inThought) { finalResponse += "\n</think>\n\n"; }
+
+                        // Chốt chặn phục hồi nếu luồng stream không trả về ký tự nào
+                        if (!finalResponse.trim()) {
+                            delete interactionPayload.stream;
+                            const syncRes = await aiMain.interactions.create(interactionPayload);
+                            finalResponse = syncRes?.output_text || (syncRes?.outputs && syncRes.outputs[0]?.text) || "";
+                            if (syncRes?.id && currentSession) capturedInteractionId = syncRes.id;
+                        }
 
                         if (capturedInteractionId && currentSession) {
                             currentSession.lastInteractionId = capturedInteractionId;
                         }
 
-                        await renderMsgContent(cD, finalResponse);
-                        return true;
+                        if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+
+                        if (finalResponse.trim()) {
+                            await renderMsgContent(cD, finalResponse);
+                            return true;
+                        }
+                        return false;
                     } catch(e){
                         lastErr = e;
                         return false;
