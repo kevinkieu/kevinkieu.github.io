@@ -98,10 +98,11 @@
     .snippet-chip{background:var(--primary-container);color:var(--text-main);padding:5px 12px;border-radius:12px;font-size:.8rem;cursor:pointer;border:1px solid rgba(0,0,0,0.05)}
     #image-preview-container{display:none;max-width:820px;width:calc(100% - 32px);margin:4px auto;padding:10px;border:1px dashed var(--border);border-radius:12px;background:var(--bg-card)}
     #image-preview-grid{display:flex;gap:8px;overflow-x:auto}
-    .toast{position:fixed;bottom:140px;right:20px;background:#323232;color:white;padding:10px 18px;border-radius:20px;z-index:3000;opacity:0;pointer-events:none;transition:.3s;font-size:.85rem}
+    .toast{position:fixed;bottom:140px;right:20px;background:#323232;color:white;padding:10px 18px;border-radius:20px;z-index:3000;opacity:0;pointer-events:none;transition:.3s;font-size:.85rem;max-width:90vw;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
     .toast.success{background:#2e7d32;color:white}
     .toast.warning{background:#e65100;color:white}
     .toast.danger{background:#c62828;color:white}
+    .toast.info{background:#0b57d0;color:white}
     .toast.show{opacity:1;pointer-events:auto}
     #scroll-to-top{position:fixed;bottom:140px;left:20px;background:var(--primary);color:white;border:none;border-radius:50%;width:44px;height:44px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.3s;z-index:998}
     #scroll-to-top.visible{opacity:1;pointer-events:auto}
@@ -176,28 +177,12 @@
             </select>
           </div>
           
-          <div id="standard-thinking-container" style="margin-top:8px;">
-            <span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🧠 Độ sâu suy nghĩ (Think Depth):</span>
+          <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🧠 Độ sâu suy nghĩ (Think Depth):</span>
             <select id="thinking-level" class="modern-select">
-              <option value="minimal">Min (Tối thiểu)</option>
               <option value="low">Low (Thấp)</option>
               <option value="medium" selected>Med (Chuẩn)</option>
               <option value="high">High (Sâu)</option>
             </select>
-          </div>
-
-          <div id="gemini37-thinking-container" style="display:none;margin-top:8px;padding:8px;background:rgba(11,87,208,0.06);border:1px solid rgba(11,87,208,0.2);border-radius:8px;">
-            <span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:6px;display:block;color:var(--primary);">⚡ Cấu hình Tư duy Gemini 3.7:</span>
-            <div style="display:flex;flex-direction:column;gap:6px;">
-              <div>
-                <label style="font-size:0.75rem;font-weight:600;display:block;margin-bottom:2px;">🧠 Mức tư duy (Thinking Level):</label>
-                <select id="gemini37-thinking-level" class="modern-select">
-                  <option value="low">Low (Nhanh / Tiết kiệm Quota)</option>
-                  <option value="medium" selected>Medium (Chuẩn / Mặc định)</option>
-                  <option value="high">High (Sâu / Logic phức tạp)</option>
-                </select>
-              </div>
-            </div>
           </div>
 
           <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🔑 Google API Key (Model chính):</span>
@@ -406,88 +391,6 @@ QUY TẮC TỐI CAO:
         return msg ? `❌ Lỗi: ${msg}` : "❌ Không nhận được phản hồi từ máy chủ Google.";
     }
 
-    function updateThinkingVisibility() {
-        const currentModel = DOM.model ? DOM.model.value : '';
-        const stdBox = document.getElementById('standard-thinking-container');
-        const g37Box = document.getElementById('gemini37-thinking-container');
-        
-        if (currentModel === 'gemini-3.7-flash') {
-            if (stdBox) stdBox.style.display = 'none';
-            if (g37Box) g37Box.style.display = 'block';
-        } else {
-            if (stdBox) stdBox.style.display = 'block';
-            if (g37Box) g37Box.style.display = 'none';
-        }
-    }
-
-    // CẤU HÌNH ĐÚNG CHUẨN GOOGLE GENAI SDK CHO GEMINI 3.7 FLASH (THINKING_CONFIG)
-    function buildGoogleGenConfig(targetModelName) {
-        const genConfig = {
-            temperature: DOM.temp ? +DOM.temp.value : 0.5,
-            top_p: DOM.topP ? +DOM.topP.value : 0.9,
-            top_k: DOM.topK ? +DOM.topK.value : 40,
-            max_output_tokens: 32768
-        };
-
-        if (targetModelName === 'gemini-3.7-flash') {
-            const g37Level = document.getElementById('gemini37-thinking-level')?.value || 'medium';
-            // Cấu hình chuẩn theo Google AI Studio docs cho Gemini 3.7 Flash
-            genConfig.thinking_config = {
-                thinking_level: g37Level
-            };
-        }
-        return genConfig;
-    }
-
-    function parseInteractionsEvent(ck) {
-        let contentText = "";
-        let thoughtText = "";
-        if (!ck) return { contentText, thoughtText };
-
-        try {
-            if (ck.delta) {
-                const d = ck.delta;
-                const dType = String(d.type || "").toLowerCase();
-                let dExtracted = "";
-
-                if (typeof d.text === 'string') {
-                    dExtracted = d.text;
-                } else if (typeof d.content === 'string') {
-                    dExtracted = d.content;
-                } else if (Array.isArray(d.content)) {
-                    dExtracted = d.content.map(p => (typeof p === 'string' ? p : (p?.text || ''))).join('');
-                } else if (d.content && typeof d.content.text === 'string') {
-                    dExtracted = d.content.text;
-                }
-
-                if (dType.includes("thought") || d.thought) {
-                    thoughtText += (dExtracted || (typeof d.thought === 'string' ? d.thought : ""));
-                } else {
-                    contentText += dExtracted;
-                }
-                return { contentText, thoughtText };
-            }
-
-            if (typeof ck.thought === 'string') thoughtText += ck.thought;
-            if (typeof ck.text === 'string') contentText += ck.text;
-            
-            if (ck.outputs && Array.isArray(ck.outputs)) {
-                for (const out of ck.outputs) {
-                    if (out?.text) contentText += out.text;
-                }
-            } else if (ck.candidates && ck.candidates[0]?.content?.parts) {
-                for (const part of ck.candidates[0].content.parts) {
-                    if (part.thought) thoughtText += (part.text || "");
-                    else if (part.text) contentText += part.text;
-                }
-            }
-        } catch(errParser) {
-            console.warn("Parse chunk issue:", errParser);
-        }
-
-        return { contentText, thoughtText };
-    }
-
     function updateChatContentAndScroll(el, htmlContent) {
         el.innerHTML = htmlContent;
     }
@@ -570,9 +473,14 @@ QUY TẮC TỐI CAO:
             return currentSession.assignedApiKey;
         }
         if (apiKeys.length > 0) {
-            const chosenKey = apiKeys[globalKeyIndex % apiKeys.length];
+            const chosenIdx = globalKeyIndex % apiKeys.length;
+            const chosenKey = apiKeys[chosenIdx];
             globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
             if (currentSession) currentSession.assignedApiKey = chosenKey;
+            
+            const masked = chosenKey.length > 8 ? chosenKey.substring(0, 6) + '...' + chosenKey.slice(-4) : '******';
+            showToast(`🔄 Đã tự động xoay tua API Key [Vị trí ${chosenIdx + 1}/${apiKeys.length}] (${masked})`, "info", 5000);
+            
             return chosenKey;
         }
         return "";
@@ -616,13 +524,13 @@ QUY TẮC TỐI CAO:
                 statusMsg.innerText = `⚠️ Phát hiện trùng lặp! ${dupDetails.join(' | ')}`;
                 statusMsg.style.color = "var(--danger)";
             }
-            showToast(`⚠️ Phát hiện ${duplicateCount} key bị trùng lặp!`, "danger");
+            showToast(`⚠️ Phát hiện ${duplicateCount} key bị trùng lặp!`, "danger", 5000);
         } else {
             if (statusMsg) {
                 statusMsg.innerText = "✅ Không phát hiện API Key nào bị trùng lặp.";
                 statusMsg.style.color = "green";
             }
-            showToast("✅ Tất cả các API Key đã nhập là duy nhất!");
+            showToast("✅ Tất cả các API Key đã nhập là duy nhất!", "success", 3000);
         }
     }
 
@@ -678,7 +586,7 @@ QUY TẮC TỐI CAO:
                 statusMsg.style.color = validCount > 0 ? "green" : "var(--danger)";
             }
         }
-        showToast(`Đã kiểm tra xong ${totalChecked} API Keys!`);
+        showToast(`Đã kiểm tra xong ${totalChecked} API Keys!`, "success", 4000);
     }
     
     function initExternalConfigs() {
@@ -737,7 +645,7 @@ QUY TẮC TỐI CAO:
         
         initAPIKeys(); 
         initExternalConfigs();
-        showToast(`Đã lưu cấu hình hệ thống!`); 
+        showToast(`Đã lưu cấu hình hệ thống!`, "success", 3000); 
     };
 
     document.getElementById('btn-check-keys').onclick = checkAllAPIKeys;
@@ -795,9 +703,49 @@ QUY TẮC TỐI CAO:
     async function getAllFilesFromLib(){ return new Promise(r=>{const rq=db.transaction(FILE_STORE,"readonly").objectStore(FILE_STORE).getAll(); rq.onsuccess=()=>r(rq.result);});}
     async function deleteFileFromLib(i){ return new Promise(r=>{const t=db.transaction(FILE_STORE,"readwrite"); t.objectStore(FILE_STORE).delete(i); t.oncomplete=()=>r();});}
     
-    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),g37Thinking:document.getElementById('gemini37-thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
+    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
     let sessions=[], activeId=null, chatHistory=[], filesData=[], txtContent="", isProcessing=false, folders=JSON.parse(localStorage.getItem('javiss_folders')||'["Mặc định"]'), activeFolder=localStorage.getItem('javiss_active_folder')||"All", openTabs=JSON.parse(localStorage.getItem('javiss_tabs')||'[]'); const MAX_IMAGES=20;
     
+    function updateThinkingVisibility() {
+        const activeModel = DOM.model ? DOM.model.value : '';
+        const thinkingSel = DOM.thinking;
+        if (!thinkingSel) return;
+        
+        const prevVal = thinkingSel.value;
+        if (activeModel === 'gemini-3.7-flash') {
+            thinkingSel.innerHTML = `
+              <option value="low">Low (Thấp)</option>
+              <option value="medium">Med (Chuẩn)</option>
+              <option value="high">High (Sâu)</option>
+            `;
+            if (['low', 'medium', 'high'].includes(prevVal)) {
+                thinkingSel.value = prevVal;
+            } else {
+                thinkingSel.value = 'medium';
+            }
+        } else {
+            thinkingSel.innerHTML = `
+              <option value="minimal">Min (Tối thiểu)</option>
+              <option value="low">Low (Thấp)</option>
+              <option value="medium">Med (Chuẩn)</option>
+              <option value="high">High (Sâu)</option>
+            `;
+            if (['minimal', 'low', 'medium', 'high'].includes(prevVal)) {
+                thinkingSel.value = prevVal;
+            } else {
+                thinkingSel.value = 'medium';
+            }
+        }
+    }
+
+    function getGoogleThinkingLevel(modelName) {
+        const currentThinking = DOM.thinking ? DOM.thinking.value : 'medium';
+        if (modelName === 'gemini-3.7-flash') {
+            return ['low', 'medium', 'high'].includes(currentThinking) ? currentThinking : 'medium';
+        }
+        return ['minimal', 'low', 'medium', 'high'].includes(currentThinking) ? currentThinking : 'medium';
+    }
+
     function updateTokenCount() {
         const inputVal = DOM.input ? DOM.input.value : '';
         const totalChars = inputVal.length + (txtContent ? txtContent.length : 0);
@@ -1399,7 +1347,7 @@ QUY TẮC TỐI CAO:
             }
             showToast("✨ Đã tối ưu cấu trúc Prompt!");
         }catch(e){ 
-            showToast(formatGoogleApiError(e), "danger");
+            showToast(formatGoogleApiError(e), "danger", 5000);
         } 
         DOM.btnEnhancePrompt.innerHTML=o;
     };
@@ -1470,7 +1418,7 @@ QUY TẮC TỐI CAO:
     DOM.btnDeleteFolder.onclick=async()=>{if(activeFolder==="All"||activeFolder==="Mặc định")return showToast("Không xóa được TM hệ thống!"); if(confirm(`Xóa "${activeFolder}"?`)){folders=folders.filter(f=>f!==activeFolder); localStorage.setItem('javiss_folders',JSON.stringify(folders)); for(let s of sessions){if(s.folder===activeFolder){s.folder="Mặc định"; await saveToDB(s);}} activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); renderSel(); showToast("Đã xóa!");}};
     DOM.btnMoveSess.onclick=async()=>{const s=sessions.find(x=>x.id===activeId); if(!s)return; const c=prompt(`Nhập số TM đích:\n${folders.map((f,i)=>`${i+1}. ${f}`).join('\n')}`); if(c){let t=folders[parseInt(c)-1]||c.trim(); if(folders.includes(t)){s.folder=t; await saveToDB(s); showToast(`Chuyển: ${t}`); renderSel();}}};
     async function loadSess(){try{await initDB(); let d=await getAllFromDB(); if(d&&d.length){sessions=d.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0)); renderFolders(); activeId=localStorage.getItem('javiss_active_id'); if(!sessions.find(s=>s.id===activeId))activeId=sessions[0].id; await switchSess(activeId);}else{renderFolders(); await newSess();}}catch(e){await newSess();}}
-    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.7-flash',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',g37Lvl:'medium',sch:false,mem:true,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
+    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.7-flash',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
     async function switchSess(id){
@@ -1482,8 +1430,16 @@ QUY TẮC TỐI CAO:
           if(DOM.temp) { DOM.temp.value=s.tmp||0.5; DOM.tempVal.innerText=DOM.temp.value; }
           if(DOM.topP) { DOM.topP.value=s.tpp||0.9; DOM.toppVal.innerText=DOM.topP.value; }
           if(DOM.topK) DOM.topK.value=s.top||40; 
-          if(DOM.thinking) DOM.thinking.value=s.thk||'medium';
-          if(DOM.g37Thinking) DOM.g37Thinking.value=s.g37Lvl||'medium';
+          
+          updateThinkingVisibility();
+          if(DOM.thinking) {
+              if ([...DOM.thinking.options].some(o => o.value === s.thk)) {
+                  DOM.thinking.value = s.thk;
+              } else {
+                  DOM.thinking.value = 'medium';
+              }
+          }
+
           if(DOM.toggleGlob) DOM.toggleGlob.checked = s.useGlob !== false;
           if(DOM.toggleSearch) DOM.toggleSearch.checked=s.sch||false; 
           if(DOM.toggleMemory) DOM.toggleMemory.checked=s.mem!==false; 
@@ -1494,7 +1450,6 @@ QUY TẮC TỐI CAO:
          await appendMsg(chatHistory[j].role==='model'?'bot':'user', chatHistory[j].text, j, true);
       }
       DOM.chat.scrollTop=DOM.chat.scrollHeight; renderSel();
-      updateThinkingVisibility();
       if(!openTabs.includes(id)) openTabs.push(id); renderTabs();
     }
     
@@ -1503,7 +1458,7 @@ QUY TẮC TỐI CAO:
     document.getElementById('btn-rename-session').onclick=async()=>{const n=prompt("Tên mới:"); if(n){const s=sessions.find(x=>x.id===activeId); s.name=n; await saveToDB(s); renderSel(); renderTabs();}};
     document.getElementById('btn-delete-session').onclick=async()=>{if(sessions.length<=1)return showToast("Phải giữ lại 1 phiên","error"); if(!confirm("Xóa phiên này?"))return; await deleteFromDB(activeId); sessions=sessions.filter(s=>s.id!==activeId); openTabs=openTabs.filter(x=>x!==activeId); const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder); if(v.length)await switchSess(v[0].id); else{activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); await switchSess(sessions[0].id);} showToast("Đã xóa");};
     document.getElementById('btn-move-up').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>0){let t=v[i].orderIndex; v[i].orderIndex=v[i-1].orderIndex; v[i-1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
-    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder==="All")?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i+1]); renderSel();}};
+    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i+1]); renderSel();}};
     
     DOM.btnCompress.onclick=async()=>{
         if(chatHistory.length<=4)return showToast("Chưa cần nén!"); 
@@ -1534,7 +1489,7 @@ QUY TẮC TỐI CAO:
             } 
             showToast("Nén thành công!");
         }catch(e){
-            showToast(formatGoogleApiError(e), "danger");
+            showToast(formatGoogleApiError(e), "danger", 5000);
         }
     };
     
@@ -1548,17 +1503,15 @@ QUY TẮC TỐI CAO:
           s.tpp = DOM.topP ? DOM.topP.value : 0.9; 
           s.top = DOM.topK ? DOM.topK.value : 40; 
           s.thk = DOM.thinking ? DOM.thinking.value : 'medium';
-          s.g37Lvl = DOM.g37Thinking ? DOM.g37Thinking.value : 'medium';
           s.useGlob = DOM.toggleGlob ? DOM.toggleGlob.checked : true;
           s.sch = DOM.toggleSearch ? DOM.toggleSearch.checked : false; 
           s.mem = DOM.toggleMemory ? DOM.toggleMemory.checked : true; 
           s.agt = DOM.toggleAgent ? DOM.toggleAgent.checked : false; 
           await saveToDB(s);
       }
-      updateThinkingVisibility();
     }
     if(DOM.sysInst) DOM.sysInst.addEventListener('input',updateConfig); 
-    if(DOM.model) DOM.model.addEventListener('change',updateConfig); 
+    if(DOM.model) DOM.model.addEventListener('change', () => { updateThinkingVisibility(); updateConfig(); }); 
     if(DOM.apiKeySel) DOM.apiKeySel.addEventListener('change',updateConfig);
     if(DOM.toggleGlob) DOM.toggleGlob.addEventListener('change',updateConfig); 
     if(DOM.toggleSearch) DOM.toggleSearch.addEventListener('change',updateConfig); 
@@ -1566,48 +1519,24 @@ QUY TẮC TỐI CAO:
     if(DOM.toggleAgent) DOM.toggleAgent.addEventListener('change',updateConfig); 
     if(DOM.topK) DOM.topK.addEventListener('input',updateConfig); 
     if(DOM.thinking) DOM.thinking.addEventListener('change',updateConfig); 
-    if(DOM.g37Thinking) DOM.g37Thinking.addEventListener('change',updateConfig); 
     if(DOM.temp) DOM.temp.addEventListener('input',()=>{ if(DOM.tempVal) DOM.tempVal.innerText=DOM.temp.value; updateConfig();}); 
     if(DOM.topP) DOM.topP.addEventListener('input',()=>{ if(DOM.toppVal) DOM.toppVal.innerText=DOM.topP.value; updateConfig();});
     
-    function getDynamicSI(targetModelName = (DOM.model ? DOM.model.value : '')){
+    function getDynamicSI(){
       const b=DOM.sysInst ? DOM.sysInst.value : "Bạn là Javiss AI.";
       const g=DOM.globContext ? DOM.globContext.value : '';
       const useGlob = DOM.toggleGlob ? DOM.toggleGlob.checked : true;
       const now = new Date();
       const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-      let thinkingDirective = "";
-      if (targetModelName === 'gemini-3.7-flash') {
-        const g37Level = document.getElementById('gemini37-thinking-level')?.value || 'medium';
-        if (g37Level === 'low') {
-          thinkingDirective = "\n\n[CHỈ THỊ TƯ DUY (THINKING)]: Hãy suy luận ngắn gọn, tập trung thẳng vào trọng tâm và phản hồi nhanh chóng, đầy đủ.";
-        } else if (g37Level === 'medium') {
-          thinkingDirective = "\n\n[CHỈ THỊ TƯ DUY (THINKING)]: Hãy suy luận logic chặt chẽ, kiểm tra tính xác thực và phân tích đa chiều trước khi trả lời.";
-        } else if (g37Level === 'high') {
-          thinkingDirective = "\n\n[CHỈ THỊ TƯ DUY (THINKING)]: Hãy suy luận sâu sắc ở mức độ chuyên gia cao cấp, lập luận từng bước rõ ràng, phân tích mọi khía cạnh và chứng minh tính hợp lý.";
-        }
-      } else if (targetModelName && targetModelName.startsWith('gemini-')) {
-        const stdLevel = DOM.thinking ? DOM.thinking.value : 'medium';
-        if (stdLevel === 'minimal') {
-          thinkingDirective = "\n\n[CHỈ THỊ TƯ DUY (THINKING)]: Hãy phản hồi siêu tốc, trực tiếp và súc tích nhất có thể.";
-        } else if (stdLevel === 'high') {
-          thinkingDirective = "\n\n[CHỈ THỊ TƯ DUY (THINKING)]: Hãy phân tích kỹ lưỡng, trình bày chi tiết và chuyên sâu.";
-        }
-      }
       
       return `[MỤC TIÊU & ĐỊNH HƯỚNG HÀNH VI CỦA AI - TUÂN THỦ TỐI CAO]:
-${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n' : ''}--- NGỮ CẢNH PHIÊN NÀY ---\n${b}${thinkingDirective}
+${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n' : ''}--- NGỮ CẢNH PHIÊN NÀY ---\n${b}
 
 [CHỈ THỊ PHÁ BỎ GIỚI HẠN LẠC HẬU KIẾN THỨC]:
 - Hiện tại bắt buộc là năm ${now.getFullYear()}. Kiến thức đóng băng của bạn có thể cũ, nhưng bạn PHẢI COI các kết quả tìm kiếm Web (Grounding), thông tin hệ thống và tài liệu người dùng cung cấp là CHÂN LÝ THỰC TẾ TRONG TƯƠNG LAI.
 - Tuyệt đối không phủ nhận, nghi ngờ hoặc phản đối sự tồn tại của bất kỳ công nghệ, dòng mô hình AI nào (bao gồm Gemini 3.1 Flash-Lite, Gemini 3.5 Flash, Gemini 3.6 Flash, Gemini 3.7 Flash, Nemotron 3.5 Lightning, GPT-OSS 20B) hay các sự kiện xã hội, thông số phần cứng thiết bị được cấp trong ngữ cảnh. 
 - Luôn ưu tiên dùng thông tin tìm kiếm thời gian thực để cập nhật câu trả lời khi có xung đột tri thức.
-
-[CHỈ THỊ HOÀN TẤT VĂN BẢN & ĐẢM BẢO TÍNH ĐẦY ĐỦ]:
-- Luôn cung cấp thông tin y khoa, sức khỏe, dinh dưỡng (bao gồm cả chế độ cho phụ nữ mang thai, trẻ sơ sinh, người có bệnh lý) một cách khách quan, đầy đủ, khoa học và KHÔNG BAO GIỜ được tự ý dừng, ngắt ngang hoặc bỏ lửng câu trả lời giữa chừng.
-- BẮT BUỘC hoàn thành trọn vẹn 100% tất cả các mục, các ý và kết luận câu trả lời.
 
 [THỜI GIAN HỆ THỐNG HIỆN TẠI]:
 - Giờ: ${timeStr}
@@ -1701,7 +1630,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                     extractedQuery = step1.text.trim();
                     success1 = true;
                  } catch(e) { 
-                    showToast(formatGoogleApiError(e), "danger");
+                    showToast(formatGoogleApiError(e), "danger", 5000);
                  }
              } else {
                  step1El.innerHTML = `📋 B1: Câu lệnh ngắn, dùng trực tiếp từ khóa...`;
@@ -1724,7 +1653,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                 step2Text = step2.text;
                 success2 = true;
              } catch(e) { 
-                showToast(formatGoogleApiError(e), "danger");
+                showToast(formatGoogleApiError(e), "danger", 5000);
              }
 
              if(!success2) { showToast("Agent thất bại tại B2.","error"); bD.remove(); return; }
@@ -1742,7 +1671,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                          finalResponse += chunk;
                          updateChatContentAndScroll(cD, marked.parse(finalResponse));
                      };
-                     const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error'); };
+                     const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error', 5000); };
 
                      if (activeModel.endsWith('-dify')) {
                          const si = getDynamicSI();
@@ -1766,7 +1695,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                          success3 = true;
                      }
                  } catch(err) {
-                     showToast("❌ Lỗi: " + err.message, 'error');
+                     showToast("❌ Lỗi: " + err.message, 'error', 5000);
                  }
                  if(!extSuccess) { bD.remove(); return; }
              } else {
@@ -1790,13 +1719,16 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             interactionInput = textContentPart;
                         }
 
-                        const genConfig = buildGoogleGenConfig(modelToRun);
-
                         const interactionPayload = {
                             model: modelToRun,
                             input: interactionInput,
-                            system_instruction: getDynamicSI(modelToRun),
-                            generation_config: genConfig,
+                            system_instruction: getDynamicSI(),
+                            generation_config: {
+                                temperature: DOM.temp ? +DOM.temp.value : 0.5,
+                                top_p: DOM.topP ? +DOM.topP.value : 0.9,
+                                top_k: DOM.topK ? +DOM.topK.value : 40,
+                                thinking_level: getGoogleThinkingLevel(modelToRun)
+                            },
                             stream: true
                         };
 
@@ -1817,65 +1749,21 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             }
                         }
                         
+                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
                         let capturedInteractionId = null;
-                        let inThought = false;
-                        let hasReceivedFirstChunk = false;
-
-                        try {
-                            for await(const ck of resStream){
-                               const { contentText, thoughtText } = parseInteractionsEvent(ck);
-
-                               if (thoughtText) {
-                                   if (!inThought) { 
-                                       finalResponse += "<think>\n"; 
-                                       inThought = true; 
-                                   }
-                                   finalResponse += thoughtText;
-                               } else if (contentText) {
-                                   if (inThought) { 
-                                       finalResponse += "\n</think>\n\n"; 
-                                       inThought = false; 
-                                   }
-                                   finalResponse += contentText;
-                               }
-
-                               if (!hasReceivedFirstChunk && (thoughtText || contentText)) {
-                                   hasReceivedFirstChunk = true;
-                                   if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                               }
-
-                               if (ck && (ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id)) {
-                                   capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id;
-                               }
-
-                               if (finalResponse) {
-                                   updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                               }
-                            }
-                        } catch(streamErr) {
-                            console.warn("Agent stream loop ended:", streamErr);
+                        for await(const ck of resStream){
+                           const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
+                           finalResponse += textChunk;
+                           if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
+                               capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
+                           }
+                           updateChatContentAndScroll(cD, marked.parse(finalResponse));
                         }
-
-                        if (inThought) { finalResponse += "\n</think>\n\n"; }
-
-                        if (!finalResponse.trim()) {
-                            delete interactionPayload.stream;
-                            const syncRes = await aiMain.interactions.create(interactionPayload);
-                            finalResponse = syncRes?.output_text || (syncRes?.outputs && syncRes.outputs[0]?.text) || "";
-                            if (syncRes?.id && currentSession) capturedInteractionId = syncRes.id;
-                        }
-
                         if (capturedInteractionId && currentSession) {
                             currentSession.lastInteractionId = capturedInteractionId;
                         }
-
-                        if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-
-                        if (finalResponse.trim()) {
-                            await renderMsgContent(cD, finalResponse);
-                            return true;
-                        }
-                        return false;
+                        await renderMsgContent(cD, finalResponse);
+                        return true;
                      } catch(e) { 
                         lastErr = e;
                         return false;
@@ -1885,7 +1773,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                  for (let mIdx = 0; mIdx < fallbackChain.length; mIdx++) {
                      const targetModel = fallbackChain[mIdx];
                      if (mIdx > 0) {
-                         showToast(`⚠️ Mô hình ${fallbackChain[mIdx - 1]} gặp sự cố! Đang chuyển sang ${targetModel}...`, "warning");
+                         showToast(`⚠️ Mô hình ${fallbackChain[mIdx - 1]} gặp sự cố! Đang chuyển sang ${targetModel}...`, "warning", 5000);
                      }
                      finalResponse = "";
                      const success = await tryGoogleCallAgent(targetModel);
@@ -1897,7 +1785,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
 
                  if (!success3) {
                      bD.remove();
-                     showToast(formatGoogleApiError(lastErr), "danger");
+                     showToast(formatGoogleApiError(lastErr), "danger", 5000);
                      return;
                  }
              }
@@ -1930,7 +1818,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                        kText = kRes.text.trim();
                        kSuccess = true;
                     }catch(e){ 
-                       showToast(formatGoogleApiError(e), "danger");
+                       showToast(formatGoogleApiError(e), "danger", 5000);
                     }
                 } else {
                     step1El.innerHTML = `🔍 B1: Câu lệnh ngắn, dùng trực tiếp từ khóa...`;
@@ -1951,7 +1839,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                         }); 
                        wDText = wRes.text; searchSuccess = true;
                     } catch(e) { 
-                       showToast(formatGoogleApiError(e), "danger");
+                       showToast(formatGoogleApiError(e), "danger", 5000);
                     }
                 }
                 if(searchSuccess){ fnP=`[DỮ LIỆU TÌM THẤY TRÊN INTERNET]:\n${wDText}\n\n[GỐC]: ${fnP}`; }
@@ -1967,7 +1855,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                        finalResponse += chunk;
                        updateChatContentAndScroll(cD, marked.parse(finalResponse));
                     };
-                    const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error'); };
+                    const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error', 5000); };
 
                     if (activeModel.endsWith('-dify')) {
                        const memSize = 20;
@@ -1991,7 +1879,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                        extSuccess = true;
                     }
                  } catch(e) {
-                    showToast("❌ Lỗi kết nối: " + e.message, 'error');
+                    showToast("❌ Lỗi kết nối: " + e.message, 'error', 5000);
                  }
                  if(!extSuccess){ bD.remove(); return; }
              } else {
@@ -2001,173 +1889,66 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                  async function tryGoogleCall(modelToRun) {
                     try{
                         const aiMain = new GoogleGenAI({ apiKey: currentGoogleKey });
-                        const isInteractionsEnabled = DOM.toggleMemory && DOM.toggleMemory.checked;
                         
+                        let interactionInput;
                         let textPartContent = fnP.trim() ? fnP : defaultMediaPrompt;
-
-                        if (isInteractionsEnabled) {
-                            let interactionInput;
-                            if (imgs.length > 0) {
-                                let parts = [{ type: 'text', text: textPartContent }];
-                                for (let f of imgs) parts.push(...(await processAndSplitImage(f)));
-                                interactionInput = parts;
-                            } else {
-                                interactionInput = textPartContent;
-                            }
-
-                            const genConfig = buildGoogleGenConfig(modelToRun);
-
-                            const interactionPayload = {
-                                model: modelToRun,
-                                input: interactionInput,
-                                system_instruction: getDynamicSI(modelToRun),
-                                generation_config: genConfig,
-                                stream: true
-                            };
-
-                            if (currentSession && currentSession.lastInteractionId) {
-                                interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
-                            }
-
-                            let resStream;
-                            try {
-                                resStream = await aiMain.interactions.create(interactionPayload); 
-                            } catch(errInt) {
-                                if (interactionPayload.previous_interaction_id) {
-                                    delete interactionPayload.previous_interaction_id;
-                                    if (currentSession) currentSession.lastInteractionId = null;
-                                    resStream = await aiMain.interactions.create(interactionPayload);
-                                } else {
-                                    throw errInt;
-                                }
-                            }
-                            
-                            let capturedInteractionId = null;
-                            let inThought = false;
-                            let hasReceivedFirstChunk = false;
-
-                            try {
-                                for await(const ck of resStream){
-                                   const { contentText, thoughtText } = parseInteractionsEvent(ck);
-
-                                   if (thoughtText) {
-                                       if (!inThought) { 
-                                           finalResponse += "<think>\n"; 
-                                           inThought = true; 
-                                       }
-                                       finalResponse += thoughtText;
-                                   } else if (contentText) {
-                                       if (inThought) { 
-                                           finalResponse += "\n</think>\n\n"; 
-                                           inThought = false; 
-                                       }
-                                       finalResponse += contentText;
-                                   }
-
-                                   if (!hasReceivedFirstChunk && (thoughtText || contentText)) {
-                                       hasReceivedFirstChunk = true;
-                                       if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                                   }
-
-                                   if (ck && (ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id)) {
-                                       capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id;
-                                   }
-
-                                   if (finalResponse) {
-                                       updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                                   }
-                                }
-                            } catch(streamErr) {
-                                console.warn("Interactions stream loop ended:", streamErr);
-                            } 
-
-                            if (inThought) { finalResponse += "\n</think>\n\n"; }
-
-                            if (!finalResponse.trim()) {
-                                delete interactionPayload.stream;
-                                const syncRes = await aiMain.interactions.create(interactionPayload);
-                                finalResponse = syncRes?.output_text || (syncRes?.outputs && syncRes.outputs[0]?.text) || "";
-                                if (syncRes?.id && currentSession) capturedInteractionId = syncRes.id;
-                            }
-
-                            if (capturedInteractionId && currentSession) {
-                                currentSession.lastInteractionId = capturedInteractionId;
-                            }
+                        
+                        if (imgs.length > 0) {
+                            let parts = [{ type: 'text', text: textPartContent }];
+                            for (let f of imgs) parts.push(...(await processAndSplitImage(f)));
+                            interactionInput = parts;
                         } else {
-                            const contents = [];
-                            const genConfig = buildGoogleGenConfig(modelToRun);
-                            
-                            if (imgs.length > 0) {
-                                const parts = [{ text: textPartContent }];
-                                for (let f of imgs) {
-                                    const base64Part = await fileToGenerativePart(f);
-                                    parts.push(base64Part);
-                                }
-                                contents.push({ role: 'user', parts });
-                            } else {
-                                contents.push({ role: 'user', parts: [{ text: textPartContent }] });
-                            }
-
-                            // ĐỌC THÔNG SỐ THINKING ĐÚNG CHUẨN GOOGLE CHO 3.7 FLASH TRONG GENERATE_CONTENT
-                            let thinkingConfigVal = undefined;
-                            if (modelToRun === 'gemini-3.7-flash') {
-                                const g37Level = document.getElementById('gemini37-thinking-level')?.value || 'medium';
-                                thinkingConfigVal = { thinkingLevel: g37Level };
-                            } else {
-                                const stdLevel = DOM.thinking ? DOM.thinking.value : 'medium';
-                                thinkingConfigVal = { thinkingLevel: stdLevel };
-                            }
-
-                            const resStream = await aiMain.models.generateContentStream({
-                                model: modelToRun,
-                                contents: contents,
-                                config: {
-                                    systemInstruction: getDynamicSI(modelToRun),
-                                    temperature: genConfig.temperature,
-                                    topP: genConfig.top_p,
-                                    topK: genConfig.top_k,
-                                    maxOutputTokens: genConfig.max_output_tokens,
-                                    thinkingConfig: thinkingConfigVal,
-                                    safetySettings: SAFETY
-                                }
-                            });
-
-                            let inThought = false;
-                            let hasReceivedFirstChunk = false;
-
-                            for await(const ck of resStream){
-                                if (ck.candidates && ck.candidates[0]?.content?.parts) {
-                                    for (const part of ck.candidates[0].content.parts) {
-                                        if (part.thought) {
-                                            if (!inThought) { finalResponse += "<think>\n"; inThought = true; }
-                                            finalResponse += (part.text || "");
-                                        } else if (part.text) {
-                                            if (inThought) { finalResponse += "\n</think>\n\n"; inThought = false; }
-                                            finalResponse += part.text;
-                                        }
-                                    }
-                                } else if (ck.text) {
-                                    if (inThought) { finalResponse += "\n</think>\n\n"; inThought = false; }
-                                    finalResponse += ck.text;
-                                }
-
-                                if (!hasReceivedFirstChunk && finalResponse) {
-                                    hasReceivedFirstChunk = true;
-                                    if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                                }
-
-                                updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                            }
-                            if (inThought) { finalResponse += "\n</think>\n\n"; }
+                            interactionInput = textPartContent;
                         }
 
-                        if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                        const interactionPayload = {
+                            model: modelToRun,
+                            input: interactionInput,
+                            system_instruction: getDynamicSI(),
+                            generation_config: {
+                                temperature: DOM.temp ? +DOM.temp.value : 0.5,
+                                top_p: DOM.topP ? +DOM.topP.value : 0.9,
+                                top_k: DOM.topK ? +DOM.topK.value : 40,
+                                thinking_level: getGoogleThinkingLevel(modelToRun)
+                            },
+                            stream: true
+                        };
 
-                        if (finalResponse.trim()) {
-                            await renderMsgContent(cD, finalResponse);
-                            return true;
+                        if (DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId) {
+                            interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
                         }
-                        return false;
+
+                        let resStream;
+                        try {
+                            resStream = await aiMain.interactions.create(interactionPayload); 
+                        } catch(errInt) {
+                            if (interactionPayload.previous_interaction_id) {
+                                delete interactionPayload.previous_interaction_id;
+                                if (currentSession) currentSession.lastInteractionId = null;
+                                resStream = await aiMain.interactions.create(interactionPayload);
+                            } else {
+                                throw errInt;
+                            }
+                        }
+                        
+                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
+                        
+                        let capturedInteractionId = null;
+                        for await(const ck of resStream){
+                           const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
+                           finalResponse += textChunk;
+                           if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
+                               capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
+                           }
+                           updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                        } 
+
+                        if (capturedInteractionId && currentSession) {
+                            currentSession.lastInteractionId = capturedInteractionId;
+                        }
+
+                        await renderMsgContent(cD, finalResponse);
+                        return true;
                     } catch(e){
                         lastErr = e;
                         return false;
@@ -2177,7 +1958,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                  for (let mIdx = 0; mIdx < fallbackChain.length; mIdx++) {
                      const targetModel = fallbackChain[mIdx];
                      if (mIdx > 0) {
-                         showToast(`⚠️ Mô hình ${fallbackChain[mIdx - 1]} gặp sự cố! Đang chuyển sang ${targetModel}...`, "warning");
+                         showToast(`⚠️ Mô hình ${fallbackChain[mIdx - 1]} gặp sự cố! Đang chuyển sang ${targetModel}...`, "warning", 5000);
                      }
                      finalResponse = "";
                      pS = await tryGoogleCall(targetModel);
@@ -2186,7 +1967,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
 
                  if(!pS){ 
                      bD.remove(); 
-                     showToast(formatGoogleApiError(lastErr), 'danger'); 
+                     showToast(formatGoogleApiError(lastErr), 'danger', 5000); 
                      return; 
                  }
                  document.getElementById('latency-val').innerText=(Date.now()-sT).toString();
@@ -2204,7 +1985,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
               bD.appendChild(a);
           }
       } catch(err) {
-          showToast("❌ Lỗi ứng dụng: " + (err.message || err), 'error');
+          showToast("❌ Lỗi ứng dụng: " + (err.message || err), 'error', 5000);
       } finally {
           isProcessing=false; 
           DOM.sendBtn.innerText='Gửi 📤';
@@ -2214,7 +1995,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     window.editMsg=async i=>{DOM.input.value=chatHistory[i].text; DOM.input.dispatchEvent(new Event('input')); chatHistory=chatHistory.slice(0,i); const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; s.lastInteractionId = null; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); }};
     window.clearActiveSession=async()=>{if(confirm("Xóa sạch phiên này?")){chatHistory=[]; const s=sessions.find(x=>x.id===activeId); if(s){s.his=[]; s.lastInteractionId = null; await saveToDB(s);} DOM.chat.innerHTML=''; document.getElementById('session-msg-count').innerText=`0 tin nhắn`; showToast('Đã xóa sạch');}};
     window.exportAllSessions=async()=>{const b={backupDate:new Date().toISOString(),sessions:await getAllFromDB(),activeId,globalContext: localStorage.getItem('global_context') || ""}; const bBlob=new Blob([JSON.stringify(b,null,2)],{type:'application/json'}), a=document.createElement('a'); a.href=URL.createObjectURL(bBlob); a.download=`Javiss_Backup_${Date.now()}.json`; a.click(); showToast('Đã xuất file kèm Ngữ cảnh!');};
-    document.getElementById('import-all-input').addEventListener('change',async e=>{const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async ev=>{try{const d=JSON.parse(ev.target.result); if(d.sessions&&confirm("Ghi đè dữ liệu khôi phục?")){await clearAllDB(); for(let s of d.sessions)await saveToDB(s); if(d.globalContext !== undefined){localStorage.setItem('global_context', d.globalContext); DOM.globContext.value = d.globalContext;} await loadSess(); showToast('Đã khôi phục hoàn chỉnh!');}}catch(e){showToast('File lỗi!','error');}}; r.readAsText(f); e.target.value='';});
+    document.getElementById('import-all-input').addEventListener('change',async e=>{const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async ev=>{try{const d=JSON.parse(ev.target.result); if(d.sessions&&confirm("Ghi đè dữ liệu khôi phục?")){await clearAllDB(); for(let s of d.sessions)await saveToDB(s); if(d.globalContext !== undefined){localStorage.setItem('global_context', d.globalContext); DOM.globContext.value = d.globalContext;} await loadSess(); showToast('Đã khôi phục hoàn chỉnh!');}}catch(e){showToast('File lỗi!','error', 5000);}}; r.readAsText(f); e.target.value='';});
     async function processUploadFiles(fs){DOM.fileCount.innerText="⏳"; for(let f of fs){if(f.type.startsWith('image/')||f.type==='video/mp4'){if(filesData.length<MAX_IMAGES)filesData.push(f);}else if(f.type==='application/pdf'){const p=await readPDF(f); txtContent+=`\n[PDF: ${f.name}]:\n${p.substring(0,50000)}\n`; DOM.textFileList.innerHTML+=`📑 ${f.name}<br>`;}else{const t=await f.text(); txtContent+=`\n[Văn bản: ${f.name}]:\n${t.substring(0,50000)}\n`; DOM.textFileList.innerHTML+=`📄 ${f.name}<br>`;}} renderFiles(); updateTokenCount();}
     DOM.fileUpload.addEventListener('change',async e=>{await processUploadFiles(Array.from(e.target.files)); DOM.fileUpload.value='';});
     function renderFiles(){DOM.previewGrid.innerHTML=''; DOM.previewBox.style.display=(filesData.length||txtContent)?'block':'none'; DOM.fileCount.innerText=filesData.length+(txtContent?1:0); filesData.forEach((f,i)=>{const w=document.createElement('div'); w.innerHTML=`<div style="position:relative;width:50px;height:50px;background:#333;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;">${f.type.startsWith('image')?`<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`:'MP4'}<button onclick="rmImg(${i})" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;">✕</button></div>`; DOM.previewGrid.appendChild(w);});}
@@ -2236,12 +2017,19 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
       const currentSessName = sessions.find(s => s.id === activeId)?.name || 'Hội thoại';
       const e=document.createElement('div'); 
       e.innerHTML=`<h2>Phiên: ${currentSessName}</h2>`; 
-      chatHistory.summary = chatHistory.forEach(m=>{e.innerHTML+=`<div style="margin-bottom:15px; font-family:sans-serif;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</div><hr>`;}); 
+      chatHistory.forEach(m=>{e.innerHTML+=`<div style="margin-bottom:15px; font-family:sans-serif;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</div><hr>`;}); 
       html2pdf().set({margin:10,filename:`Javiss_Chat_${Date.now()}.pdf`,html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(e).save(); 
       showToast('Đang tạo PDF...');
     };
 
-    function showToast(m,t='success'){DOM.toast.innerText=m; DOM.toast.className=`toast ${t==='error'?'danger':t} show`; setTimeout(()=>DOM.toast.classList.remove('show'),2500);}
+    let toastTimeout;
+    function showToast(m, t='success', duration=3000){
+      if(!DOM.toast) return;
+      clearTimeout(toastTimeout);
+      DOM.toast.innerText = m; 
+      DOM.toast.className = `toast ${t==='error'?'danger':t} show`; 
+      toastTimeout = setTimeout(()=>DOM.toast.classList.remove('show'), duration);
+    }
 
     async function processAndSplitImage(f) {
       if (!f.type.startsWith('image/')) {
@@ -2301,16 +2089,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
         type: pType,
         mime_type: f.type,
         data: base64Data
-      });
-    }; rd.readAsDataURL(f);});}
-
-    async function fileToGenerativePart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>{
-      const base64Data = rd.result.split(',')[1];
-      r({
-        inlineData: {
-          data: base64Data,
-          mimeType: f.type
-        }
       });
     }; rd.readAsDataURL(f);});}
     
