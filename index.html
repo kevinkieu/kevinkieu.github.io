@@ -1732,16 +1732,21 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             interactionInput = textContentPart;
                         }
 
+                        // Cấu hình tối ưu: Bỏ temperature/top_p/top_k cho Gemini 3.7 Flash để tránh xung đột
+                        const genConfig = {
+                            thinking_level: getGoogleThinkingLevel(modelToRun)
+                        };
+                        if (modelToRun !== 'gemini-3.7-flash') {
+                            if (DOM.temp) genConfig.temperature = +DOM.temp.value;
+                            if (DOM.topP) genConfig.top_p = +DOM.topP.value;
+                            if (DOM.topK) genConfig.top_k = +DOM.topK.value;
+                        }
+
                         const interactionPayload = {
                             model: modelToRun,
                             input: interactionInput,
                             system_instruction: getDynamicSI(),
-                            generation_config: {
-                                temperature: DOM.temp ? +DOM.temp.value : 0.5,
-                                top_p: DOM.topP ? +DOM.topP.value : 0.9,
-                                top_k: DOM.topK ? +DOM.topK.value : 40,
-                                thinking_level: getGoogleThinkingLevel(modelToRun)
-                            },
+                            generation_config: genConfig,
                             stream: true
                         };
 
@@ -1931,16 +1936,21 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             interactionInput = textPartContent;
                         }
 
+                        // Cấu hình tối ưu: Bỏ temperature/top_p/top_k cho Gemini 3.7 Flash để tránh xung đột
+                        const genConfig = {
+                            thinking_level: getGoogleThinkingLevel(modelToRun)
+                        };
+                        if (modelToRun !== 'gemini-3.7-flash') {
+                            if (DOM.temp) genConfig.temperature = +DOM.temp.value;
+                            if (DOM.topP) genConfig.top_p = +DOM.topP.value;
+                            if (DOM.topK) genConfig.top_k = +DOM.topK.value;
+                        }
+
                         const interactionPayload = {
                             model: modelToRun,
                             input: interactionInput,
                             system_instruction: getDynamicSI(),
-                            generation_config: {
-                                temperature: DOM.temp ? +DOM.temp.value : 0.5,
-                                top_p: DOM.topP ? +DOM.topP.value : 0.9,
-                                top_k: DOM.topK ? +DOM.topK.value : 40,
-                                thinking_level: getGoogleThinkingLevel(modelToRun)
-                            },
+                            generation_config: genConfig,
                             stream: true
                         };
 
