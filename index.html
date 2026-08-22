@@ -176,13 +176,35 @@
             </select>
           </div>
           
-          <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🧠 Độ sâu suy nghĩ (Think Depth):</span>
+          <div id="standard-thinking-container" style="margin-top:8px;">
+            <span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🧠 Độ sâu suy nghĩ (Think Depth):</span>
             <select id="thinking-level" class="modern-select">
               <option value="minimal">Min (Tối thiểu)</option>
               <option value="low">Low (Thấp)</option>
               <option value="medium" selected>Med (Chuẩn)</option>
               <option value="high">High (Sâu)</option>
             </select>
+          </div>
+
+          <div id="gemini37-thinking-container" style="display:none;margin-top:8px;padding:8px;background:rgba(11,87,208,0.06);border:1px solid rgba(11,87,208,0.2);border-radius:8px;">
+            <span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:6px;display:block;color:var(--primary);">⚡ Cấu hình Tư duy Gemini 3.7:</span>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div>
+                <label style="font-size:0.75rem;font-weight:600;display:block;margin-bottom:2px;">🧠 Mức tư duy (Thinking Level):</label>
+                <select id="gemini37-thinking-level" class="modern-select">
+                  <option value="low" selected>Low (Nhanh / Tiết kiệm Quota)</option>
+                  <option value="medium">Medium (Chuẩn / Mặc định)</option>
+                  <option value="high">High (Sâu / Logic phức tạp)</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:0.75rem;font-weight:600;display:block;margin-bottom:2px;">📜 Tóm tắt suy nghĩ (Thinking Summaries):</label>
+                <select id="gemini37-thinking-summaries" class="modern-select">
+                  <option value="auto" selected>✨ Tự động (Hiển thị thẻ &lt;think&gt;)</option>
+                  <option value="none">🚫 Tắt hiển thị luồng nghĩ</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🔑 Google API Key (Model chính):</span>
@@ -391,33 +413,84 @@ QUY TẮC TỐI CAO:
         return msg ? `❌ Lỗi: ${msg}` : "❌ Không nhận được phản hồi từ máy chủ Google.";
     }
 
-    // BỘ BÓC TÁCH VĂN BẢN VÀ THOUGHT DELTA CHUẨN XÁC TỪNG SỰ KIỆN SSE
+    function updateThinkingVisibility() {
+        const currentModel = DOM.model ? DOM.model.value : '';
+        const stdBox = document.getElementById('standard-thinking-container');
+        const g37Box = document.getElementById('gemini37-thinking-container');
+        
+        if (currentModel === 'gemini-3.7-flash') {
+            if (stdBox) stdBox.style.display = 'none';
+            if (g37Box) g37Box.style.display = 'block';
+        } else {
+            if (stdBox) stdBox.style.display = 'block';
+            if (g37Box) g37Box.style.display = 'none';
+        }
+    }
+
+    function buildGoogleGenConfig(modelName) {
+        const genConfig = {
+            temperature: DOM.temp ? +DOM.temp.value : 0.5,
+            top_p: DOM.topP ? +DOM.topP.value : 0.9,
+            top_k: DOM.topK ? +DOM.topK.value : 40,
+            max_output_tokens: 32768
+        };
+
+        if (modelName === 'gemini-3.7-flash') {
+            const g37Level = document.getElementById('gemini37-thinking-level')?.value || 'low';
+            const g37Summaries = document.getElementById('gemini37-thinking-summaries')?.value || 'auto';
+            genConfig.thinking_level = (g37Level === 'minimal') ? 'low' : g37Level;
+            genConfig.thinking_summaries = g37Summaries;
+        } else if (modelName.startsWith('gemini-')) {
+            const stdLevel = DOM.thinking ? DOM.thinking.value : 'medium';
+            genConfig.thinking_level = stdLevel;
+        }
+        return genConfig;
+    }
+
     function parseInteractionsEvent(ck) {
         let contentText = "";
         let thoughtText = "";
-
         if (!ck) return { contentText, thoughtText };
 
-        // 1. Gói delta chuyên dụng (step.delta / content.delta)
-        if (ck.delta) {
-            const dType = ck.delta.type || "";
-            const dVal = ck.delta.text || (typeof ck.delta.content === 'string' ? ck.delta.content : ck.delta.content?.text) || "";
-            
-            if (dType === "thought_summary" || dType === "thought" || ck.delta.thought) {
-                thoughtText = dVal || ck.delta.thought || "";
-            } else if (dType === "text" || !dType) {
-                contentText = dVal;
+        try {
+            if (ck.delta) {
+                const d = ck.delta;
+                const dType = (d.type || "").toLowerCase();
+                let dExtracted = "";
+
+                if (typeof d.text === 'string') {
+                    dExtracted = d.text;
+                } else if (typeof d.content === 'string') {
+                    dExtracted = d.content;
+                } else if (Array.isArray(d.content)) {
+                    dExtracted = d.content.map(p => (typeof p === 'string' ? p : (p.text || ""))).join('');
+                } else if (d.content && typeof d.content.text === 'string') {
+                    dExtracted = d.content.text;
+                }
+
+                if (dType.includes("thought") || d.thought) {
+                    thoughtText += (dExtracted || (typeof d.thought === 'string' ? d.thought : ""));
+                } else {
+                    contentText += dExtracted;
+                }
+                return { contentText, thoughtText };
             }
-        } 
-        // 2. Thuộc tính trực tiếp của gói stream
-        else if (ck.thought) {
-            thoughtText = ck.thought;
-        } else if (typeof ck.text === 'string') {
-            contentText = ck.text;
-        } else if (ck.outputs && ck.outputs[0]?.text) {
-            contentText = ck.outputs[0].text;
-        } else if (ck.output_text) {
-            contentText = ck.output_text;
+
+            if (typeof ck.thought === 'string') thoughtText += ck.thought;
+            if (typeof ck.text === 'string') contentText += ck.text;
+            
+            if (ck.outputs && Array.isArray(ck.outputs)) {
+                for (const out of ck.outputs) {
+                    if (out.text) contentText += out.text;
+                }
+            } else if (ck.candidates && ck.candidates[0]?.content?.parts) {
+                for (const part of ck.candidates[0].content.parts) {
+                    if (part.thought) thoughtText += part.thought;
+                    else if (part.text) contentText += part.text;
+                }
+            }
+        } catch(errParser) {
+            console.warn("Parse chunk issue:", errParser);
         }
 
         return { contentText, thoughtText };
@@ -730,7 +803,7 @@ QUY TẮC TỐI CAO:
     async function getAllFilesFromLib(){ return new Promise(r=>{const rq=db.transaction(FILE_STORE,"readonly").objectStore(FILE_STORE).getAll(); rq.onsuccess=()=>r(rq.result);});}
     async function deleteFileFromLib(i){ return new Promise(r=>{const t=db.transaction(FILE_STORE,"readwrite"); t.objectStore(FILE_STORE).delete(i); t.oncomplete=()=>r();});}
     
-    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
+    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),g37Thinking:document.getElementById('gemini37-thinking-level'),g37Summaries:document.getElementById('gemini37-thinking-summaries'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
     let sessions=[], activeId=null, chatHistory=[], filesData=[], txtContent="", isProcessing=false, folders=JSON.parse(localStorage.getItem('javiss_folders')||'["Mặc định"]'), activeFolder=localStorage.getItem('javiss_active_folder')||"All", openTabs=JSON.parse(localStorage.getItem('javiss_tabs')||'[]'); const MAX_IMAGES=20;
     
     function updateTokenCount() {
@@ -1405,7 +1478,7 @@ QUY TẮC TỐI CAO:
     DOM.btnDeleteFolder.onclick=async()=>{if(activeFolder==="All"||activeFolder==="Mặc định")return showToast("Không xóa được TM hệ thống!"); if(confirm(`Xóa "${activeFolder}"?`)){folders=folders.filter(f=>f!==activeFolder); localStorage.setItem('javiss_folders',JSON.stringify(folders)); for(let s of sessions){if(s.folder===activeFolder){s.folder="Mặc định"; await saveToDB(s);}} activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); renderSel(); showToast("Đã xóa!");}};
     DOM.btnMoveSess.onclick=async()=>{const s=sessions.find(x=>x.id===activeId); if(!s)return; const c=prompt(`Nhập số TM đích:\n${folders.map((f,i)=>`${i+1}. ${f}`).join('\n')}`); if(c){let t=folders[parseInt(c)-1]||c.trim(); if(folders.includes(t)){s.folder=t; await saveToDB(s); showToast(`Chuyển: ${t}`); renderSel();}}};
     async function loadSess(){try{await initDB(); let d=await getAllFromDB(); if(d&&d.length){sessions=d.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0)); renderFolders(); activeId=localStorage.getItem('javiss_active_id'); if(!sessions.find(s=>s.id===activeId))activeId=sessions[0].id; await switchSess(activeId);}else{renderFolders(); await newSess();}}catch(e){await newSess();}}
-    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.7-flash',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
+    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.7-flash',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',g37Lvl:'low',g37Sum:'auto',sch:false,mem:true,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
     async function switchSess(id){
@@ -1418,16 +1491,19 @@ QUY TẮC TỐI CAO:
           if(DOM.topP) { DOM.topP.value=s.tpp||0.9; DOM.toppVal.innerText=DOM.topP.value; }
           if(DOM.topK) DOM.topK.value=s.top||40; 
           if(DOM.thinking) DOM.thinking.value=s.thk||'medium';
+          if(DOM.g37Thinking) DOM.g37Thinking.value=s.g37Lvl||'low';
+          if(DOM.g37Summaries) DOM.g37Summaries.value=s.g37Sum||'auto';
           if(DOM.toggleGlob) DOM.toggleGlob.checked = s.useGlob !== false;
           if(DOM.toggleSearch) DOM.toggleSearch.checked=s.sch||false; 
           if(DOM.toggleMemory) DOM.toggleMemory.checked=s.mem!==false; 
           if(DOM.toggleAgent) DOM.toggleAgent.checked=s.agt||false;
       } 
       DOM.chat.innerHTML=''; 
-      for(let j=0; j<chatHistory.length; j++){
+      for(let j=0; j<chatHistory.length; j++){ 
          await appendMsg(chatHistory[j].role==='model'?'bot':'user', chatHistory[j].text, j, true);
       }
       DOM.chat.scrollTop=DOM.chat.scrollHeight; renderSel();
+      updateThinkingVisibility();
       if(!openTabs.includes(id)) openTabs.push(id); renderTabs();
     }
     
@@ -1481,12 +1557,15 @@ QUY TẮC TỐI CAO:
           s.tpp = DOM.topP ? DOM.topP.value : 0.9; 
           s.top = DOM.topK ? DOM.topK.value : 40; 
           s.thk = DOM.thinking ? DOM.thinking.value : 'medium';
+          s.g37Lvl = DOM.g37Thinking ? DOM.g37Thinking.value : 'low';
+          s.g37Sum = DOM.g37Summaries ? DOM.g37Summaries.value : 'auto';
           s.useGlob = DOM.toggleGlob ? DOM.toggleGlob.checked : true;
           s.sch = DOM.toggleSearch ? DOM.toggleSearch.checked : false; 
           s.mem = DOM.toggleMemory ? DOM.toggleMemory.checked : true; 
           s.agt = DOM.toggleAgent ? DOM.toggleAgent.checked : false; 
           await saveToDB(s);
       }
+      updateThinkingVisibility();
     }
     if(DOM.sysInst) DOM.sysInst.addEventListener('input',updateConfig); 
     if(DOM.model) DOM.model.addEventListener('change',updateConfig); 
@@ -1497,6 +1576,8 @@ QUY TẮC TỐI CAO:
     if(DOM.toggleAgent) DOM.toggleAgent.addEventListener('change',updateConfig); 
     if(DOM.topK) DOM.topK.addEventListener('input',updateConfig); 
     if(DOM.thinking) DOM.thinking.addEventListener('change',updateConfig); 
+    if(DOM.g37Thinking) DOM.g37Thinking.addEventListener('change',updateConfig); 
+    if(DOM.g37Summaries) DOM.g37Summaries.addEventListener('change',updateConfig); 
     if(DOM.temp) DOM.temp.addEventListener('input',()=>{ if(DOM.tempVal) DOM.tempVal.innerText=DOM.temp.value; updateConfig();}); 
     if(DOM.topP) DOM.topP.addEventListener('input',()=>{ if(DOM.toppVal) DOM.toppVal.innerText=DOM.topP.value; updateConfig();});
     
@@ -1515,6 +1596,10 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
 - Hiện tại bắt buộc là năm ${now.getFullYear()}. Kiến thức đóng băng của bạn có thể cũ, nhưng bạn PHẢI COI các kết quả tìm kiếm Web (Grounding), thông tin hệ thống và tài liệu người dùng cung cấp là CHÂN LÝ THỰC TẾ TRONG TƯƠNG LAI.
 - Tuyệt đối không phủ nhận, nghi ngờ hoặc phản đối sự tồn tại của bất kỳ công nghệ, dòng mô hình AI nào (bao gồm Gemini 3.1 Flash-Lite, Gemini 3.5 Flash, Gemini 3.6 Flash, Gemini 3.7 Flash, Nemotron 3.5 Lightning, GPT-OSS 20B) hay các sự kiện xã hội, thông số phần cứng thiết bị được cấp trong ngữ cảnh. 
 - Luôn ưu tiên dùng thông tin tìm kiếm thời gian thực để cập nhật câu trả lời khi có xung đột tri thức.
+
+[CHỈ THỊ HOÀN TẤT VĂN BẢN & ĐẢM BẢO TÍNH ĐẦY ĐỦ]:
+- Luôn cung cấp thông tin y khoa, sức khỏe, dinh dưỡng (bao gồm cả chế độ cho phụ nữ mang thai, trẻ sơ sinh, người có bệnh lý) một cách khách quan, đầy đủ, khoa học và KHÔNG BAO GIỜ được tự ý dừng, ngắt ngang hoặc bỏ lửng câu trả lời giữa chừng.
+- BẮT BUỘC hoàn thành trọn vẹn 100% tất cả các mục, các ý và kết luận câu trả lời.
 
 [THỜI GIAN HỆ THỐNG HIỆN TẠI]:
 - Giờ: ${timeStr}
@@ -1697,15 +1782,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             interactionInput = textContentPart;
                         }
 
-                        const currentLevel = DOM.thinking ? DOM.thinking.value : 'medium';
-                        const genConfig = {
-                            temperature: DOM.temp ? +DOM.temp.value : 0.5,
-                            top_p: DOM.topP ? +DOM.topP.value : 0.9,
-                            top_k: DOM.topK ? +DOM.topK.value : 40
-                        };
-                        if (currentLevel) {
-                            genConfig.thinking_level = currentLevel;
-                        }
+                        const genConfig = buildGoogleGenConfig(modelToRun);
 
                         const interactionPayload = {
                             model: modelToRun,
@@ -1736,40 +1813,43 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                         let inThought = false;
                         let hasReceivedFirstChunk = false;
 
-                        for await(const ck of resStream){
-                           const { contentText, thoughtText } = parseInteractionsEvent(ck);
+                        try {
+                            for await(const ck of resStream){
+                               const { contentText, thoughtText } = parseInteractionsEvent(ck);
 
-                           if (thoughtText) {
-                               if (!inThought) { 
-                                   finalResponse += "<think>\n"; 
-                                   inThought = true; 
+                               if (thoughtText) {
+                                   if (!inThought) { 
+                                       finalResponse += "<think>\n"; 
+                                       inThought = true; 
+                                   }
+                                   finalResponse += thoughtText;
+                               } else if (contentText) {
+                                   if (inThought) { 
+                                       finalResponse += "\n</think>\n\n"; 
+                                       inThought = false; 
+                                   }
+                                   finalResponse += contentText;
                                }
-                               finalResponse += thoughtText;
-                           } else if (contentText) {
-                               if (inThought) { 
-                                   finalResponse += "\n</think>\n\n"; 
-                                   inThought = false; 
+
+                               if (!hasReceivedFirstChunk && (thoughtText || contentText)) {
+                                   hasReceivedFirstChunk = true;
+                                   if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
                                }
-                               finalResponse += contentText;
-                           }
 
-                           if (!hasReceivedFirstChunk && (thoughtText || contentText)) {
-                               hasReceivedFirstChunk = true;
-                               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                           }
+                               if (ck && (ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id)) {
+                                   capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id;
+                               }
 
-                           if (ck && (ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id)) {
-                               capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id;
-                           }
-
-                           if (finalResponse) {
-                               updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                           }
+                               if (finalResponse) {
+                                   updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                               }
+                            }
+                        } catch(streamErr) {
+                            console.warn("Agent stream loop ended:", streamErr);
                         }
 
                         if (inThought) { finalResponse += "\n</think>\n\n"; }
 
-                        // Chốt chặn phục hồi nếu luồng stream không trả về ký tự nào
                         if (!finalResponse.trim()) {
                             delete interactionPayload.stream;
                             const syncRes = await aiMain.interactions.create(interactionPayload);
@@ -1907,107 +1987,163 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                  }
                  if(!extSuccess){ bD.remove(); return; }
              } else {
-                 // GOOGLE MODELS CHÍNH - INTERACTIONS API VỚI STREAMING VÀ PHỤC HỒI CHỐT CHẶN
+                 // GOOGLE MODELS CHÍNH - STREAMING TOÀN DIỆN VÀ AN TOÀN
                  let pS=false, sT=Date.now(), lastErr=null; 
                  const fallbackChain = getFallbackModelsFor(activeModel);
 
                  async function tryGoogleCall(modelToRun) {
                     try{
                         const aiMain = new GoogleGenAI({ apiKey: currentGoogleKey });
+                        const isInteractionsEnabled = DOM.toggleMemory && DOM.toggleMemory.checked;
                         
-                        let interactionInput;
                         let textPartContent = fnP.trim() ? fnP : defaultMediaPrompt;
-                        
-                        if (imgs.length > 0) {
-                            let parts = [{ type: 'text', text: textPartContent }];
-                            for (let f of imgs) parts.push(...(await processAndSplitImage(f)));
-                            interactionInput = parts;
-                        } else {
-                            interactionInput = textPartContent;
-                        }
 
-                        const currentLevel = DOM.thinking ? DOM.thinking.value : 'medium';
-                        const genConfig = {
-                            temperature: DOM.temp ? +DOM.temp.value : 0.5,
-                            top_p: DOM.topP ? +DOM.topP.value : 0.9,
-                            top_k: DOM.topK ? +DOM.topK.value : 40
-                        };
-                        if (currentLevel) {
-                            genConfig.thinking_level = currentLevel;
-                        }
-
-                        const interactionPayload = {
-                            model: modelToRun,
-                            input: interactionInput,
-                            system_instruction: getDynamicSI(),
-                            generation_config: genConfig,
-                            stream: true
-                        };
-
-                        if (DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId) {
-                            interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
-                        }
-
-                        let resStream;
-                        try {
-                            resStream = await aiMain.interactions.create(interactionPayload); 
-                        } catch(errInt) {
-                            if (interactionPayload.previous_interaction_id) {
-                                delete interactionPayload.previous_interaction_id;
-                                if (currentSession) currentSession.lastInteractionId = null;
-                                resStream = await aiMain.interactions.create(interactionPayload);
+                        if (isInteractionsEnabled) {
+                            // SỬ DỤNG INTERACTIONS API CHO PHIÊN CÓ BỘ NHỚ SERVER
+                            let interactionInput;
+                            if (imgs.length > 0) {
+                                let parts = [{ type: 'text', text: textPartContent }];
+                                for (let f of imgs) parts.push(...(await processAndSplitImage(f)));
+                                interactionInput = parts;
                             } else {
-                                throw errInt;
+                                interactionInput = textPartContent;
                             }
-                        }
-                        
-                        let capturedInteractionId = null;
-                        let inThought = false;
-                        let hasReceivedFirstChunk = false;
 
-                        for await(const ck of resStream){
-                           const { contentText, thoughtText } = parseInteractionsEvent(ck);
+                            const genConfig = buildGoogleGenConfig(modelToRun);
 
-                           if (thoughtText) {
-                               if (!inThought) { 
-                                   finalResponse += "<think>\n"; 
-                                   inThought = true; 
-                               }
-                               finalResponse += thoughtText;
-                           } else if (contentText) {
-                               if (inThought) { 
-                                   finalResponse += "\n</think>\n\n"; 
-                                   inThought = false; 
-                               }
-                               finalResponse += contentText;
-                           }
+                            const interactionPayload = {
+                                model: modelToRun,
+                                input: interactionInput,
+                                system_instruction: getDynamicSI(),
+                                generation_config: genConfig,
+                                stream: true
+                            };
 
-                           if (!hasReceivedFirstChunk && (thoughtText || contentText)) {
-                               hasReceivedFirstChunk = true;
-                               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                           }
+                            if (currentSession && currentSession.lastInteractionId) {
+                                interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
+                            }
 
-                           if (ck && (ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id)) {
-                               capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id;
-                           }
+                            let resStream;
+                            try {
+                                resStream = await aiMain.interactions.create(interactionPayload); 
+                            } catch(errInt) {
+                                if (interactionPayload.previous_interaction_id) {
+                                    delete interactionPayload.previous_interaction_id;
+                                    if (currentSession) currentSession.lastInteractionId = null;
+                                    resStream = await aiMain.interactions.create(interactionPayload);
+                                } else {
+                                    throw errInt;
+                                }
+                            }
+                            
+                            let capturedInteractionId = null;
+                            let inThought = false;
+                            let hasReceivedFirstChunk = false;
 
-                           if (finalResponse) {
-                               updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                           }
-                        } 
+                            try {
+                                for await(const ck of resStream){
+                                   const { contentText, thoughtText } = parseInteractionsEvent(ck);
 
-                        if (inThought) { finalResponse += "\n</think>\n\n"; }
+                                   if (thoughtText) {
+                                       if (!inThought) { 
+                                           finalResponse += "<think>\n"; 
+                                           inThought = true; 
+                                       }
+                                       finalResponse += thoughtText;
+                                   } else if (contentText) {
+                                       if (inThought) { 
+                                           finalResponse += "\n</think>\n\n"; 
+                                           inThought = false; 
+                                       }
+                                       finalResponse += contentText;
+                                   }
 
-                        // Chốt chặn phục hồi nếu luồng stream không trả về ký tự nào
-                        if (!finalResponse.trim()) {
-                            delete interactionPayload.stream;
-                            const syncRes = await aiMain.interactions.create(interactionPayload);
-                            finalResponse = syncRes?.output_text || (syncRes?.outputs && syncRes.outputs[0]?.text) || "";
-                            if (syncRes?.id && currentSession) capturedInteractionId = syncRes.id;
-                        }
+                                   if (!hasReceivedFirstChunk && (thoughtText || contentText)) {
+                                       hasReceivedFirstChunk = true;
+                                       if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                                   }
 
-                        if (capturedInteractionId && currentSession) {
-                            currentSession.lastInteractionId = capturedInteractionId;
+                                   if (ck && (ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id)) {
+                                       capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction?.id;
+                                   }
+
+                                   if (finalResponse) {
+                                       updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                                   }
+                                }
+                            } catch(streamErr) {
+                                console.warn("Interactions stream loop ended:", streamErr);
+                            } 
+
+                            if (inThought) { finalResponse += "\n</think>\n\n"; }
+
+                            if (!finalResponse.trim()) {
+                                delete interactionPayload.stream;
+                                const syncRes = await aiMain.interactions.create(interactionPayload);
+                                finalResponse = syncRes?.output_text || (syncRes?.outputs && syncRes.outputs[0]?.text) || "";
+                                if (syncRes?.id && currentSession) capturedInteractionId = syncRes.id;
+                            }
+
+                            if (capturedInteractionId && currentSession) {
+                                currentSession.lastInteractionId = capturedInteractionId;
+                            }
+                        } else {
+                            // SỬ DỤNG GENERATE_CONTENT_STREAM VỚI SAFETY_SETTINGS = BLOCK_NONE KHI TẮT INTERACTIONS API
+                            const contents = [];
+                            const genConfig = buildGoogleGenConfig(modelToRun);
+                            
+                            if (imgs.length > 0) {
+                                const parts = [{ text: textPartContent }];
+                                for (let f of imgs) {
+                                    const base64Part = await fileToGenerativePart(f);
+                                    parts.push(base64Part);
+                                }
+                                contents.push({ role: 'user', parts });
+                            } else {
+                                contents.push({ role: 'user', parts: [{ text: textPartContent }] });
+                            }
+
+                            const resStream = await aiMain.models.generateContentStream({
+                                model: modelToRun,
+                                contents: contents,
+                                config: {
+                                    systemInstruction: getDynamicSI(),
+                                    temperature: genConfig.temperature,
+                                    topP: genConfig.top_p,
+                                    topK: genConfig.top_k,
+                                    maxOutputTokens: genConfig.max_output_tokens,
+                                    thinkingConfig: modelToRun === 'gemini-3.7-flash' ? { thinkingLevel: genConfig.thinking_level } : undefined,
+                                    safetySettings: SAFETY
+                                }
+                            });
+
+                            let inThought = false;
+                            let hasReceivedFirstChunk = false;
+
+                            for await(const ck of resStream){
+                                if (ck.candidates && ck.candidates[0]?.content?.parts) {
+                                    for (const part of ck.candidates[0].content.parts) {
+                                        if (part.thought) {
+                                            if (!inThought) { finalResponse += "<think>\n"; inThought = true; }
+                                            finalResponse += part.thought;
+                                        } else if (part.text) {
+                                            if (inThought) { finalResponse += "\n</think>\n\n"; inThought = false; }
+                                            finalResponse += part.text;
+                                        }
+                                    }
+                                } else if (ck.text) {
+                                    if (inThought) { finalResponse += "\n</think>\n\n"; inThought = false; }
+                                    finalResponse += ck.text;
+                                }
+
+                                if (!hasReceivedFirstChunk && finalResponse) {
+                                    hasReceivedFirstChunk = true;
+                                    if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                                }
+
+                                updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                            }
+                            if (inThought) { finalResponse += "\n</think>\n\n"; }
                         }
 
                         if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
@@ -2150,6 +2286,16 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
         type: pType,
         mime_type: f.type,
         data: base64Data
+      });
+    }; rd.readAsDataURL(f);});}
+
+    async function fileToGenerativePart(f){return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>{
+      const base64Data = rd.result.split(',')[1];
+      r({
+        inlineData: {
+          data: base64Data,
+          mimeType: f.type
+        }
       });
     }; rd.readAsDataURL(f);});}
     
