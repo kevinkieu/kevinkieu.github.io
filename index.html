@@ -192,16 +192,9 @@
               <div>
                 <label style="font-size:0.75rem;font-weight:600;display:block;margin-bottom:2px;">🧠 Mức tư duy (Thinking Level):</label>
                 <select id="gemini37-thinking-level" class="modern-select">
-                  <option value="low" selected>Low (Nhanh / Tiết kiệm Quota)</option>
-                  <option value="medium">Medium (Chuẩn / Mặc định)</option>
+                  <option value="low">Low (Nhanh / Tiết kiệm Quota)</option>
+                  <option value="medium" selected>Medium (Chuẩn / Mặc định)</option>
                   <option value="high">High (Sâu / Logic phức tạp)</option>
-                </select>
-              </div>
-              <div>
-                <label style="font-size:0.75rem;font-weight:600;display:block;margin-bottom:2px;">📜 Tóm tắt suy nghĩ (Thinking Summaries):</label>
-                <select id="gemini37-thinking-summaries" class="modern-select">
-                  <option value="auto" selected>✨ Tự động (Hiển thị thẻ &lt;think&gt;)</option>
-                  <option value="none">🚫 Tắt hiển thị luồng nghĩ</option>
                 </select>
               </div>
             </div>
@@ -427,7 +420,8 @@ QUY TẮC TỐI CAO:
         }
     }
 
-    function buildGoogleGenConfig(modelName) {
+    // CẤU HÌNH ĐÚNG CHUẨN GOOGLE GENAI SDK CHO GEMINI 3.7 FLASH (THINKING_CONFIG)
+    function buildGoogleGenConfig(targetModelName) {
         const genConfig = {
             temperature: DOM.temp ? +DOM.temp.value : 0.5,
             top_p: DOM.topP ? +DOM.topP.value : 0.9,
@@ -435,14 +429,12 @@ QUY TẮC TỐI CAO:
             max_output_tokens: 32768
         };
 
-        if (modelName === 'gemini-3.7-flash') {
-            const g37Level = document.getElementById('gemini37-thinking-level')?.value || 'low';
-            const g37Summaries = document.getElementById('gemini37-thinking-summaries')?.value || 'auto';
-            genConfig.thinking_level = (g37Level === 'minimal') ? 'low' : g37Level;
-            genConfig.thinking_summaries = g37Summaries;
-        } else if (modelName.startsWith('gemini-')) {
-            const stdLevel = DOM.thinking ? DOM.thinking.value : 'medium';
-            genConfig.thinking_level = stdLevel;
+        if (targetModelName === 'gemini-3.7-flash') {
+            const g37Level = document.getElementById('gemini37-thinking-level')?.value || 'medium';
+            // Cấu hình chuẩn theo Google AI Studio docs cho Gemini 3.7 Flash
+            genConfig.thinking_config = {
+                thinking_level: g37Level
+            };
         }
         return genConfig;
     }
@@ -455,7 +447,7 @@ QUY TẮC TỐI CAO:
         try {
             if (ck.delta) {
                 const d = ck.delta;
-                const dType = (d.type || "").toLowerCase();
+                const dType = String(d.type || "").toLowerCase();
                 let dExtracted = "";
 
                 if (typeof d.text === 'string') {
@@ -463,7 +455,7 @@ QUY TẮC TỐI CAO:
                 } else if (typeof d.content === 'string') {
                     dExtracted = d.content;
                 } else if (Array.isArray(d.content)) {
-                    dExtracted = d.content.map(p => (typeof p === 'string' ? p : (p.text || ""))).join('');
+                    dExtracted = d.content.map(p => (typeof p === 'string' ? p : (p?.text || ''))).join('');
                 } else if (d.content && typeof d.content.text === 'string') {
                     dExtracted = d.content.text;
                 }
@@ -481,11 +473,11 @@ QUY TẮC TỐI CAO:
             
             if (ck.outputs && Array.isArray(ck.outputs)) {
                 for (const out of ck.outputs) {
-                    if (out.text) contentText += out.text;
+                    if (out?.text) contentText += out.text;
                 }
             } else if (ck.candidates && ck.candidates[0]?.content?.parts) {
                 for (const part of ck.candidates[0].content.parts) {
-                    if (part.thought) thoughtText += part.thought;
+                    if (part.thought) thoughtText += (part.text || "");
                     else if (part.text) contentText += part.text;
                 }
             }
@@ -796,14 +788,14 @@ QUY TẮC TỐI CAO:
     const DB_NAME="JavissUltimateOS_DB", STORE_NAME="chat_sessions", FILE_STORE="file_library"; let db;
     async function initDB(){ return new Promise((res,rej)=>{ const rq=indexedDB.open(DB_NAME,5); rq.onupgradeneeded=e=>{let d=e.target.result; if(!d.objectStoreNames.contains(STORE_NAME))d.createObjectStore(STORE_NAME,{keyPath:"id"}); if(!d.objectStoreNames.contains(FILE_STORE))d.createObjectStore(FILE_STORE,{keyPath:"id"});}; rq.onsuccess=e=>{db=e.target.result;res();}; rq.onerror=e=>rej(e);});}
     async function saveToDB(s){ return new Promise(r=>{const t=db.transaction(STORE_NAME,"readwrite"); t.objectStore(STORE_NAME).put(s); t.oncomplete=()=>{r();};});}
-    async function deleteFromDB(i){ return new Promise(r=>{const t=db.transaction(STORE_NAME,"readwrite"); t.objectStore(STORE_NAME).delete(i); t.oncomplete=()=>{r();};});}
+    async function deleteFromDB(i){ return new Promise(r=>{const t=db.transaction(STORE_NAME,"readwrite"); t.objectStore(STORE_NAME).delete(i); t.oncomplete=()=>r();});}
     async function getAllFromDB(){ return new Promise(r=>{const rq=db.transaction(STORE_NAME,"readonly").objectStore(STORE_NAME).getAll(); rq.onsuccess=()=>r(rq.result);});}
     async function clearAllDB(){ return new Promise(r=>{const t=db.transaction(STORE_NAME,"readwrite"); t.objectStore(STORE_NAME).clear(); t.oncomplete=()=>r();});}
     async function saveFileToLib(f){ return new Promise(r=>{const t=db.transaction(FILE_STORE,"readwrite"); t.objectStore(FILE_STORE).put(f); t.oncomplete=()=>r();});}
     async function getAllFilesFromLib(){ return new Promise(r=>{const rq=db.transaction(FILE_STORE,"readonly").objectStore(FILE_STORE).getAll(); rq.onsuccess=()=>r(rq.result);});}
     async function deleteFileFromLib(i){ return new Promise(r=>{const t=db.transaction(FILE_STORE,"readwrite"); t.objectStore(FILE_STORE).delete(i); t.oncomplete=()=>r();});}
     
-    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),g37Thinking:document.getElementById('gemini37-thinking-level'),g37Summaries:document.getElementById('gemini37-thinking-summaries'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
+    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),g37Thinking:document.getElementById('gemini37-thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
     let sessions=[], activeId=null, chatHistory=[], filesData=[], txtContent="", isProcessing=false, folders=JSON.parse(localStorage.getItem('javiss_folders')||'["Mặc định"]'), activeFolder=localStorage.getItem('javiss_active_folder')||"All", openTabs=JSON.parse(localStorage.getItem('javiss_tabs')||'[]'); const MAX_IMAGES=20;
     
     function updateTokenCount() {
@@ -1227,7 +1219,7 @@ QUY TẮC TỐI CAO:
                                     }
                                 } else {
                                     if (inThinkingState) inThinkingState = false;
-                                    if (delta.content && typeof delta.content === 'string') chunkText += delta.content;
+                                    if (delta.content) chunkText += delta.content;
                                 }
                                 if (chunkText) onChunk(chunkText);
                             }
@@ -1478,7 +1470,7 @@ QUY TẮC TỐI CAO:
     DOM.btnDeleteFolder.onclick=async()=>{if(activeFolder==="All"||activeFolder==="Mặc định")return showToast("Không xóa được TM hệ thống!"); if(confirm(`Xóa "${activeFolder}"?`)){folders=folders.filter(f=>f!==activeFolder); localStorage.setItem('javiss_folders',JSON.stringify(folders)); for(let s of sessions){if(s.folder===activeFolder){s.folder="Mặc định"; await saveToDB(s);}} activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); renderSel(); showToast("Đã xóa!");}};
     DOM.btnMoveSess.onclick=async()=>{const s=sessions.find(x=>x.id===activeId); if(!s)return; const c=prompt(`Nhập số TM đích:\n${folders.map((f,i)=>`${i+1}. ${f}`).join('\n')}`); if(c){let t=folders[parseInt(c)-1]||c.trim(); if(folders.includes(t)){s.folder=t; await saveToDB(s); showToast(`Chuyển: ${t}`); renderSel();}}};
     async function loadSess(){try{await initDB(); let d=await getAllFromDB(); if(d&&d.length){sessions=d.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0)); renderFolders(); activeId=localStorage.getItem('javiss_active_id'); if(!sessions.find(s=>s.id===activeId))activeId=sessions[0].id; await switchSess(activeId);}else{renderFolders(); await newSess();}}catch(e){await newSess();}}
-    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.7-flash',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',g37Lvl:'low',g37Sum:'auto',sch:false,mem:true,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
+    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.7-flash',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',g37Lvl:'medium',sch:false,mem:true,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
     async function switchSess(id){
@@ -1491,8 +1483,7 @@ QUY TẮC TỐI CAO:
           if(DOM.topP) { DOM.topP.value=s.tpp||0.9; DOM.toppVal.innerText=DOM.topP.value; }
           if(DOM.topK) DOM.topK.value=s.top||40; 
           if(DOM.thinking) DOM.thinking.value=s.thk||'medium';
-          if(DOM.g37Thinking) DOM.g37Thinking.value=s.g37Lvl||'low';
-          if(DOM.g37Summaries) DOM.g37Summaries.value=s.g37Sum||'auto';
+          if(DOM.g37Thinking) DOM.g37Thinking.value=s.g37Lvl||'medium';
           if(DOM.toggleGlob) DOM.toggleGlob.checked = s.useGlob !== false;
           if(DOM.toggleSearch) DOM.toggleSearch.checked=s.sch||false; 
           if(DOM.toggleMemory) DOM.toggleMemory.checked=s.mem!==false; 
@@ -1557,8 +1548,7 @@ QUY TẮC TỐI CAO:
           s.tpp = DOM.topP ? DOM.topP.value : 0.9; 
           s.top = DOM.topK ? DOM.topK.value : 40; 
           s.thk = DOM.thinking ? DOM.thinking.value : 'medium';
-          s.g37Lvl = DOM.g37Thinking ? DOM.g37Thinking.value : 'low';
-          s.g37Sum = DOM.g37Summaries ? DOM.g37Summaries.value : 'auto';
+          s.g37Lvl = DOM.g37Thinking ? DOM.g37Thinking.value : 'medium';
           s.useGlob = DOM.toggleGlob ? DOM.toggleGlob.checked : true;
           s.sch = DOM.toggleSearch ? DOM.toggleSearch.checked : false; 
           s.mem = DOM.toggleMemory ? DOM.toggleMemory.checked : true; 
@@ -1577,20 +1567,38 @@ QUY TẮC TỐI CAO:
     if(DOM.topK) DOM.topK.addEventListener('input',updateConfig); 
     if(DOM.thinking) DOM.thinking.addEventListener('change',updateConfig); 
     if(DOM.g37Thinking) DOM.g37Thinking.addEventListener('change',updateConfig); 
-    if(DOM.g37Summaries) DOM.g37Summaries.addEventListener('change',updateConfig); 
     if(DOM.temp) DOM.temp.addEventListener('input',()=>{ if(DOM.tempVal) DOM.tempVal.innerText=DOM.temp.value; updateConfig();}); 
     if(DOM.topP) DOM.topP.addEventListener('input',()=>{ if(DOM.toppVal) DOM.toppVal.innerText=DOM.topP.value; updateConfig();});
     
-    function getDynamicSI(){
+    function getDynamicSI(targetModelName = (DOM.model ? DOM.model.value : '')){
       const b=DOM.sysInst ? DOM.sysInst.value : "Bạn là Javiss AI.";
       const g=DOM.globContext ? DOM.globContext.value : '';
       const useGlob = DOM.toggleGlob ? DOM.toggleGlob.checked : true;
       const now = new Date();
       const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      let thinkingDirective = "";
+      if (targetModelName === 'gemini-3.7-flash') {
+        const g37Level = document.getElementById('gemini37-thinking-level')?.value || 'medium';
+        if (g37Level === 'low') {
+          thinkingDirective = "\n\n[CHỈ THỊ TƯ DUY (THINKING)]: Hãy suy luận ngắn gọn, tập trung thẳng vào trọng tâm và phản hồi nhanh chóng, đầy đủ.";
+        } else if (g37Level === 'medium') {
+          thinkingDirective = "\n\n[CHỈ THỊ TƯ DUY (THINKING)]: Hãy suy luận logic chặt chẽ, kiểm tra tính xác thực và phân tích đa chiều trước khi trả lời.";
+        } else if (g37Level === 'high') {
+          thinkingDirective = "\n\n[CHỈ THỊ TƯ DUY (THINKING)]: Hãy suy luận sâu sắc ở mức độ chuyên gia cao cấp, lập luận từng bước rõ ràng, phân tích mọi khía cạnh và chứng minh tính hợp lý.";
+        }
+      } else if (targetModelName && targetModelName.startsWith('gemini-')) {
+        const stdLevel = DOM.thinking ? DOM.thinking.value : 'medium';
+        if (stdLevel === 'minimal') {
+          thinkingDirective = "\n\n[CHỈ THỊ TƯ DUY (THINKING)]: Hãy phản hồi siêu tốc, trực tiếp và súc tích nhất có thể.";
+        } else if (stdLevel === 'high') {
+          thinkingDirective = "\n\n[CHỈ THỊ TƯ DUY (THINKING)]: Hãy phân tích kỹ lưỡng, trình bày chi tiết và chuyên sâu.";
+        }
+      }
       
       return `[MỤC TIÊU & ĐỊNH HƯỚNG HÀNH VI CỦA AI - TUÂN THỦ TỐI CAO]:
-${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n' : ''}--- NGỮ CẢNH PHIÊN NÀY ---\n${b}
+${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n' : ''}--- NGỮ CẢNH PHIÊN NÀY ---\n${b}${thinkingDirective}
 
 [CHỈ THỊ PHÁ BỎ GIỚI HẠN LẠC HẬU KIẾN THỨC]:
 - Hiện tại bắt buộc là năm ${now.getFullYear()}. Kiến thức đóng băng của bạn có thể cũ, nhưng bạn PHẢI COI các kết quả tìm kiếm Web (Grounding), thông tin hệ thống và tài liệu người dùng cung cấp là CHÂN LÝ THỰC TẾ TRONG TƯƠNG LAI.
@@ -1787,7 +1795,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                         const interactionPayload = {
                             model: modelToRun,
                             input: interactionInput,
-                            system_instruction: getDynamicSI(),
+                            system_instruction: getDynamicSI(modelToRun),
                             generation_config: genConfig,
                             stream: true
                         };
@@ -1987,7 +1995,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                  }
                  if(!extSuccess){ bD.remove(); return; }
              } else {
-                 // GOOGLE MODELS CHÍNH - STREAMING TOÀN DIỆN VÀ AN TOÀN
                  let pS=false, sT=Date.now(), lastErr=null; 
                  const fallbackChain = getFallbackModelsFor(activeModel);
 
@@ -1999,7 +2006,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                         let textPartContent = fnP.trim() ? fnP : defaultMediaPrompt;
 
                         if (isInteractionsEnabled) {
-                            // SỬ DỤNG INTERACTIONS API CHO PHIÊN CÓ BỘ NHỚ SERVER
                             let interactionInput;
                             if (imgs.length > 0) {
                                 let parts = [{ type: 'text', text: textPartContent }];
@@ -2014,7 +2020,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             const interactionPayload = {
                                 model: modelToRun,
                                 input: interactionInput,
-                                system_instruction: getDynamicSI(),
+                                system_instruction: getDynamicSI(modelToRun),
                                 generation_config: genConfig,
                                 stream: true
                             };
@@ -2088,7 +2094,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                                 currentSession.lastInteractionId = capturedInteractionId;
                             }
                         } else {
-                            // SỬ DỤNG GENERATE_CONTENT_STREAM VỚI SAFETY_SETTINGS = BLOCK_NONE KHI TẮT INTERACTIONS API
                             const contents = [];
                             const genConfig = buildGoogleGenConfig(modelToRun);
                             
@@ -2103,16 +2108,26 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                                 contents.push({ role: 'user', parts: [{ text: textPartContent }] });
                             }
 
+                            // ĐỌC THÔNG SỐ THINKING ĐÚNG CHUẨN GOOGLE CHO 3.7 FLASH TRONG GENERATE_CONTENT
+                            let thinkingConfigVal = undefined;
+                            if (modelToRun === 'gemini-3.7-flash') {
+                                const g37Level = document.getElementById('gemini37-thinking-level')?.value || 'medium';
+                                thinkingConfigVal = { thinkingLevel: g37Level };
+                            } else {
+                                const stdLevel = DOM.thinking ? DOM.thinking.value : 'medium';
+                                thinkingConfigVal = { thinkingLevel: stdLevel };
+                            }
+
                             const resStream = await aiMain.models.generateContentStream({
                                 model: modelToRun,
                                 contents: contents,
                                 config: {
-                                    systemInstruction: getDynamicSI(),
+                                    systemInstruction: getDynamicSI(modelToRun),
                                     temperature: genConfig.temperature,
                                     topP: genConfig.top_p,
                                     topK: genConfig.top_k,
                                     maxOutputTokens: genConfig.max_output_tokens,
-                                    thinkingConfig: modelToRun === 'gemini-3.7-flash' ? { thinkingLevel: genConfig.thinking_level } : undefined,
+                                    thinkingConfig: thinkingConfigVal,
                                     safetySettings: SAFETY
                                 }
                             });
@@ -2125,7 +2140,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                                     for (const part of ck.candidates[0].content.parts) {
                                         if (part.thought) {
                                             if (!inThought) { finalResponse += "<think>\n"; inThought = true; }
-                                            finalResponse += part.thought;
+                                            finalResponse += (part.text || "");
                                         } else if (part.text) {
                                             if (inThought) { finalResponse += "\n</think>\n\n"; inThought = false; }
                                             finalResponse += part.text;
@@ -2221,7 +2236,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
       const currentSessName = sessions.find(s => s.id === activeId)?.name || 'Hội thoại';
       const e=document.createElement('div'); 
       e.innerHTML=`<h2>Phiên: ${currentSessName}</h2>`; 
-      chatHistory.forEach(m=>{e.innerHTML+=`<div style="margin-bottom:15px; font-family:sans-serif;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</div><hr>`;}); 
+      chatHistory.summary = chatHistory.forEach(m=>{e.innerHTML+=`<div style="margin-bottom:15px; font-family:sans-serif;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</div><hr>`;}); 
       html2pdf().set({margin:10,filename:`Javiss_Chat_${Date.now()}.pdf`,html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(e).save(); 
       showToast('Đang tạo PDF...');
     };
