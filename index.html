@@ -823,7 +823,11 @@ QUY TẮC TỐI CAO:
         
         chatHistory.splice(botMsgIndex, 1);
         const s = sessions.find(x => x.id === activeId);
-        if (s) { s.his = chatHistory; await saveToDB(s); }
+        if (s) { 
+            s.his = chatHistory; 
+            s.lastInteractionId = null; // Reset ID phiên để tránh xung đột
+            await saveToDB(s); 
+        }
         DOM.chat.innerHTML = '';
         for (let j = 0; j < chatHistory.length; j++) {
             await appendMsg(chatHistory[j].role === 'model' ? 'bot' : 'user', chatHistory[j].text, j, true);
@@ -1512,7 +1516,16 @@ QUY TẮC TỐI CAO:
     }
     if(DOM.sysInst) DOM.sysInst.addEventListener('input',updateConfig); 
     if(DOM.model) DOM.model.addEventListener('change', () => { updateThinkingVisibility(); updateConfig(); }); 
-    if(DOM.apiKeySel) DOM.apiKeySel.addEventListener('change',updateConfig);
+    if(DOM.apiKeySel) DOM.apiKeySel.addEventListener('change', () => {
+        const s = sessions.find(x => x.id === activeId);
+        if (s) {
+            s.assignedApiKey = null;
+            s.lastInteractionId = null; // Reset ID cũ khi đổi Key
+            saveToDB(s);
+        }
+        updateConfig();
+        showToast("🔑 Đã đổi cấu hình API Key cho phiên này!", "info", 3000);
+    });
     if(DOM.toggleGlob) DOM.toggleGlob.addEventListener('change',updateConfig); 
     if(DOM.toggleSearch) DOM.toggleSearch.addEventListener('change',updateConfig); 
     if(DOM.toggleMemory) DOM.toggleMemory.addEventListener('change',updateConfig); 
@@ -1637,7 +1650,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                  success1 = true;
              }
              
-             if(!success1) { showToast("Agent thất bại tại B1.","error"); bD.remove(); return; }
+             if(!success1) { showToast("Agent thất bại tại B1.","error", 5000); bD.remove(); return; }
 
              let success2 = false, step2Text = "";
              try {
@@ -1656,7 +1669,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                 showToast(formatGoogleApiError(e), "danger", 5000);
              }
 
-             if(!success2) { showToast("Agent thất bại tại B2.","error"); bD.remove(); return; }
+             if(!success2) { showToast("Agent thất bại tại B2.","error", 5000); bD.remove(); return; }
 
              let success3 = false;
              if(activeModel.endsWith('-dify') || externalModels.includes(activeModel)) {
@@ -1689,7 +1702,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                          await callGroqStream(agentPrompt, onChunkCallback, onErrorCallback);
                      }
                      
-                     if (finalResponse) {
+                     if (finalResponse.trim()) {
                          await renderMsgContent(cD, finalResponse);
                          extSuccess = true;
                          success3 = true;
@@ -1749,16 +1762,33 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             }
                         }
                         
-                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
                         let capturedInteractionId = null;
                         for await(const ck of resStream){
-                           const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
-                           finalResponse += textChunk;
+                           if (ck.event_type === "error" || ck.error) {
+                               throw new Error(ck.error?.message || ck.message || "Lỗi stream từ Google API");
+                           }
+                           let textChunk = "";
+                           if (ck.event_type === "step.delta" && ck.delta) {
+                               if (ck.delta.type === "text" && ck.delta.text) textChunk = ck.delta.text;
+                               else if (ck.delta.text) textChunk = ck.delta.text;
+                           } else {
+                               textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
+                           }
+
+                           if (textChunk) {
+                               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                               finalResponse += textChunk;
+                               updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                           }
                            if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
                                capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
                            }
-                           updateChatContentAndScroll(cD, marked.parse(finalResponse));
                         }
+
+                        if (!finalResponse.trim()) {
+                            throw new Error("Mô hình không trả về nội dung.");
+                        }
+
                         if (capturedInteractionId && currentSession) {
                             currentSession.lastInteractionId = capturedInteractionId;
                         }
@@ -1874,7 +1904,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                        await callGroqStream(fnP, onChunkCallback, onErrorCallback);
                     }
 
-                    if (finalResponse) {
+                    if (finalResponse.trim()) {
                        await renderMsgContent(cD, finalResponse);
                        extSuccess = true;
                     }
@@ -1931,17 +1961,33 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             }
                         }
                         
-                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
-                        
                         let capturedInteractionId = null;
                         for await(const ck of resStream){
-                           const textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
-                           finalResponse += textChunk;
+                           if (ck.event_type === "error" || ck.error) {
+                               throw new Error(ck.error?.message || ck.message || "Lỗi stream từ Google API");
+                           }
+                           let textChunk = "";
+                           if (ck.event_type === "step.delta" && ck.delta) {
+                               if (ck.delta.type === "text" && ck.delta.text) textChunk = ck.delta.text;
+                               else if (ck.delta.text) textChunk = ck.delta.text;
+                           } else {
+                               textChunk = ck.text || (ck.delta && ck.delta.text) || (ck.outputs && ck.outputs[0] && ck.outputs[0].text) || ck.text_delta || "";
+                           }
+
+                           if (textChunk) {
+                               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
+                               finalResponse += textChunk;
+                               updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                           }
+
                            if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
                                capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
                            }
-                           updateChatContentAndScroll(cD, marked.parse(finalResponse));
                         } 
+
+                        if (!finalResponse.trim()) {
+                            throw new Error("Mô hình không trả về nội dung.");
+                        }
 
                         if (capturedInteractionId && currentSession) {
                             currentSession.lastInteractionId = capturedInteractionId;
