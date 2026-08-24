@@ -145,6 +145,7 @@
                 <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
                 <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
                 <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Tra & Trả lời 1-Request)</option>
               </optgroup>
               <optgroup label="🌐 Nền tảng Dify">
                 <option value="gemini-3.5-flash-dify">Gemini 3.5 Flash (Dify)</option>
@@ -329,7 +330,8 @@
       'gemini-3.6-flash',
       'gemini-3.5-flash',
       'gemini-3.5-flash-lite',
-      'gemini-3.1-flash-lite'
+      'gemini-3.1-flash-lite',
+      'gemini-2.5-flash'
     ];
 
     const externalModels = [
@@ -343,12 +345,6 @@
          'command-a-plus',
          'command-a-reasoning'
     ];
-    
-    const keywordExtractionPrompt = `Bạn là chuyên gia tách lọc từ khóa Google Search nâng cao. Hãy phân tích yêu cầu của người dùng để trích xuất ra một chuỗi từ khóa tìm kiếm tối ưu nhất.
-QUY TẮC TỐI CAO:
-1. BẮT BUỘC giữ nguyên 100% các DANH TỪ RIÊNG, TÊN SẢN PHẨM, MÃ HIỆU, SỐ HIỆU, CON SỐ, THÔNG SỐ và MỐC NĂM. Tuyệt đối không tự ý giản lược, thay thế hoặc bỏ qua dựa trên dữ liệu cũ của bạn.
-2. Thêm các từ khóa bổ trợ thực tế như "thông số", "đánh giá", "mới nhất" để gom trúng thông tin thời gian thực.
-3. Chỉ xuất ra chuỗi từ khóa tìm kiếm cách nhau bằng khoảng trắng, KHÔNG giải thích, KHÔNG chào hỏi, KHÔNG bọc ngoặc kép.`;
 
     const promptEnhancementInstruction = `Bạn là bộ chuyển đổi và tối ưu hóa Prompt chuyên nghiệp. Nhiệm vụ: Biến đổi nội dung ý tưởng thô sơ ban đầu của người dùng thành một câu lệnh Prompt hoàn chỉnh, chi tiết, viết dưới góc nhìn chuyên gia và có cấu trúc chặt chẽ để nạp cho AI đạt hiệu quả phản hồi cao nhất.
 QUY TẮC TỐI CAO:
@@ -692,11 +688,8 @@ QUY TẮC TỐI CAO:
     const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
     let sessions=[], activeId=null, chatHistory=[], filesData=[], txtContent="", isProcessing=false, folders=JSON.parse(localStorage.getItem('javiss_folders')||'["Mặc định"]'), activeFolder=localStorage.getItem('javiss_active_folder')||"All", openTabs=JSON.parse(localStorage.getItem('javiss_tabs')||'[]'); const MAX_IMAGES=20;
     
-    // Hàm xuất/tải/chia sẻ tệp thông minh dùng được cả trên Web và Android APK
     async function saveOrShareBlob(blob, filename) {
       const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
-      
-      // 1. Tương thích Native Android App (Median.co) & iOS qua Web Share API
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
@@ -707,11 +700,10 @@ QUY TẮC TỐI CAO:
           showToast('✅ Đã mở hộp thoại lưu tệp!', 'success', 3000);
           return;
         } catch (err) {
-          if (err.name === 'AbortError') return; // Người dùng tự hủy
+          if (err.name === 'AbortError') return;
         }
       }
 
-      // 2. Fallback cho trình duyệt Desktop/Browser thông thường
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -1190,7 +1182,7 @@ QUY TẮC TỐI CAO:
                                     }
                                 } else {
                                     if (inThinkingState) inThinkingState = false;
-                                    if (delta.content) chunkText += delta.content;
+                                    if (delta.content && typeof delta.content === 'string') chunkText += delta.content;
                                 }
                                 if (chunkText) onChunk(chunkText);
                             }
@@ -1257,7 +1249,7 @@ QUY TẮC TỐI CAO:
                                     }
                                 } else {
                                     if (inThinkingState) inThinkingState = false;
-                                    if (delta.content) chunkText += delta.content;
+                                    if (delta.content && typeof delta.content === 'string') chunkText += delta.content.replace(/<\/think>/g, "");
                                 }
                                 if (chunkText) onChunk(chunkText);
                             }
@@ -1347,7 +1339,7 @@ QUY TẮC TỐI CAO:
     document.getElementById('btn-select-all-bulk').onclick=()=>{const c=document.querySelectorAll('.bulk-msg-check'), a=Array.from(c).every(x=>x.checked); c.forEach(x=>x.checked=!a);}; document.getElementById('btn-delete-selected-bulk').onclick=async()=>{const c=Array.from(document.querySelectorAll('.bulk-msg-check:checked')).map(x=>+x.value); if(!c.length||!confirm(`Xóa ${c.length} tin?`))return; c.sort((a,b)=>b-a).forEach(i=>chatHistory.splice(i,1)); const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; s.lastInteractionId = null; await saveToDB(s); DOM.chat.innerHTML=''; chatHistory.forEach((m,i)=>appendMsg(m.role==='model'?'bot':'user',m.text,i,true)); document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`; closeAllModals(); showToast("Đã dọn!");};
     document.getElementById('btn-global-search').onclick=()=>{document.getElementById('search-modal').style.display='flex'; oLay.style.display='block';}; DOM.btnFileLibrary.onclick=()=>{document.getElementById('file-library-modal').style.display='flex'; oLay.style.display='block'; renderLibrary();};
     document.getElementById('library-upload-input').addEventListener('change',async e=>{for(let f of Array.from(e.target.files)){if(f.size>50*1024*1024)continue; await saveFileToLib({id:Date.now()+Math.random().toString().slice(2,7),name:f.name,type:f.type,size:f.size,blob:f,added:new Date().toISOString()});} showToast("Đã tải lên!"); renderLibrary(); e.target.value='';});
-    async function renderLibrary(){const c=document.getElementById('library-files-container'), fs=await getAllFilesFromLib(); if(!fs.length)return c.innerHTML="<div style='padding:10px; color:#666;'><i>Trống.</i></div>"; fs.sort((a,b)=>new Date(b.added)-new Date(a.added)); let h=''; fs.forEach(f=>{h+=`<div class="search-result-item" style="display:flex;justify-content:space-between;align-items:center;border-left-color:var(--primary);"><div style="display:flex;align-items:center;gap:10px;">${f.type.startsWith('image')?`<img src="${URL.createObjectURL(f)}" style="width:45px;height:45px;object-fit:cover;border-radius:6px;">`:`<div style="width:45px;height:45px;background:#333;color:white;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:10px;">📄</div>`}<div style="line-height:1.3;"><strong style="font-size:.85rem;">${f.name}</strong><br><span style="font-size:.7rem;color:#666;">${(f.size/1024/1024).toFixed(2)} MB</span></div></div><div><button class="btn" style="color:var(--primary);border-color:var(--primary);padding:4px 8px;" onclick="addFileFromLib('${f.id}')">➕</button> <button class="btn danger" style="padding:4px 8px;" onclick="removeFileFromLib('${f.id}')">🗑️</button></div></div>`;}); c.innerHTML=h;}
+    async function renderLibrary(){const c=document.getElementById('library-files-container'), fs=await getAllFilesFromLib(); if(!fs.length)return c.innerHTML="<div style='padding:10px; color:#666;'><i>Trống.</i></div>"; fs.sort((a,b)=>new Date(b.added)-new Date(a.added)); let h=''; fs.forEach(f=>{h+=`<div class="search-result-item" style="display:flex;justify-content:space-between;align-items:center;border-left-color:var(--primary);"><div style="display:flex;align-items:center;gap:10px;">${f.type.startsWith('image')?`<img src="${URL.createObjectURL(f.blob)}" style="width:45px;height:45px;object-fit:cover;border-radius:6px;">`:`<div style="width:45px;height:45px;background:#333;color:white;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:10px;">📄</div>`}<div style="line-height:1.3;"><strong style="font-size:.85rem;">${f.name}</strong><br><span style="font-size:.7rem;color:#666;">${(f.size/1024/1024).toFixed(2)} MB</span></div></div><div><button class="btn" style="color:var(--primary);border-color:var(--primary);padding:4px 8px;" onclick="addFileFromLib('${f.id}')">➕</button> <button class="btn danger" style="padding:4px 8px;" onclick="removeFileFromLib('${f.id}')">🗑️</button></div></div>`;}); c.innerHTML=h;}
     window.addFileFromLib=async id=>{const f=(await getAllFilesFromLib()).find(x=>x.id===id); if(f){await processUploadFiles([new File([f.blob],f.name,{type:f.type})]); closeAllModals(); showToast(`Đã đính: ${f.name}`);}}; window.removeFileFromLib=async id=>{if(confirm("Xóa file?")){await deleteFileFromLib(id);renderLibrary();}};
     let searchTO; document.getElementById('global-search-input').addEventListener('input',e=>{clearTimeout(searchTO); searchTO=setTimeout(()=>performGlobalSearch(e.target.value),300);}); async function performGlobalSearch(k){const d=document.getElementById('search-results'); if(!k.trim())return d.innerHTML=''; let h=''; (await getAllFromDB()).forEach(s=>(s.his||[]).forEach((m,i)=>{if(m.text&&m.text.toLowerCase().includes(k.toLowerCase()))h+=`<div class="search-result-item" onclick="jumpToSearch('${s.id}',${i})"><strong>${s.folder}/${s.name}</strong><br>${m.role==='user'?'Bạn':'AI'}: ${m.text.substring(0,100).replace(new RegExp(`(${k})`,'gi'),'<mark>$1</mark>')}</div>`;})); d.innerHTML=h||'<i>Không tìm thấy</i>';} window.jumpToSearch=async(s,i)=>{if(activeId!==s)await switchSess(s); setTimeout(()=>{const c=document.querySelectorAll('.message-container')[i]; if(c){c.scrollIntoView({behavior:'smooth',block:'center'}); c.style.backgroundColor='rgba(255,235,59,0.3)'; setTimeout(()=>c.style.backgroundColor='',2000);}},300); closeAllModals();};
     
@@ -1410,7 +1402,7 @@ QUY TẮC TỐI CAO:
     document.getElementById('btn-rename-session').onclick=async()=>{const n=prompt("Tên mới:"); if(n){const s=sessions.find(x=>x.id===activeId); s.name=n; await saveToDB(s); renderSel(); renderTabs();}};
     document.getElementById('btn-delete-session').onclick=async()=>{if(sessions.length<=1)return showToast("Phải giữ lại 1 phiên","error"); if(!confirm("Xóa phiên này?"))return; await deleteFromDB(activeId); sessions=sessions.filter(s=>s.id!==activeId); openTabs=openTabs.filter(x=>x!==activeId); const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder); if(v.length)await switchSess(v[0].id); else{activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); await switchSess(sessions[0].id);} showToast("Đã xóa");};
     document.getElementById('btn-move-up').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>0){let t=v[i].orderIndex; v[i].orderIndex=v[i-1].orderIndex; v[i-1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
-    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
+    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i+1]); renderSel();}};
     
     DOM.btnCompress.onclick=async()=>{
         if(chatHistory.length<=4)return showToast("Chưa cần nén!"); 
@@ -1555,8 +1547,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
               fP = defaultMediaPrompt;
           }
 
-          const shouldExtract = fP.length >= 77;
-          
           await appendMsg('user', userDisplayText+(filesData.length?` [${filesData.length} tệp]`:''), chatHistory.length, false); 
           if(DOM.input) { DOM.input.value=''; DOM.input.style.height='40px'; updateTokenCount(); } const imgs=[...filesData]; DOM.clearFilesBtn.click(); 
           
@@ -1573,45 +1563,16 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           if(DOM.toggleAgent && DOM.toggleAgent.checked){
              const step1El = document.createElement('div'); step1El.className = 'agent-step'; cD.appendChild(step1El);
              const step2El = document.createElement('div'); step2El.className = 'agent-step'; step2El.style.display = 'none'; cD.appendChild(step2El);
-             const step3El = document.createElement('div'); step3El.className = 'agent-step'; step3El.style.display = 'none'; cD.appendChild(step3El);
-
-             let success1 = false, extractedQuery = fP; 
-             
-             if (shouldExtract) {
-                 step1El.innerHTML = `📋 B1: Đang tách lọc mã hiệu, số hiệu và danh từ riêng nâng cao...`;
-                 try {
-                    const aiAgent = new GoogleGenAI({ apiKey: currentGoogleKey || apiKeys[0] });
-                    bD.querySelector('.streaming-indicator').innerText=`🤖 Đang lên kế hoạch...`;
-                    const step1 = await aiAgent.models.generateContent({
-                        model: "gemini-3.1-flash-lite", 
-                        contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
-                        config: { 
-                            temperature: 0.0, 
-                            topK: 1, 
-                            safetySettings: SAFETY
-                        }
-                    });
-                    extractedQuery = step1.text.trim();
-                    success1 = true;
-                 } catch(e) { 
-                    showToast(formatGoogleApiError(e), "danger", 5000);
-                 }
-             } else {
-                 step1El.innerHTML = `📋 B1: Câu lệnh ngắn, dùng trực tiếp từ khóa...`;
-                 success1 = true;
-             }
-             
-             if(!success1) { showToast("Agent thất bại tại B1.","error", 5000); bD.remove(); return; }
 
              let success2 = false, step2Text = "";
              try {
                 const aiAgent = new GoogleGenAI({ apiKey: currentGoogleKey || apiKeys[0] });
                 bD.querySelector('.streaming-indicator').innerText=`🤖 Đang tìm kiếm Web...`;
-                step2El.innerHTML = `🌐 B2: Tìm kiếm dữ liệu mạng cho cụm từ: <strong>"${extractedQuery}"</strong>`; step2El.style.display = 'block';
+                step1El.innerHTML = `🌐 B1: Tra cứu dữ liệu Web trực tiếp bằng Gemini 2.5 Flash...`; step1El.style.display = 'block';
                 
                 const step2 = await aiAgent.models.generateContent({
                     model: "gemini-2.5-flash", 
-                    contents: `Tìm kiếm thông tin chi tiết và mới nhất phục vụ cho từ khóa: ${extractedQuery}`,
+                    contents: `Hãy tìm kiếm và tổng hợp thông tin chi tiết, mới nhất trên Google để trả lời yêu cầu sau: ${fP}`,
                     config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
                 });
                 step2Text = step2.text;
@@ -1620,13 +1581,13 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                 showToast(formatGoogleApiError(e), "danger", 5000);
              }
 
-             if(!success2) { showToast("Agent thất bại tại B2.","error", 5000); bD.remove(); return; }
+             if(!success2) { showToast("Agent thất bại tại bước tra cứu Web.","error", 5000); bD.remove(); return; }
 
              let success3 = false;
              if(activeModel.endsWith('-dify') || externalModels.includes(activeModel)) {
                  let agentPrompt = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
                  bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo...`;
-                 step3El.innerHTML = `🧠 B3: Đang kết nối mô hình tổng hợp dữ liệu...`; step3El.style.display = 'block';
+                 step2El.innerHTML = `🧠 B2: Đang kết nối mô hình tổng hợp dữ liệu...`; step2El.style.display = 'block';
                  
                  let extSuccess = false;
                  try {
@@ -1669,7 +1630,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                      try {
                         const aiMain = new GoogleGenAI({ apiKey: currentGoogleKey });
                         bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo (${modelToRun})...`;
-                        step3El.innerHTML = `🧠 B3: Đang kết nối Interactions API (${modelToRun}) tổng hợp dữ liệu...`; step3El.style.display = 'block';
+                        step2El.innerHTML = `🧠 B2: Đang kết nối Interactions API (${modelToRun}) tổng hợp dữ liệu...`; step2El.style.display = 'block';
                         
                         let interactionInput;
                         let textContentPart = agentInputText.trim() ? agentInputText : defaultMediaPrompt;
@@ -1788,55 +1749,30 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           } else {
              let fnP=fP; 
              
-             if(DOM.toggleSearch && DOM.toggleSearch.checked){
-                const step1El = document.createElement('div'); step1El.className = 'agent-step'; cD.appendChild(step1El);
-                const step2El = document.createElement('div'); step2El.className = 'agent-step'; step2El.style.display = 'none'; cD.appendChild(step2El);
-
-                let kSuccess = false, kText = fnP; 
-                
-                if (shouldExtract) {
-                    step1El.innerHTML = `🔍 B1: Đang bóc tách mã số, số hiệu và danh từ riêng...`;
-                    try{
-                       const aiSearch = new GoogleGenAI({ apiKey: currentGoogleKey || apiKeys[0] });
-                       bD.querySelector('.streaming-indicator').innerText=`🔍 Phân tích dữ liệu...`;
-                       
-                       const kRes = await aiSearch.models.generateContent({
-                           model: "gemini-3.1-flash-lite",
-                           contents: `${keywordExtractionPrompt}\n\nYêu cầu gốc: ${fP}`,
-                           config: { 
-                               temperature: 0.0, 
-                               topK: 1, 
-                               safetySettings: SAFETY
-                           }
-                       });
-                       kText = kRes.text.trim();
-                       kSuccess = true;
-                    }catch(e){ 
-                       showToast(formatGoogleApiError(e), "danger", 5000);
-                    }
-                } else {
-                    step1El.innerHTML = `🔍 B1: Câu lệnh ngắn, dùng trực tiếp từ khóa...`;
-                    kSuccess = true;
-                }
+             // QUY TRÌNH 2 BƯỚC: Chỉ chạy tra cứu khi model chính KHÔNG PHẢI là gemini-2.5-flash
+             if(DOM.toggleSearch && DOM.toggleSearch.checked && activeModel !== 'gemini-2.5-flash'){
+                const step2El = document.createElement('div'); step2El.className = 'agent-step'; cD.appendChild(step2El);
                 
                 let searchSuccess = false, wDText = "";
-                if(kSuccess) {
-                    try {
-                       const aiSearch = new GoogleGenAI({ apiKey: currentGoogleKey || apiKeys[0] });
-                       bD.querySelector('.streaming-indicator').innerText=`🔍 Tìm Web: ${kText}`;
-                       step2El.innerHTML = `🌐 B2: Khởi chạy lệnh Grounding Search cho từ khóa: <strong>"${kText}"</strong>`; step2El.style.display = 'block';
-                       
-                       const wRes = await aiSearch.models.generateContent({
-                           model: "gemini-2.5-flash", 
-                           contents: `Tìm kiếm thông tin chính xác phục vụ cho từ khóa: ${kText}`,
-                           config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
-                        }); 
-                       wDText = wRes.text; searchSuccess = true;
-                    } catch(e) { 
-                       showToast(formatGoogleApiError(e), "danger", 5000);
-                    }
+                try {
+                   const aiSearch = new GoogleGenAI({ apiKey: currentGoogleKey || apiKeys[0] });
+                   if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🌐 Tìm Web (Gemini 2.5 Flash)...`;
+                   step2El.innerHTML = `🌐 Đang tra cứu dữ liệu Web bằng Gemini 2.5 Flash...`; step2El.style.display = 'block';
+                   
+                   const wRes = await aiSearch.models.generateContent({
+                       model: "gemini-2.5-flash", 
+                       contents: `Hãy tìm kiếm và tổng hợp thông tin chi tiết, mới nhất trên Google để trả lời yêu cầu sau: ${fnP}`,
+                       config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
+                    }); 
+                   wDText = wRes.text; 
+                   searchSuccess = true;
+                } catch(e) { 
+                   showToast(formatGoogleApiError(e), "danger", 5000);
                 }
-                if(searchSuccess){ fnP=`[DỮ LIỆU TÌM THẤY TRÊN INTERNET]:\n${wDText}\n\n[GỐC]: ${fnP}`; }
+                
+                if(searchSuccess && wDText){ 
+                   fnP=`[DỮ LIỆU TÌM THẤY TRÊN INTERNET BẰNG GEMINI 2.5 FLASH]:\n${wDText}\n\n[YÊU CẦU GỐC CỦA NGƯỜI DÙNG]: ${fnP}`; 
+                }
              } 
 
              if(activeModel.endsWith('-dify') || externalModels.includes(activeModel)) {
@@ -1891,6 +1827,40 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             interactionInput = parts;
                         } else {
                             interactionInput = textPartContent;
+                        }
+
+                        // KHỦNG: Nếu chọn model 2.5 Flash + Bật Search -> CHẠY 1 REQUEST SIÊU TỐC!
+                        if (modelToRun === 'gemini-2.5-flash' && DOM.toggleSearch && DOM.toggleSearch.checked) {
+                            if (bD.querySelector('.streaming-indicator')) {
+                                bD.querySelector('.streaming-indicator').innerText = `🌐 Tra cứu Web & Trả lời (1 Request - 2.5 Flash)...`;
+                            }
+                            const resStream = await aiMain.models.generateContentStream({
+                                model: "gemini-2.5-flash",
+                                contents: interactionInput,
+                                config: {
+                                    tools: [{ googleSearch: {} }],
+                                    safetySettings: SAFETY,
+                                    temperature: DOM.temp ? +DOM.temp.value : 0.5,
+                                    topP: DOM.topP ? +DOM.topP.value : 0.9,
+                                    topK: DOM.topK ? +DOM.topK.value : 40
+                                }
+                            });
+
+                            for await (const ck of resStream) {
+                                const textChunk = ck.text || "";
+                                if (textChunk) {
+                                    if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                                    finalResponse += textChunk;
+                                    updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                                }
+                            }
+
+                            if (!finalResponse.trim()) {
+                                throw new Error("Mô hình không trả về nội dung.");
+                            }
+
+                            await renderMsgContent(cD, finalResponse);
+                            return true;
                         }
 
                         // Cấu hình chuẩn: Bỏ sampling knobs khi chạy Gemini 3.7 Flash
