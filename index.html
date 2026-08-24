@@ -692,6 +692,39 @@ QUY TẮC TỐI CAO:
     const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
     let sessions=[], activeId=null, chatHistory=[], filesData=[], txtContent="", isProcessing=false, folders=JSON.parse(localStorage.getItem('javiss_folders')||'["Mặc định"]'), activeFolder=localStorage.getItem('javiss_active_folder')||"All", openTabs=JSON.parse(localStorage.getItem('javiss_tabs')||'[]'); const MAX_IMAGES=20;
     
+    // Hàm xuất/tải/chia sẻ tệp thông minh dùng được cả trên Web và Android APK
+    async function saveOrShareBlob(blob, filename) {
+      const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+      
+      // 1. Tương thích Native Android App (Median.co) & iOS qua Web Share API
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: filename,
+            text: `Tải xuống tệp: ${filename}`
+          });
+          showToast('✅ Đã mở hộp thoại lưu tệp!', 'success', 3000);
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') return; // Người dùng tự hủy
+        }
+      }
+
+      // 2. Fallback cho trình duyệt Desktop/Browser thông thường
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 1000);
+      showToast(`💾 Đã tải xuống: ${filename}`, 'success', 3000);
+    }
+
     function updateThinkingVisibility() {
         const activeModel = DOM.model ? DOM.model.value : '';
         const thinkingSel = DOM.thinking;
@@ -1157,7 +1190,7 @@ QUY TẮC TỐI CAO:
                                     }
                                 } else {
                                     if (inThinkingState) inThinkingState = false;
-                                    if (delta.content && typeof delta.content === 'string') chunkText += delta.content;
+                                    if (delta.content) chunkText += delta.content;
                                 }
                                 if (chunkText) onChunk(chunkText);
                             }
@@ -1224,7 +1257,7 @@ QUY TẮC TỐI CAO:
                                     }
                                 } else {
                                     if (inThinkingState) inThinkingState = false;
-                                    if (delta.content && typeof delta.content === 'string') chunkText += delta.content.replace(/<\/think>/g, "");
+                                    if (delta.content) chunkText += delta.content;
                                 }
                                 if (chunkText) onChunk(chunkText);
                             }
@@ -1265,7 +1298,13 @@ QUY TẮC TỐI CAO:
         DOM.btnEnhancePrompt.innerHTML=o;
     };
 
-    window.exportCleanArticle=()=>{const m=chatHistory.filter(x=>x.role==='model').map(x=>x.text); if(!m.length)return showToast("Trống!","warning"); const b=new Blob([`# Trích xuất\n\n`+m.join('\n\n---\n\n')],{type:'text/markdown'}), a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`BaiViet_${Date.now()}.md`; a.click();};
+    window.exportCleanArticle=()=>{
+      const m=chatHistory.filter(x=>x.role==='model').map(x=>x.text); 
+      if(!m.length)return showToast("Trống!","warning"); 
+      const b=new Blob([`# Trích xuất\n\n`+m.join('\n\n---\n\n')],{type:'text/markdown'}); 
+      saveOrShareBlob(b, `BaiViet_${Date.now()}.md`);
+    };
+
     window.applySnippet=p=>{ if(DOM.input) { DOM.input.value=p+"\n"+DOM.input.value; DOM.input.dispatchEvent(new Event('input')); DOM.input.focus(); } DOM.snippetsContainer.style.display='none';}; DOM.btnToggleSnippets.onclick=()=>DOM.snippetsContainer.style.display=DOM.snippetsContainer.style.display==='flex'?'none':'flex';
     
     DOM.btnAddUrl.onclick=async()=>{
@@ -1371,7 +1410,7 @@ QUY TẮC TỐI CAO:
     document.getElementById('btn-rename-session').onclick=async()=>{const n=prompt("Tên mới:"); if(n){const s=sessions.find(x=>x.id===activeId); s.name=n; await saveToDB(s); renderSel(); renderTabs();}};
     document.getElementById('btn-delete-session').onclick=async()=>{if(sessions.length<=1)return showToast("Phải giữ lại 1 phiên","error"); if(!confirm("Xóa phiên này?"))return; await deleteFromDB(activeId); sessions=sessions.filter(s=>s.id!==activeId); openTabs=openTabs.filter(x=>x!==activeId); const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder); if(v.length)await switchSess(v[0].id); else{activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); await switchSess(sessions[0].id);} showToast("Đã xóa");};
     document.getElementById('btn-move-up').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>0){let t=v[i].orderIndex; v[i].orderIndex=v[i-1].orderIndex; v[i-1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
-    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i+1]); renderSel();}};
+    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
     
     DOM.btnCompress.onclick=async()=>{
         if(chatHistory.length<=4)return showToast("Chưa cần nén!"); 
@@ -1978,7 +2017,17 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
 
     window.editMsg=async i=>{DOM.input.value=chatHistory[i].text; DOM.input.dispatchEvent(new Event('input')); chatHistory=chatHistory.slice(0,i); const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; s.lastInteractionId = null; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); }};
     window.clearActiveSession=async()=>{if(confirm("Xóa sạch phiên này?")){chatHistory=[]; const s=sessions.find(x=>x.id===activeId); if(s){s.his=[]; s.lastInteractionId = null; await saveToDB(s);} DOM.chat.innerHTML=''; document.getElementById('session-msg-count').innerText=`0 tin nhắn`; showToast('Đã xóa sạch');}};
-    window.exportAllSessions=async()=>{const b={backupDate:new Date().toISOString(),sessions:await getAllFromDB(),activeId,globalContext: localStorage.getItem('global_context') || ""}; const bBlob=new Blob([JSON.stringify(b,null,2)],{type:'application/json'}), a=document.createElement('a'); a.href=URL.createObjectURL(bBlob); a.download=`Javiss_Backup_${Date.now()}.json`; a.click(); showToast('Đã xuất file kèm Ngữ cảnh!');};
+    window.exportAllSessions=async()=>{
+      const b={
+        backupDate:new Date().toISOString(),
+        sessions:await getAllFromDB(),
+        activeId,
+        globalContext: localStorage.getItem('global_context') || ""
+      }; 
+      const bBlob=new Blob([JSON.stringify(b,null,2)],{type:'application/json'}); 
+      saveOrShareBlob(bBlob, `Javiss_Backup_${Date.now()}.json`);
+    };
+
     document.getElementById('import-all-input').addEventListener('change',async e=>{const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async ev=>{try{const d=JSON.parse(ev.target.result); if(d.sessions&&confirm("Ghi đè dữ liệu khôi phục?")){await clearAllDB(); for(let s of d.sessions)await saveToDB(s); if(d.globalContext !== undefined){localStorage.setItem('global_context', d.globalContext); DOM.globContext.value = d.globalContext;} await loadSess(); showToast('Đã khôi phục hoàn chỉnh!');}}catch(e){showToast('File lỗi!','error', 5000);}}; r.readAsText(f); e.target.value='';});
     async function processUploadFiles(fs){DOM.fileCount.innerText="⏳"; for(let f of fs){if(f.type.startsWith('image/')||f.type==='video/mp4'){if(filesData.length<MAX_IMAGES)filesData.push(f);}else if(f.type==='application/pdf'){const p=await readPDF(f); txtContent+=`\n[PDF: ${f.name}]:\n${p.substring(0,50000)}\n`; DOM.textFileList.innerHTML+=`📑 ${f.name}<br>`;}else{const t=await f.text(); txtContent+=`\n[Văn bản: ${f.name}]:\n${t.substring(0,50000)}\n`; DOM.textFileList.innerHTML+=`📄 ${f.name}<br>`;}} renderFiles(); updateTokenCount();}
     DOM.fileUpload.addEventListener('change',async e=>{await processUploadFiles(Array.from(e.target.files)); DOM.fileUpload.value='';});
@@ -1991,10 +2040,8 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
       let h=`<html><head><meta charset='utf-8'></head><body><h2>Phiên: ${currentSessName}</h2>`; 
       chatHistory.forEach(m=>{h+=`<p><b>${m.role==='user'?'Bạn':'Javiss'}:</b><br/> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</p><hr>`;}); 
       h+="</body></html>"; 
-      const a=document.createElement('a'); 
-      a.href=URL.createObjectURL(new Blob(['\ufeff',h],{type:'text/html'})); 
-      a.download=`Javiss_Chat_${Date.now()}.doc`; 
-      a.click();
+      const b=new Blob(['\ufeff',h],{type:'application/msword'}); 
+      saveOrShareBlob(b, `Javiss_Chat_${Date.now()}.doc`);
     };
 
     window.exportChatPDF=()=>{
@@ -2002,8 +2049,17 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
       const e=document.createElement('div'); 
       e.innerHTML=`<h2>Phiên: ${currentSessName}</h2>`; 
       chatHistory.forEach(m=>{e.innerHTML+=`<div style="margin-bottom:15px; font-family:sans-serif;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</div><hr>`;}); 
-      html2pdf().set({margin:10,filename:`Javiss_Chat_${Date.now()}.pdf`,html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(e).save(); 
-      showToast('Đang tạo PDF...');
+      showToast('⏳ Đang tạo PDF...', 'info', 2000);
+      html2pdf().set({
+        margin:10,
+        filename:`Javiss_Chat_${Date.now()}.pdf`,
+        html2canvas:{scale:2},
+        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+      }).from(e).outputPdf('blob').then(pdfBlob => {
+        saveOrShareBlob(pdfBlob, `Javiss_Chat_${Date.now()}.pdf`);
+      }).catch(() => {
+        showToast('❌ Lỗi khi xuất PDF', 'danger', 3000);
+      });
     };
 
     let toastTimeout;
