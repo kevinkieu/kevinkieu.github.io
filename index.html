@@ -104,7 +104,7 @@
     .toast.danger{background:#c62828;color:white}
     .toast.info{background:#0b57d0;color:white}
     .toast.show{opacity:1;pointer-events:auto}
-    /* Đặt lại nút Cuộn lên Top nằm lơ lửng phía trên Toast ở góc dưới bên phải */
+    /* Đặt nút Cuộn lên Top ở góc dưới bên phải, nằm lơ lửng phía trên Toast */
     #scroll-to-top{position:fixed;bottom:190px;right:25px;background:var(--primary);color:white;border:none;border-radius:50%;width:44px;height:44px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.3s;z-index:998}
     #scroll-to-top.visible{opacity:1;pointer-events:auto}
     .search-result-item,.bulk-edit-item{cursor:pointer;margin:4px 0;padding:8px;border-radius:8px;background:var(--input-bg);border-left:4px solid var(--primary);font-size:.85rem}
@@ -1832,7 +1832,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             interactionInput = textPartContent;
                         }
 
-                        // CHẾ ĐỘ SIÊU TỐC: Nếu chọn dòng 2.5 Flash / 2.5 Flash Lite + Bật Search -> Chạy 1 Request duy nhất!
+                        // CHẾ ĐỘ SIÊU TỐC: Nếu chọn dòng 2.5 Flash / 2.5 Flash Lite + Bật Search -> Chạy 1 Request duy nhất (Bỏ temperature/topP/topK để không bị lỗi 400)!
                         if ((modelToRun === 'gemini-2.5-flash' || modelToRun === 'gemini-2.5-flash-lite') && DOM.toggleSearch && DOM.toggleSearch.checked) {
                             if (bD.querySelector('.streaming-indicator')) {
                                 bD.querySelector('.streaming-indicator').innerText = `🌐 Tra cứu Web & Trả lời (1 Request - ${modelToRun})...`;
@@ -1842,10 +1842,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                                 contents: interactionInput,
                                 config: {
                                     tools: [{ googleSearch: {} }],
-                                    safetySettings: SAFETY,
-                                    temperature: DOM.temp ? +DOM.temp.value : 0.5,
-                                    topP: DOM.topP ? +DOM.topP.value : 0.9,
-                                    topK: DOM.topK ? +DOM.topK.value : 40
+                                    safetySettings: SAFETY
                                 }
                             });
 
@@ -2004,7 +2001,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     document.getElementById('import-all-input').addEventListener('change',async e=>{const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async ev=>{try{const d=JSON.parse(ev.target.result); if(d.sessions&&confirm("Ghi đè dữ liệu khôi phục?")){await clearAllDB(); for(let s of d.sessions)await saveToDB(s); if(d.globalContext !== undefined){localStorage.setItem('global_context', d.globalContext); DOM.globContext.value = d.globalContext;} await loadSess(); showToast('Đã khôi phục hoàn chỉnh!');}}catch(e){showToast('File lỗi!','error', 5000);}}; r.readAsText(f); e.target.value='';});
     async function processUploadFiles(fs){DOM.fileCount.innerText="⏳"; for(let f of fs){if(f.type.startsWith('image/')||f.type==='video/mp4'){if(filesData.length<MAX_IMAGES)filesData.push(f);}else if(f.type==='application/pdf'){const p=await readPDF(f); txtContent+=`\n[PDF: ${f.name}]:\n${p.substring(0,50000)}\n`; DOM.textFileList.innerHTML+=`📑 ${f.name}<br>`;}else{const t=await f.text(); txtContent+=`\n[Văn bản: ${f.name}]:\n${t.substring(0,50000)}\n`; DOM.textFileList.innerHTML+=`📄 ${f.name}<br>`;}} renderFiles(); updateTokenCount();}
     DOM.fileUpload.addEventListener('change',async e=>{await processUploadFiles(Array.from(e.target.files)); DOM.fileUpload.value='';});
-    function renderFiles(){DOM.previewGrid.innerHTML=''; DOM.previewBox.style.display=(filesData.length||txtContent)?'block':'none'; DOM.fileCount.innerText=filesData.length+(txtContent?1:0); filesData.forEach((f,i)=>{const w=document.createElement('div'); w.innerHTML=`<div style="position:relative;width:50px;height:50px;background:#333;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;">${f.type.startsWith('image')?`<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`:'MP4'}<button onclick="rmImg(${i})" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;">✕</button></div>`; DOM.previewGrid.appendChild(w);});}
+    function renderFiles(){DOM.previewGrid.innerHTML=''; DOM.previewBox.style.display=(filesData.length||txtContent)?'block':'none'; DOM.fileCount.innerText=filesData.length+(txtContent?1:0); filesData.forEach((f,i)=>{const w=document.createElement('div'); w.innerHTML=`<div style="position:relative;width:50px;height:50px;background:#333;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;">${f.type.startsWith('image')?`<img src="${URL.createObjectURL(f.blob)}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`:'MP4'}<button onclick="rmImg(${i})" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;">✕</button></div>`; DOM.previewGrid.appendChild(w);});}
     window.rmImg=i=>{filesData.splice(i,1); renderFiles(); updateTokenCount();}; DOM.clearFilesBtn.onclick=()=>{filesData=[]; txtContent=""; DOM.textFileList.innerHTML=""; renderFiles(); updateTokenCount();};
     async function readPDF(f){const p=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise; let t=""; for(let i=1;i<=p.numPages;i++)t+=(await(await p.getPage(i)).getTextContent()).items.map(x=>x.str).join(' ')+"\n"; return t;}
     
