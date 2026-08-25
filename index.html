@@ -135,6 +135,17 @@
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;padding:10px;background:var(--bg-card);border-radius:8px;border:1px solid var(--border);">
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:var(--text-main);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-global-context" checked style="width:16px;height:16px;"> 🌍 Bật Ngữ cảnh Toàn cục</label>
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:var(--primary);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-search" style="width:16px;height:16px;"> 🌐 Tìm kiếm Web</label>
+            
+            <!-- Hộp chọn công cụ tìm kiếm độc lập -->
+            <div id="search-engine-box" style="margin-left:22px;display:none;">
+              <select id="search-engine-select" class="modern-select" style="font-size:0.75rem;padding:4px 6px;height:28px;">
+                <option value="google" selected>🔍 Google Grounding (Gemini 2.5)</option>
+                <option value="tavily">⚡ Tavily AI Search (Khuyên dùng)</option>
+                <option value="serper">🔎 Serper.dev (Google Search)</option>
+                <option value="brave">🦁 Brave Search (Cloudflare Worker)</option>
+              </select>
+            </div>
+
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:red;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-memory" checked style="width:16px;height:16px;"> 🧠 Bật Interactions API</label>
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:green;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-agent" style="width:16px;height:16px;"> 🤖 Auto-Agent (Chạy chuỗi)</label>
           </div>
@@ -146,8 +157,7 @@
                 <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
                 <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
                 <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
-                <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (Tra & Trả lời 1-Req siêu tốc)</option>
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Tra & Trả lời 1-Req)</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Tra & Trả lời Web 1-Req)</option>
               </optgroup>
               <optgroup label="🌐 Nền tảng Dify">
                 <option value="gemini-3.5-flash-dify">Gemini 3.5 Flash (Dify)</option>
@@ -250,11 +260,31 @@
             </div>
           </div>
         </fieldset>
+        <fieldset class="settings-group"><legend>🌐 Cấu hình Công cụ Tìm kiếm Web độc lập (0 RPD Gemini 2.5)</legend>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label class="field-label">Tavily Search API Key (1.000 lượt free/tháng):</label>
+              <input type="password" id="tavily-key-input" placeholder="Nhập Key (tvly-...)" class="modern-input">
+            </div>
+            <div>
+              <label class="field-label">Serper.dev API Key (2.500 lượt Google search free):</label>
+              <input type="password" id="serper-key-input" placeholder="Nhập Serper API Key..." class="modern-input">
+            </div>
+            <div>
+              <label class="field-label">Brave Search API Key (2.000 lượt free/tháng):</label>
+              <input type="password" id="brave-key-input" placeholder="Nhập Brave Search Token (BSA...)" class="modern-input">
+            </div>
+            <div>
+              <label class="field-label">Cloudflare Worker URL cho Brave Search (Vượt lỗi CORS):</label>
+              <input type="text" id="brave-worker-url-input" placeholder="https://your-worker.workers.dev" class="modern-input">
+            </div>
+          </div>
+        </fieldset>
         <fieldset class="settings-group"><legend>💾 Quản lý Dữ liệu & Xuất tệp</legend>
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
             <button class="btn" onclick="exportCleanArticle()">📝 Bài viết sạch (MD)</button><button class="btn" onclick="exportChatPDF()">📄 Xuất File PDF</button><button class="btn" onclick="exportChatDoc()">📄 Xuất File Word</button>
-            <button class="btn" onclick="exportAllSessions()">📥 Sao lưu JSON</button><button class="btn" onclick="document.getElementById('import-all-input').click()">📤 Khôi phục JSON</button>
-            <button id="btn-compress-context" class="btn warning">🗜️ Nén lịch sử cũ</button><button class="btn danger" onclick="clearActiveSession()">🗑️ Xóa hết tin phiên này</button><input type="file" id="import-all-input" accept=".json" style="display:none;">
+            <button class="btn primary" onclick="exportAllSessions()">📥 Sao lưu JSON (Bao gồm cả Keys)</button><button class="btn warning" onclick="document.getElementById('import-all-input').click()">📤 Khôi phục JSON (Toàn bộ Keys & Chat)</button>
+            <button id="btn-compress-context" class="btn">🗜️ Nén lịch sử cũ</button><button class="btn danger" onclick="clearActiveSession()">🗑️ Xóa hết tin phiên này</button><input type="file" id="import-all-input" accept=".json" style="display:none;">
           </div>
         </fieldset>
         <fieldset class="settings-group"><legend>🔑 Cấu hình 10 API Keys</legend>
@@ -333,7 +363,6 @@
       'gemini-3.5-flash',
       'gemini-3.5-flash-lite',
       'gemini-3.1-flash-lite',
-      'gemini-2.5-flash-lite',
       'gemini-2.5-flash'
     ];
 
@@ -381,6 +410,80 @@ QUY TẮC TỐI CAO:
 
     function updateChatContentAndScroll(el, htmlContent) {
         el.innerHTML = htmlContent;
+    }
+
+    // 1. Tavily AI Search (1.000 lượt/tháng)
+    async function fetchTavilySearch(query) {
+        const key = localStorage.getItem('tavily_api_key') || '';
+        if (!key) throw new Error("Chưa nạp Tavily API Key trong Cài đặt!");
+        const res = await fetch("https://api.tavily.com/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                api_key: key,
+                query: query,
+                search_depth: "basic",
+                max_results: 5,
+                include_answer: true
+            })
+        });
+        if (!res.ok) throw new Error(`Tavily HTTP Lỗi ${res.status}`);
+        const data = await res.json();
+        const results = [];
+        if (data.answer) results.push(`💡 **Tóm tắt nhanh**: ${data.answer}`);
+        if (data.results && data.results.length > 0) {
+            data.results.forEach(r => {
+                results.push(`- **${r.title}**\n  *Nội dung*: ${r.content}\n  *Nguồn*: ${r.url}`);
+            });
+        }
+        return results.join('\n\n');
+    }
+
+    // 2. Serper.dev (Google Search thật - 2.500 free queries)
+    async function fetchSerperSearch(query) {
+        const key = localStorage.getItem('serper_api_key') || '';
+        if (!key) throw new Error("Chưa nạp Serper.dev API Key trong Cài đặt!");
+        const res = await fetch("https://google.serper.dev/search", {
+            method: "POST",
+            headers: { "X-API-KEY": key, "Content-Type": "application/json" },
+            body: JSON.stringify({ q: query, gl: "vn", hl: "vi", num: 5 })
+        });
+        if (!res.ok) throw new Error(`Serper HTTP Lỗi ${res.status}`);
+        const data = await res.json();
+        const results = [];
+        if (data.answerBox && data.answerBox.snippet) {
+            results.push(`💡 **Google Answer**: ${data.answerBox.snippet}`);
+        }
+        if (data.organic && data.organic.length > 0) {
+            data.organic.forEach(r => {
+                results.push(`- **${r.title}**\n  *Nội dung*: ${r.snippet}\n  *Nguồn*: ${r.link}`);
+            });
+        }
+        return results.join('\n\n');
+    }
+
+    // 3. Brave Search (2.000 lượt/tháng - Hỗ trợ qua Cloudflare Worker để lách CORS)
+    async function fetchBraveSearch(query) {
+        const key = localStorage.getItem('brave_api_key') || '';
+        if (!key) throw new Error("Chưa nạp Brave Search Token trong Cài đặt!");
+        
+        const workerUrl = localStorage.getItem('brave_worker_url') || '';
+        const endpoint = workerUrl 
+            ? `${workerUrl.replace(/\/+$/, '')}?q=${encodeURIComponent(query)}&count=5` 
+            : `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`;
+
+        const res = await fetch(endpoint, {
+            headers: { "Accept": "application/json", "X-Subscription-Token": key }
+        });
+        if (!res.ok) throw new Error(`Brave Search HTTP Lỗi ${res.status}`);
+        const data = await res.json();
+        const results = [];
+        if (data.web && data.web.results && data.web.results.length > 0) {
+            data.web.results.forEach(r => {
+                results.push(`- **${r.title}**\n  *Nội dung*: ${r.description}\n  *Nguồn*: ${r.url}`);
+            });
+        }
+        return results.join('\n\n');
     }
 
     function buildStructuredMessages(promptText) {
@@ -589,6 +692,10 @@ QUY TẮC TỐI CAO:
         const msk = document.getElementById('mistral-key-input');
         const crk = document.getElementById('cerebras-key-input');
         const cok = document.getElementById('cohere-key-input');
+        const tvk = document.getElementById('tavily-key-input');
+        const spk = document.getElementById('serper-key-input');
+        const brk = document.getElementById('brave-key-input');
+        const bwk = document.getElementById('brave-worker-url-input');
         
         if(dkg) dkg.value = localStorage.getItem('dify_key_gemini') || '';
         if(dko) dko.value = localStorage.getItem('dify_key_opus') || '';
@@ -601,6 +708,10 @@ QUY TẮC TỐI CAO:
         if(msk) msk.value = localStorage.getItem('mistral_api_key') || '';
         if(crk) crk.value = localStorage.getItem('cerebras_api_key') || '';
         if(cok) cok.value = localStorage.getItem('cohere_api_key') || '';
+        if(tvk) tvk.value = localStorage.getItem('tavily_api_key') || '';
+        if(spk) spk.value = localStorage.getItem('serper_api_key') || '';
+        if(brk) brk.value = localStorage.getItem('brave_api_key') || '';
+        if(bwk) bwk.value = localStorage.getItem('brave_worker_url') || '';
     }
 
     setupUIForKeys(); 
@@ -627,6 +738,10 @@ QUY TẮC TỐI CAO:
         saveKey('mistral-key-input', 'mistral_api_key');
         saveKey('cerebras-key-input', 'cerebras_api_key');
         saveKey('cohere-key-input', 'cohere_api_key');
+        saveKey('tavily-key-input', 'tavily_api_key');
+        saveKey('serper-key-input', 'serper_api_key');
+        saveKey('brave-key-input', 'brave_api_key');
+        saveKey('brave-worker-url-input', 'brave_worker_url');
         
         initAPIKeys(); 
         initExternalConfigs();
@@ -688,7 +803,7 @@ QUY TẮC TỐI CAO:
     async function getAllFilesFromLib(){ return new Promise(r=>{const rq=db.transaction(FILE_STORE,"readonly").objectStore(FILE_STORE).getAll(); rq.onsuccess=()=>r(rq.result);});}
     async function deleteFileFromLib(i){ return new Promise(r=>{const t=db.transaction(FILE_STORE,"readwrite"); t.objectStore(FILE_STORE).delete(i); t.oncomplete=()=>r();});}
     
-    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),toggleMemory:document.getElementById('toggle-memory'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
+    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),searchEngineBox:document.getElementById('search-engine-box'),searchEngineSel:document.getElementById('search-engine-select'),toggleMemory:document.getElementById('toggle-memory'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
     let sessions=[], activeId=null, chatHistory=[], filesData=[], txtContent="", isProcessing=false, folders=JSON.parse(localStorage.getItem('javiss_folders')||'["Mặc định"]'), activeFolder=localStorage.getItem('javiss_active_folder')||"All", openTabs=JSON.parse(localStorage.getItem('javiss_tabs')||'[]'); const MAX_IMAGES=20;
     
     async function saveOrShareBlob(blob, filename) {
@@ -1185,7 +1300,7 @@ QUY TẮC TỐI CAO:
                                     }
                                 } else {
                                     if (inThinkingState) inThinkingState = false;
-                                    if (delta.content && typeof delta.content === 'string') chunkText += delta.content;
+                                    if (delta.content) chunkText += delta.content;
                                 }
                                 if (chunkText) onChunk(chunkText);
                             }
@@ -1252,7 +1367,7 @@ QUY TẮC TỐI CAO:
                                     }
                                 } else {
                                     if (inThinkingState) inThinkingState = false;
-                                    if (delta.content && typeof delta.content === 'string') chunkText += delta.content.replace(/<\/think>/g, "");
+                                    if (delta.content) chunkText += delta.content;
                                 }
                                 if (chunkText) onChunk(chunkText);
                             }
@@ -1365,7 +1480,7 @@ QUY TẮC TỐI CAO:
     DOM.btnDeleteFolder.onclick=async()=>{if(activeFolder==="All"||activeFolder==="Mặc định")return showToast("Không xóa được TM hệ thống!"); if(confirm(`Xóa "${activeFolder}"?`)){folders=folders.filter(f=>f!==activeFolder); localStorage.setItem('javiss_folders',JSON.stringify(folders)); for(let s of sessions){if(s.folder===activeFolder){s.folder="Mặc định"; await saveToDB(s);}} activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); renderSel(); showToast("Đã xóa!");}};
     DOM.btnMoveSess.onclick=async()=>{const s=sessions.find(x=>x.id===activeId); if(!s)return; const c=prompt(`Nhập số TM đích:\n${folders.map((f,i)=>`${i+1}. ${f}`).join('\n')}`); if(c){let t=folders[parseInt(c)-1]||c.trim(); if(folders.includes(t)){s.folder=t; await saveToDB(s); showToast(`Chuyển: ${t}`); renderSel();}}};
     async function loadSess(){try{await initDB(); let d=await getAllFromDB(); if(d&&d.length){sessions=d.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0)); renderFolders(); activeId=localStorage.getItem('javiss_active_id'); if(!sessions.find(s=>s.id===activeId))activeId=sessions[0].id; await switchSess(activeId);}else{renderFolders(); await newSess();}}catch(e){await newSess();}}
-    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.7-flash',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,mem:true,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
+    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.7-flash',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,schEngine:'google',mem:true,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
     async function switchSess(id){
@@ -1388,7 +1503,11 @@ QUY TẮC TỐI CAO:
           }
 
           if(DOM.toggleGlob) DOM.toggleGlob.checked = s.useGlob !== false;
-          if(DOM.toggleSearch) DOM.toggleSearch.checked=s.sch||false; 
+          if(DOM.toggleSearch) {
+              DOM.toggleSearch.checked = s.sch || false;
+              if (DOM.searchEngineBox) DOM.searchEngineBox.style.display = DOM.toggleSearch.checked ? 'block' : 'none';
+          }
+          if(DOM.searchEngineSel) DOM.searchEngineSel.value = s.schEngine || 'google';
           if(DOM.toggleMemory) DOM.toggleMemory.checked=s.mem!==false; 
           if(DOM.toggleAgent) DOM.toggleAgent.checked=s.agt||false;
       } 
@@ -1405,7 +1524,7 @@ QUY TẮC TỐI CAO:
     document.getElementById('btn-rename-session').onclick=async()=>{const n=prompt("Tên mới:"); if(n){const s=sessions.find(x=>x.id===activeId); s.name=n; await saveToDB(s); renderSel(); renderTabs();}};
     document.getElementById('btn-delete-session').onclick=async()=>{if(sessions.length<=1)return showToast("Phải giữ lại 1 phiên","error"); if(!confirm("Xóa phiên này?"))return; await deleteFromDB(activeId); sessions=sessions.filter(s=>s.id!==activeId); openTabs=openTabs.filter(x=>x!==activeId); const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder); if(v.length)await switchSess(v[0].id); else{activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); await switchSess(sessions[0].id);} showToast("Đã xóa");};
     document.getElementById('btn-move-up').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>0){let t=v[i].orderIndex; v[i].orderIndex=v[i-1].orderIndex; v[i-1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
-    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i+1]); renderSel();}};
+    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
     
     DOM.btnCompress.onclick=async()=>{
         if(chatHistory.length<=4)return showToast("Chưa cần nén!"); 
@@ -1452,9 +1571,13 @@ QUY TẮC TỐI CAO:
           s.thk = DOM.thinking ? DOM.thinking.value : 'medium';
           s.useGlob = DOM.toggleGlob ? DOM.toggleGlob.checked : true;
           s.sch = DOM.toggleSearch ? DOM.toggleSearch.checked : false; 
+          s.schEngine = DOM.searchEngineSel ? DOM.searchEngineSel.value : 'google';
           s.mem = DOM.toggleMemory ? DOM.toggleMemory.checked : true; 
           s.agt = DOM.toggleAgent ? DOM.toggleAgent.checked : false; 
           await saveToDB(s);
+      }
+      if (DOM.searchEngineBox) {
+          DOM.searchEngineBox.style.display = (DOM.toggleSearch && DOM.toggleSearch.checked) ? 'block' : 'none';
       }
     }
     if(DOM.sysInst) DOM.sysInst.addEventListener('input',updateConfig); 
@@ -1471,6 +1594,7 @@ QUY TẮC TỐI CAO:
     });
     if(DOM.toggleGlob) DOM.toggleGlob.addEventListener('change',updateConfig); 
     if(DOM.toggleSearch) DOM.toggleSearch.addEventListener('change',updateConfig); 
+    if(DOM.searchEngineSel) DOM.searchEngineSel.addEventListener('change',updateConfig);
     if(DOM.toggleMemory) DOM.toggleMemory.addEventListener('change',updateConfig); 
     if(DOM.toggleAgent) DOM.toggleAgent.addEventListener('change',updateConfig); 
     if(DOM.topK) DOM.topK.addEventListener('input',updateConfig); 
@@ -1562,6 +1686,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           const cD=bD.querySelector('.msg-content'); 
           
           let finalResponse = "";
+          const selectedSearchEngine = DOM.searchEngineSel ? DOM.searchEngineSel.value : 'google';
 
           if(DOM.toggleAgent && DOM.toggleAgent.checked){
              const step1El = document.createElement('div'); step1El.className = 'agent-step'; cD.appendChild(step1El);
@@ -1569,17 +1694,34 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
 
              let success2 = false, step2Text = "";
              try {
-                const aiAgent = new GoogleGenAI({ apiKey: currentGoogleKey || apiKeys[0] });
-                bD.querySelector('.streaming-indicator').innerText=`🤖 Đang tìm kiếm Web...`;
-                step1El.innerHTML = `🌐 B1: Tra cứu dữ liệu Web trực tiếp bằng Gemini 2.5 Flash...`; step1El.style.display = 'block';
-                
-                const step2 = await aiAgent.models.generateContent({
-                    model: "gemini-2.5-flash", 
-                    contents: `Hãy tìm kiếm và tổng hợp thông tin chi tiết, mới nhất trên Google để trả lời yêu cầu sau: ${fP}`,
-                    config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
-                });
-                step2Text = step2.text;
-                success2 = true;
+                if (selectedSearchEngine === 'tavily') {
+                    if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`⚡ Tìm Tavily AI...`;
+                    step1El.innerHTML = `⚡ B1: Đang tra cứu Web sạch bằng Tavily AI Search...`; step1El.style.display = 'block';
+                    step2Text = await fetchTavilySearch(fP);
+                    success2 = !!step2Text;
+                } else if (selectedSearchEngine === 'serper') {
+                    if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🔎 Tìm Google (Serper)...`;
+                    step1El.innerHTML = `🔎 B1: Đang tra cứu Google Search qua Serper.dev...`; step1El.style.display = 'block';
+                    step2Text = await fetchSerperSearch(fP);
+                    success2 = !!step2Text;
+                } else if (selectedSearchEngine === 'brave') {
+                    if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🦁 Tìm Brave Search...`;
+                    step1El.innerHTML = `🦁 B1: Đang tra cứu Web qua Brave Search API...`; step1El.style.display = 'block';
+                    step2Text = await fetchBraveSearch(fP);
+                    success2 = !!step2Text;
+                } else {
+                    const aiAgent = new GoogleGenAI({ apiKey: currentGoogleKey || apiKeys[0] });
+                    if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🤖 Đang tìm kiếm Web...`;
+                    step1El.innerHTML = `🌐 B1: Tra cứu dữ liệu Web trực tiếp bằng Gemini 2.5 Flash...`; step1El.style.display = 'block';
+                    
+                    const step2 = await aiAgent.models.generateContent({
+                        model: "gemini-2.5-flash", 
+                        contents: `Hãy tìm kiếm và tổng hợp thông tin chi tiết, mới nhất trên Google để trả lời yêu cầu sau: ${fP}`,
+                        config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
+                    });
+                    step2Text = step2.text;
+                    success2 = true;
+                }
              } catch(e) { 
                 showToast(formatGoogleApiError(e), "danger", 5000);
              }
@@ -1645,7 +1787,28 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             interactionInput = textContentPart;
                         }
 
-                        // Cấu hình chuẩn: Bỏ sampling knobs khi chạy Gemini 3.7 Flash
+                        if (modelToRun.startsWith('gemini-2.5')) {
+                            const resStream = await aiMain.models.generateContentStream({
+                                model: modelToRun,
+                                contents: interactionInput,
+                                config: {
+                                    systemInstruction: getDynamicSI(),
+                                    safetySettings: SAFETY
+                                }
+                            });
+                            for await (const ck of resStream) {
+                                const textChunk = ck.text || "";
+                                if (textChunk) {
+                                    if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                                    finalResponse += textChunk;
+                                    updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                                }
+                            }
+                            if (!finalResponse.trim()) throw new Error("Mô hình không trả về nội dung.");
+                            await renderMsgContent(cD, finalResponse);
+                            return true;
+                        }
+
                         const genConfig = {
                             thinking_level: getGoogleThinkingLevel(modelToRun)
                         };
@@ -1669,7 +1832,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
 
                         let resStream;
                         try {
-                            resStream = await aiMain.interactions.create(interactionPayload);
+                            resStream = await aiMain.interactions.create(interactionPayload); 
                         } catch(errInt) {
                             if (interactionPayload.previous_interaction_id) {
                                 delete interactionPayload.previous_interaction_id;
@@ -1699,14 +1862,14 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                            }
 
                            if (textChunk) {
-                               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
                                finalResponse += textChunk;
                                updateChatContentAndScroll(cD, marked.parse(finalResponse));
                            }
                            if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
                                capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
                            }
-                        }
+                        } 
 
                         if (!finalResponse.trim() && resStream && resStream.output_text) {
                             finalResponse = resStream.output_text;
@@ -1752,29 +1915,64 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           } else {
              let fnP=fP; 
              
-             // QUY TRÌNH 2 BƯỚC: Chỉ chạy tra cứu khi model chính KHÔNG PHẢI là dòng 2.5 Flash / Flash Lite (1-Request)
-             if(DOM.toggleSearch && DOM.toggleSearch.checked && activeModel !== 'gemini-2.5-flash' && activeModel !== 'gemini-2.5-flash-lite'){
-                const step2El = document.createElement('div'); step2El.className = 'agent-step'; cD.appendChild(step2El);
-                
-                let searchSuccess = false, wDText = "";
-                try {
-                   const aiSearch = new GoogleGenAI({ apiKey: currentGoogleKey || apiKeys[0] });
-                   if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🌐 Tìm Web (Gemini 2.5 Flash)...`;
-                   step2El.innerHTML = `🌐 Đang tra cứu dữ liệu Web bằng Gemini 2.5 Flash...`; step2El.style.display = 'block';
-                   
-                   const wRes = await aiSearch.models.generateContent({
-                       model: "gemini-2.5-flash", 
-                       contents: `Hãy tìm kiếm và tổng hợp thông tin chi tiết, mới nhất trên Google để trả lời yêu cầu sau: ${fnP}`,
-                       config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
-                    }); 
-                   wDText = wRes.text; 
-                   searchSuccess = true;
-                } catch(e) { 
-                   showToast(formatGoogleApiError(e), "danger", 5000);
+             // XỬ LÝ TÌM KIẾM WEB THEO 4 LỰA CHỌN
+             if(DOM.toggleSearch && DOM.toggleSearch.checked){
+                let searchEngineName = "";
+                let searchDataText = "";
+                let isIndependentSearchSuccess = false;
+
+                if (selectedSearchEngine === 'tavily') {
+                    const step2El = document.createElement('div'); step2El.className = 'agent-step'; cD.appendChild(step2El);
+                    if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`⚡ Tìm Tavily AI...`;
+                    step2El.innerHTML = `⚡ Đang tra cứu dữ liệu Web bằng Tavily AI Search...`; step2El.style.display = 'block';
+                    try {
+                        searchDataText = await fetchTavilySearch(fnP);
+                        searchEngineName = "TAVILY AI SEARCH";
+                        isIndependentSearchSuccess = !!searchDataText;
+                    } catch(e) { showToast(e.message, "danger", 5000); }
+                } else if (selectedSearchEngine === 'serper') {
+                    const step2El = document.createElement('div'); step2El.className = 'agent-step'; cD.appendChild(step2El);
+                    if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🔎 Tìm Google (Serper)...`;
+                    step2El.innerHTML = `🔎 Đang tra cứu Google Search qua Serper.dev...`; step2El.style.display = 'block';
+                    try {
+                        searchDataText = await fetchSerperSearch(fnP);
+                        searchEngineName = "SERPER.DEV (GOOGLE SEARCH)";
+                        isIndependentSearchSuccess = !!searchDataText;
+                    } catch(e) { showToast(e.message, "danger", 5000); }
+                } else if (selectedSearchEngine === 'brave') {
+                    const step2El = document.createElement('div'); step2El.className = 'agent-step'; cD.appendChild(step2El);
+                    if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🦁 Tìm Brave Search...`;
+                    step2El.innerHTML = `🦁 Đang tra cứu Web qua Brave Search API...`; step2El.style.display = 'block';
+                    try {
+                        searchDataText = await fetchBraveSearch(fnP);
+                        searchEngineName = "BRAVE SEARCH";
+                        isIndependentSearchSuccess = !!searchDataText;
+                    } catch(e) { showToast(e.message, "danger", 5000); }
+                } else if (activeModel !== 'gemini-2.5-flash') {
+                    // GOOGLE GROUNDING 2 BƯỚC CHO CÁC MODEL KHÁC
+                    const step2El = document.createElement('div'); step2El.className = 'agent-step'; cD.appendChild(step2El);
+                    let searchSuccess = false;
+                    try {
+                       const aiSearch = new GoogleGenAI({ apiKey: currentGoogleKey || apiKeys[0] });
+                       if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🌐 Tìm Web (Gemini 2.5)...`;
+                       step2El.innerHTML = `🌐 Đang tra cứu dữ liệu Web bằng Gemini 2.5 Flash...`; step2El.style.display = 'block';
+                       
+                       const wRes = await aiSearch.models.generateContent({
+                           model: "gemini-2.5-flash", 
+                           contents: `Hãy tìm kiếm và tổng hợp thông tin chi tiết, mới nhất trên Google để trả lời yêu cầu sau: ${fnP}`,
+                           config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
+                        }); 
+                       searchDataText = wRes.text; 
+                       searchEngineName = "GEMINI 2.5 FLASH GROUNDING";
+                       searchSuccess = true;
+                    } catch(e) { 
+                       showToast(formatGoogleApiError(e), "danger", 5000);
+                    }
+                    isIndependentSearchSuccess = searchSuccess;
                 }
-                
-                if(searchSuccess && wDText){ 
-                   fnP=`[DỮ LIỆU TÌM THẤY TRÊN INTERNET BẰNG GEMINI 2.5 FLASH]:\n${wDText}\n\n[YÊU CẦU GỐC CỦA NGƯỜI DÙNG]: ${fnP}`; 
+
+                if (isIndependentSearchSuccess && searchDataText) {
+                    fnP = `[DỮ LIỆU TÌM THẤY TRÊN INTERNET QUA ${searchEngineName}]:\n${searchDataText}\n\n[YÊU CẦU GỐC CỦA NGƯỜI DÙNG]: ${fnP}`;
                 }
              } 
 
@@ -1832,13 +2030,13 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             interactionInput = textPartContent;
                         }
 
-                        // CHẾ ĐỘ SIÊU TỐC: Nếu chọn dòng 2.5 Flash / 2.5 Flash Lite + Bật Search -> Chạy 1 Request duy nhất (Bỏ temperature/topP/topK để không bị lỗi 400)!
-                        if ((modelToRun === 'gemini-2.5-flash' || modelToRun === 'gemini-2.5-flash-lite') && DOM.toggleSearch && DOM.toggleSearch.checked) {
+                        // 1-REQUEST GOOGLE GROUNDING: Khi chọn 2.5 Flash VÀ chọn công cụ là Google Grounding
+                        if (modelToRun === 'gemini-2.5-flash' && DOM.toggleSearch && DOM.toggleSearch.checked && selectedSearchEngine === 'google') {
                             if (bD.querySelector('.streaming-indicator')) {
-                                bD.querySelector('.streaming-indicator').innerText = `🌐 Tra cứu Web & Trả lời (1 Request - ${modelToRun})...`;
+                                bD.querySelector('.streaming-indicator').innerText = `🌐 Tra cứu Web & Trả lời (1 Request - 2.5 Flash)...`;
                             }
                             const resStream = await aiMain.models.generateContentStream({
-                                model: modelToRun,
+                                model: 'gemini-2.5-flash',
                                 contents: interactionInput,
                                 config: {
                                     tools: [{ googleSearch: {} }],
@@ -1863,7 +2061,34 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             return true;
                         }
 
-                        // Cấu hình chuẩn: Bỏ sampling knobs khi chạy Gemini 3.7 Flash
+                        // Nếu là model 2.5 chạy chat thường hoặc nhận dữ liệu từ Tavily/Serper/Brave
+                        if (modelToRun.startsWith('gemini-2.5')) {
+                            const config = {
+                                systemInstruction: getDynamicSI(),
+                                safetySettings: SAFETY,
+                                temperature: DOM.temp ? +DOM.temp.value : 0.5,
+                                topP: DOM.topP ? +DOM.topP.value : 0.9,
+                                topK: DOM.topK ? +DOM.topK.value : 40
+                            };
+                            const resStream = await aiMain.models.generateContentStream({
+                                model: modelToRun,
+                                contents: interactionInput,
+                                config: config
+                            });
+                            for await (const ck of resStream) {
+                                const textChunk = ck.text || "";
+                                if (textChunk) {
+                                    if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                                    finalResponse += textChunk;
+                                    updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                                }
+                            }
+                            if (!finalResponse.trim()) throw new Error("Mô hình không trả về nội dung.");
+                            await renderMsgContent(cD, finalResponse);
+                            return true;
+                        }
+
+                        // Dòng Gemini 3.x (Interactions API):
                         const genConfig = {
                             thinking_level: getGoogleThinkingLevel(modelToRun)
                         };
@@ -1987,18 +2212,81 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
 
     window.editMsg=async i=>{DOM.input.value=chatHistory[i].text; DOM.input.dispatchEvent(new Event('input')); chatHistory=chatHistory.slice(0,i); const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; s.lastInteractionId = null; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); }};
     window.clearActiveSession=async()=>{if(confirm("Xóa sạch phiên này?")){chatHistory=[]; const s=sessions.find(x=>x.id===activeId); if(s){s.his=[]; s.lastInteractionId = null; await saveToDB(s);} DOM.chat.innerHTML=''; document.getElementById('session-msg-count').innerText=`0 tin nhắn`; showToast('Đã xóa sạch');}};
+    
+    // NÂNG CẤP SAO LƯU TOÀN DIỆN: Đóng gói 100% Keys và Cài đặt vào 1 file JSON
     window.exportAllSessions=async()=>{
-      const b={
-        backupDate:new Date().toISOString(),
-        sessions:await getAllFromDB(),
+      const configs = {};
+      for (let i = 1; i <= 10; i++) {
+        configs[`javiss_api_${i}`] = localStorage.getItem(`javiss_api_${i}`) || "";
+      }
+      const keysToBackup = [
+        'global_context', 'theme', 'javiss_folders', 'javiss_active_folder',
+        'dify_key_gemini', 'dify_key_lite', 'dify_key_pro', 'dify_key_gpt', 'dify_key_opus',
+        'dify_api_endpoint', 'dify_var_key',
+        'groq_api_key', 'mistral_api_key', 'cerebras_api_key', 'cohere_api_key',
+        'tavily_api_key', 'serper_api_key', 'brave_api_key', 'brave_worker_url'
+      ];
+      keysToBackup.forEach(k => {
+        configs[k] = localStorage.getItem(k) || "";
+      });
+
+      const backupData = {
+        version: "2.0_full",
+        backupDate: new Date().toISOString(),
+        sessions: await getAllFromDB(),
         activeId,
-        globalContext: localStorage.getItem('global_context') || ""
+        configs
       }; 
-      const bBlob=new Blob([JSON.stringify(b,null,2)],{type:'application/json'}); 
-      saveOrShareBlob(bBlob, `Javiss_Backup_${Date.now()}.json`);
+
+      const bBlob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' }); 
+      saveOrShareBlob(bBlob, `Javiss_FullBackup_${Date.now()}.json`);
     };
 
-    document.getElementById('import-all-input').addEventListener('change',async e=>{const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async ev=>{try{const d=JSON.parse(ev.target.result); if(d.sessions&&confirm("Ghi đè dữ liệu khôi phục?")){await clearAllDB(); for(let s of d.sessions)await saveToDB(s); if(d.globalContext !== undefined){localStorage.setItem('global_context', d.globalContext); DOM.globContext.value = d.globalContext;} await loadSess(); showToast('Đã khôi phục hoàn chỉnh!');}}catch(e){showToast('File lỗi!','error', 5000);}}; r.readAsText(f); e.target.value='';});
+    // NÂNG CẤP KHÔI PHỤC TOÀN DIỆN: Tự nạp lại 100% Chat và tất cả Keys
+    document.getElementById('import-all-input').addEventListener('change', async e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = async ev => {
+        try {
+          const d = JSON.parse(ev.target.result);
+          if (d.sessions && confirm("Khôi phục toàn bộ Lịch sử chat và tất cả API Keys / Cài đặt hệ thống?")) {
+            // 1. Khôi phục IndexedDB Lịch sử Chat
+            await clearAllDB();
+            for (let s of d.sessions) await saveToDB(s);
+
+            // 2. Khôi phục tất cả cấu hình & API Keys
+            if (d.configs) {
+              for (let key in d.configs) {
+                if (d.configs[key] !== undefined) {
+                  localStorage.setItem(key, d.configs[key]);
+                }
+              }
+            } else if (d.globalContext !== undefined) {
+              localStorage.setItem('global_context', d.globalContext);
+            }
+
+            // 3. Nạp lại cấu hình giao diện & input
+            initAPIKeys();
+            initExternalConfigs();
+            if (localStorage.getItem('global_context') && DOM.globContext) {
+              DOM.globContext.value = localStorage.getItem('global_context');
+            }
+            folders = JSON.parse(localStorage.getItem('javiss_folders') || '["Mặc định"]');
+            activeFolder = localStorage.getItem('javiss_active_folder') || "All";
+            renderFolders();
+
+            await loadSess();
+            showToast('🎉 Đã khôi phục thành công toàn bộ tin nhắn & API Keys!', 'success', 5000);
+          }
+        } catch (err) {
+          showToast('❌ Tệp sao lưu JSON không hợp lệ hoặc bị hỏng!', 'danger', 5000);
+        }
+      };
+      r.readAsText(f);
+      e.target.value = '';
+    });
+
     async function processUploadFiles(fs){DOM.fileCount.innerText="⏳"; for(let f of fs){if(f.type.startsWith('image/')||f.type==='video/mp4'){if(filesData.length<MAX_IMAGES)filesData.push(f);}else if(f.type==='application/pdf'){const p=await readPDF(f); txtContent+=`\n[PDF: ${f.name}]:\n${p.substring(0,50000)}\n`; DOM.textFileList.innerHTML+=`📑 ${f.name}<br>`;}else{const t=await f.text(); txtContent+=`\n[Văn bản: ${f.name}]:\n${t.substring(0,50000)}\n`; DOM.textFileList.innerHTML+=`📄 ${f.name}<br>`;}} renderFiles(); updateTokenCount();}
     DOM.fileUpload.addEventListener('change',async e=>{await processUploadFiles(Array.from(e.target.files)); DOM.fileUpload.value='';});
     function renderFiles(){DOM.previewGrid.innerHTML=''; DOM.previewBox.style.display=(filesData.length||txtContent)?'block':'none'; DOM.fileCount.innerText=filesData.length+(txtContent?1:0); filesData.forEach((f,i)=>{const w=document.createElement('div'); w.innerHTML=`<div style="position:relative;width:50px;height:50px;background:#333;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;">${f.type.startsWith('image')?`<img src="${URL.createObjectURL(f.blob)}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`:'MP4'}<button onclick="rmImg(${i})" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;">✕</button></div>`; DOM.previewGrid.appendChild(w);});}
