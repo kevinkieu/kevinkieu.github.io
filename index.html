@@ -39,8 +39,8 @@
     .user-message{background:var(--bg-msg-user);padding:14px 18px;border-radius:22px 22px 4px 22px;max-width:85%;margin-left:auto;box-shadow:var(--shadow);line-height:1.5}
     .bot-message{background:var(--bg-msg-bot);padding:14px 4px;max-width:100%;line-height:1.6}
     .message-header{font-size:.8rem;font-weight:600;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:6px}
-    .msg-actions{display:flex;gap:6px;margin-top:6px;opacity:.8;transition:var(--transition)}
-    .action-btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text-main);padding:4px 10px;font-size:.75rem;border-radius:6px;cursor:pointer}
+    .msg-actions{display:flex;gap:6px;margin-top:6px;opacity:.8;transition:var(--transition);flex-wrap:wrap;}
+    .action-btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text-main);padding:4px 10px;font-size:.75rem;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;}
     .action-btn:hover{background:var(--primary-container);color:var(--text-main)}
     .bottom-input-panel{flex-shrink:0;max-width:820px;width:calc(100% - 32px);margin:0 auto 16px auto;background:var(--bg-card);border-radius:24px;padding:10px 16px;box-shadow:0 4px 16px rgba(0,0,0,0.06);border:1px solid var(--border);z-index:99}
     .input-tools-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid rgba(0,0,0,0.04);scrollbar-width:none}
@@ -53,7 +53,7 @@
     #user-input{flex:1;background:transparent;border:none;color:var(--text-main);font-size:1rem;outline:none;resize:none;max-height:150px;min-height:40px;line-height:1.5;padding-top:8px}
     #send-button{background:var(--primary);color:white;border:none;padding:10px 18px;border-radius:20px;font-weight:600;cursor:pointer;height:40px;white-space:nowrap}
     .modern-select,.modern-input,.modern-textarea{width:100%;background:var(--bg-card);color:var(--text-main);border:1px solid var(--border);border-radius:8px;padding:8px;outline:none}
-    .btn{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-main);font-size:.85rem;cursor:pointer;font-weight:500;display:flex;align-items:center;justify-content:center}
+    .btn{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-main);font-size:.85rem;cursor:pointer;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px;}
     .btn.primary{background:var(--primary);color:white;border:none}
     .btn.danger{color:var(--danger);border-color:var(--danger)}
     .btn.warning{color:#b06000;border-color:#b06000}
@@ -104,7 +104,6 @@
     .toast.danger{background:#c62828;color:white}
     .toast.info{background:#0b57d0;color:white}
     .toast.show{opacity:1;pointer-events:auto}
-    /* Đặt nút Cuộn lên Top ở góc dưới bên phải, nằm lơ lửng phía trên Toast */
     #scroll-to-top{position:fixed;bottom:190px;right:25px;background:var(--primary);color:white;border:none;border-radius:50%;width:44px;height:44px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.3s;z-index:998}
     #scroll-to-top.visible{opacity:1;pointer-events:auto}
     .search-result-item,.bulk-edit-item{cursor:pointer;margin:4px 0;padding:8px;border-radius:8px;background:var(--input-bg);border-left:4px solid var(--primary);font-size:.85rem}
@@ -116,6 +115,8 @@
     .streaming-indicator{color:var(--primary);font-style:italic;font-size:.8rem;margin-left:8px}
     #camera-preview{width:100%;max-height:400px;background:#000;border-radius:8px;object-fit:cover}
     .agent-step{padding:8px; border-left:3px solid var(--primary); background:var(--bg-sidebar); margin-bottom:8px; font-size:0.85rem; border-radius:4px;}
+    .tts-mini-player{margin-top:10px;padding:8px;background:rgba(0,0,0,0.03);border-radius:8px;display:flex;align-items:center;gap:8px;}
+    .tts-mini-player audio{flex:1;height:36px;}
   </style>
 </head>
 <body>
@@ -136,7 +137,6 @@
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:var(--text-main);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-global-context" checked style="width:16px;height:16px;"> 🌍 Bật Ngữ cảnh Toàn cục</label>
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:var(--primary);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-search" style="width:16px;height:16px;"> 🌐 Tìm kiếm Web</label>
             
-            <!-- Hộp chọn công cụ tìm kiếm độc lập -->
             <div id="search-engine-box" style="margin-left:22px;display:none;">
               <select id="search-engine-select" class="modern-select" style="font-size:0.75rem;padding:4px 6px;height:28px;">
                 <option value="google" selected>🔍 Google Grounding (Gemini 2.5)</option>
@@ -236,12 +236,111 @@
       <div class="bottom-input-panel">
         <div class="input-tools-scroll">
           <label class="tool-chip upload-label" for="file-upload">📎 Đính(<span id="file-count">0</span>)</label><input type="file" id="file-upload" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;">
-          <button id="btn-enhance-prompt" class="tool-chip magic">🪄 Enhance</button><button id="btn-camera-snap" class="tool-chip">📷 Chụp</button><button id="btn-toggle-snippets" class="tool-chip highlight">⚡ Lệnh nhanh</button>
-          <button id="btn-file-library" class="tool-chip">🗄️ Thư viện</button><button id="btn-add-url" class="tool-chip" title="Web Scraper & YouTube">🌐 Đọc Link/YT</button><button id="btn-paste-clipboard" class="tool-chip">📋 Dán đặc biệt</button>
+          <button id="btn-enhance-prompt" class="tool-chip magic">🪄 Enhance</button>
+          <button id="btn-tts-studio-open" class="tool-chip highlight">🔊 TTS Studio</button>
+          <button id="btn-camera-snap" class="tool-chip">📷 Chụp</button>
+          <button id="btn-toggle-snippets" class="tool-chip">⚡ Lệnh nhanh</button>
+          <button id="btn-file-library" class="tool-chip">🗄️ Thư viện</button>
+          <button id="btn-add-url" class="tool-chip" title="Web Scraper & YouTube">🌐 Đọc Link/YT</button>
+          <button id="btn-paste-clipboard" class="tool-chip">📋 Dán đặc biệt</button>
         </div>
         <div class="input-container-box"><textarea id="user-input" rows="1" placeholder="Nhập tin nhắn hoặc URL..."></textarea><button id="send-button">Gửi 📤</button></div>
       </div>
     </main>
+
+    <!-- Modal TTS Studio Pro Chuyên Sâu -->
+    <div id="tts-studio-modal" class="modal-box" style="max-width:750px;">
+      <div class="modal-header"><h3>🎙️ Gemini TTS Studio Pro - Đọc Văn Bản AI</h3><button class="close-btn">&times;</button></div>
+      <div class="modal-scroll-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
+          <div>
+            <label class="field-label">Ngôn ngữ (Language):</label>
+            <select id="tts-lang-select" class="modern-select">
+              <option value="vi" selected>🇻🇳 Tiếng Việt (Vietnamese)</option>
+              <option value="en">🇬🇧/🇺🇸 Tiếng Anh (English)</option>
+              <option value="ja">🇯🇵 Tiếng Nhật (Japanese)</option>
+              <option value="ko">🇰🇷 Tiếng Hàn (Korean)</option>
+              <option value="zh">🇨🇳 Tiếng Trung (Mandarin)</option>
+              <option value="fr">🇫🇷 Tiếng Pháp (French)</option>
+              <option value="de">🇩🇪 Tiếng Đức (German)</option>
+              <option value="es">🇪🇸 Tiếng Tây Ban Nha (Spanish)</option>
+              <option value="th">🇹🇭 Tiếng Thái (Thai)</option>
+              <option value="ru">🇷🇺 Tiếng Nga (Russian)</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Vùng miền / Chất giọng:</label>
+            <select id="tts-dialect-select" class="modern-select"></select>
+          </div>
+          <div>
+            <label class="field-label">Giọng đọc AI (Voice):</label>
+            <select id="tts-voice-select" class="modern-select">
+              <option value="Aoede" selected>Aoede (Nữ - Truyền cảm, tự nhiên)</option>
+              <option value="Kore">Kore (Nữ - Trầm ấm, dịu dàng)</option>
+              <option value="Puck">Puck (Nam - Tươi vui, hoạt bát)</option>
+              <option value="Charon">Charon (Nam - Trầm sâu, đĩnh đạc)</option>
+              <option value="Fenrir">Fenrir (Nam - Mạnh mẽ, dứt khoát)</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Phong cách đọc (~15 kiểu):</label>
+            <select id="tts-style-select" class="modern-select">
+              <option value="Truyền cảm, ấm áp">🎙️ Truyền cảm, ấm áp</option>
+              <option value="Bản tin, chuyên nghiệp">📰 Bản tin, chuyên nghiệp</option>
+              <option value="Kể chuyện, chậm rãi">📖 Kể chuyện, chậm rãi</option>
+              <option value="Vui vẻ, năng động">✨ Vui vẻ, năng động</option>
+              <option value="Thân thiện, tâm tình">📻 Thân thiện, tâm tình (Radio)</option>
+              <option value="Trang trọng, nghiêm túc">🏢 Trang trọng, nghiêm túc</option>
+              <option value="Hào hùng, truyền lửa">🔥 Hào hùng, truyền lửa</option>
+              <option value="Thì thầm, bí ẩn">🤫 Thì thầm, bí ẩn (ASMR)</option>
+              <option value="Hài hước, dí dỏm">😂 Hài hước, dí dỏm</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Tốc độ đọc:</label>
+            <select id="tts-speed-select" class="modern-select">
+              <option value="rất chậm rãi">0.8x - Rất chậm</option>
+              <option value="hơi chậm">0.9x - Hơi chậm</option>
+              <option value="vừa phải, tự nhiên" selected>1.0x - Chuẩn tự nhiên</option>
+              <option value="hơi nhanh, hoạt bát">1.15x - Nhanh, hoạt bát</option>
+              <option value="nhanh, dồn dập">1.3x - Rất nhanh</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Đối tượng người nghe:</label>
+            <input type="text" id="tts-audience-input" placeholder="VD: Khách hàng, trẻ em..." value="Khán giả đại chúng" class="modern-input">
+          </div>
+        </div>
+
+        <div>
+          <label class="field-label">Văn bản cần đọc:</label>
+          <textarea id="tts-studio-text" rows="4" class="modern-textarea" placeholder="Nhập hoặc dán đoạn văn bản cần chuyển thành giọng nói tại đây..."></textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;flex-wrap:wrap;gap:6px;">
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              <button class="btn" onclick="applyTtsPreset('news')">Mẫu Bản tin</button>
+              <button class="btn" onclick="applyTtsPreset('story')">Mẫu Kể chuyện</button>
+              <button class="btn" onclick="applyTtsPreset('ads')">Mẫu Quảng cáo</button>
+              <button class="btn danger" onclick="document.getElementById('tts-studio-text').value=''">Xóa chữ</button>
+            </div>
+            <span id="tts-char-counter" style="font-size:.8rem;color:var(--text-muted);">0 ký tự</span>
+          </div>
+        </div>
+
+        <button id="btn-tts-generate" class="btn primary" style="width:100%;padding:12px;font-size:1rem;font-weight:700;">
+          <span>🔊</span> Bắt đầu Tạo Giọng Đọc (Generate Audio)
+        </button>
+
+        <div id="tts-player-box" style="display:none;flex-direction:column;gap:8px;padding:12px;background:var(--input-bg);border-radius:8px;border:1px solid var(--border);">
+          <strong style="font-size:0.85rem;color:var(--primary);">🎧 Trình phát âm thanh:</strong>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <audio id="tts-audio-player" controls style="flex:1;min-width:220px;height:40px;"></audio>
+            <button id="btn-tts-download" class="btn" style="background:#2e7d32;color:white;border:none;">⬇️ Tải file .WAV</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
     <div id="settings-modal" class="modal-box" style="max-width:750px;">
       <div class="modal-header"><h3>⚙️ Cài đặt Hệ thống & Tham số AI</h3><button class="close-btn">&times;</button></div>
       <div class="modal-scroll-body">
@@ -485,6 +584,144 @@ QUY TẮC TỐI CAO:
         }
         return results.join('\n\n');
     }
+
+    // 4. TTS Studio Audio WAV Builder (PCM 24kHz Mono 16-bit)
+    function writeWavString(view, offset, string) {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    }
+
+    function createWavBlob(pcmArray, sampleRate = 24000) {
+      const buffer = new ArrayBuffer(44 + pcmArray.length);
+      const view = new DataView(buffer);
+      writeWavString(view, 0, 'RIFF');
+      view.setUint32(4, 36 + pcmArray.length, true);
+      writeWavString(view, 8, 'WAVE');
+      writeWavString(view, 12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true); // PCM format
+      view.setUint16(22, 1, true); // Mono
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeWavString(view, 36, 'data');
+      view.setUint32(40, pcmArray.length, true);
+      new Uint8Array(buffer, 44).set(pcmArray);
+      return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    async function generateGeminiTTS({ text, lang = 'vi', voice = 'Aoede', region = 'Giọng miền Nam', style = 'Truyền cảm, ấm áp', speed = 'vừa phải, tự nhiên', audience = 'Khán giả đại chúng' }) {
+      if (!apiKeys || apiKeys.length === 0) throw new Error("Chưa có Google API Key nào được nạp!");
+      
+      let promptedText = '';
+      if (lang === 'vi') {
+        promptedText = `[HƯỚNG DẪN BẮT BUỘC: Hãy đọc toàn bộ văn bản bằng Tiếng Việt với ${region} duy nhất. Tuyệt đối không thay đổi tông giọng, không nhập vai các nhân vật khác nhau. Giữ vững phong cách: ${style}, tốc độ đọc: ${speed} từ đầu đến cuối] `;
+      } else if (lang === 'en') {
+        promptedText = `[MANDATORY INSTRUCTION: Read the entire text purely in English with a single ${region} accent throughout. Maintain style: ${style}, speed: ${speed} consistently] `;
+      } else {
+        promptedText = `[MANDATORY INSTRUCTION: Read the entire text purely in the chosen language with native standard pronunciation. Maintain style: ${style}, speed: ${speed} consistently] `;
+      }
+
+      if (audience) promptedText += `[Đối tượng nghe: ${audience}] `;
+      promptedText += `\nNội dung văn bản: ${text}`;
+
+      const payload = {
+        contents: [{ role: "user", parts: [{ text: promptedText }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: voice
+              }
+            }
+          }
+        }
+      };
+
+      let lastErr = null;
+      for (let attempt = 0; attempt < apiKeys.length; attempt++) {
+        const key = apiKeys[(globalKeyIndex + attempt) % apiKeys.length];
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent?key=${key}`;
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+          
+          const data = await res.json();
+          let base64Audio = null;
+          if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
+            for (const part of data.candidates[0].content.parts) {
+              if (part.inlineData && part.inlineData.mimeType && part.inlineData.mimeType.startsWith('audio/')) {
+                base64Audio = part.inlineData.data;
+                break;
+              }
+            }
+          }
+          if (!base64Audio) throw new Error("Mô hình không trả về dữ liệu âm thanh hợp lệ.");
+
+          let b64 = base64Audio.replace(/-/g, '+').replace(/_/g, '/');
+          while (b64.length % 4) b64 += '=';
+          const bin = atob(b64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+          return createWavBlob(bytes, 24000);
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr || new Error("Không thể tạo giọng đọc.");
+    }
+
+    // Tính năng Đọc nhanh từng tin nhắn của Chatbot
+    window.speakMsg = async (index, btnEl) => {
+      if (!chatHistory[index] || !chatHistory[index].text) return;
+      const rawText = chatHistory[index].text
+        .replace(/```[\s\S]*?```/g, " [Đoạn mã code] ")
+        .replace(/`([^`]+)`/g, "$1")
+        .replace(/<think>[\s\S]*?<\/think>/g, "")
+        .replace(/[#*>\-_~]/g, " ")
+        .trim();
+
+      if (!rawText) return showToast("Không có văn bản phù hợp để đọc!", "warning");
+      const textToRead = rawText.length > 1200 ? rawText.substring(0, 1200) + "..." : rawText;
+
+      const originHtml = btnEl.innerHTML;
+      btnEl.innerHTML = "⏳ Đang tạo giọng...";
+      btnEl.disabled = true;
+
+      try {
+        const wavBlob = await generateGeminiTTS({ text: textToRead });
+        const audioUrl = URL.createObjectURL(wavBlob);
+        
+        let container = btnEl.closest('.message-container');
+        let playerWrap = container.querySelector('.tts-mini-player');
+        if (!playerWrap) {
+          playerWrap = document.createElement('div');
+          playerWrap.className = 'tts-mini-player';
+          playerWrap.innerHTML = `<audio controls autoplay></audio><button class="btn" style="padding:4px 8px;font-size:0.75rem;">⬇️ Tải WAV</button>`;
+          container.appendChild(playerWrap);
+        }
+        
+        const audioEl = playerWrap.querySelector('audio');
+        const dlBtn = playerWrap.querySelector('button');
+        audioEl.src = audioUrl;
+        audioEl.play().catch(()=>{});
+        dlBtn.onclick = () => saveOrShareBlob(wavBlob, `Javiss_Voice_${Date.now()}.wav`);
+        showToast("🔊 Đang phát giọng đọc AI!");
+      } catch (err) {
+        showToast("❌ Lỗi đọc: " + err.message, "danger", 5000);
+      } finally {
+        btnEl.innerHTML = originHtml;
+        btnEl.disabled = false;
+      }
+    };
 
     function buildStructuredMessages(promptText) {
         const messages = [];
@@ -805,6 +1042,7 @@ QUY TẮC TỐI CAO:
     
     const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),searchEngineBox:document.getElementById('search-engine-box'),searchEngineSel:document.getElementById('search-engine-select'),toggleMemory:document.getElementById('toggle-memory'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
     let sessions=[], activeId=null, chatHistory=[], filesData=[], txtContent="", isProcessing=false, folders=JSON.parse(localStorage.getItem('javiss_folders')||'["Mặc định"]'), activeFolder=localStorage.getItem('javiss_active_folder')||"All", openTabs=JSON.parse(localStorage.getItem('javiss_tabs')||'[]'); const MAX_IMAGES=20;
+    let ttsCurrentBlob = null, ttsCurrentUrl = null;
     
     async function saveOrShareBlob(blob, filename) {
       const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
@@ -834,6 +1072,105 @@ QUY TẮC TỐI CAO:
       }, 1000);
       showToast(`💾 Đã tải xuống: ${filename}`, 'success', 3000);
     }
+
+    // TTS Studio UI Updates
+    function updateTtsDialects() {
+      const lang = document.getElementById('tts-lang-select').value;
+      const dSel = document.getElementById('tts-dialect-select');
+      dSel.innerHTML = '';
+      if (lang === 'vi') {
+        dSel.disabled = false;
+        dSel.innerHTML = `
+          <option value="Giọng miền Nam" selected>Giọng Miền Nam (Sài Gòn)</option>
+          <option value="Giọng miền Bắc">Giọng Miền Bắc (Hà Nội)</option>
+          <option value="Giọng miền Trung">Giọng Miền Trung (Huế / Đà Nẵng)</option>
+          <option value="Giọng miền Tây Nam Bộ">Giọng Miền Tây</option>
+        `;
+      } else if (lang === 'en') {
+        dSel.disabled = false;
+        dSel.innerHTML = `
+          <option value="American English (US)" selected>🇺🇸 Anh - Mỹ (US)</option>
+          <option value="British English (UK)">🇬🇧 Anh - Anh (UK)</option>
+          <option value="Australian English (AU)">🇦🇺 Anh - Úc (AU)</option>
+        `;
+      } else {
+        dSel.disabled = true;
+        dSel.innerHTML = `<option value="Giọng bản xứ chuẩn" selected>🌐 Giọng chuẩn bản xứ</option>`;
+      }
+    }
+    document.getElementById('tts-lang-select').addEventListener('change', updateTtsDialects);
+    updateTtsDialects();
+
+    const ttsTextArea = document.getElementById('tts-studio-text');
+    ttsTextArea.addEventListener('input', () => {
+      document.getElementById('tts-char-counter').innerText = `${ttsTextArea.value.length} ký tự`;
+    });
+
+    window.applyTtsPreset = type => {
+      const lang = document.getElementById('tts-lang-select').value;
+      if (type === 'news') {
+        ttsTextArea.value = lang === 'en' 
+          ? "Good morning. Here is the latest global tech report: Artificial intelligence synthesis and natural voice models are achieving record-breaking benchmarks across multi-language processing."
+          : "Bản tin hôm nay: Trí tuệ nhân tạo đang tạo ra bước nhảy vọt trong xử lý dữ liệu và tự động hóa quy trình, mang lại hiệu quả vượt trội cho các ngành công nghiệp trên toàn thế giới.";
+        document.getElementById('tts-style-select').value = "Bản tin, chuyên nghiệp";
+      } else if (type === 'story') {
+        ttsTextArea.value = lang === 'en'
+          ? "Once upon a time, nestled in a tranquil valley illuminated by the early dawn, a curious little rabbit looked up at the quiet mountains and wondered what lay beyond the clouds..."
+          : "Ngày xửa ngày xưa, tại một thung lũng xanh mướt ngập tràn ánh ban mai, có một chú thỏ nhỏ luôn tò mò muốn biết vì sao các vì sao lại có thể lấp lánh trên bầu trời đêm...";
+        document.getElementById('tts-style-select').value = "Kể chuyện, chậm rãi";
+      } else if (type === 'ads') {
+        ttsTextArea.value = lang === 'en'
+          ? "Exclusive offer today only! Upgrade your workflow with next-generation smart tools and claim your exclusive benefits right now!"
+          : "Cơ hội có một không hai! Đăng ký trải nghiệm ngay hôm nay để nhận trọn bộ giải pháp thông minh cùng vô số ưu đãi hấp dẫn dành riêng cho bạn!";
+        document.getElementById('tts-style-select').value = "Vui vẻ, năng động";
+      }
+      document.getElementById('tts-char-counter').innerText = `${ttsTextArea.value.length} ký tự`;
+    };
+
+    document.getElementById('btn-tts-studio-open').onclick = () => {
+      document.getElementById('tts-studio-modal').style.display = 'flex';
+      oLay.style.display = 'block';
+    };
+
+    document.getElementById('btn-tts-generate').onclick = async () => {
+      const text = ttsTextArea.value.trim();
+      if (!text) return showToast("Vui lòng nhập văn bản cần đọc!", "warning");
+      const btn = document.getElementById('btn-tts-generate');
+      btn.disabled = true;
+      btn.innerHTML = "⏳ Đang tạo âm thanh...";
+
+      try {
+        const wavBlob = await generateGeminiTTS({
+          text,
+          lang: document.getElementById('tts-lang-select').value,
+          voice: document.getElementById('tts-voice-select').value,
+          region: document.getElementById('tts-dialect-select').value,
+          style: document.getElementById('tts-style-select').value,
+          speed: document.getElementById('tts-speed-select').value,
+          audience: document.getElementById('tts-audience-input').value.trim()
+        });
+
+        ttsCurrentBlob = wavBlob;
+        if (ttsCurrentUrl) URL.revokeObjectURL(ttsCurrentUrl);
+        ttsCurrentUrl = URL.createObjectURL(wavBlob);
+
+        const playerBox = document.getElementById('tts-player-box');
+        const audioPlayer = document.getElementById('tts-audio-player');
+        audioPlayer.src = ttsCurrentUrl;
+        playerBox.style.display = 'flex';
+        audioPlayer.play().catch(()=>{});
+
+        document.getElementById('btn-tts-download').onclick = () => {
+          saveOrShareBlob(ttsCurrentBlob, `Gemini_TTS_${Date.now()}.wav`);
+        };
+        showToast("🎉 Đã tạo giọng đọc hoàn tất!");
+      } catch (err) {
+        showToast("❌ Lỗi: " + err.message, "danger", 5000);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = "<span>🔊</span> Bắt đầu Tạo Giọng Đọc (Generate Audio)";
+      }
+    };
 
     function updateThinkingVisibility() {
         const activeModel = DOM.model ? DOM.model.value : '';
@@ -1300,7 +1637,7 @@ QUY TẮC TỐI CAO:
                                     }
                                 } else {
                                     if (inThinkingState) inThinkingState = false;
-                                    if (delta.content) chunkText += delta.content;
+                                    if (delta.content && typeof delta.content === 'string') chunkText += delta.content;
                                 }
                                 if (chunkText) onChunk(chunkText);
                             }
@@ -1367,7 +1704,7 @@ QUY TẮC TỐI CAO:
                                     }
                                 } else {
                                     if (inThinkingState) inThinkingState = false;
-                                    if (delta.content) chunkText += delta.content;
+                                    if (delta.content && typeof delta.content === 'string') chunkText += delta.content.replace(/<\/think>/g, "");
                                 }
                                 if (chunkText) onChunk(chunkText);
                             }
@@ -1642,7 +1979,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
        if(sd==='user') {
            a.innerHTML+=`<button class="action-btn" onclick="editMsg(${i})">✏️ Sửa</button><button class="action-btn" onclick="forkSession(${i})">🔀 Nhánh</button>`; 
        } else {
-           a.innerHTML+=`<button class="action-btn" onclick="retryMsg(${i})" style="color:var(--primary);">🔄 Thử lại</button>`;
+           a.innerHTML+=`<button class="action-btn" onclick="speakMsg(${i}, this)" style="color:var(--primary);">🔊 Đọc</button><button class="action-btn" onclick="retryMsg(${i})" style="color:var(--primary);">🔄 Thử lại</button>`;
        }
        a.innerHTML+=`<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})">🗑️ Xóa</button>`; 
        c.append(m,a); 
@@ -1681,7 +2018,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           bD.innerHTML=`<div class="bot-message"><div class="message-header">Chatbot <span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`; 
           DOM.chat.appendChild(bD);
           
-          // Cuộn mượt mà định vị ngay đầu tin nhắn bot mới để người dùng đọc từ đầu
           bD.scrollIntoView({ behavior: 'smooth', block: 'start' });
           const cD=bD.querySelector('.msg-content'); 
           
@@ -1862,14 +2198,14 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                            }
 
                            if (textChunk) {
-                               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
+                               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
                                finalResponse += textChunk;
                                updateChatContentAndScroll(cD, marked.parse(finalResponse));
                            }
                            if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
                                capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
                            }
-                        } 
+                        }
 
                         if (!finalResponse.trim() && resStream && resStream.output_text) {
                             finalResponse = resStream.output_text;
@@ -2199,7 +2535,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
               bD.querySelector('.bot-message').setAttribute('data-raw',finalResponse); 
               const a=document.createElement('div'); 
               a.className='msg-actions'; 
-              a.innerHTML=`<button class="action-btn" onclick="copy(this)">📋 Copy</button><button class="action-btn" onclick="retryMsg(${chatHistory.length-1})" style="color:var(--primary);">🔄 Thử lại</button><button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${chatHistory.length-1})">🗑️ Xóa</button>`; 
+              a.innerHTML=`<button class="action-btn" onclick="copy(this)">📋 Copy</button><button class="action-btn" onclick="speakMsg(${chatHistory.length-1}, this)" style="color:var(--primary);">🔊 Đọc</button><button class="action-btn" onclick="retryMsg(${chatHistory.length-1})" style="color:var(--primary);">🔄 Thử lại</button><button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${chatHistory.length-1})">🗑️ Xóa</button>`; 
               bD.appendChild(a);
           }
       } catch(err) {
@@ -2251,11 +2587,9 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
         try {
           const d = JSON.parse(ev.target.result);
           if (d.sessions && confirm("Khôi phục toàn bộ Lịch sử chat và tất cả API Keys / Cài đặt hệ thống?")) {
-            // 1. Khôi phục IndexedDB Lịch sử Chat
             await clearAllDB();
             for (let s of d.sessions) await saveToDB(s);
 
-            // 2. Khôi phục tất cả cấu hình & API Keys
             if (d.configs) {
               for (let key in d.configs) {
                 if (d.configs[key] !== undefined) {
@@ -2266,7 +2600,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
               localStorage.setItem('global_context', d.globalContext);
             }
 
-            // 3. Nạp lại cấu hình giao diện & input
             initAPIKeys();
             initExternalConfigs();
             if (localStorage.getItem('global_context') && DOM.globContext) {
