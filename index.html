@@ -521,9 +521,18 @@ QUY TẮC TỐI CAO:
         el.innerHTML = htmlContent;
     }
 
-    // Thuật toán quét ý định tìm kiếm thông minh (Smart Search Router - Regex)
+    // Trích xuất các cụm từ trong dấu ngoặc kép (thẳng "" hoặc cong “”)
+    function extractQuotedKeywords(text) {
+      if (!text) return null;
+      const matches = Array.from(text.matchAll(/["“«]([^"”»]+)["”»]/g)).map(m => m[1].trim()).filter(Boolean);
+      return matches.length > 0 ? matches.join(' ') : null;
+    }
+
+    // Thuật toán quét ý định tìm kiếm thông minh (Smart Search Router - Regex & Quoted Detection)
     function shouldTriggerAutoSearch(text) {
       if (!text || text.length < 3) return false;
+      if (/["“«][^"”»]+["”»]/.test(text)) return true; // Có dấu ngoặc kép -> Auto kích hoạt
+      
       const lower = text.toLowerCase();
       const patterns = [
         /\b(hôm nay|ngày mai|hôm qua|tuần này|tháng này|năm nay|mới nhất|vừa qua|vừa xong|gần đây|hiện tại|hiện nay)\b/i,
@@ -1646,7 +1655,7 @@ QUY TẮC TỐI CAO:
                                     }
                                 } else {
                                     if (inThinkingState) inThinkingState = false;
-                                    if (delta.content) chunkText += delta.content;
+                                    if (delta.content && typeof delta.content === 'string') chunkText += delta.content;
                                 }
                                 if (chunkText) onChunk(chunkText);
                             }
@@ -2040,30 +2049,32 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
              let success2 = false, step2Text = "";
              try {
                 let agentSearchEngine = selectedSearchEngine === 'auto' ? (localStorage.getItem('auto_search_default_engine') || 'tavily') : selectedSearchEngine;
-                
+                const quotedQuery = extractQuotedKeywords(fP);
+                const queryToSearch = quotedQuery || fP;
+
                 if (agentSearchEngine === 'tavily') {
                     if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`⚡ Tìm Tavily AI...`;
-                    step1El.innerHTML = `⚡ B1: Đang tra cứu Web sạch bằng Tavily AI Search...`; step1El.style.display = 'block';
-                    step2Text = await fetchTavilySearch(fP);
+                    step1El.innerHTML = `⚡ B1: Tra cứu Web qua Tavily cho từ khóa: <strong>"${queryToSearch}"</strong>`; step1El.style.display = 'block';
+                    step2Text = await fetchTavilySearch(queryToSearch);
                     success2 = !!step2Text;
                 } else if (agentSearchEngine === 'serper') {
                     if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🔎 Tìm Google (Serper)...`;
-                    step1El.innerHTML = `🔎 B1: Đang tra cứu Google Search qua Serper.dev...`; step1El.style.display = 'block';
-                    step2Text = await fetchSerperSearch(fP);
+                    step1El.innerHTML = `🔎 B1: Tra cứu Google Search qua Serper cho: <strong>"${queryToSearch}"</strong>`; step1El.style.display = 'block';
+                    step2Text = await fetchSerperSearch(queryToSearch);
                     success2 = !!step2Text;
                 } else if (agentSearchEngine === 'brave') {
                     if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🦁 Tìm Brave Search...`;
-                    step1El.innerHTML = `🦁 B1: Đang tra cứu Web qua Brave Search API...`; step1El.style.display = 'block';
-                    step2Text = await fetchBraveSearch(fP);
+                    step1El.innerHTML = `🦁 B1: Tra cứu Web qua Brave cho: <strong>"${queryToSearch}"</strong>`; step1El.style.display = 'block';
+                    step2Text = await fetchBraveSearch(queryToSearch);
                     success2 = !!step2Text;
                 } else {
                     const aiAgent = new GoogleGenAI({ apiKey: currentGoogleKey || apiKeys[0] });
                     if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🤖 Đang tìm kiếm Web...`;
-                    step1El.innerHTML = `🌐 B1: Tra cứu dữ liệu Web trực tiếp bằng Gemini 2.5 Flash...`; step1El.style.display = 'block';
+                    step1El.innerHTML = `🌐 B1: Tra cứu Web trực tiếp bằng Gemini 2.5 Flash cho: <strong>"${queryToSearch}"</strong>`; step1El.style.display = 'block';
                     
                     const step2 = await aiAgent.models.generateContent({
                         model: "gemini-2.5-flash", 
-                        contents: `Hãy tìm kiếm và tổng hợp thông tin chi tiết, mới nhất trên Google để trả lời yêu cầu sau: ${fP}`,
+                        contents: `Hãy tìm kiếm và tổng hợp thông tin chi tiết, mới nhất trên Google để trả lời yêu cầu sau: ${queryToSearch}`,
                         config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
                     });
                     step2Text = step2.text;
@@ -2262,12 +2273,11 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           } else {
              let fnP=fP; 
              
-             // XỬ LÝ TÌM KIẾM WEB THÔNG MINH (SMART AUTO-SEARCH & CÁC CÔNG CỤ TÙY CHỌN)
+             // XỬ LÝ TÌM KIẾM WEB THÔNG MINH (HỖ TRỢ NGOẶC KÉP "")
              if(DOM.toggleSearch && DOM.toggleSearch.checked){
                 let targetEngine = selectedSearchEngine;
                 let needSearch = true;
 
-                // Nếu chọn chế độ Tự Động: Dùng thuật toán Regex quét trước
                 if (selectedSearchEngine === 'auto') {
                     needSearch = shouldTriggerAutoSearch(fnP);
                     const defaultAutoEngine = localStorage.getItem('auto_search_default_engine') || 'tavily';
@@ -2279,45 +2289,48 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                     let searchDataText = "";
                     let isSearchSuccess = false;
 
+                    // Trích xuất từ khóa trong ngoặc kép nếu có
+                    const quotedQuery = extractQuotedKeywords(fnP);
+                    const queryToSearch = quotedQuery || fnP;
+
                     if (targetEngine === 'tavily') {
                         const step2El = document.createElement('div'); step2El.className = 'agent-step'; cD.appendChild(step2El);
-                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`⚡ Tự động tìm Tavily AI...`;
-                        step2El.innerHTML = `⚡ Đang tra cứu Web bằng Tavily AI Search...`; step2El.style.display = 'block';
+                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`⚡ Tìm Tavily: "${queryToSearch}"...`;
+                        step2El.innerHTML = `⚡ Đang tra cứu Web qua Tavily cho từ khóa: <strong>"${queryToSearch}"</strong>`; step2El.style.display = 'block';
                         try {
-                            searchDataText = await fetchTavilySearch(fnP);
+                            searchDataText = await fetchTavilySearch(queryToSearch);
                             searchEngineName = "TAVILY AI SEARCH";
                             isSearchSuccess = !!searchDataText;
                         } catch(e) { showToast(e.message, "danger", 5000); }
                     } else if (targetEngine === 'serper') {
                         const step2El = document.createElement('div'); step2El.className = 'agent-step'; cD.appendChild(step2El);
-                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🔎 Tự động tìm Google (Serper)...`;
-                        step2El.innerHTML = `🔎 Đang tra cứu Google Search qua Serper.dev...`; step2El.style.display = 'block';
+                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🔎 Tìm Google: "${queryToSearch}"...`;
+                        step2El.innerHTML = `🔎 Đang tra cứu Google qua Serper cho: <strong>"${queryToSearch}"</strong>`; step2El.style.display = 'block';
                         try {
-                            searchDataText = await fetchSerperSearch(fnP);
+                            searchDataText = await fetchSerperSearch(queryToSearch);
                             searchEngineName = "SERPER.DEV (GOOGLE SEARCH)";
                             isSearchSuccess = !!searchDataText;
                         } catch(e) { showToast(e.message, "danger", 5000); }
                     } else if (targetEngine === 'brave') {
                         const step2El = document.createElement('div'); step2El.className = 'agent-step'; cD.appendChild(step2El);
-                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🦁 Tự động tìm Brave Search...`;
-                        step2El.innerHTML = `🦁 Đang tra cứu Web qua Brave Search API...`; step2El.style.display = 'block';
+                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🦁 Tìm Brave: "${queryToSearch}"...`;
+                        step2El.innerHTML = `🦁 Đang tra cứu Web qua Brave cho: <strong>"${queryToSearch}"</strong>`; step2El.style.display = 'block';
                         try {
-                            searchDataText = await fetchBraveSearch(fnP);
+                            searchDataText = await fetchBraveSearch(queryToSearch);
                             searchEngineName = "BRAVE SEARCH";
                             isSearchSuccess = !!searchDataText;
                         } catch(e) { showToast(e.message, "danger", 5000); }
                     } else if (targetEngine === 'google' && activeModel !== 'gemini-2.5-flash') {
-                        // GOOGLE GROUNDING 2 BƯỚC CHO CÁC MODEL KHÁC
                         const step2El = document.createElement('div'); step2El.className = 'agent-step'; cD.appendChild(step2El);
                         let searchSuccess = false;
                         try {
                            const aiSearch = new GoogleGenAI({ apiKey: currentGoogleKey || apiKeys[0] });
-                           if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🌐 Tìm Web (Gemini 2.5)...`;
-                           step2El.innerHTML = `🌐 Đang tra cứu dữ liệu Web bằng Gemini 2.5 Flash...`; step2El.style.display = 'block';
+                           if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🌐 Tìm Web: "${queryToSearch}"...`;
+                           step2El.innerHTML = `🌐 Đang tra cứu dữ liệu Web bằng Gemini 2.5 Flash cho: <strong>"${queryToSearch}"</strong>`; step2El.style.display = 'block';
                            
                            const wRes = await aiSearch.models.generateContent({
                                model: "gemini-2.5-flash", 
-                               contents: `Hãy tìm kiếm và tổng hợp thông tin chi tiết, mới nhất trên Google để trả lời yêu cầu sau: ${fnP}`,
+                               contents: `Hãy tìm kiếm và tổng hợp thông tin chi tiết, mới nhất trên Google để trả lời yêu cầu sau: ${queryToSearch}`,
                                config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
                             }); 
                            searchDataText = wRes.text; 
@@ -2330,7 +2343,8 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                     }
 
                     if (isSearchSuccess && searchDataText) {
-                        fnP = `[DỮ LIỆU TÌM THẤY TRÊN INTERNET QUA ${searchEngineName}]:\n${searchDataText}\n\n[YÊU CẦU GỐC CỦA NGƯỜI DÙNG]: ${fnP}`;
+                        const targetKeywordLabel = quotedQuery ? `TỪ KHÓA CHỈ ĐỊNH "${quotedQuery}"` : searchEngineName;
+                        fnP = `[DỮ LIỆU TÌM THẤY TRÊN INTERNET CHO ${targetKeywordLabel} QUA ${searchEngineName}]:\n${searchDataText}\n\n[YÊU CẦU GỐC CỦA NGƯỜI DÙNG]: ${fnP}`;
                     }
                 }
              } 
