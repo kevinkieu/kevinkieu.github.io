@@ -104,8 +104,42 @@
     .toast.danger{background:#c62828;color:white}
     .toast.info{background:#0b57d0;color:white}
     .toast.show{opacity:1;pointer-events:auto}
-    #scroll-to-top{position:fixed;bottom:190px;right:25px;background:var(--primary);color:white;border:none;border-radius:50%;width:44px;height:44px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.3s;z-index:998}
-    #scroll-to-top.visible{opacity:1;pointer-events:auto}
+
+    /* Thiết kế Nút Cuộn Top: Kính mờ xuyên thấu (Glassmorphism) chống che chữ khi Screenshot */
+    #scroll-to-top{
+      position:fixed;
+      bottom:190px;
+      right:25px;
+      background:rgba(11, 87, 208, 0.25);
+      backdrop-filter:blur(8px);
+      -webkit-backdrop-filter:blur(8px);
+      border:1px solid rgba(255, 255, 255, 0.2);
+      color:var(--text-main);
+      border-radius:50%;
+      width:42px;
+      height:42px;
+      font-size:1.1rem;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow:0 4px 12px rgba(0,0,0,0.1);
+      opacity:0;
+      pointer-events:none;
+      transition:opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s ease, background 0.2s ease;
+      z-index:998;
+    }
+    #scroll-to-top.visible{
+      opacity:0.35; /* Mờ nhẹ 70% để nhìn xuyên thấu nội dung */
+      pointer-events:auto;
+    }
+    #scroll-to-top:hover, #scroll-to-top:active{
+      opacity:1; /* Rõ nét 100% khi người dùng chủ động chạm/rê chuột vào */
+      background:var(--primary);
+      color:#ffffff;
+      transform:scale(1.08);
+    }
+
     .search-result-item,.bulk-edit-item{cursor:pointer;margin:4px 0;padding:8px;border-radius:8px;background:var(--input-bg);border-left:4px solid var(--primary);font-size:.85rem}
     .bulk-edit-item{display:flex;align-items:flex-start;gap:10px;border-left:none;border:1px solid var(--border)}
     .api-keys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
@@ -1062,34 +1096,20 @@ QUY TẮC TỐI CAO:
     let sessions=[], activeId=null, chatHistory=[], filesData=[], txtContent="", isProcessing=false, folders=JSON.parse(localStorage.getItem('javiss_folders')||'["Mặc định"]'), activeFolder=localStorage.getItem('javiss_active_folder')||"All", openTabs=JSON.parse(localStorage.getItem('javiss_tabs')||'[]'); const MAX_IMAGES=20;
     let ttsCurrentBlob = null, ttsCurrentUrl = null;
     
-    async function saveOrShareBlob(blob, filename) {
-      const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: filename,
-            text: `Tải xuống tệp: ${filename}`
-          });
-          showToast('✅ Đã mở hộp thoại lưu tệp!', 'success', 3000);
-          return;
-        } catch (err) {
-          if (err.name === 'AbortError') return;
-        }
+    // Auto-Hide Idle Timer & Tàng hình khi dừng cuộn màn hình
+    let scrollHideTimeout;
+    DOM.chat.addEventListener('scroll', () => {
+      if (DOM.chat.scrollTop > 300) {
+        DOM.scrollTopBtn.classList.add('visible');
+        clearTimeout(scrollHideTimeout);
+        scrollHideTimeout = setTimeout(() => {
+          DOM.scrollTopBtn.classList.remove('visible'); // Tự biến mất sau 2.5s khi dừng vuốt
+        }, 2500);
+      } else {
+        DOM.scrollTopBtn.classList.remove('visible');
       }
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 1000);
-      showToast(`💾 Đã tải xuống: ${filename}`, 'success', 3000);
-    }
+    });
+    DOM.scrollTopBtn.onclick = () => DOM.chat.scrollTo({ top: 0, behavior: 'smooth' });
 
     // TTS Studio UI Updates
     function updateTtsDialects() {
@@ -1655,7 +1675,7 @@ QUY TẮC TỐI CAO:
                                     }
                                 } else {
                                     if (inThinkingState) inThinkingState = false;
-                                    if (delta.content && typeof delta.content === 'string') chunkText += delta.content;
+                                    if (delta.content) chunkText += delta.content;
                                 }
                                 if (chunkText) onChunk(chunkText);
                             }
@@ -1803,7 +1823,6 @@ QUY TẮC TỐI CAO:
       }catch(e){showToast("Lỗi cào dữ liệu!","error");} DOM.btnAddUrl.innerHTML="🌐 Đọc Link/YT";
     };
 
-    DOM.chat.addEventListener('scroll',()=>DOM.scrollTopBtn.classList.toggle('visible',DOM.chat.scrollTop>300)); DOM.scrollTopBtn.onclick=()=>DOM.chat.scrollTo({top:0,behavior:'smooth'});
     document.getElementById('btn-paste-clipboard').onclick=async()=>{try{const is=await navigator.clipboard.read(); let h=false; for(let i of is){if(i.types.includes('image/png')||i.types.includes('image/jpeg')){const b=await i.getType('image/png'); filesData.push(new File([b],'clipboard-img.png',{type:b.type})); renderFiles(); h=true;}else if(i.types.includes('text/plain')){const t=await i.getType('text/plain').then(r=>r.text()); if(t && DOM.input){DOM.input.value+=(DOM.input.value?'\n':'')+t; h=true;}} } if(!h){const t=await navigator.clipboard.readText(); if(t && DOM.input){DOM.input.value+=(DOM.input.value?'\n':'')+t; h=true;}} if(h){ if(DOM.input) { DOM.input.dispatchEvent(new Event('input')); DOM.input.focus(); } showToast('✅ Đã dán'); }else showToast('❌ Trống','error');}catch(e){showToast('Lỗi: '+e.message,'error');}};
     const oLay=document.getElementById('modal-overlay'); function closeAllModals(){document.querySelectorAll('.modal-box').forEach(m=>m.style.display='none'); oLay.style.display='none'; const v=document.getElementById('camera-preview'); if(v.srcObject){v.srcObject.getTracks().forEach(t=>t.stop());v.srcObject=null;}} document.querySelectorAll('.close-btn').forEach(b=>b.onclick=closeAllModals); oLay.onclick=closeAllModals;
     document.getElementById('btn-camera-snap').onclick=async()=>{document.getElementById('camera-modal').style.display='flex'; oLay.style.display='block'; try{document.getElementById('camera-preview').srcObject=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});}catch(e){showToast("Lỗi Camera: "+e.message,"error");}};
@@ -2241,6 +2260,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                         if (capturedInteractionId && currentSession) {
                             currentSession.lastInteractionId = capturedInteractionId;
                         }
+
                         await renderMsgContent(cD, finalResponse);
                         return true;
                      } catch(e) { 
