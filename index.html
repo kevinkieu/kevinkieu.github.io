@@ -130,11 +130,11 @@
       z-index:998;
     }
     #scroll-to-top.visible{
-      opacity:0.35; /* Mờ nhẹ 70% để nhìn xuyên thấu nội dung */
+      opacity:0.35;
       pointer-events:auto;
     }
     #scroll-to-top:hover, #scroll-to-top:active{
-      opacity:1; /* Rõ nét 100% khi người dùng chủ động chạm/rê chuột vào */
+      opacity:1;
       background:var(--primary);
       color:#ffffff;
       transform:scale(1.08);
@@ -228,6 +228,15 @@
               <option value="medium" selected>Med (Chuẩn)</option>
               <option value="high">High (Sâu)</option>
             </select>
+          </div>
+
+          <!-- Nhập thủ công và Đồng bộ Interactions ID -->
+          <div style="margin-top:8px;">
+            <span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🔗 Interactions ID Hiện tại:</span>
+            <div style="display:flex;gap:4px;">
+              <input type="text" id="manual-interaction-id" placeholder="Chưa có liên kết" class="modern-input" style="font-size:0.75rem;padding:4px 6px;height:28px;">
+              <button id="btn-update-interaction-id" class="btn" style="padding:4px 8px;font-size:0.7rem;height:28px;" title="Cập nhật ID thủ công">Lưu</button>
+            </div>
           </div>
 
           <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🔑 Google API Key (Model chính):</span>
@@ -1040,6 +1049,17 @@ QUY TẮC TỐI CAO:
     document.getElementById('btn-check-keys').onclick = checkAllAPIKeys;
     document.getElementById('btn-check-duplicates').onclick = checkDuplicateAPIKeys;
 
+    // Thiết lập Liên kết ID Interactions thủ công từ người dùng
+    document.getElementById('btn-update-interaction-id').onclick = async () => {
+        const val = document.getElementById('manual-interaction-id').value.trim();
+        const s = sessions.find(x => x.id === activeId);
+        if (s) {
+            s.lastInteractionId = val || null;
+            await saveToDB(s);
+            showToast("🔗 Đã cập nhật mã liên kết Interactions API!");
+        }
+    };
+
     initAPIKeys();
     initExternalConfigs();
     
@@ -1103,7 +1123,7 @@ QUY TẮC TỐI CAO:
         DOM.scrollTopBtn.classList.add('visible');
         clearTimeout(scrollHideTimeout);
         scrollHideTimeout = setTimeout(() => {
-          DOM.scrollTopBtn.classList.remove('visible'); // Tự biến mất sau 2.5s khi dừng vuốt
+          DOM.scrollTopBtn.classList.remove('visible');
         }, 2500);
       } else {
         DOM.scrollTopBtn.classList.remove('visible');
@@ -1884,6 +1904,11 @@ QUY TẮC TỐI CAO:
           if(DOM.searchEngineSel) DOM.searchEngineSel.value = s.schEngine || 'auto';
           if(DOM.toggleMemory) DOM.toggleMemory.checked=s.mem!==false; 
           if(DOM.toggleAgent) DOM.toggleAgent.checked=s.agt||false;
+          
+          const manualIdInput = document.getElementById('manual-interaction-id');
+          if (manualIdInput) {
+              manualIdInput.value = s.lastInteractionId || '';
+          }
       } 
       DOM.chat.innerHTML=''; 
       for(let j=0; j<chatHistory.length; j++){ 
@@ -1898,7 +1923,7 @@ QUY TẮC TỐI CAO:
     document.getElementById('btn-rename-session').onclick=async()=>{const n=prompt("Tên mới:"); if(n){const s=sessions.find(x=>x.id===activeId); s.name=n; await saveToDB(s); renderSel(); renderTabs();}};
     document.getElementById('btn-delete-session').onclick=async()=>{if(sessions.length<=1)return showToast("Phải giữ lại 1 phiên","error"); if(!confirm("Xóa phiên này?"))return; await deleteFromDB(activeId); sessions=sessions.filter(s=>s.id!==activeId); openTabs=openTabs.filter(x=>x!==activeId); const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder); if(v.length)await switchSess(v[0].id); else{activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); await switchSess(sessions[0].id);} showToast("Đã xóa");};
     document.getElementById('btn-move-up').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>0){let t=v[i].orderIndex; v[i].orderIndex=v[i-1].orderIndex; v[i-1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
-    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
+    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i+1]); renderSel();}};
     
     DOM.btnCompress.onclick=async()=>{
         if(chatHistory.length<=4)return showToast("Chưa cần nén!"); 
@@ -2010,7 +2035,13 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     async function appendMsg(sd,t,i,iHL=false){
        const c=document.createElement('div'); c.className='message-container'; 
        const m=document.createElement('div'); m.className=sd==='user'?'user-message':'bot-message'; m.setAttribute('data-raw',t); 
-       m.innerHTML=`<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Chatbot'}</span></div><div class="msg-content"></div>`; 
+       
+       let msgIdHtml = '';
+       if (sd === 'bot' && chatHistory[i] && chatHistory[i].interactionId) {
+           msgIdHtml = `<span style="font-size:0.7rem;color:var(--text-muted);margin-left:8px;cursor:pointer;border-bottom:1px dashed var(--text-muted);" onclick="navigator.clipboard.writeText('${chatHistory[i].interactionId}');showToast('📋 Đã copy ID phiên!');" title="Bấm để copy mã phiên">ID: ${chatHistory[i].interactionId.substring(0,10)}...</span>`;
+       }
+
+       m.innerHTML=`<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Chatbot'}</span>${msgIdHtml}</div><div class="msg-content"></div>`; 
        const a=document.createElement('div'); a.className='msg-actions'; 
        a.innerHTML=`<button class="action-btn" onclick="copy(this)">📋 Copy</button>`; 
        if(sd==='user') {
@@ -2040,6 +2071,9 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
 
       localStorage.removeItem('javiss_draft'); isProcessing=true; DOM.sendBtn.innerHTML='⏳'; 
       
+      let finalResponse = "";
+      let capturedInteractionId = null; // Đặt biến ID ở phạm vi toàn cục của hàm gửi để tránh lỗi Scope
+
       try {
           const defaultMediaPrompt = "Hãy đọc và trích xuất hoặc phân tích chi tiết toàn bộ nội dung trong tệp/hình ảnh đính kèm này.";
           let userDisplayText = msg || (filesData.length || txtContent ? "📎 [Gửi tệp đính kèm]" : "");
@@ -2058,7 +2092,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           bD.scrollIntoView({ behavior: 'smooth', block: 'start' });
           const cD=bD.querySelector('.msg-content'); 
           
-          let finalResponse = "";
           const selectedSearchEngine = DOM.searchEngineSel ? DOM.searchEngineSel.value : 'auto';
 
           if(DOM.toggleAgent && DOM.toggleAgent.checked){
@@ -2220,7 +2253,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             }
                         }
                         
-                        let capturedInteractionId = null;
                         for await(const ck of resStream){
                            if (ck.event_type === "error" || ck.eventType === "error" || ck.error) {
                                throw new Error(ck.error?.message || ck.message || "Lỗi stream từ Google API");
@@ -2239,14 +2271,14 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                            }
 
                            if (textChunk) {
-                               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
+                               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
                                finalResponse += textChunk;
                                updateChatContentAndScroll(cD, marked.parse(finalResponse));
                            }
                            if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
                                capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
                            }
-                        } 
+                        }
 
                         if (!finalResponse.trim() && resStream && resStream.output_text) {
                             finalResponse = resStream.output_text;
@@ -2260,7 +2292,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                         if (capturedInteractionId && currentSession) {
                             currentSession.lastInteractionId = capturedInteractionId;
                         }
-
                         await renderMsgContent(cD, finalResponse);
                         return true;
                      } catch(e) { 
@@ -2516,7 +2547,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                             }
                         }
                         
-                        let capturedInteractionId = null;
                         for await(const ck of resStream){
                            if (ck.event_type === "error" || ck.eventType === "error" || ck.error) {
                                throw new Error(ck.error?.message || ck.message || "Lỗi stream từ Google API");
@@ -2585,11 +2615,29 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
              }
           }
 
-          chatHistory.push({role:'user',text:fP}); chatHistory.push({role:'model',text:finalResponse}); 
-          const s=sessions.find(x=>x.id===activeId); if(s){s.his=chatHistory; await saveToDB(s);} 
+          chatHistory.push({role:'user',text:fP}); 
+          chatHistory.push({role:'model',text:finalResponse, interactionId: capturedInteractionId}); 
+          
+          const s=sessions.find(x=>x.id===activeId); 
+          if(s){
+              s.his=chatHistory; 
+              if (capturedInteractionId) {
+                  s.lastInteractionId = capturedInteractionId;
+                  const manualIdInput = document.getElementById('manual-interaction-id');
+                  if (manualIdInput) manualIdInput.value = capturedInteractionId;
+              }
+              await saveToDB(s);
+          } 
           
           if(bD.querySelector('.bot-message')){
               bD.querySelector('.bot-message').setAttribute('data-raw',finalResponse); 
+              
+              if (capturedInteractionId) {
+                  const msgIdHtml = `<span style="font-size:0.7rem;color:var(--text-muted);margin-left:8px;cursor:pointer;border-bottom:1px dashed var(--text-muted);" onclick="navigator.clipboard.writeText('${capturedInteractionId}');showToast('📋 Đã copy ID phiên!');" title="Bấm để copy mã phiên">ID: ${capturedInteractionId.substring(0,10)}...</span>`;
+                  const mHeader = bD.querySelector('.message-header');
+                  if (mHeader) mHeader.innerHTML = `<span>✨ Chatbot</span>${msgIdHtml}`;
+              }
+
               const a=document.createElement('div'); 
               a.className='msg-actions'; 
               a.innerHTML=`<button class="action-btn" onclick="copy(this)">📋 Copy</button><button class="action-btn" onclick="speakMsg(${chatHistory.length-1}, this)" style="color:var(--primary);">🔊 Đọc</button><button class="action-btn" onclick="retryMsg(${chatHistory.length-1})" style="color:var(--primary);">🔄 Thử lại</button><button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${chatHistory.length-1})">🗑️ Xóa</button>`; 
@@ -2604,7 +2652,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     };
 
     window.editMsg=async i=>{DOM.input.value=chatHistory[i].text; DOM.input.dispatchEvent(new Event('input')); chatHistory=chatHistory.slice(0,i); const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; s.lastInteractionId = null; await saveToDB(s); DOM.chat.innerHTML=''; for(let j=0; j<chatHistory.length; j++){ await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); }};
-    window.clearActiveSession=async()=>{if(confirm("Xóa sạch phiên này?")){chatHistory=[]; const s=sessions.find(x=>x.id===activeId); if(s){s.his=[]; s.lastInteractionId = null; await saveToDB(s);} DOM.chat.innerHTML=''; document.getElementById('session-msg-count').innerText=`0 tin nhắn`; showToast('Đã xóa sạch');}};
+    window.clearActiveSession=async()=>{if(confirm("Xóa sạch phiên này?")){chatHistory=[]; const s=sessions.find(x=>x.id===activeId); if(s){s.his=[]; s.lastInteractionId = null; await saveToDB(s); const manualIdInput = document.getElementById('manual-interaction-id'); if (manualIdInput) manualIdInput.value = '';} DOM.chat.innerHTML=''; document.getElementById('session-msg-count').innerText=`0 tin nhắn`; showToast('Đã xóa sạch');}};
     
     // NÂNG CẤP SAO LƯU TOÀN DIỆN: Đóng gói 100% Keys và Cài đặt vào 1 file JSON
     window.exportAllSessions=async()=>{
