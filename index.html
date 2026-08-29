@@ -38,7 +38,7 @@
     .message-container{display:flex;flex-direction:column;position:relative;width:100%}
     .user-message{background:var(--bg-msg-user);padding:14px 18px;border-radius:22px 22px 4px 22px;max-width:85%;margin-left:auto;box-shadow:var(--shadow);line-height:1.5}
     .bot-message{background:var(--bg-msg-bot);padding:14px 4px;max-width:100%;line-height:1.6}
-    .message-header{font-size:.8rem;font-weight:600;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+    .message-header{font-size:.8rem;font-weight:600;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
     .msg-actions{display:flex;gap:6px;margin-top:6px;opacity:.8;transition:var(--transition);flex-wrap:wrap;}
     .action-btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text-main);padding:4px 10px;font-size:.75rem;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;}
     .action-btn:hover{background:var(--primary-container);color:var(--text-main)}
@@ -138,6 +138,27 @@
       background:var(--primary);
       color:#ffffff;
       transform:scale(1.08);
+    }
+
+    .interaction-id-badge{
+      font-size:0.72rem;
+      color:var(--primary);
+      background:var(--input-bg);
+      border:1px solid var(--border);
+      padding:2px 8px;
+      border-radius:12px;
+      cursor:pointer;
+      user-select:none;
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      transition:var(--transition);
+      box-shadow:0 1px 2px rgba(0,0,0,0.05);
+    }
+    .interaction-id-badge:hover, .interaction-id-badge:active{
+      background:var(--primary-container);
+      border-color:var(--primary);
+      transform:scale(0.96);
     }
 
     .search-result-item,.bulk-edit-item{cursor:pointer;margin:4px 0;padding:8px;border-radius:8px;background:var(--input-bg);border-left:4px solid var(--primary);font-size:.85rem}
@@ -562,6 +583,39 @@ QUY TẮC TỐI CAO:
 
     function updateChatContentAndScroll(el, htmlContent) {
         el.innerHTML = htmlContent;
+    }
+
+    // Bộ hàm Copy siêu cấp hỗ trợ 100% môi trường Di động & WebView APK
+    window.copyRawText = function(text, successMsg = '📋 Đã copy!') {
+      if (!text) return showToast('Trống, không có gì để copy!', 'warning');
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+          .then(() => showToast(successMsg))
+          .catch(() => fallbackCopyCustom(text, successMsg));
+      } else {
+        fallbackCopyCustom(text, successMsg);
+      }
+    };
+
+    function fallbackCopyCustom(text, successMsg = '📋 Đã copy!') {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      textarea.style.top = '0';
+      textarea.setAttribute('readonly', '');
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, 99999);
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) showToast(successMsg);
+        else showToast('❌ Không thể copy, vui lòng thử lại', 'danger');
+      } catch (err) {
+        showToast('❌ Không thể copy', 'danger');
+      }
+      document.body.removeChild(textarea);
     }
 
     // Trích xuất các cụm từ trong dấu ngoặc kép (thẳng "" hoặc cong “”)
@@ -1307,32 +1361,8 @@ QUY TẮC TỐI CAO:
       const c = b.closest('.message-container').querySelector('.user-message, .bot-message');
       if (!c) return;
       const rawText = c.getAttribute('data-raw') || c.innerText || '';
-      
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(rawText)
-          .then(() => showToast('📋 Đã copy nội dung!'))
-          .catch(() => fallbackCopy(rawText));
-      } else {
-        fallbackCopy(rawText);
-      }
+      copyRawText(rawText, '📋 Đã copy nội dung!');
     };
-
-    function fallbackCopy(text) {
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-      try {
-        document.execCommand('copy');
-        showToast('📋 Đã copy nội dung!');
-      } catch (err) {
-        showToast('❌ Không thể copy, vui lòng thử lại', 'danger');
-      }
-      document.body.removeChild(textarea);
-    }
 
     window.deleteMsg=async i=>{if(!confirm("Xóa tin nhắn này?"))return; chatHistory.splice(i,1); const s=sessions.find(x=>x.id===activeId); s.his=chatHistory; s.lastInteractionId = null; await saveToDB(s); DOM.chat.innerHTML=''; chatHistory.forEach((m,j)=>appendMsg(m.role==='model'?'bot':'user',m.text,j,true)); document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`; showToast("Đã xóa!");};
     
@@ -2038,7 +2068,8 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
        
        let msgIdHtml = '';
        if (sd === 'bot' && chatHistory[i] && chatHistory[i].interactionId) {
-           msgIdHtml = `<span style="font-size:0.7rem;color:var(--text-muted);margin-left:8px;cursor:pointer;border-bottom:1px dashed var(--text-muted);" onclick="navigator.clipboard.writeText('${chatHistory[i].interactionId}');showToast('📋 Đã copy ID phiên!');" title="Bấm để copy mã phiên">ID: ${chatHistory[i].interactionId.substring(0,10)}...</span>`;
+           const safeId = chatHistory[i].interactionId;
+           msgIdHtml = `<span class="interaction-id-badge" onclick="copyRawText('${safeId}', '📋 Đã copy Interactions ID!')" title="Bấm để copy ID phiên">📋 ID: ${safeId.substring(0,10)}...</span>`;
        }
 
        m.innerHTML=`<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Chatbot'}</span>${msgIdHtml}</div><div class="msg-content"></div>`; 
@@ -2072,7 +2103,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
       localStorage.removeItem('javiss_draft'); isProcessing=true; DOM.sendBtn.innerHTML='⏳'; 
       
       let finalResponse = "";
-      let capturedInteractionId = null; // Đặt biến ID ở phạm vi toàn cục của hàm gửi để tránh lỗi Scope
+      let capturedInteractionId = null;
 
       try {
           const defaultMediaPrompt = "Hãy đọc và trích xuất hoặc phân tích chi tiết toàn bộ nội dung trong tệp/hình ảnh đính kèm này.";
@@ -2340,7 +2371,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                     let searchDataText = "";
                     let isSearchSuccess = false;
 
-                    // Trích xuất từ khóa trong ngoặc kép nếu có
                     const quotedQuery = extractQuotedKeywords(fnP);
                     const queryToSearch = quotedQuery || fnP;
 
@@ -2410,7 +2440,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                        finalResponse += chunk;
                        updateChatContentAndScroll(cD, marked.parse(finalResponse));
                     };
-                    const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error', 5000); };
+                    const onErrorCallback = (err) => { showToast("❌ Lỗi kết nối: " + err.message, 'error', 5000); };
 
                     if (activeModel.endsWith('-dify')) {
                        const memSize = 20;
@@ -2633,7 +2663,8 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
               bD.querySelector('.bot-message').setAttribute('data-raw',finalResponse); 
               
               if (capturedInteractionId) {
-                  const msgIdHtml = `<span style="font-size:0.7rem;color:var(--text-muted);margin-left:8px;cursor:pointer;border-bottom:1px dashed var(--text-muted);" onclick="navigator.clipboard.writeText('${capturedInteractionId}');showToast('📋 Đã copy ID phiên!');" title="Bấm để copy mã phiên">ID: ${capturedInteractionId.substring(0,10)}...</span>`;
+                  const safeCapturedId = capturedInteractionId;
+                  const msgIdHtml = `<span class="interaction-id-badge" onclick="copyRawText('${safeCapturedId}', '📋 Đã copy Interactions ID!')" title="Bấm để copy ID phiên">📋 ID: ${safeCapturedId.substring(0,10)}...</span>`;
                   const mHeader = bD.querySelector('.message-header');
                   if (mHeader) mHeader.innerHTML = `<span>✨ Chatbot</span>${msgIdHtml}`;
               }
