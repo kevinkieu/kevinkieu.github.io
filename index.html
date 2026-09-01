@@ -581,6 +581,13 @@ QUY TẮC TỐI CAO:
 1. BẮT BUỘC giữ nguyên 100% các danh từ riêng, tên chế độ, tên sản phẩm, mã hiệu, số hiệu sản phẩm, mốc năm, các con số và thuật ngữ chuyên môn gốc.
 2. Không giải thích, không chào hỏi, không bọc trong dấu ngoặc kép. Chỉ trả về duy nhất đoạn prompt đã được tối ưu hoàn chỉnh.`;
 
+    function getNowTime24h() {
+        const d = new Date();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+    }
+
     function getFallbackModelsFor(selectedModel) {
         const idx = GOOGLE_FALLBACK_CHAIN.indexOf(selectedModel);
         if (idx !== -1) {
@@ -757,8 +764,8 @@ QUY TẮC TỐI CAO:
       writeWavString(view, 8, 'WAVE');
       writeWavString(view, 12, 'fmt ');
       view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true);
-      view.setUint16(22, 1, true);
+      view.setUint16(20, 1, true); // PCM format
+      view.setUint16(22, 1, true); // Mono
       view.setUint32(24, sampleRate, true);
       view.setUint32(28, sampleRate * 2, true);
       view.setUint16(32, 2, true);
@@ -2027,7 +2034,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     document.getElementById('btn-rename-session').onclick=async()=>{const n=prompt("Tên mới:"); if(n){const s=sessions.find(x=>x.id===activeId); s.name=n; await saveToDB(s); renderSel(); renderTabs();}};
     document.getElementById('btn-delete-session').onclick=async()=>{if(sessions.length<=1)return showToast("Phải giữ lại 1 phiên","error"); if(!confirm("Xóa phiên này?"))return; await deleteFromDB(activeId); sessions=sessions.filter(s=>s.id!==activeId); openTabs=openTabs.filter(x=>x!==activeId); const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder); if(v.length)await switchSess(v[0].id); else{activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); await switchSess(sessions[0].id);} showToast("Đã xóa");};
     document.getElementById('btn-move-up').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>0){let t=v[i].orderIndex; v[i].orderIndex=v[i-1].orderIndex; v[i-1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
-    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
+    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i+1]); renderSel();}};
     
     DOM.btnCompress.onclick=async()=>{
         if(chatHistory.length<=4)return showToast("Chưa cần nén!"); 
@@ -2119,13 +2126,19 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
        const m=document.createElement('div'); m.className=sd==='user'?'user-message':'bot-message'; m.setAttribute('data-raw',t); 
        
        let msgIdHtml = '';
-       if (sd === 'bot' && chatHistory[i] && chatHistory[i].interactionId) {
-           const safeId = chatHistory[i].interactionId;
-           msgIdHtml = `<span class="interaction-id-badge" onclick="copyRawText('${safeId}', '📋 Đã copy Interactions ID!')" title="Bấm để copy ID phiên">📋 ID: ${safeId.substring(0,10)}...</span>`;
+       let timeHtml = '';
+       if (sd === 'bot' && chatHistory[i]) {
+           const timeStr = chatHistory[i].time || getNowTime24h();
+           timeHtml = `<span style="font-size:0.72rem;color:var(--text-muted);margin-left:6px;font-weight:normal;">🕒 ${timeStr}</span>`;
+           if (chatHistory[i].interactionId) {
+               const safeId = chatHistory[i].interactionId;
+               msgIdHtml = `<span class="interaction-id-badge" onclick="copyRawText('${safeId}', '📋 Đã copy Interactions ID!')" title="Bấm để copy ID phiên">📋 ID: ${safeId.substring(0,10)}...</span>`;
+           }
        }
 
-       m.innerHTML=`<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Chatbot'}</span>${msgIdHtml}</div><div class="msg-content"></div>`; 
-       const a=document.createElement('div'); a.className='msg-actions'; 
+       m.innerHTML=`<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Chatbot'}</span>${timeHtml}${msgIdHtml}</div><div class="msg-content"></div>`; 
+       const a=document.createElement('div'); 
+       a.className='msg-actions'; 
        a.innerHTML=`<button class="action-btn" onclick="copy(this)">📋 Copy</button>`; 
        if(sd==='user') {
            a.innerHTML+=`<button class="action-btn" onclick="editMsg(${i})">✏️ Sửa</button><button class="action-btn" onclick="forkSession(${i})">🔀 Nhánh</button>`; 
@@ -2156,6 +2169,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
       
       let finalResponse = "";
       let capturedInteractionId = null;
+      const currentBotTime = getNowTime24h();
 
       try {
           const defaultMediaPrompt = "Hãy đọc và trích xuất hoặc phân tích chi tiết toàn bộ nội dung trong tệp/hình ảnh đính kèm này.";
@@ -2169,7 +2183,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           if(DOM.input) { DOM.input.value=''; DOM.input.style.height='40px'; updateTokenCount(); } const imgs=[...filesData]; DOM.clearFilesBtn.click(); 
           
           const bD=document.createElement('div'); bD.className='message-container'; 
-          bD.innerHTML=`<div class="bot-message"><div class="message-header">Chatbot <span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`; 
+          bD.innerHTML=`<div class="bot-message"><div class="message-header"><span>✨ Chatbot</span><span style="font-size:0.72rem;color:var(--text-muted);margin-left:6px;font-weight:normal;">🕒 ${currentBotTime}</span><span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`; 
           DOM.chat.appendChild(bD);
           
           bD.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2698,7 +2712,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           }
 
           chatHistory.push({role:'user',text:fP}); 
-          chatHistory.push({role:'model',text:finalResponse, interactionId: capturedInteractionId}); 
+          chatHistory.push({role:'model',text:finalResponse, interactionId: capturedInteractionId, time: currentBotTime}); 
           
           const s=sessions.find(x=>x.id===activeId); 
           if(s){
@@ -2714,11 +2728,14 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           if(bD.querySelector('.bot-message')){
               bD.querySelector('.bot-message').setAttribute('data-raw',finalResponse); 
               
+              let msgIdHtml = '';
               if (capturedInteractionId) {
                   const safeCapturedId = capturedInteractionId;
-                  const msgIdHtml = `<span class="interaction-id-badge" onclick="copyRawText('${safeCapturedId}', '📋 Đã copy Interactions ID!')" title="Bấm để copy ID phiên">📋 ID: ${safeCapturedId.substring(0,10)}...</span>`;
-                  const mHeader = bD.querySelector('.message-header');
-                  if (mHeader) mHeader.innerHTML = `<span>✨ Chatbot</span>${msgIdHtml}`;
+                  msgIdHtml = `<span class="interaction-id-badge" onclick="copyRawText('${safeCapturedId}', '📋 Đã copy Interactions ID!')" title="Bấm để copy ID phiên">📋 ID: ${safeCapturedId.substring(0,10)}...</span>`;
+              }
+              const mHeader = bD.querySelector('.message-header');
+              if (mHeader) {
+                  mHeader.innerHTML = `<span>✨ Chatbot</span><span style="font-size:0.72rem;color:var(--text-muted);margin-left:6px;font-weight:normal;">🕒 ${currentBotTime}</span>${msgIdHtml}`;
               }
 
               const a=document.createElement('div'); 
