@@ -105,7 +105,7 @@
     .toast.info{background:#0b57d0;color:white}
     .toast.show{opacity:1;pointer-events:auto}
 
-    /* Thiết kế Nút Cuộn Top: Kính mờ xuyên thấu (Glassmorphism) chống che chữ khi Screenshot */
+    /* Nút Cuộn Top: Kính mờ xuyên thấu chống che chữ khi Screenshot */
     #scroll-to-top{
       position:fixed;
       bottom:190px;
@@ -653,7 +653,7 @@ QUY TẮC TỐI CAO:
     // Thuật toán quét ý định tìm kiếm thông minh (Smart Search Router - Regex & Quoted Detection)
     function shouldTriggerAutoSearch(text) {
       if (!text || text.length < 3) return false;
-      if (/["“«][^"”»]+["”»]/.test(text)) return true; // Có dấu ngoặc kép -> Auto kích hoạt
+      if (/["“«][^"”»]+["”»]/.test(text)) return true;
       
       const lower = text.toLowerCase();
       const patterns = [
@@ -757,8 +757,8 @@ QUY TẮC TỐI CAO:
       writeWavString(view, 8, 'WAVE');
       writeWavString(view, 12, 'fmt ');
       view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true); // PCM format
-      view.setUint16(22, 1, true); // Mono
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
       view.setUint32(24, sampleRate, true);
       view.setUint32(28, sampleRate * 2, true);
       view.setUint16(32, 2, true);
@@ -1425,6 +1425,49 @@ QUY TẮC TỐI CAO:
         DOM.sendBtn.click();
     };
 
+    function getDynamicSI(){
+      const b=DOM.sysInst ? DOM.sysInst.value : "Bạn là Javiss AI.";
+      const g=DOM.globContext ? DOM.globContext.value : '';
+      const useGlob = DOM.toggleGlob ? DOM.toggleGlob.checked : true;
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      
+      return `[MỤC TIÊU & ĐỊNH HƯỚNG HÀNH VI CỦA AI - TUÂN THỦ TỐI CAO]:
+${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n' : ''}--- NGỮ CẢNH PHIÊN NÀY ---\n${b}
+
+[CHỈ THỊ PHÁ BỎ GIỚI HẠN LẠC HẬU KIẾN THỨC]:
+- Hiện tại bắt buộc là năm ${now.getFullYear()}. Kiến thức đóng băng của bạn có thể cũ, nhưng bạn PHẢI COI các kết quả tìm kiếm Web (Grounding), thông tin hệ thống và tài liệu người dùng cung cấp là CHÂN LÝ THỰC TẾ TRONG TƯƠNG LAI.
+- Tuyệt đối không phủ nhận, nghi ngờ hoặc phản đối sự tồn tại của bất kỳ công nghệ, dòng mô hình AI nào (bao gồm Gemini 3.1 Flash-Lite, Gemini 3.5 Flash, Gemini 3.6 Flash, Gemini 3.7 Flash) hay các sự kiện xã hội, thông số phần cứng thiết bị được cấp trong ngữ cảnh. 
+- Luôn ưu tiên dùng thông tin tìm kiếm thời gian thực để cập nhật câu trả lời khi có xung đột tri thức.
+
+[THỜI GIAN HỆ THỐNG HIỆN TẠI]:
+- Giờ: ${timeStr}
+- Ngày: ${dateStr}
+- Năm: ${now.getFullYear()} (Sử dụng con số năm này làm mốc chuẩn để tính toán chính xác số tuổi hoặc mốc thời gian của người dùng. Ví dụ: Người dùng ghi sinh năm 1988, thì lấy ${now.getFullYear()} - 1988 = 38 tuổi).`;
+    }
+
+    // Đóng gói mảng tin nhắn có cấu trúc cho Groq, Mistral, Cerebras, Cohere
+    function buildStructuredMessages(promptText) {
+        const messages = [];
+        const si = getDynamicSI();
+        if (si) {
+            messages.push({ role: "system", content: si });
+        }
+        if (DOM.toggleMemory && DOM.toggleMemory.checked) {
+            const memSize = 20;
+            const slicedHistory = chatHistory.slice(-memSize);
+            for (const m of slicedHistory) {
+                messages.push({
+                    role: m.role === 'model' ? 'assistant' : 'user',
+                    content: m.text
+                });
+            }
+        }
+        messages.push({ role: "user", content: promptText });
+        return messages;
+    }
+
     function serializeHistoryForDify(history, currentPrompt) {
         let serialized = "";
         const si = getDynamicSI();
@@ -1984,7 +2027,7 @@ QUY TẮC TỐI CAO:
     document.getElementById('btn-rename-session').onclick=async()=>{const n=prompt("Tên mới:"); if(n){const s=sessions.find(x=>x.id===activeId); s.name=n; await saveToDB(s); renderSel(); renderTabs();}};
     document.getElementById('btn-delete-session').onclick=async()=>{if(sessions.length<=1)return showToast("Phải giữ lại 1 phiên","error"); if(!confirm("Xóa phiên này?"))return; await deleteFromDB(activeId); sessions=sessions.filter(s=>s.id!==activeId); openTabs=openTabs.filter(x=>x!==activeId); const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder); if(v.length)await switchSess(v[0].id); else{activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); await switchSess(sessions[0].id);} showToast("Đã xóa");};
     document.getElementById('btn-move-up').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>0){let t=v[i].orderIndex; v[i].orderIndex=v[i-1].orderIndex; v[i-1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
-    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i+1]); renderSel();}};
+    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
     
     DOM.btnCompress.onclick=async()=>{
         if(chatHistory.length<=4)return showToast("Chưa cần nén!"); 
@@ -2061,28 +2104,6 @@ QUY TẮC TỐI CAO:
     if(DOM.thinking) DOM.thinking.addEventListener('change',updateConfig); 
     if(DOM.temp) DOM.temp.addEventListener('input',()=>{ if(DOM.tempVal) DOM.tempVal.innerText=DOM.temp.value; updateConfig();}); 
     if(DOM.topP) DOM.topP.addEventListener('input',()=>{ if(DOM.toppVal) DOM.toppVal.innerText=DOM.topP.value; updateConfig();});
-    
-    function getDynamicSI(){
-      const b=DOM.sysInst ? DOM.sysInst.value : "Bạn là Javiss AI.";
-      const g=DOM.globContext ? DOM.globContext.value : '';
-      const useGlob = DOM.toggleGlob ? DOM.toggleGlob.checked : true;
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      
-      return `[MỤC TIÊU & ĐỊNH HƯỚNG HÀNH VI CỦA AI - TUÂN THỦ TỐI CAO]:
-${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n' : ''}--- NGỮ CẢNH PHIÊN NÀY ---\n${b}
-
-[CHỈ THỊ PHÁ BỎ GIỚI HẠN LẠC HẬU KIẾN THỨC]:
-- Hiện tại bắt buộc là năm ${now.getFullYear()}. Kiến thức đóng băng của bạn có thể cũ, nhưng bạn PHẢI COI các kết quả tìm kiếm Web (Grounding), thông tin hệ thống và tài liệu người dùng cung cấp là CHÂN LÝ THỰC TẾ TRONG TƯƠNG LAI.
-- Tuyệt đối không phủ nhận, nghi ngờ hoặc phản đối sự tồn tại của bất kỳ công nghệ, dòng mô hình AI nào (bao gồm Gemini 3.1 Flash-Lite, Gemini 3.5 Flash, Gemini 3.6 Flash, Gemini 3.7 Flash) hay các sự kiện xã hội, thông số phần cứng thiết bị được cấp trong ngữ cảnh. 
-- Luôn ưu tiên dùng thông tin tìm kiếm thời gian thực để cập nhật câu trả lời khi có xung đột tri thức.
-
-[THỜI GIAN HỆ THỐNG HIỆN TẠI]:
-- Giờ: ${timeStr}
-- Ngày: ${dateStr}
-- Năm: ${now.getFullYear()} (Sử dụng con số năm này làm mốc chuẩn để tính toán chính xác số tuổi hoặc mốc thời gian của người dùng. Ví dụ: Người dùng ghi sinh năm 1988, thì lấy ${now.getFullYear()} - 1988 = 38 tuổi).`;
-    }
 
     async function renderMsgContent(el, text){
        el.innerHTML = marked.parse(text.replace(/\[URL:\s*(https?:\/\/[^\s]+)\]/g,'<a href="$1" target="_blank" style="color:var(--primary)">$1</a>'));
