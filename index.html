@@ -172,6 +172,103 @@
     .agent-step{padding:8px; border-left:3px solid var(--primary); background:var(--bg-sidebar); margin-bottom:8px; font-size:0.85rem; border-radius:4px;}
     .tts-mini-player{margin-top:10px;padding:8px;background:rgba(0,0,0,0.03);border-radius:8px;display:flex;align-items:center;gap:8px;}
     .tts-mini-player audio{flex:1;height:36px;}
+
+    /* Giao diện Cuộc gọi Live Voice & Vision AI */
+    #live-call-modal{
+      display:none;
+      position:fixed;
+      top:0;
+      left:0;
+      width:100vw;
+      height:100dvh;
+      background:rgba(10, 15, 29, 0.96);
+      backdrop-filter:blur(16px);
+      z-index:9999;
+      flex-direction:column;
+      align-items:center;
+      justify-content:space-between;
+      padding:24px 16px;
+      color:#fff;
+    }
+    .live-orb-container{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      flex:1;
+      gap:20px;
+      width:100%;
+      max-width:500px;
+    }
+    .live-orb{
+      width:130px;
+      height:130px;
+      border-radius:50%;
+      background:radial-gradient(circle, #38bdf8 20%, #6366f1 70%, #ec4899 100%);
+      box-shadow:0 0 35px rgba(99,102,241,0.6);
+      transition:transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .live-orb.speaking{
+      transform:scale(1.25);
+      box-shadow:0 0 60px rgba(236,72,153,0.8);
+    }
+    .live-orb.listening{
+      transform:scale(1.08);
+      box-shadow:0 0 45px rgba(56,189,248,0.7);
+    }
+    .live-transcript-box{
+      width:100%;
+      max-height:160px;
+      overflow-y:auto;
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:12px;
+      padding:12px 14px;
+      font-size:0.9rem;
+      line-height:1.5;
+      text-align:center;
+      color:#e2e8f0;
+    }
+    .live-controls{
+      display:flex;
+      align-items:center;
+      gap:16px;
+      flex-wrap:wrap;
+      justify-content:center;
+      margin-bottom:10px;
+    }
+    .live-control-btn{
+      width:54px;
+      height:54px;
+      border-radius:50%;
+      border:none;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:1.3rem;
+      background:rgba(255,255,255,0.15);
+      color:#fff;
+      transition:0.2s;
+    }
+    .live-control-btn.active{
+      background:#10b981;
+      color:#fff;
+    }
+    .live-control-btn.end-call{
+      background:#ef4444;
+      width:64px;
+      height:64px;
+      font-size:1.6rem;
+    }
+    #live-camera-video{
+      width:110px;
+      height:80px;
+      border-radius:10px;
+      object-fit:cover;
+      display:none;
+      border:2px solid #38bdf8;
+    }
   </style>
 </head>
 <body>
@@ -209,7 +306,8 @@
           <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🤖 Mô hình xử lý chính:</span>
             <select id="model-select" class="modern-select">            
               <optgroup label="✨❤️❤️ Google Gemini (Interactions API)">
-                <option value="gemini-3.7-flash" selected>Gemini 3.7 Flash</option>
+                <option value="gemini-3.8-flash" selected>Gemini 3.8 Flash (Mới nhất)</option>
+                <option value="gemini-3.7-flash">Gemini 3.7 Flash</option>
                 <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
                 <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
                 <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
@@ -278,6 +376,10 @@
       <header class="main-header">
         <div class="header-left"><button id="toggle-sidebar-btn" class="icon-btn mobile-only">☰</button><h1 class="logo-text">HK Workshop</h1></div>
         <div class="header-right">
+          <!-- Nút gọi Live Voice & Vision Stream -->
+          <button id="btn-live-call-open" class="btn" style="background:linear-gradient(135deg, #10b981, #059669);color:white;border:none;border-radius:20px;padding:6px 14px;font-weight:600;display:flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(16,185,129,0.3);">
+            <span>📞</span> Gọi Live AI
+          </button>
           <div class="header-search-bar">
             <input type="text" id="search-chat-input" placeholder="Tìm kiếm phiên...">
             <button id="btn-global-search" class="search-trigger-btn" title="Tìm toàn bộ phiên">🔍</button>
@@ -313,6 +415,40 @@
         <div class="input-container-box"><textarea id="user-input" rows="1" placeholder="Nhập tin nhắn hoặc URL..."></textarea><button id="send-button">Gửi 📤</button></div>
       </div>
     </main>
+
+    <!-- Modal Màn hình Cuộc gọi Live Voice & Vision AI -->
+    <div id="live-call-modal">
+      <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.5rem;">📞</span>
+          <div>
+            <h3 style="font-size:1.1rem;font-weight:700;">Cuộc gọi Live AI</h3>
+            <span id="live-call-status" style="font-size:0.8rem;color:#94a3b8;">Đang kết nối...</span>
+          </div>
+        </div>
+        <video id="live-camera-video" autoplay playsinline muted></video>
+      </div>
+
+      <div class="live-orb-container">
+        <div id="live-orb" class="live-orb"></div>
+        <div id="live-transcript" class="live-transcript-box">
+          <i>Hãy nói chuyện tự nhiên vào micro. Bạn có thể ngắt lời AI bất cứ lúc nào!</i>
+        </div>
+      </div>
+
+      <div class="live-controls">
+        <select id="live-voice-select" class="modern-select" style="width:auto;min-width:140px;background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;">
+          <option value="Aoede">👩 Aoede (Nữ)</option>
+          <option value="Charon" selected>👨 Charon (Nam trầm)</option>
+          <option value="Puck">👨 Puck (Nam)</option>
+          <option value="Kore">👩 Kore (Nữ)</option>
+          <option value="Fenrir">👨 Fenrir (Nam)</option>
+        </select>
+        <button id="btn-live-mic-toggle" class="live-control-btn active" title="Bật/Tắt Micro">🎙️</button>
+        <button id="btn-live-cam-toggle" class="live-control-btn" title="Bật/Tắt Camera">📹</button>
+        <button id="btn-live-end-call" class="live-control-btn end-call" title="Kết thúc cuộc gọi">🛑</button>
+      </div>
+    </div>
 
     <!-- Modal TTS Studio Pro Chuyên Sâu -->
     <div id="tts-studio-modal" class="modal-box" style="max-width:750px;">
@@ -435,12 +571,36 @@
     <div id="settings-modal" class="modal-box" style="max-width:750px;">
       <div class="modal-header"><h3>⚙️ Cài đặt Hệ thống & Tham số AI</h3><button class="close-btn">&times;</button></div>
       <div class="modal-scroll-body">
-        <fieldset class="settings-group"><legend>⚙️ Định hướng Ngữ cảnh (System Prompt)</legend>
+        
+        <!-- CẤU HÌNH RIÊNG CHO CUỘC GỌI LIVE AI -->
+        <fieldset class="settings-group"><legend>📞 Cấu hình Cuộc gọi Live AI (Multimodal Live)</legend>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label class="field-label">Chỉ thị đàm thoại (Live Call System Instruction):</label>
+              <textarea id="live-system-instruction-input" rows="3" class="modern-textarea" placeholder="Định hình cách AI giao tiếp khi nghe điện thoại (ngắn gọn, xưng hô, biểu cảm...)"></textarea>
+            </div>
+            <div class="slider-row">
+              <label>Độ sáng tạo / Tự nhiên khi nói chuyện (Temperature: <span id="live-temp-val">0.7</span>):</label>
+              <input type="range" id="live-temperature" min="0" max="2" step="0.1" value="0.7">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+              <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:var(--primary);display:flex;align-items:center;gap:6px;">
+                <input type="checkbox" id="live-toggle-search" checked style="width:16px;height:16px;"> 🌐 Tự động tra cứu Google trong lúc gọi (Grounding)
+              </label>
+              <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:green;display:flex;align-items:center;gap:6px;">
+                <input type="checkbox" id="live-toggle-context" checked style="width:16px;height:16px;"> 🧠 Kế thừa 10 tin nhắn gần nhất vào cuộc gọi
+              </label>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="settings-group"><legend>⚙️ Định hướng Ngữ cảnh Chat văn bản (System Prompt)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">System Instruction (Riêng cho phiên hiện tại):</label><textarea id="system-instruction-input" rows="3" class="modern-textarea"></textarea></div>
             <div><label class="field-label">🌍 Ngữ cảnh Toàn cục (Áp dụng tất cả):</label><textarea id="global-context-input" rows="2" class="modern-textarea"></textarea></div>
           </div>
         </fieldset>
+
         <fieldset class="settings-group"><legend>🚀 Tùy chỉnh tham số mô hình</legend>
           <div style="display:flex;flex-direction:column;gap:12px;">
             <div class="slider-row"><label>Temperature (<span id="temp-val">0.5</span>):</label><input type="range" id="temperature" min="0" max="2" step="0.1" value="0.5"></div>
@@ -450,6 +610,7 @@
             </div>
           </div>
         </fieldset>
+
         <fieldset class="settings-group"><legend>🌐 Cấu hình Công cụ Tìm kiếm Web độc lập (0 RPD Gemini 2.5)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div>
@@ -478,6 +639,7 @@
             </div>
           </div>
         </fieldset>
+
         <fieldset class="settings-group"><legend>💾 Quản lý Dữ liệu & Xuất tệp</legend>
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
             <button class="btn" onclick="exportCleanArticle()">📝 Bài viết sạch (MD)</button><button class="btn" onclick="exportChatPDF()">📄 Xuất File PDF</button><button class="btn" onclick="exportChatDoc()">📄 Xuất File Word</button>
@@ -485,6 +647,7 @@
             <button id="btn-compress-context" class="btn">🗜️ Nén lịch sử cũ</button><button class="btn danger" onclick="clearActiveSession()">🗑️ Xóa hết tin phiên này</button><input type="file" id="import-all-input" accept=".json" style="display:none;">
           </div>
         </fieldset>
+
         <fieldset class="settings-group"><legend>🔑 Cấu hình 10 API Keys</legend>
           <div class="api-keys-grid" id="api-keys-container" style="margin-bottom:10px;"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
@@ -496,6 +659,7 @@
             <span id="key-status-msg" style="font-size:.85rem;font-weight:bold;"></span>
           </div>
         </fieldset>
+
         <fieldset class="settings-group"><legend>🔗 Cấu hình Dify (Hệ thống ứng dụng liên kết)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">Dify Key - Gemini 3.5 Flash:</label><input type="password" id="dify-key-gemini" placeholder="Nhập Key (app-...)" class="modern-input"></div>
@@ -511,21 +675,25 @@
             </div>
           </div>
         </fieldset>
+
         <fieldset class="settings-group"><legend>🔗 Cấu hình Groq (Llama 4 & GPT-OSS 120B)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">Groq API Key:</label><input type="password" id="groq-key-input" placeholder="Nhập Groq API Key..." class="modern-input"></div>
           </div>
         </fieldset>
+
         <fieldset class="settings-group"><legend>🔗 Cấu hình Mistral AI (Mistral Medium & Small)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">Mistral API Key:</label><input type="password" id="mistral-key-input" placeholder="Nhập Mistral API Key..." class="modern-input"></div>
           </div>
         </fieldset>
+
         <fieldset class="settings-group"><legend>🔗 Cấu hình Cerebras Inference (GPT-OSS 120B & Gemma 4 31B)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">Cerebras API Key:</label><input type="password" id="cerebras-key-input" placeholder="Nhập Cerebras API Key..." class="modern-input"></div>
           </div>
         </fieldset>
+
         <fieldset class="settings-group"><legend>🔗 Cấu hình Cohere (Command A+ & Command A Reasoning)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">Cohere API Key:</label><input type="password" id="cohere-key-input" placeholder="Nhập Cohere API Key..." class="modern-input"></div>
@@ -533,6 +701,7 @@
         </fieldset>
       </div>
     </div>
+
     <div id="search-modal" class="modal-box"><div class="modal-header"><h3>🔍 Tìm kiếm nâng cao</h3><button class="close-btn">&times;</button></div><div style="padding:20px;"><input type="text" id="global-search-input" placeholder="Nhập từ khóa cần quét..." class="modern-input" style="width:100%;margin-bottom:12px;"><div id="search-results" style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div></div></div>
     <div id="file-library-modal" class="modal-box"><div class="modal-header"><h3>🗄️ Thư viện Tài liệu</h3><button class="close-btn">&times;</button></div><div style="padding:20px;"><div style="margin-bottom:15px;"><label class="btn primary" style="cursor:pointer;display:inline-block;">➕ Tải tài liệu lên<input type="file" id="library-upload-input" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;"></label></div><div id="library-files-container" style="display:flex;flex-direction:column;gap:8px;max-height:350px;overflow-y:auto;"></div></div></div>
     <div id="camera-modal" class="modal-box"><div class="modal-header"><h3>📷 Camera</h3><button class="close-btn">&times;</button></div><div style="padding:10px;display:flex;flex-direction:column;gap:10px;align-items:center;"><video id="camera-preview" autoplay playsinline></video><button id="btn-take-photo" class="btn primary" style="width:100%;padding:12px;font-size:1rem;">📸 Bấm để Chụp</button></div></div>
@@ -556,6 +725,7 @@
     ];
 
     const GOOGLE_FALLBACK_CHAIN = [
+      'gemini-3.8-flash',
       'gemini-3.7-flash',
       'gemini-3.6-flash',
       'gemini-3.5-flash',
@@ -764,8 +934,8 @@ QUY TẮC TỐI CAO:
       writeWavString(view, 8, 'WAVE');
       writeWavString(view, 12, 'fmt ');
       view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true); // PCM format
-      view.setUint16(22, 1, true); // Mono
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
       view.setUint32(24, sampleRate, true);
       view.setUint32(28, sampleRate * 2, true);
       view.setUint16(32, 2, true);
@@ -890,6 +1060,275 @@ QUY TẮC TỐI CAO:
       } finally {
         btnEl.innerHTML = originHtml;
         btnEl.disabled = false;
+      }
+    };
+
+    // ==========================================
+    // 📞 GEMINI MULTIMODAL LIVE API (VOICE & VISION WEBSOCKET)
+    // ==========================================
+    let liveWs = null;
+    let liveAudioCtx = null;
+    let liveMediaStream = null;
+    let liveAudioWorkletNode = null;
+    let livePlaybackState = { nextPlayTime: 0, activeSources: [] };
+    let liveCameraInterval = null;
+    let isLiveMicMuted = false;
+    let isLiveCameraOn = false;
+
+    function floatTo16BitPCM(float32Array) {
+      const buffer = new ArrayBuffer(float32Array.length * 2);
+      const view = new DataView(buffer);
+      let offset = 0;
+      for (let i = 0; i < float32Array.length; i++, offset += 2) {
+        let s = Math.max(-1, Math.min(1, float32Array[i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      }
+      return new Uint8Array(buffer);
+    }
+
+    function playPcm24kChunk(base64Data, audioCtx, state) {
+      const binary = atob(base64Data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const int16 = new Int16Array(bytes.buffer);
+      const float32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768;
+
+      const audioBuffer = audioCtx.createBuffer(1, float32.length, 24000);
+      audioBuffer.copyToChannel(float32, 0);
+
+      const source = audioCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+      if (state.nextPlayTime < now) state.nextPlayTime = now;
+      source.start(state.nextPlayTime);
+      state.nextPlayTime += audioBuffer.duration;
+      state.activeSources.push(source);
+
+      const orb = document.getElementById('live-orb');
+      if (orb) orb.className = 'live-orb speaking';
+
+      source.onended = () => {
+        const idx = state.activeSources.indexOf(source);
+        if (idx > -1) state.activeSources.splice(idx, 1);
+        if (state.activeSources.length === 0 && orb) {
+          orb.className = 'live-orb listening';
+        }
+      };
+    }
+
+    async function startLiveVoiceCall() {
+      // Kiểm tra môi trường Secure Context (HTTPS hoặc Localhost)
+      if (!window.isSecureContext && location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        showToast("⚠️ Trình duyệt chặn Micro khi mở file cục bộ (content://). Hãy mở qua HTTPS (GitHub Pages/Vercel) hoặc cấp quyền Micro trong Cài đặt Android!", "danger", 7000);
+      }
+
+      const currentSession = sessions.find(x => x.id === activeId);
+      const key = getSessionApiKey(currentSession);
+      if (!key) return showToast("Cần có Google API Key để gọi Live!", "error");
+
+      const modal = document.getElementById('live-call-modal');
+      const status = document.getElementById('live-call-status');
+      const transcript = document.getElementById('live-transcript');
+      const orb = document.getElementById('live-orb');
+      
+      modal.style.display = 'flex';
+      status.innerText = 'Đang kết nối WebSocket...';
+      transcript.innerHTML = '<i>Đang khởi tạo luồng đàm thoại...</i>';
+      orb.className = 'live-orb listening';
+
+      livePlaybackState = { nextPlayTime: 0, activeSources: [] };
+
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        liveAudioCtx = new AudioContextClass({ sampleRate: 16000 });
+        
+        liveMediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true }
+        });
+
+        const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${key}`;
+        liveWs = new WebSocket(wsUrl);
+
+        liveWs.onopen = () => {
+          status.innerText = '🟢 Đã kết nối! Bạn có thể nói ngay...';
+          
+          const voiceName = document.getElementById('live-voice-select').value || 'Charon';
+          const userLiveSI = localStorage.getItem('live_system_instruction') || '';
+          const userLiveTemp = parseFloat(localStorage.getItem('live_temperature') || '0.7');
+          const enableLiveSearch = localStorage.getItem('live_search_enabled') !== 'false';
+          const enableLiveContext = localStorage.getItem('live_context_enabled') !== 'false';
+
+          let si = userLiveSI ? userLiveSI : `Bạn là trợ lý Javiss trong cuộc gọi trực tiếp. Hãy xưng hô 'em' và gọi người dùng là 'anh'. Luôn nói chuyện bằng Tiếng Việt tự nhiên, truyền cảm, trả lời ngắn gọn súc tích trong 1-2 câu như cuộc gọi thoại ngoài đời thực, không đọc mã code dài dòng.`;
+          si += `\n${getDynamicSI()}`;
+
+          if (enableLiveContext && chatHistory.length > 0) {
+            const last10 = chatHistory.slice(-10).map(m => `${m.role === 'model' ? 'AI' : 'Bạn'}: ${m.text}`).join('\n');
+            si += `\n[Tóm tắt 10 tin nhắn gần nhất trước khi gọi]:\n${last10}`;
+          }
+
+          const setupMsg = {
+            setup: {
+              model: "models/gemini-3.1-flash-live-preview",
+              generation_config: {
+                response_modalities: ["AUDIO"],
+                temperature: userLiveTemp,
+                speech_config: {
+                  voice_config: {
+                    prebuilt_voice_config: { voice_name: voiceName }
+                  }
+                }
+              },
+              system_instruction: {
+                parts: [{ text: si }]
+              }
+            }
+          };
+
+          if (enableLiveSearch) {
+            setupMsg.setup.tools = [{ google_search: {} }];
+          }
+
+          liveWs.send(JSON.stringify(setupMsg));
+
+          // Audio Input stream qua ScriptProcessor
+          const sourceNode = liveAudioCtx.createMediaStreamSource(liveMediaStream);
+          const processorNode = liveAudioCtx.createScriptProcessor(2048, 1, 1);
+          processorNode.onaudioprocess = (e) => {
+            if (isLiveMicMuted || liveWs.readyState !== WebSocket.OPEN) return;
+            const inputData = e.inputBuffer.getChannelData(0);
+            const pcm16 = floatTo16BitPCM(inputData);
+            let binary = '';
+            for (let i = 0; i < pcm16.length; i++) binary += String.fromCharCode(pcm16[i]);
+            const base64Data = btoa(binary);
+
+            const audioChunkMsg = {
+              realtime_input: {
+                media_chunks: [{ mime_type: "audio/pcm;rate=16000", data: base64Data }]
+              }
+            };
+            liveWs.send(JSON.stringify(audioChunkMsg));
+          };
+
+          sourceNode.connect(processorNode);
+          processorNode.connect(liveAudioCtx.destination);
+          liveAudioWorkletNode = processorNode;
+        };
+
+        liveWs.onmessage = async (event) => {
+          try {
+            let dataText = event.data;
+            if (event.data instanceof Blob) dataText = await event.data.text();
+            const msg = JSON.parse(dataText);
+
+            if (msg.serverContent) {
+              if (msg.serverContent.interrupted) {
+                livePlaybackState.activeSources.forEach(s => { try { s.stop(); } catch(e){} });
+                livePlaybackState.activeSources = [];
+                livePlaybackState.nextPlayTime = liveAudioCtx ? liveAudioCtx.currentTime : 0;
+                orb.className = 'live-orb listening';
+              }
+
+              if (msg.serverContent.modelTurn && msg.serverContent.modelTurn.parts) {
+                for (let part of msg.serverContent.modelTurn.parts) {
+                  if (part.inlineData && part.inlineData.mimeType && part.inlineData.mimeType.startsWith('audio/')) {
+                    playPcm24kChunk(part.inlineData.data, liveAudioCtx, livePlaybackState);
+                  }
+                  if (part.text) {
+                    transcript.innerHTML = `<strong>AI:</strong> ${part.text}`;
+                  }
+                }
+              }
+            }
+          } catch(e) {}
+        };
+
+        liveWs.onerror = (err) => {
+          status.innerText = '❌ Lỗi kết nối WebSocket';
+          showToast('Lỗi đường truyền cuộc gọi Live!', 'danger');
+        };
+
+        liveWs.onclose = () => {
+          endLiveVoiceCall();
+        };
+
+      } catch (err) {
+        showToast('Không thể mở Micro / Cuộc gọi: ' + err.message, 'danger', 6000);
+        endLiveVoiceCall();
+      }
+    }
+
+    function endLiveVoiceCall() {
+      if (liveWs) { try { liveWs.close(); } catch(e){} liveWs = null; }
+      if (liveMediaStream) { liveMediaStream.getTracks().forEach(t => t.stop()); liveMediaStream = null; }
+      if (liveAudioCtx) { try { liveAudioCtx.close(); } catch(e){} liveAudioCtx = null; }
+      if (liveCameraInterval) { clearInterval(liveCameraInterval); liveCameraInterval = null; }
+      
+      const camVideo = document.getElementById('live-camera-video');
+      if (camVideo) { camVideo.srcObject = null; camVideo.style.display = 'none'; }
+      
+      const modal = document.getElementById('live-call-modal');
+      if (modal) modal.style.display = 'none';
+      isLiveCameraOn = false;
+      isLiveMicMuted = false;
+      document.getElementById('btn-live-mic-toggle').className = 'live-control-btn active';
+      document.getElementById('btn-live-cam-toggle').className = 'live-control-btn';
+    }
+
+    document.getElementById('btn-live-call-open').onclick = startLiveVoiceCall;
+    document.getElementById('btn-live-end-call').onclick = endLiveVoiceCall;
+
+    document.getElementById('btn-live-mic-toggle').onclick = () => {
+      isLiveMicMuted = !isLiveMicMuted;
+      const btn = document.getElementById('btn-live-mic-toggle');
+      btn.className = `live-control-btn ${isLiveMicMuted ? '' : 'active'}`;
+      btn.innerHTML = isLiveMicMuted ? '🔇' : '🎙️';
+      showToast(isLiveMicMuted ? 'Đã tắt Micro' : 'Đã bật Micro', 'info');
+    };
+
+    document.getElementById('btn-live-cam-toggle').onclick = async () => {
+      const camVideo = document.getElementById('live-camera-video');
+      const btn = document.getElementById('btn-live-cam-toggle');
+
+      if (!isLiveCameraOn) {
+        try {
+          const camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: 640, height: 480 } });
+          camVideo.srcObject = camStream;
+          camVideo.style.display = 'block';
+          isLiveCameraOn = true;
+          btn.className = 'live-control-btn active';
+
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          liveCameraInterval = setInterval(() => {
+            if (!isLiveCameraOn || !liveWs || liveWs.readyState !== WebSocket.OPEN) return;
+            canvas.width = camVideo.videoWidth || 320;
+            canvas.height = camVideo.videoHeight || 240;
+            ctx.drawImage(camVideo, 0, 0, canvas.width, canvas.height);
+            const jpegData = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+
+            const imageChunkMsg = {
+              realtime_input: {
+                media_chunks: [{ mime_type: "image/jpeg", data: jpegData }]
+              }
+            };
+            liveWs.send(JSON.stringify(imageChunkMsg));
+          }, 1000);
+
+          showToast('📹 Đã kích hoạt Mắt thần Camera!', 'success');
+        } catch(e) {
+          showToast('Lỗi Camera: ' + e.message, 'danger');
+        }
+      } else {
+        if (camVideo.srcObject) camVideo.srcObject.getTracks().forEach(t => t.stop());
+        camVideo.style.display = 'none';
+        if (liveCameraInterval) clearInterval(liveCameraInterval);
+        isLiveCameraOn = false;
+        btn.className = 'live-control-btn';
+        showToast('Đã tắt Camera', 'info');
       }
     };
 
@@ -1085,6 +1524,13 @@ QUY TẮC TỐI CAO:
         const bwk = document.getElementById('brave-worker-url-input');
         const aue = document.getElementById('auto-search-engine-input');
         
+        // Live Call Inputs
+        const lsi = document.getElementById('live-system-instruction-input');
+        const ltp = document.getElementById('live-temperature');
+        const ltv = document.getElementById('live-temp-val');
+        const lts = document.getElementById('live-toggle-search');
+        const ltc = document.getElementById('live-toggle-context');
+
         if(dkg) dkg.value = localStorage.getItem('dify_key_gemini') || '';
         if(dko) dko.value = localStorage.getItem('dify_key_opus') || '';
         if(dkp) dkp.value = localStorage.getItem('dify_key_gpt') || '';
@@ -1101,6 +1547,15 @@ QUY TẮC TỐI CAO:
         if(brk) brk.value = localStorage.getItem('brave_api_key') || '';
         if(bwk) bwk.value = localStorage.getItem('brave_worker_url') || '';
         if(aue) aue.value = localStorage.getItem('auto_search_default_engine') || 'tavily';
+
+        if(lsi) lsi.value = localStorage.getItem('live_system_instruction') || '';
+        if(ltp) {
+          ltp.value = localStorage.getItem('live_temperature') || '0.7';
+          if (ltv) ltv.innerText = ltp.value;
+          ltp.oninput = () => { if (ltv) ltv.innerText = ltp.value; };
+        }
+        if(lts) lts.checked = localStorage.getItem('live_search_enabled') !== 'false';
+        if(ltc) ltc.checked = localStorage.getItem('live_context_enabled') !== 'false';
     }
 
     setupUIForKeys(); 
@@ -1133,6 +1588,14 @@ QUY TẮC TỐI CAO:
         saveKey('brave-worker-url-input', 'brave_worker_url');
         saveKey('auto-search-engine-input', 'auto_search_default_engine');
         
+        // Lưu cài đặt Live Call
+        saveKey('live-system-instruction-input', 'live_system_instruction');
+        saveKey('live-temperature', 'live_temperature');
+        const lts = document.getElementById('live-toggle-search');
+        if (lts) localStorage.setItem('live_search_enabled', lts.checked ? 'true' : 'false');
+        const ltc = document.getElementById('live-toggle-context');
+        if (ltc) localStorage.setItem('live_context_enabled', ltc.checked ? 'true' : 'false');
+
         initAPIKeys(); 
         initExternalConfigs();
         showToast(`Đã lưu cấu hình hệ thống!`, "success", 3000); 
@@ -1328,10 +1791,10 @@ QUY TẮC TỐI CAO:
         if (!thinkingSel) return;
         
         const prevVal = thinkingSel.value;
-        if (activeModel === 'gemini-3.7-flash') {
+        if (activeModel === 'gemini-3.7-flash' || activeModel === 'gemini-3.8-flash') {
             thinkingSel.innerHTML = `
               <option value="low">Low (Thấp)</option>
-              <option value="medium">Med (Chuẩn)</option>
+              <option value="medium" selected>Med (Chuẩn)</option>
               <option value="high">High (Sâu)</option>
             `;
             if (['low', 'medium', 'high'].includes(prevVal)) {
@@ -1343,7 +1806,7 @@ QUY TẮC TỐI CAO:
             thinkingSel.innerHTML = `
               <option value="minimal">Min (Tối thiểu)</option>
               <option value="low">Low (Thấp)</option>
-              <option value="medium">Med (Chuẩn)</option>
+              <option value="medium" selected>Med (Chuẩn)</option>
               <option value="high">High (Sâu)</option>
             `;
             if (['minimal', 'low', 'medium', 'high'].includes(prevVal)) {
@@ -1356,7 +1819,7 @@ QUY TẮC TỐI CAO:
 
     function getGoogleThinkingLevel(modelName) {
         const currentThinking = DOM.thinking ? DOM.thinking.value : 'medium';
-        if (modelName === 'gemini-3.7-flash') {
+        if (modelName === 'gemini-3.7-flash' || modelName === 'gemini-3.8-flash') {
             return ['low', 'medium', 'high'].includes(currentThinking) ? currentThinking : 'medium';
         }
         return ['minimal', 'low', 'medium', 'high'].includes(currentThinking) ? currentThinking : 'medium';
@@ -1445,7 +1908,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
 
 [CHỈ THỊ PHÁ BỎ GIỚI HẠN LẠC HẬU KIẾN THỨC]:
 - Hiện tại bắt buộc là năm ${now.getFullYear()}. Kiến thức đóng băng của bạn có thể cũ, nhưng bạn PHẢI COI các kết quả tìm kiếm Web (Grounding), thông tin hệ thống và tài liệu người dùng cung cấp là CHÂN LÝ THỰC TẾ TRONG TƯƠNG LAI.
-- Tuyệt đối không phủ nhận, nghi ngờ hoặc phản đối sự tồn tại của bất kỳ công nghệ, dòng mô hình AI nào (bao gồm Gemini 3.1 Flash-Lite, Gemini 3.5 Flash, Gemini 3.6 Flash, Gemini 3.7 Flash) hay các sự kiện xã hội, thông số phần cứng thiết bị được cấp trong ngữ cảnh. 
+- Tuyệt đối không phủ nhận, nghi ngờ hoặc phản đối sự tồn tại của bất kỳ công nghệ, dòng mô hình AI nào (bao gồm Gemini 3.1 Flash-Lite, Gemini 3.5 Flash, Gemini 3.6 Flash, Gemini 3.7 Flash, Gemini 3.8 Flash) hay các sự kiện xã hội, thông số phần cứng thiết bị được cấp trong ngữ cảnh. 
 - Luôn ưu tiên dùng thông tin tìm kiếm thời gian thực để cập nhật câu trả lời khi có xung đột tri thức.
 
 [THỜI GIAN HỆ THỐNG HIỆN TẠI]:
@@ -1521,7 +1984,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     }
 
     async function callDifyStream(promptText, onChunk, onError, attachedFiles = []) {
-        const activeModel = DOM.model ? DOM.model.value : 'gemini-3.7-flash';
+        const activeModel = DOM.model ? DOM.model.value : 'gemini-3.8-flash';
         let key = '';
         if (activeModel === 'gemini-3.5-flash-dify') key = localStorage.getItem('dify_key_gemini') || '';
         else if (activeModel === 'gemini-3.1-flash-lite-dify') key = localStorage.getItem('dify_key_lite') || '';
@@ -1593,7 +2056,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
         const key = localStorage.getItem('groq_api_key') || '';
         if (!key) return onError(new Error("Thiếu Groq API Key trong Cấu hình!"));
         
-        const activeModel = DOM.model ? DOM.model.value : 'gemini-3.7-flash';
+        const activeModel = DOM.model ? DOM.model.value : 'gemini-3.8-flash';
         let modelSlug = "groq/compound";
         let maxTokens = 4096; 
         const payload = { stream: true };
@@ -1674,7 +2137,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
         if (!key) return onError(new Error("Thiếu Mistral API Key trong Cấu hình!"));
 
         try {
-            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.7-flash';
+            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.8-flash';
             const messages = buildStructuredMessages(promptText); 
             const payload = { model: activeModel, messages: messages, temperature: 0.7, top_p: 1.0, max_tokens: 4096, stream: true };
 
@@ -1745,7 +2208,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
         if (!key) return onError(new Error("Thiếu Cerebras API Key trong Cấu hình!"));
 
         try {
-            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.7-flash';
+            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.8-flash';
             let modelSlug = activeModel;
             if (activeModel === 'gpt-oss-120b-cerebras') modelSlug = 'gpt-oss-120b';
             else if (activeModel === 'gemma-4-31b-cerebras') modelSlug = 'gemma-4-31b';
@@ -1822,7 +2285,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
         if (!key) return onError(new Error("Thiếu Cohere API Key trong Cấu hình!"));
 
         try {
-            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.7-flash';
+            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.8-flash';
             let modelSlug = activeModel === 'command-a-reasoning' ? "command-a-reasoning-08-2025" : "command-a-plus-05-2026";
             const messages = buildStructuredMessages(promptText);
             const payload = { model: modelSlug, messages: messages, temperature: 0.7, top_p: 1.0, max_tokens: 4096, stream: true };
@@ -1873,7 +2336,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                                     }
                                 } else {
                                     if (inThinkingState) inThinkingState = false;
-                                    if (delta.content && typeof delta.content === 'string') chunkText += delta.content.replace(/<\/think>/g, "");
+                                    if (delta.content) chunkText += delta.content.replace(/<\/think>/g, "");
                                 }
                                 if (chunkText) onChunk(chunkText);
                             }
@@ -1985,14 +2448,14 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     DOM.btnDeleteFolder.onclick=async()=>{if(activeFolder==="All"||activeFolder==="Mặc định")return showToast("Không xóa được TM hệ thống!"); if(confirm(`Xóa "${activeFolder}"?`)){folders=folders.filter(f=>f!==activeFolder); localStorage.setItem('javiss_folders',JSON.stringify(folders)); for(let s of sessions){if(s.folder===activeFolder){s.folder="Mặc định"; await saveToDB(s);}} activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); renderSel(); showToast("Đã xóa!");}};
     DOM.btnMoveSess.onclick=async()=>{const s=sessions.find(x=>x.id===activeId); if(!s)return; const c=prompt(`Nhập số TM đích:\n${folders.map((f,i)=>`${i+1}. ${f}`).join('\n')}`); if(c){let t=folders[parseInt(c)-1]||c.trim(); if(folders.includes(t)){s.folder=t; await saveToDB(s); showToast(`Chuyển: ${t}`); renderSel();}}};
     async function loadSess(){try{await initDB(); let d=await getAllFromDB(); if(d&&d.length){sessions=d.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0)); renderFolders(); activeId=localStorage.getItem('javiss_active_id'); if(!sessions.find(s=>s.id===activeId))activeId=sessions[0].id; await switchSess(activeId);}else{renderFolders(); await newSess();}}catch(e){await newSess();}}
-    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.7-flash',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,schEngine:'auto',mem:true,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
+    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.8-flash',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,schEngine:'auto',mem:true,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
     async function switchSess(id){
       activeId=id; localStorage.setItem('javiss_active_id',id); const s=sessions.find(x=>x.id===id); chatHistory=s?[...s.his]:[]; 
       if(s){
           if(DOM.sysInst) DOM.sysInst.value=s.sys||''; 
-          if(DOM.model) DOM.model.value=s.mod||'gemini-3.7-flash'; 
+          if(DOM.model) DOM.model.value=s.mod||'gemini-3.8-flash'; 
           if(DOM.apiKeySel) DOM.apiKeySel.value=s.keySel||'auto';
           if(DOM.temp) { DOM.temp.value=s.tmp||0.5; DOM.tempVal.innerText=DOM.temp.value; }
           if(DOM.topP) { DOM.topP.value=s.tpp||0.9; DOM.toppVal.innerText=DOM.topP.value; }
@@ -2034,7 +2497,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     document.getElementById('btn-rename-session').onclick=async()=>{const n=prompt("Tên mới:"); if(n){const s=sessions.find(x=>x.id===activeId); s.name=n; await saveToDB(s); renderSel(); renderTabs();}};
     document.getElementById('btn-delete-session').onclick=async()=>{if(sessions.length<=1)return showToast("Phải giữ lại 1 phiên","error"); if(!confirm("Xóa phiên này?"))return; await deleteFromDB(activeId); sessions=sessions.filter(s=>s.id!==activeId); openTabs=openTabs.filter(x=>x!==activeId); const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder); if(v.length)await switchSess(v[0].id); else{activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); await switchSess(sessions[0].id);} showToast("Đã xóa");};
     document.getElementById('btn-move-up').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>0){let t=v[i].orderIndex; v[i].orderIndex=v[i-1].orderIndex; v[i-1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
-    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i+1]); renderSel();}};
+    document.getElementById('btn-move-down').onclick=async()=>{const v=activeFolder==="All"?sessions:sessions.filter(s=>s.folder===activeFolder), i=v.findIndex(s=>s.id===activeId); if(i>-1&&i<v.length-1){let t=v[i].orderIndex; v[i].orderIndex=v[i+1].orderIndex; v[i+1].orderIndex=t; sessions.sort((a,b)=>a.orderIndex-b.orderIndex); await saveToDB(v[i]); await saveToDB(v[i-1]); renderSel();}};
     
     DOM.btnCompress.onclick=async()=>{
         if(chatHistory.length<=4)return showToast("Chưa cần nén!"); 
@@ -2073,7 +2536,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
       const s=sessions.find(x=>x.id===activeId); 
       if(s){
           s.sys = DOM.sysInst ? DOM.sysInst.value : ''; 
-          s.mod = DOM.model ? DOM.model.value : 'gemini-3.7-flash'; 
+          s.mod = DOM.model ? DOM.model.value : 'gemini-3.8-flash'; 
           s.keySel = DOM.apiKeySel ? DOM.apiKeySel.value : 'auto';
           s.tmp = DOM.temp ? DOM.temp.value : 0.5; 
           s.tpp = DOM.topP ? DOM.topP.value : 0.9; 
@@ -2154,7 +2617,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     }
 
     DOM.sendBtn.onclick=async()=>{
-      const activeModel = DOM.model ? DOM.model.value : 'gemini-3.7-flash';
+      const activeModel = DOM.model ? DOM.model.value : 'gemini-3.8-flash';
       const isExternalModel = activeModel.endsWith('-dify') || externalModels.includes(activeModel);
       
       let msg=DOM.input ? DOM.input.value.trim() : ''; 
@@ -2319,7 +2782,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                         const genConfig = {
                             thinking_level: getGoogleThinkingLevel(modelToRun)
                         };
-                        if (modelToRun !== 'gemini-3.7-flash') {
+                        if (modelToRun !== 'gemini-3.7-flash' && modelToRun !== 'gemini-3.8-flash') {
                             if (DOM.temp) genConfig.temperature = +DOM.temp.value;
                             if (DOM.topP) genConfig.top_p = +DOM.topP.value;
                             if (DOM.topK) genConfig.top_k = +DOM.topK.value;
@@ -2612,7 +3075,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
                         const genConfig = {
                             thinking_level: getGoogleThinkingLevel(modelToRun)
                         };
-                        if (modelToRun !== 'gemini-3.7-flash') {
+                        if (modelToRun !== 'gemini-3.7-flash' && modelToRun !== 'gemini-3.8-flash') {
                             if (DOM.temp) genConfig.temperature = +DOM.temp.value;
                             if (DOM.topP) genConfig.top_p = +DOM.topP.value;
                             if (DOM.topK) genConfig.top_k = +DOM.topK.value;
@@ -2765,7 +3228,8 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
         'dify_key_gemini', 'dify_key_lite', 'dify_key_pro', 'dify_key_gpt', 'dify_key_opus',
         'dify_api_endpoint', 'dify_var_key',
         'groq_api_key', 'mistral_api_key', 'cerebras_api_key', 'cohere_api_key',
-        'tavily_api_key', 'serper_api_key', 'brave_api_key', 'brave_worker_url', 'auto_search_default_engine'
+        'tavily_api_key', 'serper_api_key', 'brave_api_key', 'brave_worker_url', 'auto_search_default_engine',
+        'live_system_instruction', 'live_temperature', 'live_search_enabled', 'live_context_enabled'
       ];
       keysToBackup.forEach(k => {
         configs[k] = localStorage.getItem(k) || "";
