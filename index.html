@@ -229,7 +229,7 @@
     .live-controls{
       display:flex;
       align-items:center;
-      gap:16px;
+      gap:10px;
       flex-wrap:wrap;
       justify-content:center;
       margin-bottom:10px;
@@ -430,6 +430,10 @@
       </div>
 
       <div class="live-controls">
+        <!-- ĐỔI NHANH KEY TRỰC TIẾP TRÊN MÀN HÌNH GỌI -->
+        <select id="live-key-select" class="modern-select" style="width:auto;min-width:130px;background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;font-size:0.8rem;">
+          <option value="auto">🔄 Tự động xoay Key</option>
+        </select>
         <select id="live-voice-select" class="modern-select" style="width:auto;min-width:140px;background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;">
           <option value="Aoede">👩 Aoede (Nữ)</option>
           <option value="Charon" selected>👨 Charon (Nam trầm)</option>
@@ -590,6 +594,7 @@
     marked.use({ breaks: true }); mermaid.initialize({ startOnLoad: false, theme: 'default' });
     
     let apiKeys=[], globalKeyIndex = 0;
+    let liveKeyIndex = 0, liveRetryCount = 0;
     
     const SAFETY = [
       { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
@@ -789,7 +794,7 @@ QUY TẮC TỐI CAO:
     }
 
     // ==========================================
-    // 📞 GEMINI MULTIMODAL LIVE API (CHUẨN V1BETA & SYSTEM INSTRUCTION / GROUNDING ĐỘC LẬP)
+    // 📞 GEMINI MULTIMODAL LIVE API (CHỌN KEY TRỰC TIẾP & AUTO-FAILOVER KHI HẾT QUOTA)
     // ==========================================
     let liveWs = null;
     let liveAudioCtx = null;
@@ -822,6 +827,23 @@ QUY TẮC TỐI CAO:
         baseSI += `\n\n[LỊCH SỬ 10 TIN NHẮN TRƯỚC CUỘC GỌI]:\n${last10}`;
       }
       return baseSI;
+    }
+
+    function getLiveApiKey() {
+      const liveKeySel = document.getElementById('live-key-select');
+      const selected = liveKeySel ? liveKeySel.value : 'auto';
+      if (selected !== 'auto') {
+        const idx = parseInt(selected);
+        const k = localStorage.getItem(`javiss_api_${idx + 1}`) || '';
+        if (k.trim()) return { key: k.trim(), index: idx, isAuto: false };
+      }
+      
+      if (apiKeys.length > 0) {
+        const idx = liveKeyIndex % apiKeys.length;
+        const chosenKey = apiKeys[idx];
+        return { key: chosenKey, index: idx, isAuto: true };
+      }
+      return { key: '', index: -1, isAuto: false };
     }
 
     function floatTo16BitPCM(float32Array) {
@@ -884,9 +906,9 @@ QUY TẮC TỐI CAO:
     }
 
     async function startLiveVoiceCall() {
-      const currentSession = sessions.find(x => x.id === activeId);
-      const key = getSessionApiKey(currentSession);
-      if (!key) return showToast("Cần có Google API Key để gọi Live!", "error");
+      const keyObj = getLiveApiKey();
+      const key = keyObj.key;
+      if (!key) return showToast("Cần nạp Google API Key trong Cài đặt!", "error");
 
       const modal = document.getElementById('live-call-modal');
       const status = document.getElementById('live-call-status');
@@ -894,7 +916,8 @@ QUY TẮC TỐI CAO:
       const orb = document.getElementById('live-orb');
       
       modal.style.display = 'flex';
-      status.innerText = 'Đang kết nối WebSocket (v1beta)...';
+      const keyLabel = keyObj.isAuto ? `[Tự động Key ${keyObj.index + 1}]` : `[Key ${keyObj.index + 1}]`;
+      status.innerText = `Đang kết nối ${keyLabel}...`;
       transcript.innerHTML = '<i>Đang mở micro & kết nối máy chủ Google...</i>';
       orb.className = 'live-orb listening';
 
@@ -917,7 +940,7 @@ QUY TẮC TỐI CAO:
         liveWs = new WebSocket(wsUrl);
 
         liveWs.onopen = () => {
-          status.innerText = 'Đang gửi gói tin khởi tạo phiên (Setup)...';
+          status.innerText = `Đang khởi tạo phiên ${keyLabel}...`;
           
           const voiceName = document.getElementById('live-voice-select').value || 'Charon';
           const userLiveTemp = parseFloat(document.getElementById('live-temperature')?.value || localStorage.getItem('live_temperature') || '0.7');
@@ -996,7 +1019,8 @@ QUY TẮC TỐI CAO:
             // BẮT BƯỚC BẮT TAY SETUPCOMPLETE CHUẨN TỪ MÁY CHỦ GOOGLE
             if (msg.setupComplete || msg.setup_complete || (msg.serverContent && msg.serverContent.setupComplete)) {
               isLiveSetupComplete = true;
-              status.innerText = '🟢 Đã kết nối Live AI! Bạn có thể nói ngay...';
+              liveRetryCount = 0; // Reset số lần thử lại khi đã kết nối thành công
+              status.innerText = `🟢 Đã kết nối Live AI ${keyLabel}! Bạn có thể nói ngay...`;
               transcript.innerHTML = '<i>Hãy nói tự nhiên vào micro. AI sẽ trả lời bạn tức thì.</i>';
               return;
             }
@@ -1036,10 +1060,28 @@ QUY TẮC TỐI CAO:
           if (orb) orb.className = 'live-orb';
           
           let reasonMsg = event.reason ? ` - ${event.reason}` : '';
+
+          // TỰ ĐỘNG NHẢY KEY KHI HẾT QUOTA (MÃ 1011 HOẶC QUOTA EXCEEDED)
+          const isQuotaError = event.code === 1011 || (event.reason && event.reason.toLowerCase().includes('quota'));
+          if (isQuotaError && apiKeys.length > 1 && liveRetryCount < apiKeys.length) {
+            liveRetryCount++;
+            liveKeyIndex = (liveKeyIndex + 1) % apiKeys.length;
+            status.innerText = `⚠️ Key ${keyObj.index + 1} hết hạn mức! Đang tự động đổi sang Key ${liveKeyIndex + 1}...`;
+            transcript.innerHTML = `<span style="color:#f59e0b;">Đang tự động chuyển sang API Key khác để tiếp tục cuộc gọi...</span>`;
+            
+            setTimeout(() => {
+              startLiveVoiceCall();
+            }, 800);
+            return;
+          }
+          
+          liveRetryCount = 0;
           status.innerText = `⚠️ Cuộc gọi bị ngắt (Mã: ${event.code}${reasonMsg})`;
           
           if (event.code === 1000) {
             transcript.innerHTML = `<span>Phiên cuộc gọi đã kết thúc bình thường.</span>`;
+          } else if (event.code === 1011) {
+            transcript.innerHTML = `<span style="color:#ef4444;">API Key đã hết hạn mức (Quota Exceeded). Vui lòng chọn Key khác ở menu bên dưới!</span>`;
           } else {
             transcript.innerHTML = `<span style="color:#ef4444;">Máy chủ Google đóng kết nối (Mã: ${event.code}${reasonMsg}).</span>`;
           }
@@ -1062,7 +1104,7 @@ QUY TẮC TỐI CAO:
     document.getElementById('btn-live-call-open').onclick = startLiveVoiceCall;
     document.getElementById('btn-live-end-call').onclick = endLiveVoiceCall;
 
-    // --- TỰ ĐỘNG ĐỔI GIỌNG TỨC THÌ (AUTO-RECONNECT KHI ĐỔI DROPDOWN) ---
+    // --- SỰ KIỆN ĐỔI GIỌNG TỨC THÌ (AUTO-RECONNECT) ---
     const liveVoiceSelect = document.getElementById('live-voice-select');
     if (liveVoiceSelect) {
       const savedLiveVoice = localStorage.getItem('live_voice_name');
@@ -1075,22 +1117,31 @@ QUY TẮC TỐI CAO:
         localStorage.setItem('live_voice_name', newVoice);
         showToast(`🎙️ Đã chọn giọng: ${newVoice}`, 'info');
 
-        // Nếu đang trong cuộc gọi, tự động kết nối lại với giọng mới ngay lập tức
         if (liveWs && liveWs.readyState === WebSocket.OPEN) {
           const status = document.getElementById('live-call-status');
           if (status) status.innerText = `🔄 Đang chuyển sang giọng ${newVoice}...`;
-          
           isLiveSetupComplete = false;
           try { liveWs.close(); } catch(e){}
           liveWs = null;
-          if (livePlaybackState) {
-            livePlaybackState.activeSources.forEach(s => { try { s.stop(); } catch(e){} });
-            livePlaybackState.activeSources = [];
-          }
-          
-          setTimeout(() => {
-            startLiveVoiceCall();
-          }, 300);
+          setTimeout(() => { startLiveVoiceCall(); }, 300);
+        }
+      };
+    }
+
+    // --- SỰ KIỆN ĐỔI API KEY TỨC THÌ TRÊN MÀN HÌNH LIVE CALL ---
+    const liveKeySelect = document.getElementById('live-key-select');
+    if (liveKeySelect) {
+      liveKeySelect.onchange = () => {
+        localStorage.setItem('live_selected_key', liveKeySelect.value);
+        showToast(`🔑 Đã chọn: ${liveKeySelect.options[liveKeySelect.selectedIndex].text}`, 'info');
+
+        if (liveWs && liveWs.readyState === WebSocket.OPEN) {
+          const status = document.getElementById('live-call-status');
+          if (status) status.innerText = `🔄 Đang chuyển sang API Key mới...`;
+          isLiveSetupComplete = false;
+          try { liveWs.close(); } catch(e){}
+          liveWs = null;
+          setTimeout(() => { startLiveVoiceCall(); }, 300);
         }
       };
     }
@@ -1181,20 +1232,40 @@ QUY TẮC TỐI CAO:
 
     function updateApiKeyDropdown() {
         const sel = document.getElementById('api-key-select');
-        if (!sel) return;
-        const currentVal = sel.value;
-        sel.innerHTML = '<option value="auto">🔄 Tự động xoay tua (Khởi tạo phiên)</option>';
-        for (let i = 1; i <= 10; i++) {
-            const k = localStorage.getItem(`javiss_api_${i}`) || "";
-            if (k.trim() !== "") {
-                const opt = document.createElement('option');
-                opt.value = (i - 1).toString();
-                opt.textContent = `🔑 Key ${i} (${k.trim().substring(0, 6)}...)`;
-                sel.appendChild(opt);
+        const liveKeySel = document.getElementById('live-key-select');
+
+        if (sel) {
+            const currentVal = sel.value;
+            sel.innerHTML = '<option value="auto">🔄 Tự động xoay tua (Khởi tạo phiên)</option>';
+            for (let i = 1; i <= 10; i++) {
+                const k = localStorage.getItem(`javiss_api_${i}`) || "";
+                if (k.trim() !== "") {
+                    const opt = document.createElement('option');
+                    opt.value = (i - 1).toString();
+                    opt.textContent = `🔑 Key ${i} (${k.trim().substring(0, 6)}...)`;
+                    sel.appendChild(opt);
+                }
+            }
+            if ([...sel.options].some(o => o.value === currentVal)) {
+                sel.value = currentVal;
             }
         }
-        if ([...sel.options].some(o => o.value === currentVal)) {
-            sel.value = currentVal;
+
+        if (liveKeySel) {
+            const currentLiveVal = liveKeySel.value || localStorage.getItem('live_selected_key') || 'auto';
+            liveKeySel.innerHTML = '<option value="auto">🔄 Tự động xoay Key</option>';
+            for (let i = 1; i <= 10; i++) {
+                const k = localStorage.getItem(`javiss_api_${i}`) || "";
+                if (k.trim() !== "") {
+                    const opt = document.createElement('option');
+                    opt.value = (i - 1).toString();
+                    opt.textContent = `🔑 Key ${i} (${k.trim().substring(0, 6)}...)`;
+                    liveKeySel.appendChild(opt);
+                }
+            }
+            if ([...liveKeySel.options].some(o => o.value === currentLiveVal)) {
+                liveKeySel.value = currentLiveVal;
+            }
         }
     }
 
@@ -2937,7 +3008,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
         'dify_api_endpoint', 'dify_var_key',
         'groq_api_key', 'mistral_api_key', 'cerebras_api_key', 'cohere_api_key',
         'tavily_api_key', 'serper_api_key', 'brave_api_key', 'brave_worker_url', 'auto_search_default_engine',
-        'live_system_instruction', 'live_temperature', 'live_search_enabled', 'live_context_enabled', 'live_voice_name'
+        'live_system_instruction', 'live_temperature', 'live_search_enabled', 'live_context_enabled', 'live_voice_name', 'live_selected_key'
       ];
       keysToBackup.forEach(k => {
         configs[k] = localStorage.getItem(k) || "";
