@@ -459,6 +459,9 @@
               <input type="range" id="live-temperature" min="0" max="2" step="0.1" value="0.7">
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+              <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:var(--primary);display:flex;align-items:center;gap:6px;">
+                <input type="checkbox" id="live-toggle-search" checked style="width:16px;height:16px;"> 🌐 Tự động tra cứu Google trong lúc gọi (Grounding)
+              </label>
               <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:green;display:flex;align-items:center;gap:6px;">
                 <input type="checkbox" id="live-toggle-context" checked style="width:16px;height:16px;"> 🧠 Kế thừa 10 tin nhắn gần nhất vào cuộc gọi
               </label>
@@ -786,7 +789,7 @@ QUY TẮC TỐI CAO:
     }
 
     // ==========================================
-    // 📞 GEMINI MULTIMODAL LIVE API (CHUẨN V1BETA & CẤU TRÚC AUDIO/VIDEO THAY THẾ MEDIACHUNKS)
+    // 📞 GEMINI MULTIMODAL LIVE API (CHUẨN V1BETA & SYSTEM INSTRUCTION / GROUNDING ĐỘC LẬP)
     // ==========================================
     let liveWs = null;
     let liveAudioCtx = null;
@@ -797,6 +800,29 @@ QUY TẮC TỐI CAO:
     let isLiveMicMuted = false;
     let isLiveCameraOn = false;
     let isLiveSetupComplete = false;
+
+    function getLiveCallSI() {
+      const customSI = document.getElementById('live-system-instruction-input')?.value.trim() 
+                       || localStorage.getItem('live_system_instruction') 
+                       || '';
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      
+      let baseSI = customSI ? customSI : `Bạn là trợ lý thoại Javiss trong cuộc gọi trực tiếp. Hãy xưng hô 'em' và gọi người dùng là 'anh'. Luôn nói chuyện bằng Tiếng Việt tự nhiên, truyền cảm, trả lời ngắn gọn trong 1-2 câu như giao tiếp thoại đời thực, tuyệt đối không đọc mã code dài dòng.`;
+      
+      baseSI += `\n\n[THÔNG TIN THỜI GIAN THỰC]:
+- Giờ: ${timeStr}
+- Ngày: ${dateStr}
+- Năm: ${now.getFullYear()}`;
+
+      const enableLiveContext = document.getElementById('live-toggle-context')?.checked ?? (localStorage.getItem('live_context_enabled') !== 'false');
+      if (enableLiveContext && chatHistory && chatHistory.length > 0) {
+        const last10 = chatHistory.slice(-10).map(m => `${m.role === 'model' ? 'AI' : 'Bạn'}: ${m.text.replace(/<[^>]+>/g, '').replace(/```[\s\S]*?```/g, '[mã code]')}`).join('\n');
+        baseSI += `\n\n[LỊCH SỬ 10 TIN NHẮN TRƯỚC CUỘC GỌI]:\n${last10}`;
+      }
+      return baseSI;
+    }
 
     function floatTo16BitPCM(float32Array) {
       const buffer = new ArrayBuffer(float32Array.length * 2);
@@ -894,16 +920,10 @@ QUY TẮC TỐI CAO:
           status.innerText = 'Đang gửi gói tin khởi tạo phiên (Setup)...';
           
           const voiceName = document.getElementById('live-voice-select').value || 'Charon';
-          const userLiveSI = localStorage.getItem('live_system_instruction') || '';
-          const enableLiveContext = localStorage.getItem('live_context_enabled') !== 'false';
+          const userLiveTemp = parseFloat(document.getElementById('live-temperature')?.value || localStorage.getItem('live_temperature') || '0.7');
+          const enableLiveSearch = document.getElementById('live-toggle-search')?.checked ?? (localStorage.getItem('live_search_enabled') !== 'false');
 
-          let si = userLiveSI ? userLiveSI : `Bạn là trợ lý thoại Live AI. Hãy xưng hô 'em' và gọi người dùng là 'anh'. Luôn nói chuyện bằng Tiếng Việt tự nhiên, truyền cảm, trả lời ngắn gọn trong 1-2 câu như giao tiếp thoại thực tế.`;
-          si += `\n${getDynamicSI()}`;
-
-          if (enableLiveContext && chatHistory.length > 0) {
-            const last10 = chatHistory.slice(-10).map(m => `${m.role === 'model' ? 'AI' : 'Bạn'}: ${m.text}`).join('\n');
-            si += `\n[Tóm tắt 10 tin nhắn gần nhất]:\n${last10}`;
-          }
+          const si = getLiveCallSI();
 
           // CẤU TRÚC SETUP CHUẨN XÁC THEO TÀI LIỆU GOOGLE V1BETA
           const setupMsg = {
@@ -911,6 +931,7 @@ QUY TẮC TỐI CAO:
               model: "models/gemini-3.1-flash-live-preview",
               generationConfig: {
                 responseModalities: ["AUDIO"],
+                temperature: userLiveTemp,
                 speechConfig: {
                   voiceConfig: {
                     prebuiltVoiceConfig: {
@@ -924,6 +945,11 @@ QUY TẮC TỐI CAO:
               }
             }
           };
+
+          // KÍCH HOẠT GROUNDING SEARCH TRONG LÚC GỌI LIVE
+          if (enableLiveSearch) {
+            setupMsg.setup.tools = [{ googleSearch: {} }];
+          }
 
           liveWs.send(JSON.stringify(setupMsg));
 
@@ -939,7 +965,6 @@ QUY TẮC TỐI CAO:
             for (let i = 0; i < pcm16.length; i++) binary += String.fromCharCode(pcm16[i]);
             const base64Data = btoa(binary);
 
-            // SỬA ĐỔI: Dùng realtimeInput.audio thay vì mediaChunks bị deprecated
             const audioChunkMsg = {
               realtimeInput: {
                 audio: {
@@ -1037,6 +1062,39 @@ QUY TẮC TỐI CAO:
     document.getElementById('btn-live-call-open').onclick = startLiveVoiceCall;
     document.getElementById('btn-live-end-call').onclick = endLiveVoiceCall;
 
+    // --- TỰ ĐỘNG ĐỔI GIỌNG TỨC THÌ (AUTO-RECONNECT KHI ĐỔI DROPDOWN) ---
+    const liveVoiceSelect = document.getElementById('live-voice-select');
+    if (liveVoiceSelect) {
+      const savedLiveVoice = localStorage.getItem('live_voice_name');
+      if (savedLiveVoice && [...liveVoiceSelect.options].some(o => o.value === savedLiveVoice)) {
+        liveVoiceSelect.value = savedLiveVoice;
+      }
+      
+      liveVoiceSelect.onchange = () => {
+        const newVoice = liveVoiceSelect.value;
+        localStorage.setItem('live_voice_name', newVoice);
+        showToast(`🎙️ Đã chọn giọng: ${newVoice}`, 'info');
+
+        // Nếu đang trong cuộc gọi, tự động kết nối lại với giọng mới ngay lập tức
+        if (liveWs && liveWs.readyState === WebSocket.OPEN) {
+          const status = document.getElementById('live-call-status');
+          if (status) status.innerText = `🔄 Đang chuyển sang giọng ${newVoice}...`;
+          
+          isLiveSetupComplete = false;
+          try { liveWs.close(); } catch(e){}
+          liveWs = null;
+          if (livePlaybackState) {
+            livePlaybackState.activeSources.forEach(s => { try { s.stop(); } catch(e){} });
+            livePlaybackState.activeSources = [];
+          }
+          
+          setTimeout(() => {
+            startLiveVoiceCall();
+          }, 300);
+        }
+      };
+    }
+
     document.getElementById('btn-live-mic-toggle').onclick = () => {
       isLiveMicMuted = !isLiveMicMuted;
       const btn = document.getElementById('btn-live-mic-toggle');
@@ -1067,7 +1125,6 @@ QUY TẮC TỐI CAO:
             ctx.drawImage(camVideo, 0, 0, canvas.width, canvas.height);
             const jpegData = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
 
-            // SỬA ĐỔI: Dùng realtimeInput.video thay vì mediaChunks bị deprecated
             const imageChunkMsg = {
               realtimeInput: {
                 video: {
@@ -1288,6 +1345,7 @@ QUY TẮC TỐI CAO:
         const lsi = document.getElementById('live-system-instruction-input');
         const ltp = document.getElementById('live-temperature');
         const ltv = document.getElementById('live-temp-val');
+        const lts = document.getElementById('live-toggle-search');
         const ltc = document.getElementById('live-toggle-context');
 
         if(dkg) dkg.value = localStorage.getItem('dify_key_gemini') || '';
@@ -1313,6 +1371,7 @@ QUY TẮC TỐI CAO:
           if (ltv) ltv.innerText = ltp.value;
           ltp.oninput = () => { if (ltv) ltv.innerText = ltp.value; };
         }
+        if(lts) lts.checked = localStorage.getItem('live_search_enabled') !== 'false';
         if(ltc) ltc.checked = localStorage.getItem('live_context_enabled') !== 'false';
     }
 
@@ -1348,6 +1407,8 @@ QUY TẮC TỐI CAO:
         
         saveKey('live-system-instruction-input', 'live_system_instruction');
         saveKey('live-temperature', 'live_temperature');
+        const lts = document.getElementById('live-toggle-search');
+        if (lts) localStorage.setItem('live_search_enabled', lts.checked ? 'true' : 'false');
         const ltc = document.getElementById('live-toggle-context');
         if (ltc) localStorage.setItem('live_context_enabled', ltc.checked ? 'true' : 'false');
 
@@ -2876,7 +2937,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
         'dify_api_endpoint', 'dify_var_key',
         'groq_api_key', 'mistral_api_key', 'cerebras_api_key', 'cohere_api_key',
         'tavily_api_key', 'serper_api_key', 'brave_api_key', 'brave_worker_url', 'auto_search_default_engine',
-        'live_system_instruction', 'live_temperature', 'live_context_enabled'
+        'live_system_instruction', 'live_temperature', 'live_search_enabled', 'live_context_enabled', 'live_voice_name'
       ];
       keysToBackup.forEach(k => {
         configs[k] = localStorage.getItem(k) || "";
