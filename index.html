@@ -430,7 +430,6 @@
       </div>
 
       <div class="live-controls">
-        <!-- ĐỔI NHANH KEY TRỰC TIẾP TRÊN MÀN HÌNH GỌI -->
         <select id="live-key-select" class="modern-select" style="width:auto;min-width:130px;background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;font-size:0.8rem;">
           <option value="auto">🔄 Tự động xoay Key</option>
         </select>
@@ -464,7 +463,7 @@
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
               <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:var(--primary);display:flex;align-items:center;gap:6px;">
-                <input type="checkbox" id="live-toggle-search" checked style="width:16px;height:16px;"> 🌐 Tự động tra cứu Google trong lúc gọi (Grounding)
+                <input type="checkbox" id="live-toggle-search" checked style="width:16px;height:16px;"> 🌐 Tự động tra cứu Web qua Tavily/Serper/Brave trong lúc gọi (Free 0 RPD Google)
               </label>
               <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:green;display:flex;align-items:center;gap:6px;">
                 <input type="checkbox" id="live-toggle-context" checked style="width:16px;height:16px;"> 🧠 Kế thừa 10 tin nhắn gần nhất vào cuộc gọi
@@ -794,7 +793,7 @@ QUY TẮC TỐI CAO:
     }
 
     // ==========================================
-    // 📞 GEMINI MULTIMODAL LIVE API (CHỌN KEY TRỰC TIẾP & AUTO-FAILOVER KHI HẾT QUOTA)
+    // 📞 GEMINI MULTIMODAL LIVE API (FUNCTION CALLING SEARCH - 100% FREE TIER COMPATIBLE)
     // ==========================================
     let liveWs = null;
     let liveAudioCtx = null;
@@ -816,6 +815,9 @@ QUY TẮC TỐI CAO:
       
       let baseSI = customSI ? customSI : `Bạn là trợ lý thoại Javiss trong cuộc gọi trực tiếp. Hãy xưng hô 'em' và gọi người dùng là 'anh'. Luôn nói chuyện bằng Tiếng Việt tự nhiên, truyền cảm, trả lời ngắn gọn trong 1-2 câu như giao tiếp thoại đời thực, tuyệt đối không đọc mã code dài dòng.`;
       
+      baseSI += `\n\n[QUY TẮC TRA CỨU WEB THỜI GIAN THỰC QUA SEARCH_WEB]:
+- Khi người dùng hỏi về tin tức mới, sự kiện gần đây, thời tiết, giá cả (vàng, xăng, crypto...), thông tin địa điểm hoặc bất cứ thông tin thời gian thực nào, bạn hãy GỌI NGAY CÔNG CỤ 'search_web' để lấy dữ liệu mới nhất trước khi trả lời.`;
+
       baseSI += `\n\n[THÔNG TIN THỜI GIAN THỰC]:
 - Giờ: ${timeStr}
 - Ngày: ${dateStr}
@@ -969,9 +971,28 @@ QUY TẮC TỐI CAO:
             }
           };
 
-          // KÍCH HOẠT GROUNDING SEARCH TRONG LÚC GỌI LIVE
+          // TÍCH HỢP FUNCTION CALLING SEARCH (TAVILY / SERPER / BRAVE) VÀO LIVE API
           if (enableLiveSearch) {
-            setupMsg.setup.tools = [{ googleSearch: {} }];
+            setupMsg.setup.tools = [
+              {
+                functionDeclarations: [
+                  {
+                    name: "search_web",
+                    description: "Tìm kiếm thông tin thời gian thực trên Internet về tin tức mới nhất, sự kiện, thời tiết, giá cả (vàng, crypto, xăng dầu...), địa điểm hoặc bất kỳ thông tin nào cần tra cứu thực tế.",
+                    parameters: {
+                      type: "OBJECT",
+                      properties: {
+                        query: {
+                          type: "STRING",
+                          description: "Từ khóa hoặc câu truy vấn cần tìm kiếm trên Internet"
+                        }
+                      },
+                      required: ["query"]
+                    }
+                  }
+                ]
+              }
+            ];
           }
 
           liveWs.send(JSON.stringify(setupMsg));
@@ -1019,10 +1040,80 @@ QUY TẮC TỐI CAO:
             // BẮT BƯỚC BẮT TAY SETUPCOMPLETE CHUẨN TỪ MÁY CHỦ GOOGLE
             if (msg.setupComplete || msg.setup_complete || (msg.serverContent && msg.serverContent.setupComplete)) {
               isLiveSetupComplete = true;
-              liveRetryCount = 0; // Reset số lần thử lại khi đã kết nối thành công
+              liveRetryCount = 0;
               status.innerText = `🟢 Đã kết nối Live AI ${keyLabel}! Bạn có thể nói ngay...`;
               transcript.innerHTML = '<i>Hãy nói tự nhiên vào micro. AI sẽ trả lời bạn tức thì.</i>';
               return;
+            }
+
+            // BẮT VÀ XỬ LÝ SỰ KIỆN FUNCTION CALL TÌM KIẾM WEB (TAVILY / SERPER / BRAVE)
+            let functionCalls = [];
+            if (msg.toolCall && msg.toolCall.functionCalls) {
+              functionCalls = msg.toolCall.functionCalls;
+            } else if (msg.serverContent && msg.serverContent.modelTurn && msg.serverContent.modelTurn.parts) {
+              for (let part of msg.serverContent.modelTurn.parts) {
+                if (part.functionCall) functionCalls.push(part.functionCall);
+              }
+            }
+
+            if (functionCalls.length > 0) {
+              for (const call of functionCalls) {
+                if (call.name === "search_web" && call.args && call.args.query) {
+                  const query = call.args.query;
+                  const callId = call.id;
+
+                  let engineName = "Tavily";
+                  let targetEngine = (DOM.searchEngineSel ? DOM.searchEngineSel.value : 'auto');
+                  if (targetEngine === 'auto') {
+                    targetEngine = localStorage.getItem('auto_search_default_engine') || 'tavily';
+                  }
+                  
+                  if (targetEngine === 'serper') engineName = "Serper (Google)";
+                  else if (targetEngine === 'brave') engineName = "Brave";
+                  else engineName = "Tavily";
+
+                  transcript.innerHTML = `<span style="color:#38bdf8;">⚡ Đang tra cứu Web qua ${engineName} cho: "<strong>${query}</strong>"...</span>`;
+
+                  (async () => {
+                    let searchResultText = "";
+                    try {
+                      if (targetEngine === 'serper') {
+                        searchResultText = await fetchSerperSearch(query);
+                      } else if (targetEngine === 'brave') {
+                        searchResultText = await fetchBraveSearch(query);
+                      } else {
+                        searchResultText = await fetchTavilySearch(query);
+                      }
+                    } catch (err) {
+                      searchResultText = `Lỗi tra cứu: ${err.message}`;
+                    }
+
+                    if (!searchResultText) {
+                      searchResultText = "Không tìm thấy kết quả phù hợp trên Internet.";
+                    }
+
+                    const toolResponseMsg = {
+                      toolResponse: {
+                        functionResponses: [
+                          {
+                            response: {
+                              output: {
+                                results: searchResultText
+                              }
+                            },
+                            id: callId
+                          }
+                        ]
+                      }
+                    };
+
+                    if (liveWs && liveWs.readyState === WebSocket.OPEN) {
+                      liveWs.send(JSON.stringify(toolResponseMsg));
+                      transcript.innerHTML = `<i>Đã tìm thấy thông tin mới, AI đang trả lời...</i>`;
+                    }
+                  })();
+                }
+              }
             }
 
             if (msg.serverContent) {
