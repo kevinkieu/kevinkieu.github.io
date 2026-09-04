@@ -459,9 +459,6 @@
               <input type="range" id="live-temperature" min="0" max="2" step="0.1" value="0.7">
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
-              <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:var(--primary);display:flex;align-items:center;gap:6px;">
-                <input type="checkbox" id="live-toggle-search" checked style="width:16px;height:16px;"> 🌐 Tự động tra cứu Google trong lúc gọi (Grounding)
-              </label>
               <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:green;display:flex;align-items:center;gap:6px;">
                 <input type="checkbox" id="live-toggle-context" checked style="width:16px;height:16px;"> 🧠 Kế thừa 10 tin nhắn gần nhất vào cuộc gọi
               </label>
@@ -789,7 +786,7 @@ QUY TẮC TỐI CAO:
     }
 
     // ==========================================
-    // 📞 GEMINI MULTIMODAL LIVE API (SETUPCOMPLETE ĐỒNG BỘ CHUẨN)
+    // 📞 GEMINI MULTIMODAL LIVE API (CHUẨN V1BETA & SETUPCOMPLETE)
     // ==========================================
     let liveWs = null;
     let liveAudioCtx = null;
@@ -871,7 +868,7 @@ QUY TẮC TỐI CAO:
       const orb = document.getElementById('live-orb');
       
       modal.style.display = 'flex';
-      status.innerText = 'Đang kết nối WebSocket...';
+      status.innerText = 'Đang kết nối WebSocket (v1beta)...';
       transcript.innerHTML = '<i>Đang mở micro & kết nối máy chủ Google...</i>';
       orb.className = 'live-orb listening';
 
@@ -889,32 +886,31 @@ QUY TẮC TỐI CAO:
           audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true }
         });
 
-        const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${key}`;
+        // KẾT NỐI QUA ĐÚNG ENDPOINT V1BETA DÀNH CHO GEMINI 3.1 LIVE
+        const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`;
         liveWs = new WebSocket(wsUrl);
 
         liveWs.onopen = () => {
-          status.innerText = 'Đang thiết lập phiên đàm thoại...';
+          status.innerText = 'Đang gửi gói tin khởi tạo phiên (Setup)...';
           
           const voiceName = document.getElementById('live-voice-select').value || 'Charon';
           const userLiveSI = localStorage.getItem('live_system_instruction') || '';
-          const userLiveTemp = parseFloat(localStorage.getItem('live_temperature') || '0.7');
-          const enableLiveSearch = localStorage.getItem('live_search_enabled') !== 'false';
           const enableLiveContext = localStorage.getItem('live_context_enabled') !== 'false';
 
-          let si = userLiveSI ? userLiveSI : `Bạn là trợ lý Javiss trong cuộc gọi trực tiếp. Hãy xưng hô 'em' và gọi người dùng là 'anh'. Luôn nói chuyện bằng Tiếng Việt tự nhiên, truyền cảm, trả lời ngắn gọn súc tích trong 1-2 câu như cuộc gọi thoại ngoài đời thực, không đọc mã code dài dòng.`;
+          let si = userLiveSI ? userLiveSI : `Bạn là trợ lý thoại Live AI. Hãy xưng hô 'em' và gọi người dùng là 'anh'. Luôn nói chuyện bằng Tiếng Việt tự nhiên, truyền cảm, trả lời ngắn gọn trong 1-2 câu như giao tiếp thoại thực tế.`;
           si += `\n${getDynamicSI()}`;
 
           if (enableLiveContext && chatHistory.length > 0) {
             const last10 = chatHistory.slice(-10).map(m => `${m.role === 'model' ? 'AI' : 'Bạn'}: ${m.text}`).join('\n');
-            si += `\n[Tóm tắt 10 tin nhắn gần nhất trước khi gọi]:\n${last10}`;
+            si += `\n[Tóm tắt 10 tin nhắn gần nhất]:\n${last10}`;
           }
 
+          // CẤU TRÚC SETUP CHUẨN XÁC 100% THEO SPEC GOOGLE
           const setupMsg = {
             setup: {
               model: "models/gemini-3.1-flash-live-preview",
               generationConfig: {
                 responseModalities: ["AUDIO"],
-                temperature: userLiveTemp,
                 speechConfig: {
                   voiceConfig: {
                     prebuiltVoiceConfig: {
@@ -929,14 +925,12 @@ QUY TẮC TỐI CAO:
             }
           };
 
-          if (enableLiveSearch) {
-            setupMsg.setup.tools = [{ googleSearch: {} }];
-          }
-
           liveWs.send(JSON.stringify(setupMsg));
 
+          // Khởi tạo Audio Processor nhưng chờ setupComplete
           const sourceNode = liveAudioCtx.createMediaStreamSource(liveMediaStream);
           const processorNode = liveAudioCtx.createScriptProcessor(2048, 1, 1);
+          
           processorNode.onaudioprocess = (e) => {
             if (!isLiveSetupComplete || isLiveMicMuted || !liveWs || liveWs.readyState !== WebSocket.OPEN) return;
             const inputData = e.inputBuffer.getChannelData(0);
@@ -969,9 +963,16 @@ QUY TẮC TỐI CAO:
             if (event.data instanceof Blob) dataText = await event.data.text();
             const msg = JSON.parse(dataText);
 
-            if (msg.setupComplete || (msg.serverContent && msg.serverContent.setupComplete)) {
+            if (msg.error) {
+              status.innerText = `❌ Lỗi máy chủ: ${msg.error.message || JSON.stringify(msg.error)}`;
+              transcript.innerHTML = `<span style="color:#ef4444;">${msg.error.message || "Lỗi thiết lập phiên từ Google"}</span>`;
+              return;
+            }
+
+            // BẮT BƯỚC BẮT TAY SETUPCOMPLETE CHUẨN TỪ MÁY CHỦ GOOGLE
+            if (msg.setupComplete || msg.setup_complete || (msg.serverContent && msg.serverContent.setupComplete)) {
               isLiveSetupComplete = true;
-              status.innerText = '🟢 Đã kết nối! Bạn có thể nói ngay...';
+              status.innerText = '🟢 Đã kết nối Live AI! Bạn có thể nói ngay...';
               transcript.innerHTML = '<i>Hãy nói tự nhiên vào micro. AI sẽ trả lời bạn tức thì.</i>';
               return;
             }
@@ -995,7 +996,9 @@ QUY TẮC TỐI CAO:
                 }
               }
             }
-          } catch(e) {}
+          } catch(e) {
+            console.error("Lỗi đọc gói Live WS:", e);
+          }
         };
 
         liveWs.onerror = (err) => {
@@ -1007,11 +1010,16 @@ QUY TẮC TỐI CAO:
           cleanupLiveStreams();
           const orb = document.getElementById('live-orb');
           if (orb) orb.className = 'live-orb';
-          if (event.wasClean) {
-            status.innerText = 'Đã ngắt cuộc gọi.';
+          
+          let reasonMsg = event.reason ? ` - ${event.reason}` : '';
+          status.innerText = `⚠️ Cuộc gọi bị ngắt (Mã: ${event.code}${reasonMsg})`;
+          
+          if (event.code === 1000) {
+            transcript.innerHTML = `<span>Phiên cuộc gọi đã kết thúc bình thường.</span>`;
+          } else if (event.code === 1008 || event.code === 1007) {
+            transcript.innerHTML = `<span style="color:#ef4444;">Lỗi tham số hoặc API Key chưa được cấp quyền Live Audio (Mã: ${event.code}).</span>`;
           } else {
-            status.innerText = `⚠️ Cuộc gọi bị ngắt (Mã: ${event.code})`;
-            transcript.innerHTML = `<span style="color:#ef4444;">Máy chủ Google đóng kết nối (Mã: ${event.code}). Hãy kiểm tra xem API Key của bạn có hợp lệ không.</span>`;
+            transcript.innerHTML = `<span style="color:#ef4444;">Máy chủ Google đóng kết nối (Mã: ${event.code}). Vui lòng kiểm tra API Key.</span>`;
           }
         };
 
@@ -1284,7 +1292,6 @@ QUY TẮC TỐI CAO:
         const lsi = document.getElementById('live-system-instruction-input');
         const ltp = document.getElementById('live-temperature');
         const ltv = document.getElementById('live-temp-val');
-        const lts = document.getElementById('live-toggle-search');
         const ltc = document.getElementById('live-toggle-context');
 
         if(dkg) dkg.value = localStorage.getItem('dify_key_gemini') || '';
@@ -1310,7 +1317,6 @@ QUY TẮC TỐI CAO:
           if (ltv) ltv.innerText = ltp.value;
           ltp.oninput = () => { if (ltv) ltv.innerText = ltp.value; };
         }
-        if(lts) lts.checked = localStorage.getItem('live_search_enabled') !== 'false';
         if(ltc) ltc.checked = localStorage.getItem('live_context_enabled') !== 'false';
     }
 
@@ -1346,8 +1352,6 @@ QUY TẮC TỐI CAO:
         
         saveKey('live-system-instruction-input', 'live_system_instruction');
         saveKey('live-temperature', 'live_temperature');
-        const lts = document.getElementById('live-toggle-search');
-        if (lts) localStorage.setItem('live_search_enabled', lts.checked ? 'true' : 'false');
         const ltc = document.getElementById('live-toggle-context');
         if (ltc) localStorage.setItem('live_context_enabled', ltc.checked ? 'true' : 'false');
 
@@ -2876,7 +2880,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
         'dify_api_endpoint', 'dify_var_key',
         'groq_api_key', 'mistral_api_key', 'cerebras_api_key', 'cohere_api_key',
         'tavily_api_key', 'serper_api_key', 'brave_api_key', 'brave_worker_url', 'auto_search_default_engine',
-        'live_system_instruction', 'live_temperature', 'live_search_enabled', 'live_context_enabled'
+        'live_system_instruction', 'live_temperature', 'live_context_enabled'
       ];
       keysToBackup.forEach(k => {
         configs[k] = localStorage.getItem(k) || "";
