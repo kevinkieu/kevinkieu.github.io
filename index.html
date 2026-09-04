@@ -786,7 +786,7 @@ QUY TẮC TỐI CAO:
     }
 
     // ==========================================
-    // 📞 GEMINI MULTIMODAL LIVE API (CHUẨN V1BETA & SETUPCOMPLETE)
+    // 📞 GEMINI MULTIMODAL LIVE API (CHUẨN V1BETA & CẤU TRÚC AUDIO/VIDEO THAY THẾ MEDIACHUNKS)
     // ==========================================
     let liveWs = null;
     let liveAudioCtx = null;
@@ -905,7 +905,7 @@ QUY TẮC TỐI CAO:
             si += `\n[Tóm tắt 10 tin nhắn gần nhất]:\n${last10}`;
           }
 
-          // CẤU TRÚC SETUP CHUẨN XÁC 100% THEO SPEC GOOGLE
+          // CẤU TRÚC SETUP CHUẨN XÁC THEO TÀI LIỆU GOOGLE V1BETA
           const setupMsg = {
             setup: {
               model: "models/gemini-3.1-flash-live-preview",
@@ -939,14 +939,13 @@ QUY TẮC TỐI CAO:
             for (let i = 0; i < pcm16.length; i++) binary += String.fromCharCode(pcm16[i]);
             const base64Data = btoa(binary);
 
+            // SỬA ĐỔI: Dùng realtimeInput.audio thay vì mediaChunks bị deprecated
             const audioChunkMsg = {
               realtimeInput: {
-                mediaChunks: [
-                  {
-                    mimeType: "audio/pcm;rate=16000",
-                    data: base64Data
-                  }
-                ]
+                audio: {
+                  mimeType: "audio/pcm;rate=16000",
+                  data: base64Data
+                }
               }
             };
             liveWs.send(JSON.stringify(audioChunkMsg));
@@ -1016,10 +1015,8 @@ QUY TẮC TỐI CAO:
           
           if (event.code === 1000) {
             transcript.innerHTML = `<span>Phiên cuộc gọi đã kết thúc bình thường.</span>`;
-          } else if (event.code === 1008 || event.code === 1007) {
-            transcript.innerHTML = `<span style="color:#ef4444;">Lỗi tham số hoặc API Key chưa được cấp quyền Live Audio (Mã: ${event.code}).</span>`;
           } else {
-            transcript.innerHTML = `<span style="color:#ef4444;">Máy chủ Google đóng kết nối (Mã: ${event.code}). Vui lòng kiểm tra API Key.</span>`;
+            transcript.innerHTML = `<span style="color:#ef4444;">Máy chủ Google đóng kết nối (Mã: ${event.code}${reasonMsg}).</span>`;
           }
         };
 
@@ -1070,14 +1067,13 @@ QUY TẮC TỐI CAO:
             ctx.drawImage(camVideo, 0, 0, canvas.width, canvas.height);
             const jpegData = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
 
+            // SỬA ĐỔI: Dùng realtimeInput.video thay vì mediaChunks bị deprecated
             const imageChunkMsg = {
               realtimeInput: {
-                mediaChunks: [
-                  {
-                    mimeType: "image/jpeg",
-                    data: jpegData
-                  }
-                ]
+                video: {
+                  mimeType: "image/jpeg",
+                  data: jpegData
+                }
               }
             };
             liveWs.send(JSON.stringify(imageChunkMsg));
