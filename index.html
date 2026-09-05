@@ -666,6 +666,26 @@ QUY TẮC TỐI CAO:
         el.innerHTML = htmlContent;
     }
 
+    // --- BỘ HÀM XUẤT VÀ TẢI TỆP AN TOÀN CHO WEB & ANDROID WEBVIEW ---
+    window.saveOrShareBlob = function(blob, filename) {
+      try {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 1000);
+        showToast(`📥 Đã tải xuống: ${filename}`, 'success');
+      } catch (err) {
+        showToast(`❌ Lỗi tải tệp: ${err.message}`, 'danger');
+      }
+    };
+
     window.copyRawText = function(text, successMsg = '📋 Đã copy!') {
       if (!text) return showToast('Trống, không có gì để copy!', 'warning');
       if (navigator.clipboard && window.isSecureContext) {
@@ -2253,10 +2273,14 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     };
 
     window.exportCleanArticle=()=>{
-      const m=chatHistory.filter(x=>x.role==='model').map(x=>x.text); 
-      if(!m.length)return showToast("Trống!","warning"); 
-      const b=new Blob([`# Trích xuất\n\n`+m.join('\n\n---\n\n')],{type:'text/markdown'}); 
-      saveOrShareBlob(b, `BaiViet_${Date.now()}.md`);
+      try {
+        const m=chatHistory.filter(x=>x.role==='model').map(x=>x.text); 
+        if(!m.length)return showToast("Trống!","warning"); 
+        const b=new Blob([`# Trích xuất\n\n`+m.join('\n\n---\n\n')],{type:'text/markdown'}); 
+        window.saveOrShareBlob(b, `BaiViet_${Date.now()}.md`);
+      } catch (e) {
+        showToast("Lỗi xuất bài viết: " + e.message, "danger");
+      }
     };
 
     window.applySnippet=p=>{ if(DOM.input) { DOM.input.value=p+"\n"+DOM.input.value; DOM.input.dispatchEvent(new Event('input')); DOM.input.focus(); } DOM.snippetsContainer.style.display='none';}; DOM.btnToggleSnippets.onclick=()=>DOM.snippetsContainer.style.display=DOM.snippetsContainer.style.display==='flex'?'none':'flex';
@@ -3089,32 +3113,36 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     window.clearActiveSession=async()=>{if(confirm("Xóa sạch phiên này?")){chatHistory=[]; const s=sessions.find(x=>x.id===activeId); if(s){s.his=[]; s.lastInteractionId = null; await saveToDB(s); const manualIdInput = document.getElementById('manual-interaction-id'); if (manualIdInput) manualIdInput.value = '';} DOM.chat.innerHTML=''; document.getElementById('session-msg-count').innerText=`0 tin nhắn`; showToast('Đã xóa sạch');}};
     
     window.exportAllSessions=async()=>{
-      const configs = {};
-      for (let i = 1; i <= 10; i++) {
-        configs[`javiss_api_${i}`] = localStorage.getItem(`javiss_api_${i}`) || "";
+      try {
+        const configs = {};
+        for (let i = 1; i <= 10; i++) {
+          configs[`javiss_api_${i}`] = localStorage.getItem(`javiss_api_${i}`) || "";
+        }
+        const keysToBackup = [
+          'global_context', 'theme', 'javiss_folders', 'javiss_active_folder',
+          'dify_key_gemini', 'dify_key_lite', 'dify_key_pro', 'dify_key_gpt', 'dify_key_opus',
+          'dify_api_endpoint', 'dify_var_key',
+          'groq_api_key', 'mistral_api_key', 'cerebras_api_key', 'cohere_api_key',
+          'tavily_api_key', 'serper_api_key', 'brave_api_key', 'brave_worker_url', 'auto_search_default_engine',
+          'live_system_instruction', 'live_temperature', 'live_search_enabled', 'live_context_enabled', 'live_voice_name', 'live_selected_key'
+        ];
+        keysToBackup.forEach(k => {
+          configs[k] = localStorage.getItem(k) || "";
+        });
+
+        const backupData = {
+          version: "2.0_full",
+          backupDate: new Date().toISOString(),
+          sessions: await getAllFromDB(),
+          activeId,
+          configs
+        }; 
+
+        const bBlob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' }); 
+        window.saveOrShareBlob(bBlob, `Javiss_FullBackup_${Date.now()}.json`);
+      } catch (err) {
+        showToast(`❌ Lỗi sao lưu: ${err.message}`, 'danger', 5000);
       }
-      const keysToBackup = [
-        'global_context', 'theme', 'javiss_folders', 'javiss_active_folder',
-        'dify_key_gemini', 'dify_key_lite', 'dify_key_pro', 'dify_key_gpt', 'dify_key_opus',
-        'dify_api_endpoint', 'dify_var_key',
-        'groq_api_key', 'mistral_api_key', 'cerebras_api_key', 'cohere_api_key',
-        'tavily_api_key', 'serper_api_key', 'brave_api_key', 'brave_worker_url', 'auto_search_default_engine',
-        'live_system_instruction', 'live_temperature', 'live_search_enabled', 'live_context_enabled', 'live_voice_name', 'live_selected_key'
-      ];
-      keysToBackup.forEach(k => {
-        configs[k] = localStorage.getItem(k) || "";
-      });
-
-      const backupData = {
-        version: "2.0_full",
-        backupDate: new Date().toISOString(),
-        sessions: await getAllFromDB(),
-        activeId,
-        configs
-      }; 
-
-      const bBlob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' }); 
-      saveOrShareBlob(bBlob, `Javiss_FullBackup_${Date.now()}.json`);
     };
 
     document.getElementById('import-all-input').addEventListener('change', async e => {
@@ -3165,30 +3193,38 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     async function readPDF(f){const p=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise; let t=""; for(let i=1;i<=p.numPages;i++)t+=(await(await p.getPage(i)).getTextContent()).items.map(x=>x.str).join(' ')+"\n"; return t;}
     
     window.exportChatDoc=()=>{
-      const currentSessName = sessions.find(s => s.id === activeId)?.name || 'Hội thoại';
-      let h=`<html><head><meta charset='utf-8'></head><body><h2>Phiên: ${currentSessName}</h2>`; 
-      chatHistory.forEach(m=>{h+=`<p><b>${m.role==='user'?'Bạn':'Javiss'}:</b><br/> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</p><hr>`;}); 
-      h+="</body></html>"; 
-      const b=new Blob(['\ufeff',h],{type:'application/msword'}); 
-      saveOrShareBlob(b, `Javiss_Chat_${Date.now()}.doc`);
+      try {
+        const currentSessName = sessions.find(s => s.id === activeId)?.name || 'Hội thoại';
+        let h=`<html><head><meta charset='utf-8'></head><body><h2>Phiên: ${currentSessName}</h2>`; 
+        chatHistory.forEach(m=>{h+=`<p><b>${m.role==='user'?'Bạn':'Javiss'}:</b><br/> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</p><hr>`;}); 
+        h+="</body></html>"; 
+        const b=new Blob(['\ufeff',h],{type:'application/msword'}); 
+        window.saveOrShareBlob(b, `Javiss_Chat_${Date.now()}.doc`);
+      } catch (e) {
+        showToast("Lỗi xuất Word: " + e.message, "danger");
+      }
     };
 
     window.exportChatPDF=()=>{
-      const currentSessName = sessions.find(s => s.id === activeId)?.name || 'Hội thoại';
-      const e=document.createElement('div'); 
-      e.innerHTML=`<h2>Phiên: ${currentSessName}</h2>`; 
-      chatHistory.forEach(m=>{e.innerHTML+=`<div style="margin-bottom:15px; font-family:sans-serif;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</div><hr>`;}); 
-      showToast('⏳ Đang tạo PDF...', 'info', 2000);
-      html2pdf().set({
-        margin:10,
-        filename:`Javiss_Chat_${Date.now()}.pdf`,
-        html2canvas:{scale:2},
-        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
-      }).from(e).outputPdf('blob').then(pdfBlob => {
-        saveOrShareBlob(pdfBlob, `Javiss_Chat_${Date.now()}.pdf`);
-      }).catch(() => {
-        showToast('❌ Lỗi khi xuất PDF', 'danger', 3000);
-      });
+      try {
+        const currentSessName = sessions.find(s => s.id === activeId)?.name || 'Hội thoại';
+        const e=document.createElement('div'); 
+        e.innerHTML=`<h2>Phiên: ${currentSessName}</h2>`; 
+        chatHistory.forEach(m=>{e.innerHTML+=`<div style="margin-bottom:15px; font-family:sans-serif;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br> ${m.role==='model'?marked.parse(m.text):m.text.replace(/\n/g,'<br>')}</div><hr>`;}); 
+        showToast('⏳ Đang tạo PDF...', 'info', 2000);
+        html2pdf().set({
+          margin:10,
+          filename:`Javiss_Chat_${Date.now()}.pdf`,
+          html2canvas:{scale:2},
+          jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+        }).from(e).outputPdf('blob').then(pdfBlob => {
+          window.saveOrShareBlob(pdfBlob, `Javiss_Chat_${Date.now()}.pdf`);
+        }).catch(() => {
+          showToast('❌ Lỗi khi xuất PDF', 'danger', 3000);
+        });
+      } catch (e) {
+        showToast("Lỗi tạo PDF: " + e.message, "danger");
+      }
     };
 
     let toastTimeout;
