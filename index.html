@@ -813,7 +813,7 @@ QUY TẮC TỐI CAO:
     }
 
     // ==========================================
-    // 📞 GEMINI MULTIMODAL LIVE API (FUNCTION CALLING SEARCH - 100% FREE TIER COMPATIBLE)
+    // 📞 GEMINI MULTIMODAL LIVE API (CHUẨN HÓA NGÀY THÁNG TIẾNG VIỆT TƯỜNG MINH)
     // ==========================================
     let liveWs = null;
     let liveAudioCtx = null;
@@ -830,18 +830,25 @@ QUY TẮC TỐI CAO:
                        || localStorage.getItem('live_system_instruction') 
                        || '';
       const now = new Date();
-      const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const daysOfWeek = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+      const thu = daysOfWeek[now.getDay()];
+      const ngay = now.getDate();
+      const thang = now.getMonth() + 1;
+      const nam = now.getFullYear();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const timeStr = `${hours}:${minutes}`;
+      const dateStr = `${thu}, ngày ${ngay} tháng ${thang} năm ${nam}`;
       
       let baseSI = customSI ? customSI : `Bạn là trợ lý thoại Javiss trong cuộc gọi trực tiếp. Hãy xưng hô 'em' và gọi người dùng là 'anh'. Luôn nói chuyện bằng Tiếng Việt tự nhiên, truyền cảm, trả lời ngắn gọn trong 1-2 câu như giao tiếp thoại đời thực, tuyệt đối không đọc mã code dài dòng.`;
       
       baseSI += `\n\n[QUY TẮC TRA CỨU WEB THỜI GIAN THỰC QUA SEARCH_WEB]:
 - Khi người dùng hỏi về tin tức mới, sự kiện gần đây, thời tiết, giá cả (vàng, xăng, crypto...), thông tin địa điểm hoặc bất cứ thông tin thời gian thực nào, bạn hãy GỌI NGAY CÔNG CỤ 'search_web' để lấy dữ liệu mới nhất trước khi trả lời.`;
 
-      baseSI += `\n\n[THÔNG TIN THỜI GIAN THỰC]:
-- Giờ: ${timeStr}
-- Ngày: ${dateStr}
-- Năm: ${now.getFullYear()}`;
+      baseSI += `\n\n[THÔNG TIN THỜI GIAN THỰC ĐƯỢC CHUẨN HÓA]:
+- Hôm nay là: ${dateStr}.
+- Giờ hiện tại: ${timeStr}.
+- Năm hiện tại: ${nam}.`;
 
       const enableLiveContext = document.getElementById('live-toggle-context')?.checked ?? (localStorage.getItem('live_context_enabled') !== 'false');
       if (enableLiveContext && chatHistory && chatHistory.length > 0) {
@@ -1796,21 +1803,28 @@ QUY TẮC TỐI CAO:
       const g=DOM.globContext ? DOM.globContext.value : '';
       const useGlob = DOM.toggleGlob ? DOM.toggleGlob.checked : true;
       const now = new Date();
-      const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const daysOfWeek = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+      const thu = daysOfWeek[now.getDay()];
+      const ngay = now.getDate();
+      const thang = now.getMonth() + 1;
+      const nam = now.getFullYear();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const timeStr = `${hours}:${minutes}`;
+      const dateStr = `${thu}, ngày ${ngay} tháng ${thang} năm ${nam}`;
       
       return `[MỤC TIÊU & ĐỊNH HƯỚNG HÀNH VI CỦA AI - TUÂN THỦ TỐI CAO]:
 ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n' + g + '\n\n' : ''}--- NGỮ CẢNH PHIÊN NÀY ---\n${b}
 
 [CHỈ THỊ PHÁ BỎ GIỚI HẠN LẠC HẬU KIẾN THỨC]:
-- Hiện tại bắt buộc là năm ${now.getFullYear()}. Kiến thức đóng băng của bạn có thể cũ, nhưng bạn PHẢI COI các kết quả tìm kiếm Web (Grounding), thông tin hệ thống và tài liệu người dùng cung cấp là CHÂN LÝ THỰC TẾ TRONG TƯƠNG LAI.
+- Hiện tại bắt buộc là năm ${nam}. Kiến thức đóng băng của bạn có thể cũ, nhưng bạn PHẢI COI các kết quả tìm kiếm Web (Grounding), thông tin hệ thống và tài liệu người dùng cung cấp là CHÂN LÝ THỰC TẾ TRONG TƯƠNG LAI.
 - Tuyệt đối không phủ nhận, nghi ngờ hoặc phản đối sự tồn tại của bất kỳ công nghệ, dòng mô hình AI nào (bao gồm Gemini 3.1 Flash-Lite, Gemini 3.5 Flash, Gemini 3.6 Flash, Gemini 3.7 Flash, Gemini 3.8 Flash) hay các sự kiện xã hội, thông số phần cứng thiết bị được cấp trong ngữ cảnh. 
 - Luôn ưu tiên dùng thông tin tìm kiếm thời gian thực để cập nhật câu trả lời khi có xung đột tri thức.
 
-[THỜI GIAN HỆ THỐNG HIỆN TẠI]:
-- Giờ: ${timeStr}
-- Ngày: ${dateStr}
-- Năm: ${now.getFullYear()} (Sử dụng con số năm này làm mốc chuẩn để tính toán chính xác số tuổi hoặc mốc thời gian của người dùng. Ví dụ: Người dùng ghi sinh năm 1988, thì lấy ${now.getFullYear()} - 1988 = 38 tuổi).`;
+[THỜI GIAN HỆ THỐNG HIỆN TẠI ĐÃ CHUẨN HÓA]:
+- Hôm nay là: ${dateStr}
+- Giờ hiện tại: ${timeStr}
+- Năm hiện tại: ${nam} (Sử dụng con số năm này làm mốc chuẩn để tính toán chính xác số tuổi hoặc mốc thời gian của người dùng. Ví dụ: Người dùng ghi sinh năm 1988, thì lấy ${nam} - 1988 = 38 tuổi).`;
     }
 
     function buildStructuredMessages(promptText) {
@@ -2351,7 +2365,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
     async function switchSess(id){
-      activeId=id; localStorage.setItem('javiss_active_id',id); const s=sessions.find(x=>x.id===id); chatHistory=s?[...s.his]:[]; 
+      activeId=id; localStorage.setItem('javiss_active_id',id); const s=sessions.find(x=>x.id===activeId); chatHistory=s?[...s.his]:[]; 
       if(s){
           if(DOM.sysInst) DOM.sysInst.value=s.sys||''; 
           if(DOM.model) DOM.model.value=s.mod||'gemini-3.8-flash'; 
