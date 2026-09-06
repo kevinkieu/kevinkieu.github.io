@@ -453,9 +453,8 @@
         
         <fieldset class="settings-group"><legend>📞 Cấu hình Cuộc gọi Live AI (Multimodal Live)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
-            <div>
-              <label class="field-label">Chỉ thị đàm thoại (Live Call System Instruction):</label>
-              <textarea id="live-system-instruction-input" rows="3" class="modern-textarea" placeholder="Định hình cách AI giao tiếp khi nghe điện thoại (ngắn gọn, xưng hô, biểu cảm...)"></textarea>
+            <div style="font-size:0.85rem;color:var(--text-muted);line-height:1.4;background:var(--input-bg);padding:10px;border-radius:8px;border:1px solid var(--border);">
+              💡 <b>Đồng bộ thông minh:</b> Cuộc gọi Live sẽ tự động kế thừa <b>System Instruction riêng của phiên chat đang mở</b> (và Ngữ cảnh toàn cục) để AI giữ trọn vẹn vai trò chuyên môn của bạn khi nói chuyện!
             </div>
             <div class="slider-row">
               <label>Độ sáng tạo / Tự nhiên khi nói chuyện (Temperature: <span id="live-temp-val">0.7</span>):</label>
@@ -472,10 +471,10 @@
           </div>
         </fieldset>
 
-        <fieldset class="settings-group"><legend>⚙️ Định hướng Ngữ cảnh Chat văn bản (System Prompt)</legend>
+        <fieldset class="settings-group"><legend>⚙️ Định hướng Ngữ cảnh Chat văn bản & Live Call (System Prompt)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
-            <div><label class="field-label">System Instruction (Riêng cho phiên hiện tại):</label><textarea id="system-instruction-input" rows="3" class="modern-textarea"></textarea></div>
-            <div><label class="field-label">🌍 Ngữ cảnh Toàn cục (Áp dụng tất cả):</label><textarea id="global-context-input" rows="2" class="modern-textarea"></textarea></div>
+            <div><label class="field-label">System Instruction (Riêng cho phiên hiện tại - Áp dụng cả Chat & Live):</label><textarea id="system-instruction-input" rows="3" class="modern-textarea"></textarea></div>
+            <div><label class="field-label">🌍 Ngữ cảnh Toàn cục (Áp dụng cho tất cả phiên):</label><textarea id="global-context-input" rows="2" class="modern-textarea"></textarea></div>
           </div>
         </fieldset>
 
@@ -483,7 +482,7 @@
           <div style="display:flex;flex-direction:column;gap:12px;">
             <div class="slider-row"><label>Temperature (<span id="temp-val">0.5</span>):</label><input type="range" id="temperature" min="0" max="2" step="0.1" value="0.5"></div>
             <div class="slider-row"><label>TopP (<span id="topp-val">0.9</span>):</label><input type="range" id="top-p" min="0" max="1" step="0.1" value="0.9"></div>
-            <div style="display:flex;gap:20px;flex-wrap:wrap;">
+            <div style="display:gap:20px;flex-wrap:wrap;">
               <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;">TopK: <input type="number" id="top-k" min="1" max="100" value="40" class="modern-input" style="width:70px;"></label>
             </div>
           </div>
@@ -812,9 +811,9 @@ QUY TẮC TỐI CAO:
         return results.join('\n\n');
     }
 
-    // ==========================================
-    // 📞 GEMINI MULTIMODAL LIVE API (CHUẨN HÓA NGÀY THÁNG TIẾNG VIỆT TƯỜNG MINH)
-    // ==========================================
+    // ================================================================
+    // 📞 GEMINI MULTIMODAL LIVE API (ĐỒNG BỘ THEO PHƯƠNG ÁN A)
+    // ================================================================
     let liveWs = null;
     let liveAudioCtx = null;
     let liveMediaStream = null;
@@ -826,9 +825,13 @@ QUY TẮC TỐI CAO:
     let isLiveSetupComplete = false;
 
     function getLiveCallSI() {
-      const customSI = document.getElementById('live-system-instruction-input')?.value.trim() 
-                       || localStorage.getItem('live_system_instruction') 
-                       || '';
+      const currentSession = sessions.find(x => x.id === activeId);
+      const sessionSI = (DOM.sysInst ? DOM.sysInst.value.trim() : '') 
+                        || (currentSession ? currentSession.sys : '') 
+                        || '';
+      const g = DOM.globContext ? DOM.globContext.value.trim() : '';
+      const useGlob = DOM.toggleGlob ? DOM.toggleGlob.checked : true;
+
       const now = new Date();
       const daysOfWeek = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
       const thu = daysOfWeek[now.getDay()];
@@ -840,8 +843,22 @@ QUY TẮC TỐI CAO:
       const timeStr = `${hours}:${minutes}`;
       const dateStr = `${thu}, ngày ${ngay} tháng ${thang} năm ${nam}`;
       
-      let baseSI = customSI ? customSI : `Bạn là trợ lý thoại Javiss trong cuộc gọi trực tiếp. Hãy xưng hô 'em' và gọi người dùng là 'anh'. Luôn nói chuyện bằng Tiếng Việt tự nhiên, truyền cảm, trả lời ngắn gọn trong 1-2 câu như giao tiếp thoại đời thực, tuyệt đối không đọc mã code dài dòng.`;
-      
+      let baseSI = `[VAI TRÒ & NGỮ CẢNH CỦA PHIÊN HỘI THOẠI NÀY]:\n`;
+      if (useGlob && g) {
+        baseSI += `--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n${g}\n\n`;
+      }
+      if (sessionSI) {
+        baseSI += `--- CHỈ THỊ RIÊNG CỦA PHIÊN (SYSTEM INSTRUCTION) ---\n${sessionSI}\n\n`;
+      } else {
+        baseSI += `Bạn là trợ lý ảo Javiss thông minh, chu đáo và đáng tin cậy.\n\n`;
+      }
+
+      baseSI += `[QUY TẮC ĐÀM THOẠI TRỰC TIẾP QUA GIỌNG NÓI (LIVE CALL)]:
+- Bạn đang nói chuyện trực tiếp qua micro và loa. Luôn nói bằng Tiếng Việt tự nhiên, truyền cảm, nhịp nhàng.
+- Trả lời ngắn gọn, súc tích trong 1-2 câu như giao tiếp thoại đời thực, tránh độc thoại dài dòng.
+- Tuyệt đối không đọc các khối mã code dài dòng, bảng biểu phức tạp hay ký tự đặc biệt khó đọc bằng giọng nói. Nếu cần, hãy tóm tắt ý chính của đoạn mã.
+- Hãy giữ đúng tính cách, phong thái và vai trò đã được thiết lập ở [VAI TRÒ & NGỮ CẢNH CỦA PHIÊN].`;
+
       baseSI += `\n\n[QUY TẮC TRA CỨU WEB THỜI GIAN THỰC QUA SEARCH_WEB]:
 - Khi người dùng hỏi về tin tức mới, sự kiện gần đây, thời tiết, giá cả (vàng, xăng, crypto...), thông tin địa điểm hoặc bất cứ thông tin thời gian thực nào, bạn hãy GỌI NGAY CÔNG CỤ 'search_web' để lấy dữ liệu mới nhất trước khi trả lời.`;
 
@@ -1531,7 +1548,6 @@ QUY TẮC TỐI CAO:
         const bwk = document.getElementById('brave-worker-url-input');
         const aue = document.getElementById('auto-search-engine-input');
         
-        const lsi = document.getElementById('live-system-instruction-input');
         const ltp = document.getElementById('live-temperature');
         const ltv = document.getElementById('live-temp-val');
         const lts = document.getElementById('live-toggle-search');
@@ -1554,7 +1570,6 @@ QUY TẮC TỐI CAO:
         if(bwk) bwk.value = localStorage.getItem('brave_worker_url') || '';
         if(aue) aue.value = localStorage.getItem('auto_search_default_engine') || 'tavily';
 
-        if(lsi) lsi.value = localStorage.getItem('live_system_instruction') || '';
         if(ltp) {
           ltp.value = localStorage.getItem('live_temperature') || '0.7';
           if (ltv) ltv.innerText = ltp.value;
@@ -1594,7 +1609,6 @@ QUY TẮC TỐI CAO:
         saveKey('brave-worker-url-input', 'brave_worker_url');
         saveKey('auto-search-engine-input', 'auto_search_default_engine');
         
-        saveKey('live-system-instruction-input', 'live_system_instruction');
         saveKey('live-temperature', 'live_temperature');
         const lts = document.getElementById('live-toggle-search');
         if (lts) localStorage.setItem('live_search_enabled', lts.checked ? 'true' : 'false');
@@ -2365,7 +2379,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
     async function switchSess(id){
-      activeId=id; localStorage.setItem('javiss_active_id',id); const s=sessions.find(x=>x.id===activeId); chatHistory=s?[...s.his]:[]; 
+      activeId=id; localStorage.setItem('javiss_active_id',id); const s=sessions.find(x=>x.id===id); chatHistory=s?[...s.his]:[]; 
       if(s){
           if(DOM.sysInst) DOM.sysInst.value=s.sys||''; 
           if(DOM.model) DOM.model.value=s.mod||'gemini-3.8-flash'; 
@@ -3138,7 +3152,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           'dify_api_endpoint', 'dify_var_key',
           'groq_api_key', 'mistral_api_key', 'cerebras_api_key', 'cohere_api_key',
           'tavily_api_key', 'serper_api_key', 'brave_api_key', 'brave_worker_url', 'auto_search_default_engine',
-          'live_system_instruction', 'live_temperature', 'live_search_enabled', 'live_context_enabled', 'live_voice_name', 'live_selected_key'
+          'live_temperature', 'live_search_enabled', 'live_context_enabled', 'live_voice_name', 'live_selected_key'
         ];
         keysToBackup.forEach(k => {
           configs[k] = localStorage.getItem(k) || "";
