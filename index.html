@@ -168,7 +168,6 @@
     .btn-sidebar-action{width:100%;padding:10px;background:var(--primary-container);color:var(--text-main);font-weight:600;border:none;text-align:center;justify-content:center}
     .streaming-indicator{color:var(--primary);font-style:italic;font-size:.8rem;margin-left:8px}
     #camera-preview{width:100%;max-height:400px;background:#000;border-radius:8px;object-fit:cover}
-    .agent-step{padding:8px; border-left:3px solid var(--primary); background:var(--bg-sidebar); margin-bottom:8px; font-size:0.85rem; border-radius:4px;}
 
     /* Giao diện Cuộc gọi Live Voice & Vision AI */
     #live-call-modal{
@@ -289,15 +288,15 @@
             <div id="search-engine-box" style="margin-left:22px;display:none;">
               <select id="search-engine-select" class="modern-select" style="font-size:0.75rem;padding:4px 6px;height:28px;">
                 <option value="auto" selected>🔄 Tự động (Smart Auto-Search)</option>
-                <option value="google">🔍 Google Grounding (Gemini 2.5)</option>
+                <option value="jina">🦎 Jina AI Search (Miễn phí 100%)</option>
                 <option value="tavily">⚡ Tavily AI Search (Luôn tìm)</option>
                 <option value="serper">🔎 Serper.dev Google (Luôn tìm)</option>
                 <option value="brave">🦁 Brave Search (Luôn tìm)</option>
+                <option value="google">🔍 Google Grounding (Gemini 2.5)</option>
               </select>
             </div>
 
             <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:red;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-memory" checked style="width:16px;height:16px;"> 🧠 Bật Interactions API</label>
-            <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:green;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-agent" style="width:16px;height:16px;"> 🤖 Auto-Agent (Chạy chuỗi)</label>
           </div>
           <div style="margin-top:8px;"><span class="section-title" style="padding-left:2px;font-size:.7rem;margin-bottom:4px;display:block;">🤖 Mô hình xử lý chính:</span>
             <select id="model-select" class="modern-select">            
@@ -320,19 +319,6 @@
               <optgroup label="⚡ Groq Inference">
                 <option value="qwen/qwen3.6-27b">Compound (Groq)</option>
                 <option value="openai/gpt-oss-120b">GPT-OSS 120B (Groq - Reasoning)</option>
-              </optgroup>
-              <optgroup label="🌀 Mistral AI">
-                <option value="mistral-medium-latest">Mistral Medium (Mistral - Standard)</option>
-                <option value="mistral-medium-3-5">Mistral Medium 3.5 (Mistral - Reasoning)</option>
-                <option value="mistral-small-2603">Mistral Small 4 (Mistral - Reasoning)</option>
-              </optgroup>
-              <optgroup label="🍁 Nền tảng Cohere">
-                <option value="command-a-plus">Command A+ (Cohere - Multimodal)</option>
-                <option value="command-a-reasoning">Command A Reasoning (Cohere - Reasoning)</option>
-              </optgroup>
-              <optgroup label="🧠 Cerebras Inference">
-                <option value="gpt-oss-120b-cerebras">GPT-OSS 120B (Cerebras)</option>
-                <option value="gemma-4-31b-cerebras">Gemma 4 31B (Cerebras)</option>
               </optgroup>
             </select>
           </div>
@@ -405,7 +391,7 @@
           <button id="btn-add-url" class="tool-chip" title="Web Scraper & YouTube">🌐 Đọc Link/YT</button>
           <button id="btn-paste-clipboard" class="tool-chip">📋 Dán đặc biệt</button>
         </div>
-        <div class="input-container-box"><textarea id="user-input" rows="1" placeholder="Nhập tin nhắn hoặc URL..."></textarea><button id="send-button">Gửi 📤</button></div>
+        <div class="input-container-box"><textarea id="user-input" rows="1" placeholder="Nhập tin nhắn hoặc dán URL web để AI tự động trích xuất..."></textarea><button id="send-button">Gửi 📤</button></div>
       </div>
     </main>
 
@@ -462,7 +448,7 @@
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
               <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:var(--primary);display:flex;align-items:center;gap:6px;">
-                <input type="checkbox" id="live-toggle-search" checked style="width:16px;height:16px;"> 🌐 Tự động tra cứu Web qua Tavily/Serper/Brave trong lúc gọi (Free 0 RPD Google)
+                <input type="checkbox" id="live-toggle-search" checked style="width:16px;height:16px;"> 🌐 Tự động tra cứu Web qua Jina/Tavily/Serper/Brave trong lúc gọi (Free 0 RPD Google)
               </label>
               <label style="cursor:pointer;font-size:.85rem;font-weight:bold;color:green;display:flex;align-items:center;gap:6px;">
                 <input type="checkbox" id="live-toggle-context" checked style="width:16px;height:16px;"> 🧠 Kế thừa 10 tin nhắn gần nhất vào cuộc gọi
@@ -482,24 +468,25 @@
           <div style="display:flex;flex-direction:column;gap:12px;">
             <div class="slider-row"><label>Temperature (<span id="temp-val">0.5</span>):</label><input type="range" id="temperature" min="0" max="2" step="0.1" value="0.5"></div>
             <div class="slider-row"><label>TopP (<span id="topp-val">0.9</span>):</label><input type="range" id="top-p" min="0" max="1" step="0.1" value="0.9"></div>
-            <div style="display:gap:20px;flex-wrap:wrap;">
+            <div style="display:flex;gap:20px;flex-wrap:wrap;">
               <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;">TopK: <input type="number" id="top-k" min="1" max="100" value="40" class="modern-input" style="width:70px;"></label>
             </div>
           </div>
         </fieldset>
 
-        <fieldset class="settings-group"><legend>🌐 Cấu hình Công cụ Tìm kiếm Web độc lập (0 RPD Gemini 2.5)</legend>
+        <fieldset class="settings-group"><legend>🌐 Cấu hình Công cụ Tìm kiếm & Cào Web độc lập (0 RPD Gemini 2.5)</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div>
               <label class="field-label">⚙️ Công cụ mặc định cho chế độ Tự Động (Auto-Search):</label>
               <select id="auto-search-engine-input" class="modern-select">
-                <option value="tavily" selected>⚡ Tavily AI Search (1.000 lượt free/tháng - Khuyên dùng)</option>
+                <option value="jina" selected>🦎 Jina AI Search (Miễn phí 100% - Không cần Key)</option>
+                <option value="tavily">⚡ Tavily AI Search (1.000 lượt free/tháng)</option>
                 <option value="serper">🔎 Serper.dev (Google Search thật - 2.500 free)</option>
                 <option value="brave">🦁 Brave Search (2.000 lượt free/tháng)</option>
               </select>
             </div>
             <div>
-              <label class="field-label">Tavily Search API Key (1.000 lượt free/tháng):</label>
+              <label class="field-label">Tavily API Key (Dùng tìm kiếm & Extract link khi Jina bận):</label>
               <input type="password" id="tavily-key-input" placeholder="Nhập Key (tvly-...)" class="modern-input">
             </div>
             <div>
@@ -525,7 +512,7 @@
           </div>
         </fieldset>
 
-        <fieldset class="settings-group"><legend>🔑 Cấu hình 10 API Keys</legend>
+        <fieldset class="settings-group"><legend>🔑 Cấu hình 10 API Keys Google</legend>
           <div class="api-keys-grid" id="api-keys-container" style="margin-bottom:10px;"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -553,27 +540,9 @@
           </div>
         </fieldset>
 
-        <fieldset class="settings-group"><legend>🔗 Cấu hình Groq (Llama 4 & GPT-OSS 120B)</legend>
+        <fieldset class="settings-group"><legend>🔗 Cấu hình Groq Inference</legend>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div><label class="field-label">Groq API Key:</label><input type="password" id="groq-key-input" placeholder="Nhập Groq API Key..." class="modern-input"></div>
-          </div>
-        </fieldset>
-
-        <fieldset class="settings-group"><legend>🔗 Cấu hình Mistral AI (Mistral Medium & Small)</legend>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <div><label class="field-label">Mistral API Key:</label><input type="password" id="mistral-key-input" placeholder="Nhập Mistral API Key..." class="modern-input"></div>
-          </div>
-        </fieldset>
-
-        <fieldset class="settings-group"><legend>🔗 Cấu hình Cerebras Inference (GPT-OSS 120B & Gemma 4 31B)</legend>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <div><label class="field-label">Cerebras API Key:</label><input type="password" id="cerebras-key-input" placeholder="Nhập Cerebras API Key..." class="modern-input"></div>
-          </div>
-        </fieldset>
-
-        <fieldset class="settings-group"><legend>🔗 Cấu hình Cohere (Command A+ & Command A Reasoning)</legend>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <div><label class="field-label">Cohere API Key:</label><input type="password" id="cohere-key-input" placeholder="Nhập Cohere API Key..." class="modern-input"></div>
           </div>
         </fieldset>
       </div>
@@ -614,14 +583,7 @@
 
     const externalModels = [
          'qwen/qwen3.6-27b',
-         'openai/gpt-oss-120b',
-         'mistral-medium-latest',
-         'mistral-medium-3-5',
-         'mistral-small-2603',
-         'gpt-oss-120b-cerebras',
-         'gemma-4-31b-cerebras',
-         'command-a-plus',
-         'command-a-reasoning'
+         'openai/gpt-oss-120b'
     ];
 
     const promptEnhancementInstruction = `Bạn là bộ chuyển đổi và tối ưu hóa Prompt chuyên nghiệp. Nhiệm vụ: Biến đổi nội dung ý tưởng thô sơ ban đầu của người dùng thành một câu lệnh Prompt hoàn chỉnh, chi tiết, viết dưới góc nhìn chuyên gia và có cấu trúc chặt chẽ để nạp cho AI đạt hiệu quả phản hồi cao nhất.
@@ -734,10 +696,25 @@ QUY TẮC TỐI CAO:
         /\b(thời tiết|dự báo thời tiết|nhiệt độ|mưa bão|triều cường|kẹt xe)\b/i,
         /\b(tin tức|sự kiện|thời sự|báo chí|điểm báo|trực tiếp|lịch thi đấu|kết quả|tỉ số|bảng xếp hạng)\b/i,
         /\b(ở đâu|địa chỉ|mở cửa|liên hệ|sdt|hotline|review|đánh giá|thông số|cấu hình|ra mắt)\b/i,
-        /\b(2025|2026|2027)\b/,
-        /https?:\/\/[^\s]+/i
+        /\b(2025|2026|2027)\b/
       ];
       return patterns.some(p => p.test(lower));
+    }
+
+    // --- CÁC HÀM TÌM KIẾM VÀ CÀO WEB ĐỘC LẬP ---
+    async function fetchJinaSearch(query) {
+        const res = await fetch(`https://s.jina.ai/${encodeURIComponent(query)}`, {
+            headers: { "Accept": "application/json" }
+        });
+        if (!res.ok) throw new Error(`Jina Search HTTP Lỗi ${res.status}`);
+        const data = await res.json();
+        const results = [];
+        if (data.data && data.data.length > 0) {
+            data.data.slice(0, 5).forEach(r => {
+                results.push(`- **${r.title || 'Kết quả'}**\n  *Nội dung*: ${(r.content || r.description || '').substring(0, 1000)}\n  *Nguồn*: ${r.url}`);
+            });
+        }
+        return results.join('\n\n');
     }
 
     async function fetchTavilySearch(query) {
@@ -811,6 +788,55 @@ QUY TẮC TỐI CAO:
         return results.join('\n\n');
     }
 
+    // --- HÀM TRÍCH XUẤT LINK THÔNG MINH (ƯU TIÊN JINA READER -> TAVILY EXTRACT -> ALLORIGINS) ---
+    async function extractWebPageContent(url) {
+      // 1. Thử qua Jina Reader (Miễn phí 100%, nhanh 0.5s - 1.2s)
+      try {
+        const res = await fetch(`https://r.jina.ai/${url}`, {
+          headers: { "Accept": "text/plain" }
+        });
+        if (res.ok) {
+          const text = await res.text();
+          if (text && text.trim().length > 100) {
+            return { source: "Jina Reader", content: text.substring(0, 45000) };
+          }
+        }
+      } catch (e) {
+        console.warn("Jina Reader gặp sự cố, chuyển sang Tavily Extract...", e);
+      }
+
+      // 2. Thử qua Tavily Extract API (Dự phòng mạnh mẽ)
+      const tavilyKey = localStorage.getItem('tavily_api_key') || '';
+      if (tavilyKey) {
+        try {
+          const res = await fetch("https://api.tavily.com/extract", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ api_key: tavilyKey, urls: [url] })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.results && data.results.length > 0 && data.results[0].raw_content) {
+              return { source: "Tavily Extract", content: data.results[0].raw_content.substring(0, 45000) };
+            }
+          }
+        } catch (e) {
+          console.warn("Tavily Extract gặp sự cố...", e);
+        }
+      }
+
+      // 3. Fallback cuối cùng qua AllOrigins Proxy
+      try {
+        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+        const data = await res.json();
+        const doc = new DOMParser().parseFromString(data.contents, "text/html");
+        const text = doc.body.innerText.replace(/\s+/g, ' ').trim();
+        return { source: "Web Proxy", content: text.substring(0, 30000) };
+      } catch (e) {
+        throw new Error("Không thể trích xuất nội dung từ đường link này!");
+      }
+    }
+
     // ================================================================
     // 📞 GEMINI MULTIMODAL LIVE API (ĐỒNG BỘ THEO PHƯƠNG ÁN A)
     // ================================================================
@@ -860,7 +886,7 @@ QUY TẮC TỐI CAO:
 - Hãy giữ đúng tính cách, phong thái và vai trò đã được thiết lập ở [VAI TRÒ & NGỮ CẢNH CỦA PHIÊN].`;
 
       baseSI += `\n\n[QUY TẮC TRA CỨU WEB THỜI GIAN THỰC QUA SEARCH_WEB]:
-- Khi người dùng hỏi về tin tức mới, sự kiện gần đây, thời tiết, giá cả (vàng, xăng, crypto...), thông tin địa điểm hoặc bất cứ thông tin thời gian thực nào, bạn hãy GỌI NGAY CÔNG CỤ 'search_web' để lấy dữ liệu mới nhất trước khi trả lời.`;
+- Khi người dùng hỏi về tin tức mới, sự kiện gần đây, thời tiết, giá cả (vàng, crypto, xăng dầu...), địa điểm hoặc bất cứ thông tin thời gian thực nào, bạn hãy GỌI NGAY CÔNG CỤ 'search_web' để lấy dữ liệu mới nhất trước khi trả lời.`;
 
       baseSI += `\n\n[THÔNG TIN THỜI GIAN THỰC ĐƯỢC CHUẨN HÓA]:
 - Hôm nay là: ${dateStr}.
@@ -1015,7 +1041,7 @@ QUY TẮC TỐI CAO:
             }
           };
 
-          // TÍCH HỢP FUNCTION CALLING SEARCH (TAVILY / SERPER / BRAVE) VÀO LIVE API
+          // TÍCH HỢP FUNCTION CALLING SEARCH VÀO LIVE API
           if (enableLiveSearch) {
             setupMsg.setup.tools = [
               {
@@ -1090,7 +1116,7 @@ QUY TẮC TỐI CAO:
               return;
             }
 
-            // BẮT VÀ XỬ LÝ SỰ KIỆN FUNCTION CALL TÌM KIẾM WEB (TAVILY / SERPER / BRAVE)
+            // BẮT VÀ XỬ LÝ SỰ KIỆN FUNCTION CALL TÌM KIẾM WEB
             let functionCalls = [];
             if (msg.toolCall && msg.toolCall.functionCalls) {
               functionCalls = msg.toolCall.functionCalls;
@@ -1106,15 +1132,16 @@ QUY TẮC TỐI CAO:
                   const query = call.args.query;
                   const callId = call.id;
 
-                  let engineName = "Tavily";
+                  let engineName = "Jina AI";
                   let targetEngine = (DOM.searchEngineSel ? DOM.searchEngineSel.value : 'auto');
                   if (targetEngine === 'auto') {
-                    targetEngine = localStorage.getItem('auto_search_default_engine') || 'tavily';
+                    targetEngine = localStorage.getItem('auto_search_default_engine') || 'jina';
                   }
                   
                   if (targetEngine === 'serper') engineName = "Serper (Google)";
                   else if (targetEngine === 'brave') engineName = "Brave";
-                  else engineName = "Tavily";
+                  else if (targetEngine === 'tavily') engineName = "Tavily";
+                  else engineName = "Jina AI";
 
                   transcript.innerHTML = `<span style="color:#38bdf8;">⚡ Đang tra cứu Web qua ${engineName} cho: "<strong>${query}</strong>"...</span>`;
 
@@ -1125,8 +1152,10 @@ QUY TẮC TỐI CAO:
                         searchResultText = await fetchSerperSearch(query);
                       } else if (targetEngine === 'brave') {
                         searchResultText = await fetchBraveSearch(query);
-                      } else {
+                      } else if (targetEngine === 'tavily') {
                         searchResultText = await fetchTavilySearch(query);
+                      } else {
+                        searchResultText = await fetchJinaSearch(query);
                       }
                     } catch (err) {
                       searchResultText = `Lỗi tra cứu: ${err.message}`;
@@ -1539,9 +1568,6 @@ QUY TẮC TỐI CAO:
         const de = document.getElementById('dify-endpoint-input');
         const dv = document.getElementById('dify-var-input');
         const grk = document.getElementById('groq-key-input');
-        const msk = document.getElementById('mistral-key-input');
-        const crk = document.getElementById('cerebras-key-input');
-        const cok = document.getElementById('cohere-key-input');
         const tvk = document.getElementById('tavily-key-input');
         const spk = document.getElementById('serper-key-input');
         const brk = document.getElementById('brave-key-input');
@@ -1561,14 +1587,11 @@ QUY TẮC TỐI CAO:
         if(de) de.value = localStorage.getItem('dify_api_endpoint') || 'https://api.dify.ai/v1';
         if(dv) dv.value = localStorage.getItem('dify_var_key') || 'query';
         if(grk) grk.value = localStorage.getItem('groq_api_key') || '';
-        if(msk) msk.value = localStorage.getItem('mistral_api_key') || '';
-        if(crk) crk.value = localStorage.getItem('cerebras_api_key') || '';
-        if(cok) cok.value = localStorage.getItem('cohere_api_key') || '';
         if(tvk) tvk.value = localStorage.getItem('tavily_api_key') || '';
         if(spk) spk.value = localStorage.getItem('serper_api_key') || '';
         if(brk) brk.value = localStorage.getItem('brave_api_key') || '';
         if(bwk) bwk.value = localStorage.getItem('brave_worker_url') || '';
-        if(aue) aue.value = localStorage.getItem('auto_search_default_engine') || 'tavily';
+        if(aue) aue.value = localStorage.getItem('auto_search_default_engine') || 'jina';
 
         if(ltp) {
           ltp.value = localStorage.getItem('live_temperature') || '0.7';
@@ -1600,9 +1623,6 @@ QUY TẮC TỐI CAO:
         saveKey('dify-endpoint-input', 'dify_api_endpoint');
         saveKey('dify-var-input', 'dify_var_key');
         saveKey('groq-key-input', 'groq_api_key');
-        saveKey('mistral-key-input', 'mistral_api_key');
-        saveKey('cerebras-key-input', 'cerebras_api_key');
-        saveKey('cohere-key-input', 'cohere_api_key');
         saveKey('tavily-key-input', 'tavily_api_key');
         saveKey('serper-key-input', 'serper_api_key');
         saveKey('brave-key-input', 'brave_api_key');
@@ -1685,7 +1705,7 @@ QUY TẮC TỐI CAO:
     async function getAllFilesFromLib(){ return new Promise(r=>{const rq=db.transaction(FILE_STORE,"readonly").objectStore(FILE_STORE).getAll(); rq.onsuccess=()=>r(rq.result);});}
     async function deleteFileFromLib(i){ return new Promise(r=>{const t=db.transaction(FILE_STORE,"readwrite"); t.objectStore(FILE_STORE).delete(i); t.oncomplete=()=>r();});}
     
-    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),searchEngineBox:document.getElementById('search-engine-box'),searchEngineSel:document.getElementById('search-engine-select'),toggleMemory:document.getElementById('toggle-memory'),toggleAgent:document.getElementById('toggle-agent'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
+    const DOM={chat:document.getElementById('chat-container'),input:document.getElementById('user-input'),sendBtn:document.getElementById('send-button'),fileUpload:document.getElementById('file-upload'),previewBox:document.getElementById('image-preview-container'),previewGrid:document.getElementById('image-preview-grid'),textFileList:document.getElementById('text-files-list'),clearFilesBtn:document.getElementById('clear-all-images'),fileCount:document.getElementById('file-count'),toast:document.getElementById('toast'),folderSelect:document.getElementById('folder-select'),btnNewFolder:document.getElementById('btn-new-folder'),btnDeleteFolder:document.getElementById('btn-delete-folder'),selSession:document.getElementById('session-select'),sysInst:document.getElementById('system-instruction-input'),globContext:document.getElementById('global-context-input'),model:document.getElementById('model-select'),apiKeySel:document.getElementById('api-key-select'),toggleGlob:document.getElementById('toggle-global-context'),toggleSearch:document.getElementById('toggle-search'),searchEngineBox:document.getElementById('search-engine-box'),searchEngineSel:document.getElementById('search-engine-select'),toggleMemory:document.getElementById('toggle-memory'),temp:document.getElementById('temperature'),tempVal:document.getElementById('temp-val'),topP:document.getElementById('top-p'),toppVal:document.getElementById('topp-val'),topK:document.getElementById('top-k'),thinking:document.getElementById('thinking-level'),searchInput:document.getElementById('search-chat-input'),scrollTopBtn:document.getElementById('scroll-to-top'),snippetsContainer:document.getElementById('snippets-container'),btnToggleSnippets:document.getElementById('btn-toggle-snippets'),btnEnhancePrompt:document.getElementById('btn-enhance-prompt'),btnFileLibrary:document.getElementById('btn-file-library'),btnAddUrl:document.getElementById('btn-add-url'),btnCompress:document.getElementById('btn-compress-context'),btnMoveSess:document.getElementById('btn-move-session'),btnTheme:document.getElementById('btn-theme'),tabsContainer:document.getElementById('tabs-container')};
     let sessions=[], activeId=null, chatHistory=[], filesData=[], txtContent="", isProcessing=false, folders=JSON.parse(localStorage.getItem('javiss_folders')||'["Mặc định"]'), activeFolder=localStorage.getItem('javiss_active_folder')||"All", openTabs=JSON.parse(localStorage.getItem('javiss_tabs')||'[]'); const MAX_IMAGES=20;
     
     let scrollHideTimeout;
@@ -2055,221 +2075,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
         } catch (err) { onError(err); }
     }
 
-    async function callMistralStream(promptText, onChunk, onError) {
-        const key = localStorage.getItem('mistral_api_key') || '';
-        if (!key) return onError(new Error("Thiếu Mistral API Key trong Cấu hình!"));
-
-        try {
-            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.8-flash';
-            const messages = buildStructuredMessages(promptText); 
-            const payload = { model: activeModel, messages: messages, temperature: 0.7, top_p: 1.0, max_tokens: 4096, stream: true };
-
-            if (['mistral-medium-3-5', 'mistral-small-2603'].includes(activeModel)) {
-                const currentThinking = DOM.thinking ? DOM.thinking.value : 'medium';
-                payload.reasoning_effort = (currentThinking === 'medium' || currentThinking === 'high') ? "high" : "none";
-            }
-
-            const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                let errMsg = `HTTP Lỗi ${response.status}`;
-                try {
-                    const errJSON = JSON.parse(await response.text());
-                    if (errJSON.error && errJSON.error.message) errMsg = errJSON.error.message;
-                } catch(e) {}
-                throw new Error(errMsg);
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = "", inThinkingState = false, thinkingPlaceholderAdded = false;
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) { if (inThinkingState) onChunk("\n</think>\n\n"); break; }
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split("\n");
-                buffer = lines.pop();
-
-                for (const line of lines) {
-                    const trimmed = line.trim(); 
-                    if (trimmed.startsWith("data:")) {
-                        const dataContent = trimmed.slice(5).trim();
-                        if (dataContent === "[DONE]") continue;
-                        try {
-                            const parsed = JSON.parse(dataContent);
-                            const delta = parsed.choices[0].delta;
-                            if (delta) {
-                                let chunkText = "";
-                                let isReasoningChunk = !!(delta.reasoning_content || delta.reasoning);
-
-                                if (isReasoningChunk) {
-                                    if (!thinkingPlaceholderAdded) {
-                                        chunkText += "<think>Đang suy luận...</think>\n\n";
-                                        thinkingPlaceholderAdded = true;
-                                        inThinkingState = true;
-                                    }
-                                } else {
-                                    if (inThinkingState) inThinkingState = false;
-                                    if (delta.content) chunkText += delta.content;
-                                }
-                                if (chunkText) onChunk(chunkText);
-                            }
-                        } catch (e) {}
-                    }
-                }
-            }
-        } catch (err) { onError(err); }
-    }
-
-    async function callCerebrasStream(promptText, onChunk, onError) {
-        const key = localStorage.getItem('cerebras_api_key') || '';
-        if (!key) return onError(new Error("Thiếu Cerebras API Key trong Cấu hình!"));
-
-        try {
-            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.8-flash';
-            let modelSlug = activeModel;
-            if (activeModel === 'gpt-oss-120b-cerebras') modelSlug = 'gpt-oss-120b';
-            else if (activeModel === 'gemma-4-31b-cerebras') modelSlug = 'gemma-4-31b';
-
-            const messages = buildStructuredMessages(promptText); 
-            const payload = {
-                model: modelSlug,
-                messages: messages,
-                temperature: 0.7,
-                top_p: 1.0,
-                max_tokens: 4096,
-                stream: true
-            };
-
-            const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                let errMsg = `HTTP Lỗi ${response.status}`;
-                try {
-                    const errJSON = JSON.parse(await response.text());
-                    if (errJSON.error && errJSON.error.message) errMsg = errJSON.error.message;
-                } catch(e) {}
-                throw new Error(errMsg);
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = "", inThinkingState = false, thinkingPlaceholderAdded = false;
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) { if (inThinkingState) onChunk("\n</think>\n\n"); break; }
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split("\n");
-                buffer = lines.pop();
-
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (trimmed.startsWith("data:")) {
-                        const dataContent = trimmed.slice(5).trim();
-                        if (dataContent === "[DONE]") continue;
-                        try {
-                            const parsed = JSON.parse(dataContent);
-                            const delta = parsed.choices[0].delta;
-                            if (delta) {
-                                let chunkText = "";
-                                let isReasoningChunk = !!(delta.reasoning_content || delta.reasoning);
-
-                                if (isReasoningChunk) {
-                                    if (!thinkingPlaceholderAdded) {
-                                        chunkText += "<think>Đang suy luận...</think>\n\n";
-                                        thinkingPlaceholderAdded = true;
-                                        inThinkingState = true;
-                                    }
-                                } else {
-                                    if (inThinkingState) inThinkingState = false;
-                                    if (delta.content) chunkText += delta.content;
-                                }
-                                if (chunkText) onChunk(chunkText);
-                            }
-                        } catch (e) {}
-                    }
-                }
-            }
-        } catch (err) { onError(err); }
-    }
-
-    async function callCohereStream(promptText, onChunk, onError) {
-        const key = localStorage.getItem('cohere_api_key') || '';
-        if (!key) return onError(new Error("Thiếu Cohere API Key trong Cấu hình!"));
-
-        try {
-            const activeModel = DOM.model ? DOM.model.value : 'gemini-3.8-flash';
-            let modelSlug = activeModel === 'command-a-reasoning' ? "command-a-reasoning-08-2025" : "command-a-plus-05-2026";
-            const messages = buildStructuredMessages(promptText);
-            const payload = { model: modelSlug, messages: messages, temperature: 0.7, top_p: 1.0, max_tokens: 4096, stream: true };
-
-            const response = await fetch("https://api.cohere.ai/compatibility/v1/chat/completions", {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                let errMsg = `HTTP Lỗi ${response.status}`;
-                try {
-                    const errJSON = JSON.parse(await response.text());
-                    if (errJSON.error && errJSON.error.message) errMsg = errJSON.error.message;
-                } catch(e) {}
-                throw new Error(errMsg);
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = "", inThinkingState = false, thinkingPlaceholderAdded = false;
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) { if (inThinkingState) onChunk("\n</think>\n\n"); break; }
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split("\n");
-                buffer = lines.pop();
-
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (trimmed.startsWith("data:")) {
-                        const dataContent = trimmed.slice(5).trim();
-                        if (dataContent === "[DONE]") continue;
-                        try {
-                            const parsed = JSON.parse(dataContent);
-                            const delta = parsed.choices[0].delta;
-                            if (delta) {
-                                let chunkText = "";
-                                let isReasoningChunk = !!(delta.reasoning_content || delta.reasoning);
-
-                                if (isReasoningChunk) {
-                                    if (!thinkingPlaceholderAdded) {
-                                        chunkText += "<think>Đang suy luận...</think>\n\n";
-                                        thinkingPlaceholderAdded = true;
-                                        inThinkingState = true;
-                                    }
-                                } else {
-                                    if (inThinkingState) inThinkingState = false;
-                                    if (delta.content) chunkText += delta.content.replace(/<\/think>/g, "");
-                                }
-                                if (chunkText) onChunk(chunkText);
-                            }
-                        } catch (e) {}
-                    }
-                }
-            }
-        } catch (err) { onError(err); }
-    }
-
     window.forkSession=async i=>{if(!confirm("Tạo nhánh hội thoại từ đây?"))return; const c=sessions.find(s=>s.id===activeId), nId='s_'+Date.now(), nSess={...c,id:nId,name:c.name+" (Nhánh)",his:chatHistory.slice(0,i+1),lastInteractionId:null,orderIndex:0}; sessions.unshift(nSess); sessions.forEach((s,j)=>{s.orderIndex=j;saveToDB(s);}); await switchSess(nId); showToast("Đã rẽ nhánh!");};
 
     DOM.btnEnhancePrompt.onclick=async()=>{
@@ -2317,11 +2122,11 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
       const u=prompt("Nhập URL Web hoặc YouTube cần cào dữ liệu:"); if(!u||!u.match(/(https?:\/\/[^\s]+)/))return;
       const currentSession = sessions.find(x => x.id === activeId);
       const currentKey = getSessionApiKey(currentSession);
-      if(!currentKey) return showToast("Cần cấu hình API Key để kích hoạt tính năng đọc link!","error");
-      
-      DOM.btnAddUrl.innerHTML="⏳ Đang cào...";
+
+      DOM.btnAddUrl.innerHTML="⏳ Đang đọc...";
       try {
         if(u.includes("youtube.com")||u.includes("youtu.be")){
+           if(!currentKey) return showToast("Cần nạp Google API Key để đọc link YouTube!", "error");
            const ai = new GoogleGenAI({ apiKey: currentKey });
            const res = await ai.models.generateContent({
              model: "gemini-2.5-flash",
@@ -2332,16 +2137,14 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
            DOM.textFileList.innerHTML+=`📺 Dữ liệu YouTube<br>`; 
            showToast("Đã phân tích YT!");
         } else {
-           const res=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`);
-           const data=await res.json();
-           const doc=new DOMParser().parseFromString(data.contents, "text/html");
-           txtContent+=`\n[Web Scraped: ${u}]:\n${doc.body.innerText.replace(/\s+/g,' ').substring(0,30000)}\n`;
-           DOM.textFileList.innerHTML+=`🌐 Dữ liệu Web<br>`; 
-           showToast("Đã cào nội dung Web!");
+           const extracted = await extractWebPageContent(u);
+           txtContent+=`\n[Nội dung trích xuất từ ${u} qua ${extracted.source}]:\n${extracted.content}\n`;
+           DOM.textFileList.innerHTML+=`🌐 Dữ liệu Web (${extracted.source})<br>`; 
+           showToast(`Đã cào qua ${extracted.source}!`);
         }
         DOM.previewBox.style.display='block'; DOM.fileCount.innerText=filesData.length+(txtContent?1:0);
         updateTokenCount();
-      }catch(e){showToast("Lỗi cào dữ liệu!","error");} DOM.btnAddUrl.innerHTML="🌐 Đọc Link/YT";
+      }catch(e){showToast("Lỗi cào dữ liệu: " + e.message,"error");} DOM.btnAddUrl.innerHTML="🌐 Đọc Link/YT";
     };
 
     document.getElementById('btn-paste-clipboard').onclick=async()=>{try{const is=await navigator.clipboard.read(); let h=false; for(let i of is){if(i.types.includes('image/png')||i.types.includes('image/jpeg')){const b=await i.getType('image/png'); filesData.push(new File([b],'clipboard-img.png',{type:b.type})); renderFiles(); h=true;}else if(i.types.includes('text/plain')){const t=await i.getType('text/plain').then(r=>r.text()); if(t && DOM.input){DOM.input.value+=(DOM.input.value?'\n':'')+t; h=true;}} } if(!h){const t=await navigator.clipboard.readText(); if(t && DOM.input){DOM.input.value+=(DOM.input.value?'\n':'')+t; h=true;}} if(h){ if(DOM.input) { DOM.input.dispatchEvent(new Event('input')); DOM.input.focus(); } showToast('✅ Đã dán'); }else showToast('❌ Trống','error');}catch(e){showToast('Lỗi: '+e.message,'error');}};
@@ -2375,7 +2178,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     DOM.btnDeleteFolder.onclick=async()=>{if(activeFolder==="All"||activeFolder==="Mặc định")return showToast("Không xóa được TM hệ thống!"); if(confirm(`Xóa "${activeFolder}"?`)){folders=folders.filter(f=>f!==activeFolder); localStorage.setItem('javiss_folders',JSON.stringify(folders)); for(let s of sessions){if(s.folder===activeFolder){s.folder="Mặc định"; await saveToDB(s);}} activeFolder="All"; localStorage.setItem('javiss_active_folder',"All"); renderFolders(); renderSel(); showToast("Đã xóa!");}};
     DOM.btnMoveSess.onclick=async()=>{const s=sessions.find(x=>x.id===activeId); if(!s)return; const c=prompt(`Nhập số TM đích:\n${folders.map((f,i)=>`${i+1}. ${f}`).join('\n')}`); if(c){let t=folders[parseInt(c)-1]||c.trim(); if(folders.includes(t)){s.folder=t; await saveToDB(s); showToast(`Chuyển: ${t}`); renderSel();}}};
     async function loadSess(){try{await initDB(); let d=await getAllFromDB(); if(d&&d.length){sessions=d.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0)); renderFolders(); activeId=localStorage.getItem('javiss_active_id'); if(!sessions.find(s=>s.id===activeId))activeId=sessions[0].id; await switchSess(activeId);}else{renderFolders(); await newSess();}}catch(e){await newSess();}}
-    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.8-flash',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,schEngine:'auto',mem:true,agt:false,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
+    async function newSess(n){const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:DOM.model.value||'gemini-3.8-flash',keySel:DOM.apiKeySel?DOM.apiKeySel.value:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,schEngine:'jina',mem:true,useGlob:true,orderIndex:0}; sessions.unshift(s); sessions.forEach((x,i)=>{x.orderIndex=i; saveToDB(x);}); await switchSess(id);}
     document.getElementById('btn-new-session').onclick=()=>newSess();
     
     async function switchSess(id){
@@ -2402,9 +2205,8 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
               DOM.toggleSearch.checked = s.sch || false;
               if (DOM.searchEngineBox) DOM.searchEngineBox.style.display = DOM.toggleSearch.checked ? 'block' : 'none';
           }
-          if(DOM.searchEngineSel) DOM.searchEngineSel.value = s.schEngine || 'auto';
+          if(DOM.searchEngineSel) DOM.searchEngineSel.value = s.schEngine || 'jina';
           if(DOM.toggleMemory) DOM.toggleMemory.checked=s.mem!==false; 
-          if(DOM.toggleAgent) DOM.toggleAgent.checked=s.agt||false;
           
           const manualIdInput = document.getElementById('manual-interaction-id');
           if (manualIdInput) {
@@ -2471,9 +2273,8 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           s.thk = DOM.thinking ? DOM.thinking.value : 'medium';
           s.useGlob = DOM.toggleGlob ? DOM.toggleGlob.checked : true;
           s.sch = DOM.toggleSearch ? DOM.toggleSearch.checked : false; 
-          s.schEngine = DOM.searchEngineSel ? DOM.searchEngineSel.value : 'auto';
+          s.schEngine = DOM.searchEngineSel ? DOM.searchEngineSel.value : 'jina';
           s.mem = DOM.toggleMemory ? DOM.toggleMemory.checked : true; 
-          s.agt = DOM.toggleAgent ? DOM.toggleAgent.checked : false; 
           await saveToDB(s);
       }
       if (DOM.searchEngineBox) {
@@ -2496,7 +2297,6 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
     if(DOM.toggleSearch) DOM.toggleSearch.addEventListener('change',updateConfig); 
     if(DOM.searchEngineSel) DOM.searchEngineSel.addEventListener('change',updateConfig);
     if(DOM.toggleMemory) DOM.toggleMemory.addEventListener('change',updateConfig); 
-    if(DOM.toggleAgent) DOM.toggleAgent.addEventListener('change',updateConfig); 
     if(DOM.topK) DOM.topK.addEventListener('input',updateConfig); 
     if(DOM.thinking) DOM.thinking.addEventListener('change',updateConfig); 
     if(DOM.temp) DOM.temp.addEventListener('input',()=>{ if(DOM.tempVal) DOM.tempVal.innerText=DOM.temp.value; updateConfig();}); 
@@ -2579,522 +2379,311 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           bD.scrollIntoView({ behavior: 'smooth', block: 'start' });
           const cD=bD.querySelector('.msg-content'); 
           
-          const selectedSearchEngine = DOM.searchEngineSel ? DOM.searchEngineSel.value : 'auto';
+          const selectedSearchEngine = DOM.searchEngineSel ? DOM.searchEngineSel.value : 'jina';
+          let fnP = fP;
 
-          if(DOM.toggleAgent && DOM.toggleAgent.checked){
-             const step1El = document.createElement('div'); step1El.className = 'agent-step'; cD.appendChild(step1El);
-             const step2El = document.createElement('div'); step2El.className = 'agent-step'; step2El.style.display = 'none'; cD.appendChild(step2El);
+          // ==============================================================
+          // 🚀 TỰ ĐỘNG BÓC TÁCH ĐƯỜNG LINK TRỰC TIẾP TRONG Ô CHAT (JINA/TAVILY)
+          // ==============================================================
+          const urlMatches = Array.from(fnP.matchAll(/(https?:\/\/[^\s]+)/g)).map(m => m[0]);
+          if (urlMatches.length > 0) {
+              const targetUrl = urlMatches[0];
+              if (!targetUrl.includes("youtube.com") && !targetUrl.includes("youtu.be")) {
+                  if (bD.querySelector('.streaming-indicator')) {
+                      bD.querySelector('.streaming-indicator').innerText = `🌐 Đang bóc tách link qua Jina/Tavily...`;
+                  }
+                  try {
+                      const extracted = await extractWebPageContent(targetUrl);
+                      fnP = `[NỘI DUNG TRÍCH XUẤT TỪ LINK ${targetUrl} QUA ${extracted.source}]:\n${extracted.content}\n\n[YÊU CẦU CỦA NGƯỜI DÙNG]:\n${fnP}`;
+                      showToast(`Đã bóc tách nội dung link qua ${extracted.source}!`, "info");
+                  } catch (e) {
+                      console.warn("Lỗi bóc tách link:", e);
+                  }
+              }
+          }
 
-             let success2 = false, step2Text = "";
-             try {
-                let agentSearchEngine = selectedSearchEngine === 'auto' ? (localStorage.getItem('auto_search_default_engine') || 'tavily') : selectedSearchEngine;
-                const quotedQuery = extractQuotedKeywords(fP);
-                const queryToSearch = quotedQuery || fP;
+          // ==============================================================
+          // 🔍 TRA CỨU WEB THỜI GIAN THỰC (NẾU ĐƯỢC BẬT HOẶC TỰ ĐỘNG PHÁT HIỆN)
+          // ==============================================================
+          if(DOM.toggleSearch && DOM.toggleSearch.checked){
+             let targetEngine = selectedSearchEngine;
+             let needSearch = true;
 
-                if (agentSearchEngine === 'tavily') {
-                    if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`⚡ Tìm Tavily AI...`;
-                    step1El.innerHTML = `⚡ B1: Tra cứu Web qua Tavily cho từ khóa: <strong>"${queryToSearch}"</strong>`; step1El.style.display = 'block';
-                    step2Text = await fetchTavilySearch(queryToSearch);
-                    success2 = !!step2Text;
-                } else if (agentSearchEngine === 'serper') {
-                    if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🔎 Tìm Google (Serper)...`;
-                    step1El.innerHTML = `🔎 B1: Tra cứu Google Search qua Serper cho: <strong>"${queryToSearch}"</strong>`; step1El.style.display = 'block';
-                    step2Text = await fetchSerperSearch(queryToSearch);
-                    success2 = !!step2Text;
-                } else if (agentSearchEngine === 'brave') {
-                    if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🦁 Tìm Brave Search...`;
-                    step1El.innerHTML = `🦁 B1: Tra cứu Web qua Brave cho: <strong>"${queryToSearch}"</strong>`; step1El.style.display = 'block';
-                    step2Text = await fetchBraveSearch(queryToSearch);
-                    success2 = !!step2Text;
-                } else {
-                    const aiAgent = new GoogleGenAI({ apiKey: currentGoogleKey || apiKeys[0] });
-                    if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🤖 Đang tìm kiếm Web...`;
-                    step1El.innerHTML = `🌐 B1: Tra cứu Web trực tiếp bằng Gemini 2.5 Flash cho: <strong>"${queryToSearch}"</strong>`; step1El.style.display = 'block';
-                    
-                    const step2 = await aiAgent.models.generateContent({
-                        model: "gemini-2.5-flash", 
-                        contents: `Hãy tìm kiếm và tổng hợp thông tin chi tiết, mới nhất trên Google để trả lời yêu cầu sau: ${queryToSearch}`,
-                        config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
-                    });
-                    step2Text = step2.text;
-                    success2 = true;
-                }
-             } catch(e) { 
-                showToast(formatGoogleApiError(e), "danger", 5000);
+             if (selectedSearchEngine === 'auto') {
+                 needSearch = shouldTriggerAutoSearch(fnP);
+                 const defaultAutoEngine = localStorage.getItem('auto_search_default_engine') || 'jina';
+                 targetEngine = defaultAutoEngine;
              }
 
-             if(!success2) { showToast("Agent thất bại tại bước tra cứu Web.","error", 5000); bD.remove(); return; }
+             if (needSearch) {
+                 let searchEngineName = "";
+                 let searchDataText = "";
+                 let isSearchSuccess = false;
 
-             let success3 = false;
-             if(activeModel.endsWith('-dify') || externalModels.includes(activeModel)) {
-                 let agentPrompt = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
-                 bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo...`;
-                 step2El.innerHTML = `🧠 B2: Đang kết nối mô hình tổng hợp dữ liệu...`; step2El.style.display = 'block';
-                 
-                 let extSuccess = false;
-                 try {
-                     const onChunkCallback = (chunk) => {
-                         if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                         finalResponse += chunk;
-                         updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                     };
-                     const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error', 5000); };
+                 const quotedQuery = extractQuotedKeywords(fnP);
+                 const queryToSearch = quotedQuery || fnP;
 
-                     if (activeModel.endsWith('-dify')) {
-                         const si = getDynamicSI();
-                         let serializedAgentPrompt = `<SystemInstruction>\n${si}\n</SystemInstruction>\n\nLƯU Ý: Hãy tuân thủ nghiêm ngặt các chỉ thị hệ thống trong thẻ <SystemInstruction> để thực hiện yêu cầu phân tích sau:\n\nYêu cầu phân tích: ${agentPrompt}`;
-                         await callDifyStream(serializedAgentPrompt, onChunkCallback, onErrorCallback, imgs); 
-                     } else if (activeModel === 'mistral-medium-latest' || activeModel === 'mistral-medium-3-5' || activeModel === 'mistral-small-2603') {
-                         await callMistralStream(agentPrompt, onChunkCallback, onErrorCallback);
-                     } else if (activeModel === 'command-a-plus' || activeModel === 'command-a-reasoning') {
-                         await callCohereStream(agentPrompt, onChunkCallback, onErrorCallback);
-                     } else if (activeModel === 'gpt-oss-120b-cerebras' || activeModel === 'gemma-4-31b-cerebras') {
-                         await callCerebrasStream(agentPrompt, onChunkCallback, onErrorCallback);
+                 if (targetEngine === 'jina') {
+                     if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🦎 Tìm Jina AI: "${queryToSearch}"...`;
+                     try {
+                         searchDataText = await fetchJinaSearch(queryToSearch);
+                         searchEngineName = "JINA AI SEARCH";
+                         isSearchSuccess = !!searchDataText;
+                     } catch(e) { showToast(e.message, "danger", 5000); }
+                 } else if (targetEngine === 'tavily') {
+                     if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`⚡ Tìm Tavily: "${queryToSearch}"...`;
+                     try {
+                         searchDataText = await fetchTavilySearch(queryToSearch);
+                         searchEngineName = "TAVILY AI SEARCH";
+                         isSearchSuccess = !!searchDataText;
+                     } catch(e) { showToast(e.message, "danger", 5000); }
+                 } else if (targetEngine === 'serper') {
+                     if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🔎 Tìm Google: "${queryToSearch}"...`;
+                     try {
+                         searchDataText = await fetchSerperSearch(queryToSearch);
+                         searchEngineName = "SERPER.DEV (GOOGLE SEARCH)";
+                         isSearchSuccess = !!searchDataText;
+                     } catch(e) { showToast(e.message, "danger", 5000); }
+                 } else if (targetEngine === 'brave') {
+                     if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🦁 Tìm Brave: "${queryToSearch}"...`;
+                     try {
+                         searchDataText = await fetchBraveSearch(queryToSearch);
+                         searchEngineName = "BRAVE SEARCH";
+                         isSearchSuccess = !!searchDataText;
+                     } catch(e) { showToast(e.message, "danger", 5000); }
+                 } else if (targetEngine === 'google' && activeModel !== 'gemini-2.5-flash') {
+                     let searchSuccess = false;
+                     try {
+                        const aiSearch = new GoogleGenAI({ apiKey: currentGoogleKey || apiKeys[0] });
+                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🌐 Tìm Web: "${queryToSearch}"...`;
+                        
+                        const wRes = await aiSearch.models.generateContent({
+                            model: "gemini-2.5-flash", 
+                            contents: `Hãy tìm kiếm và tổng hợp thông tin chi tiết, mới nhất trên Google để trả lời yêu cầu sau: ${queryToSearch}`,
+                            config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
+                         }); 
+                        searchDataText = wRes.text; 
+                        searchEngineName = "GEMINI 2.5 FLASH GROUNDING";
+                        searchSuccess = true;
+                     } catch(e) { 
+                        showToast(formatGoogleApiError(e), "danger", 5000);
+                     }
+                     isSearchSuccess = searchSuccess;
+                 }
+
+                 if (isSearchSuccess && searchDataText) {
+                     const targetKeywordLabel = quotedQuery ? `TỪ KHÓA CHỈ ĐỊNH "${quotedQuery}"` : searchEngineName;
+                     fnP = `[DỮ LIỆU TÌM THẤY TRÊN INTERNET CHO ${targetKeywordLabel} QUA ${searchEngineName}]:\n${searchDataText}\n\n[YÊU CẦU GỐC CỦA NGƯỜI DÙNG]: ${fnP}`;
+                 }
+             }
+          } 
+
+          // ==============================================================
+          // 🤖 GỬI VÀO MODEL ĐANG CHỌN (DIFY, GROQ, HOẶC GEMINI INTERACTIONS)
+          // ==============================================================
+          if(activeModel.endsWith('-dify') || externalModels.includes(activeModel)) {
+              bD.querySelector('.streaming-indicator').innerText=`🔗 Đang gọi dịch vụ...`;
+              
+              let extSuccess = false;
+              try {
+                 const onChunkCallback = (chunk) => {
+                    if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                    finalResponse += chunk;
+                    updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                 };
+                 const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error', 5000); };
+
+                 if (activeModel.endsWith('-dify')) {
+                    const memSize = 20;
+                    let currentHistory = DOM.toggleMemory && DOM.toggleMemory.checked ? chatHistory.slice(-memSize) : [];
+                    let serializedPrompt = serializeHistoryForDify(currentHistory, fnP);
+                    await callDifyStream(serializedPrompt, onChunkCallback, onErrorCallback, imgs); 
+                 } else {
+                    await callGroqStream(fnP, onChunkCallback, onErrorCallback);
+                 }
+
+                 if (finalResponse.trim()) {
+                    await renderMsgContent(cD, finalResponse);
+                    extSuccess = true;
+                 }
+              } catch(e) {
+                 showToast("❌ Lỗi kết nối: " + e.message, 'error', 5000);
+              }
+              if(!extSuccess){ bD.remove(); return; }
+          } else {
+              let pS=false, sT=Date.now(), lastErr=null; 
+              const fallbackChain = getFallbackModelsFor(activeModel);
+
+              async function tryGoogleCall(modelToRun) {
+                 try{
+                     const aiMain = new GoogleGenAI({ apiKey: currentGoogleKey });
+                     
+                     let interactionInput;
+                     let textPartContent = fnP.trim() ? fnP : defaultMediaPrompt;
+                     
+                     if (imgs.length > 0) {
+                         let parts = [{ type: 'text', text: textPartContent }];
+                         for (let f of imgs) parts.push(...(await processAndSplitImage(f)));
+                         interactionInput = parts;
                      } else {
-                         await callGroqStream(agentPrompt, onChunkCallback, onErrorCallback);
+                         interactionInput = textPartContent;
+                     }
+
+                     if (modelToRun === 'gemini-2.5-flash' && DOM.toggleSearch && DOM.toggleSearch.checked && selectedSearchEngine === 'google') {
+                         if (bD.querySelector('.streaming-indicator')) {
+                             bD.querySelector('.streaming-indicator').innerText = `🌐 Tra cứu Web & Trả lời (1 Request - 2.5 Flash)...`;
+                         }
+                         const resStream = await aiMain.models.generateContentStream({
+                             model: 'gemini-2.5-flash',
+                             contents: interactionInput,
+                             config: {
+                                 tools: [{ googleSearch: {} }],
+                                 safetySettings: SAFETY
+                             }
+                         });
+
+                         for await (const ck of resStream) {
+                             const textChunk = ck.text || "";
+                             if (textChunk) {
+                                 if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                                 finalResponse += textChunk;
+                                 updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                             }
+                         }
+
+                         if (!finalResponse.trim()) {
+                             throw new Error("Mô hình không trả về nội dung.");
+                         }
+
+                         await renderMsgContent(cD, finalResponse);
+                         return true;
+                     }
+
+                     if (modelToRun.startsWith('gemini-2.5')) {
+                         const config = {
+                             systemInstruction: getDynamicSI(),
+                             safetySettings: SAFETY,
+                             temperature: DOM.temp ? +DOM.temp.value : 0.5,
+                             topP: DOM.topP ? +DOM.topP.value : 0.9,
+                             topK: DOM.topK ? +DOM.topK.value : 40
+                         };
+                         const resStream = await aiMain.models.generateContentStream({
+                             model: modelToRun,
+                             contents: interactionInput,
+                             config: config
+                         });
+                         for await (const ck of resStream) {
+                             const textChunk = ck.text || "";
+                             if (textChunk) {
+                                 if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                                 finalResponse += textChunk;
+                                 updateChatContentAndScroll(cD, marked.parse(finalResponse));
+                             }
+                         }
+                         if (!finalResponse.trim()) throw new Error("Mô hình không trả về nội dung.");
+                         await renderMsgContent(cD, finalResponse);
+                         return true;
+                     }
+
+                     const genConfig = {
+                         thinking_level: getGoogleThinkingLevel(modelToRun)
+                     };
+                     if (modelToRun !== 'gemini-3.7-flash' && modelToRun !== 'gemini-3.8-flash') {
+                         if (DOM.temp) genConfig.temperature = +DOM.temp.value;
+                         if (DOM.topP) genConfig.top_p = +DOM.topP.value;
+                         if (DOM.topK) genConfig.top_k = +DOM.topK.value;
+                     }
+
+                     const interactionPayload = {
+                         model: modelToRun,
+                         input: interactionInput,
+                         system_instruction: getDynamicSI(),
+                         generation_config: genConfig,
+                         stream: true
+                     };
+
+                     if (DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId) {
+                         interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
+                     }
+
+                     let resStream;
+                     try {
+                         resStream = await aiMain.interactions.create(interactionPayload); 
+                     } catch(errInt) {
+                         if (interactionPayload.previous_interaction_id) {
+                             delete interactionPayload.previous_interaction_id;
+                             if (currentSession) currentSession.lastInteractionId = null;
+                             resStream = await aiMain.interactions.create(interactionPayload);
+                         } else {
+                             throw errInt;
+                         }
                      }
                      
-                     if (finalResponse.trim()) {
-                         await renderMsgContent(cD, finalResponse);
-                         extSuccess = true;
-                         success3 = true;
-                     }
-                 } catch(err) {
-                     showToast("❌ Lỗi: " + err.message, 'error', 5000);
-                 }
-                 if(!extSuccess) { bD.remove(); return; }
-             } else {
-                 let agentInputText = `Dựa trên dữ liệu mạng vừa thu thập: ${step2Text}\nHãy viết một bài báo cáo phân tích chuyên sâu chi tiết để xử lý: ${fP}`;
-                 const fallbackChain = getFallbackModelsFor(activeModel);
-                 let lastErr = null;
-
-                 async function tryGoogleCallAgent(modelToRun) {
-                     try {
-                        const aiMain = new GoogleGenAI({ apiKey: currentGoogleKey });
-                        bD.querySelector('.streaming-indicator').innerText=`🤖 Viết báo cáo (${modelToRun})...`;
-                        step2El.innerHTML = `🧠 B2: Đang kết nối Interactions API (${modelToRun}) tổng hợp dữ liệu...`; step2El.style.display = 'block';
-                        
-                        let interactionInput;
-                        let textContentPart = agentInputText.trim() ? agentInputText : defaultMediaPrompt;
-                        if (imgs.length > 0) {
-                            let parts = [{ type: 'text', text: textContentPart }];
-                            for (let f of imgs) parts.push(...(await processAndSplitImage(f)));
-                            interactionInput = parts;
-                        } else {
-                            interactionInput = textContentPart;
+                     for await(const ck of resStream){
+                        if (ck.event_type === "error" || ck.eventType === "error" || ck.error) {
+                            throw new Error(ck.error?.message || ck.message || "Lỗi stream từ Google API");
+                        }
+                        let textChunk = "";
+                        if ((ck.event_type === "step.delta" || ck.eventType === "step.delta" || ck.type === "step.delta") && ck.delta) {
+                            if (ck.delta.text) textChunk = ck.delta.text;
+                        } else if (ck.text) {
+                            textChunk = ck.text;
+                        } else if (ck.delta && ck.delta.text) {
+                            textChunk = ck.delta.text;
+                        } else if (ck.outputs && ck.outputs[0] && ck.outputs[0].text) {
+                            textChunk = ck.outputs[0].text;
+                        } else if (ck.text_delta) {
+                            textChunk = ck.text_delta;
                         }
 
-                        if (modelToRun.startsWith('gemini-2.5')) {
-                            const resStream = await aiMain.models.generateContentStream({
-                                model: modelToRun,
-                                contents: interactionInput,
-                                config: {
-                                    systemInstruction: getDynamicSI(),
-                                    safetySettings: SAFETY
-                                }
-                            });
-                            for await (const ck of resStream) {
-                                const textChunk = ck.text || "";
-                                if (textChunk) {
-                                    if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                                    finalResponse += textChunk;
-                                    updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                                }
-                            }
-                            if (!finalResponse.trim()) throw new Error("Mô hình không trả về nội dung.");
-                            await renderMsgContent(cD, finalResponse);
-                            return true;
-                        }
-
-                        const genConfig = {
-                            thinking_level: getGoogleThinkingLevel(modelToRun)
-                        };
-                        if (modelToRun !== 'gemini-3.7-flash' && modelToRun !== 'gemini-3.8-flash') {
-                            if (DOM.temp) genConfig.temperature = +DOM.temp.value;
-                            if (DOM.topP) genConfig.top_p = +DOM.topP.value;
-                            if (DOM.topK) genConfig.top_k = +DOM.topK.value;
-                        }
-
-                        const interactionPayload = {
-                            model: modelToRun,
-                            input: interactionInput,
-                            system_instruction: getDynamicSI(),
-                            generation_config: genConfig,
-                            stream: true
-                        };
-
-                        if (DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId) {
-                            interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
-                        }
-
-                        let resStream;
-                        try {
-                            resStream = await aiMain.interactions.create(interactionPayload); 
-                        } catch(errInt) {
-                            if (interactionPayload.previous_interaction_id) {
-                                delete interactionPayload.previous_interaction_id;
-                                if (currentSession) currentSession.lastInteractionId = null;
-                                resStream = await aiMain.interactions.create(interactionPayload);
-                            } else {
-                                throw errInt;
-                            }
-                        }
-                        
-                        for await(const ck of resStream){
-                           if (ck.event_type === "error" || ck.eventType === "error" || ck.error) {
-                               throw new Error(ck.error?.message || ck.message || "Lỗi stream từ Google API");
-                           }
-                           let textChunk = "";
-                           if ((ck.event_type === "step.delta" || ck.eventType === "step.delta" || ck.type === "step.delta") && ck.delta) {
-                               if (ck.delta.text) textChunk = ck.delta.text;
-                           } else if (ck.text) {
-                               textChunk = ck.text;
-                           } else if (ck.delta && ck.delta.text) {
-                               textChunk = ck.delta.text;
-                           } else if (ck.outputs && ck.outputs[0] && ck.outputs[0].text) {
-                               textChunk = ck.outputs[0].text;
-                           } else if (ck.text_delta) {
-                               textChunk = ck.text_delta;
-                           }
-
-                           if (textChunk) {
-                               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                               finalResponse += textChunk;
-                               updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                           }
-                           if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
-                               capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
-                           }
-                        }
-
-                        if (!finalResponse.trim() && resStream && resStream.output_text) {
-                            finalResponse = resStream.output_text;
+                        if (textChunk) {
+                            if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
+                            finalResponse += textChunk;
                             updateChatContentAndScroll(cD, marked.parse(finalResponse));
                         }
 
-                        if (!finalResponse.trim()) {
-                            throw new Error("Mô hình không trả về nội dung.");
+                        if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
+                            capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
                         }
+                     } 
 
-                        if (capturedInteractionId && currentSession) {
-                            currentSession.lastInteractionId = capturedInteractionId;
-                        }
-                        await renderMsgContent(cD, finalResponse);
-                        return true;
-                     } catch(e) { 
-                        lastErr = e;
-                        return false;
+                     if (!finalResponse.trim() && resStream && resStream.output_text) {
+                         finalResponse = resStream.output_text;
+                         updateChatContentAndScroll(cD, marked.parse(finalResponse));
                      }
-                 }
 
-                 for (let mIdx = 0; mIdx < fallbackChain.length; mIdx++) {
-                     const targetModel = fallbackChain[mIdx];
-                     if (mIdx > 0) {
-                         showToast(`⚠️ Mô hình ${fallbackChain[mIdx - 1]} gặp sự cố! Đang chuyển sang ${targetModel}...`, "warning", 5000);
+                     if (!finalResponse.trim()) {
+                         throw new Error("Mô hình không trả về nội dung.");
                      }
-                     finalResponse = "";
-                     const success = await tryGoogleCallAgent(targetModel);
-                     if (success) {
-                         success3 = true;
-                         break;
+
+                     if (capturedInteractionId && currentSession) {
+                         currentSession.lastInteractionId = capturedInteractionId;
                      }
+
+                     await renderMsgContent(cD, finalResponse);
+                     return true;
+                 } catch(e){
+                     lastErr = e;
+                     return false;
                  }
+              }
 
-                 if (!success3) {
-                     bD.remove();
-                     showToast(formatGoogleApiError(lastErr), "danger", 5000);
-                     return;
-                 }
-             }
-             if(!success3) { bD.remove(); return; }
+              for (let mIdx = 0; mIdx < fallbackChain.length; mIdx++) {
+                  const targetModel = fallbackChain[mIdx];
+                  if (mIdx > 0) {
+                      showToast(`⚠️ Mô hình ${fallbackChain[mIdx - 1]} gặp sự cố! Đang chuyển sang ${targetModel}...`, "warning", 5000);
+                  }
+                  finalResponse = "";
+                  pS = await tryGoogleCall(targetModel);
+                  if (pS) break;
+              }
 
-          } else {
-             let fnP=fP; 
-             
-             if(DOM.toggleSearch && DOM.toggleSearch.checked){
-                let targetEngine = selectedSearchEngine;
-                let needSearch = true;
-
-                if (selectedSearchEngine === 'auto') {
-                    needSearch = shouldTriggerAutoSearch(fnP);
-                    const defaultAutoEngine = localStorage.getItem('auto_search_default_engine') || 'tavily';
-                    targetEngine = defaultAutoEngine;
-                }
-
-                if (needSearch) {
-                    let searchEngineName = "";
-                    let searchDataText = "";
-                    let isSearchSuccess = false;
-
-                    const quotedQuery = extractQuotedKeywords(fnP);
-                    const queryToSearch = quotedQuery || fnP;
-
-                    if (targetEngine === 'tavily') {
-                        const step2El = document.createElement('div'); step2El.className = 'agent-step'; cD.appendChild(step2El);
-                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`⚡ Tìm Tavily: "${queryToSearch}"...`;
-                        step2El.innerHTML = `⚡ Đang tra cứu Web qua Tavily cho từ khóa: <strong>"${queryToSearch}"</strong>`; step2El.style.display = 'block';
-                        try {
-                            searchDataText = await fetchTavilySearch(queryToSearch);
-                            searchEngineName = "TAVILY AI SEARCH";
-                            isSearchSuccess = !!searchDataText;
-                        } catch(e) { showToast(e.message, "danger", 5000); }
-                    } else if (targetEngine === 'serper') {
-                        const step2El = document.createElement('div'); step2El.className = 'agent-step'; cD.appendChild(step2El);
-                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🔎 Tìm Google: "${queryToSearch}"...`;
-                        step2El.innerHTML = `🔎 Đang tra cứu Google qua Serper cho: <strong>"${queryToSearch}"</strong>`; step2El.style.display = 'block';
-                        try {
-                            searchDataText = await fetchSerperSearch(queryToSearch);
-                            searchEngineName = "SERPER.DEV (GOOGLE SEARCH)";
-                            isSearchSuccess = !!searchDataText;
-                        } catch(e) { showToast(e.message, "danger", 5000); }
-                    } else if (targetEngine === 'brave') {
-                        const step2El = document.createElement('div'); step2El.className = 'agent-step'; cD.appendChild(step2El);
-                        if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🦁 Tìm Brave: "${queryToSearch}"...`;
-                        step2El.innerHTML = `🦁 Đang tra cứu Web qua Brave cho: <strong>"${queryToSearch}"</strong>`; step2El.style.display = 'block';
-                        try {
-                            searchDataText = await fetchBraveSearch(queryToSearch);
-                            searchEngineName = "BRAVE SEARCH";
-                            isSearchSuccess = !!searchDataText;
-                        } catch(e) { showToast(e.message, "danger", 5000); }
-                    } else if (targetEngine === 'google' && activeModel !== 'gemini-2.5-flash') {
-                        const step2El = document.createElement('div'); step2El.className = 'agent-step'; cD.appendChild(step2El);
-                        let searchSuccess = false;
-                        try {
-                           const aiSearch = new GoogleGenAI({ apiKey: currentGoogleKey || apiKeys[0] });
-                           if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText=`🌐 Tìm Web: "${queryToSearch}"...`;
-                           step2El.innerHTML = `🌐 Đang tra cứu dữ liệu Web bằng Gemini 2.5 Flash cho: <strong>"${queryToSearch}"</strong>`; step2El.style.display = 'block';
-                           
-                           const wRes = await aiSearch.models.generateContent({
-                               model: "gemini-2.5-flash", 
-                               contents: `Hãy tìm kiếm và tổng hợp thông tin chi tiết, mới nhất trên Google để trả lời yêu cầu sau: ${queryToSearch}`,
-                               config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY }
-                            }); 
-                           searchDataText = wRes.text; 
-                           searchEngineName = "GEMINI 2.5 FLASH GROUNDING";
-                           searchSuccess = true;
-                        } catch(e) { 
-                           showToast(formatGoogleApiError(e), "danger", 5000);
-                        }
-                        isSearchSuccess = searchSuccess;
-                    }
-
-                    if (isSearchSuccess && searchDataText) {
-                        const targetKeywordLabel = quotedQuery ? `TỪ KHÓA CHỈ ĐỊNH "${quotedQuery}"` : searchEngineName;
-                        fnP = `[DỮ LIỆU TÌM THẤY TRÊN INTERNET CHO ${targetKeywordLabel} QUA ${searchEngineName}]:\n${searchDataText}\n\n[YÊU CẦU GỐC CỦA NGƯỜI DÙNG]: ${fnP}`;
-                    }
-                }
-             } 
-
-             if(activeModel.endsWith('-dify') || externalModels.includes(activeModel)) {
-                 bD.querySelector('.streaming-indicator').innerText=`🔗 Đang gọi dịch vụ...`;
-                 
-                 let extSuccess = false;
-                 try {
-                    const onChunkCallback = (chunk) => {
-                       if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                       finalResponse += chunk;
-                       updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                    };
-                    const onErrorCallback = (err) => { showToast("❌ Lỗi: " + err.message, 'error', 5000); };
-
-                    if (activeModel.endsWith('-dify')) {
-                       const memSize = 20;
-                       let currentHistory = DOM.toggleMemory && DOM.toggleMemory.checked ? chatHistory.slice(-memSize) : [];
-                       let serializedPrompt = serializeHistoryForDify(currentHistory, fnP);
-                       await callDifyStream(serializedPrompt, onChunkCallback, onErrorCallback, imgs); 
-                    } else if (activeModel === 'mistral-medium-latest' || activeModel === 'mistral-medium-3-5' || activeModel === 'mistral-small-2603') {
-                       await callMistralStream(fnP, onChunkCallback, onErrorCallback);
-                    } else if (activeModel === 'command-a-plus' || activeModel === 'command-a-reasoning') {
-                       await callCohereStream(fnP, onChunkCallback, onErrorCallback);
-                    } else if (activeModel === 'gpt-oss-120b-cerebras' || activeModel === 'gemma-4-31b-cerebras') {
-                       await callCerebrasStream(fnP, onChunkCallback, onErrorCallback);
-                    } else {
-                       await callGroqStream(fnP, onChunkCallback, onErrorCallback);
-                    }
-
-                    if (finalResponse.trim()) {
-                       await renderMsgContent(cD, finalResponse);
-                       extSuccess = true;
-                    }
-                 } catch(e) {
-                    showToast("❌ Lỗi kết nối: " + e.message, 'error', 5000);
-                 }
-                 if(!extSuccess){ bD.remove(); return; }
-             } else {
-                 let pS=false, sT=Date.now(), lastErr=null; 
-                 const fallbackChain = getFallbackModelsFor(activeModel);
-
-                 async function tryGoogleCall(modelToRun) {
-                    try{
-                        const aiMain = new GoogleGenAI({ apiKey: currentGoogleKey });
-                        
-                        let interactionInput;
-                        let textPartContent = fnP.trim() ? fnP : defaultMediaPrompt;
-                        
-                        if (imgs.length > 0) {
-                            let parts = [{ type: 'text', text: textPartContent }];
-                            for (let f of imgs) parts.push(...(await processAndSplitImage(f)));
-                            interactionInput = parts;
-                        } else {
-                            interactionInput = textPartContent;
-                        }
-
-                        if (modelToRun === 'gemini-2.5-flash' && DOM.toggleSearch && DOM.toggleSearch.checked && selectedSearchEngine === 'google') {
-                            if (bD.querySelector('.streaming-indicator')) {
-                                bD.querySelector('.streaming-indicator').innerText = `🌐 Tra cứu Web & Trả lời (1 Request - 2.5 Flash)...`;
-                            }
-                            const resStream = await aiMain.models.generateContentStream({
-                                model: 'gemini-2.5-flash',
-                                contents: interactionInput,
-                                config: {
-                                    tools: [{ googleSearch: {} }],
-                                    safetySettings: SAFETY
-                                }
-                            });
-
-                            for await (const ck of resStream) {
-                                const textChunk = ck.text || "";
-                                if (textChunk) {
-                                    if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                                    finalResponse += textChunk;
-                                    updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                                }
-                            }
-
-                            if (!finalResponse.trim()) {
-                                throw new Error("Mô hình không trả về nội dung.");
-                            }
-
-                            await renderMsgContent(cD, finalResponse);
-                            return true;
-                        }
-
-                        if (modelToRun.startsWith('gemini-2.5')) {
-                            const config = {
-                                systemInstruction: getDynamicSI(),
-                                safetySettings: SAFETY,
-                                temperature: DOM.temp ? +DOM.temp.value : 0.5,
-                                topP: DOM.topP ? +DOM.topP.value : 0.9,
-                                topK: DOM.topK ? +DOM.topK.value : 40
-                            };
-                            const resStream = await aiMain.models.generateContentStream({
-                                model: modelToRun,
-                                contents: interactionInput,
-                                config: config
-                            });
-                            for await (const ck of resStream) {
-                                const textChunk = ck.text || "";
-                                if (textChunk) {
-                                    if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
-                                    finalResponse += textChunk;
-                                    updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                                }
-                            }
-                            if (!finalResponse.trim()) throw new Error("Mô hình không trả về nội dung.");
-                            await renderMsgContent(cD, finalResponse);
-                            return true;
-                        }
-
-                        const genConfig = {
-                            thinking_level: getGoogleThinkingLevel(modelToRun)
-                        };
-                        if (modelToRun !== 'gemini-3.7-flash' && modelToRun !== 'gemini-3.8-flash') {
-                            if (DOM.temp) genConfig.temperature = +DOM.temp.value;
-                            if (DOM.topP) genConfig.top_p = +DOM.topP.value;
-                            if (DOM.topK) genConfig.top_k = +DOM.topK.value;
-                        }
-
-                        const interactionPayload = {
-                            model: modelToRun,
-                            input: interactionInput,
-                            system_instruction: getDynamicSI(),
-                            generation_config: genConfig,
-                            stream: true
-                        };
-
-                        if (DOM.toggleMemory && DOM.toggleMemory.checked && currentSession && currentSession.lastInteractionId) {
-                            interactionPayload.previous_interaction_id = currentSession.lastInteractionId;
-                        }
-
-                        let resStream;
-                        try {
-                            resStream = await aiMain.interactions.create(interactionPayload); 
-                        } catch(errInt) {
-                            if (interactionPayload.previous_interaction_id) {
-                                delete interactionPayload.previous_interaction_id;
-                                if (currentSession) currentSession.lastInteractionId = null;
-                                resStream = await aiMain.interactions.create(interactionPayload);
-                            } else {
-                                throw errInt;
-                            }
-                        }
-                        
-                        for await(const ck of resStream){
-                           if (ck.event_type === "error" || ck.eventType === "error" || ck.error) {
-                               throw new Error(ck.error?.message || ck.message || "Lỗi stream từ Google API");
-                           }
-                           let textChunk = "";
-                           if ((ck.event_type === "step.delta" || ck.eventType === "step.delta" || ck.type === "step.delta") && ck.delta) {
-                               if (ck.delta.text) textChunk = ck.delta.text;
-                           } else if (ck.text) {
-                               textChunk = ck.text;
-                           } else if (ck.delta && ck.delta.text) {
-                               textChunk = ck.delta.text;
-                           } else if (ck.outputs && ck.outputs[0] && ck.outputs[0].text) {
-                               textChunk = ck.outputs[0].text;
-                           } else if (ck.text_delta) {
-                               textChunk = ck.text_delta;
-                           }
-
-                           if (textChunk) {
-                               if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove(); 
-                               finalResponse += textChunk;
-                               updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                           }
-
-                           if (ck && (ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id))) {
-                               capturedInteractionId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
-                           }
-                        } 
-
-                        if (!finalResponse.trim() && resStream && resStream.output_text) {
-                            finalResponse = resStream.output_text;
-                            updateChatContentAndScroll(cD, marked.parse(finalResponse));
-                        }
-
-                        if (!finalResponse.trim()) {
-                            throw new Error("Mô hình không trả về nội dung.");
-                        }
-
-                        if (capturedInteractionId && currentSession) {
-                            currentSession.lastInteractionId = capturedInteractionId;
-                        }
-
-                        await renderMsgContent(cD, finalResponse);
-                        return true;
-                    } catch(e){
-                        lastErr = e;
-                        return false;
-                    }
-                 }
-
-                 for (let mIdx = 0; mIdx < fallbackChain.length; mIdx++) {
-                     const targetModel = fallbackChain[mIdx];
-                     if (mIdx > 0) {
-                         showToast(`⚠️ Mô hình ${fallbackChain[mIdx - 1]} gặp sự cố! Đang chuyển sang ${targetModel}...`, "warning", 5000);
-                     }
-                     finalResponse = "";
-                     pS = await tryGoogleCall(targetModel);
-                     if (pS) break;
-                 }
-
-                 if(!pS){ 
-                     bD.remove(); 
-                     showToast(formatGoogleApiError(lastErr), 'danger', 5000); 
-                     return; 
-                 }
-                 document.getElementById('latency-val').innerText=(Date.now()-sT).toString();
-             }
+              if(!pS){ 
+                  bD.remove(); 
+                  showToast(formatGoogleApiError(lastErr), 'danger', 5000); 
+                  return; 
+              }
+              document.getElementById('latency-val').innerText=(Date.now()-sT).toString();
           }
 
           chatHistory.push({role:'user',text:fP}); 
@@ -3150,8 +2739,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
           'global_context', 'theme', 'javiss_folders', 'javiss_active_folder',
           'dify_key_gemini', 'dify_key_lite', 'dify_key_pro', 'dify_key_gpt', 'dify_key_opus',
           'dify_api_endpoint', 'dify_var_key',
-          'groq_api_key', 'mistral_api_key', 'cerebras_api_key', 'cohere_api_key',
-          'tavily_api_key', 'serper_api_key', 'brave_api_key', 'brave_worker_url', 'auto_search_default_engine',
+          'groq_api_key', 'tavily_api_key', 'serper_api_key', 'brave_api_key', 'brave_worker_url', 'auto_search_default_engine',
           'live_temperature', 'live_search_enabled', 'live_context_enabled', 'live_voice_name', 'live_selected_key'
         ];
         keysToBackup.forEach(k => {
@@ -3159,7 +2747,7 @@ ${(useGlob && g) ? '--- QUY TẮC TOÀN CỤC (THÔNG TIN NGƯỜI DÙNG) ---\n'
         });
 
         const backupData = {
-          version: "2.0_full",
+          version: "2.0_clean",
           backupDate: new Date().toISOString(),
           sessions: await getAllFromDB(),
           activeId,
