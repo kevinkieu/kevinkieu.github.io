@@ -1,1 +1,14 @@
-
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.kevinkieu.twa",
+      "sha256_cert_fingerprints": [
+        "E8:31:B9:A2:D0:33:80:28:C3:DE:D6:AC:08:07:A9:29:5A:0D:69:96:CC:AE:36:B3:2C:D6:8C:8F:28:34:2B:B7"
+      ]
+    }
+  }
+]
