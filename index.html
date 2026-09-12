@@ -378,17 +378,17 @@
       return res.join('\n\n');
     }
 
-    // --- BỘ BÓC TÁCH LINK WEB (ƯU TIÊN JINA -> FALLBACK TAVILY EXTRACT) ---
+    // --- BỘ BÓC TÁCH LINK WEB (TỰ ĐỘNG CHUYỂN SEARCH-ASSIST KHI BỊ CHẶN IP) ---
     async function extractWebPageContent(url){
       const mode=localStorage.getItem('web_extract_engine')||'auto', jk=localStorage.getItem('jina_api_key')||'', tk=localStorage.getItem('tavily_api_key')||'';
-      const isBlocked=(txt)=>/(just a moment|security verification|verify you are human|cloudflare|ddos protection|challenge-platform|enable javascript)/i.test(txt);
+      const isBlocked=(txt)=>!txt||txt.trim().length<60||/(just a moment|security verification|verify you are human|cloudflare|ddos protection|challenge-platform|enable javascript|access denied|403 forbidden)/i.test(txt);
 
       const tryJina=async()=>{
         const h={"Accept":"text/plain"}; if(jk)h["Authorization"]=`Bearer ${jk}`;
         const r=await fetch(`https://r.jina.ai/${url}`,{headers:h});
         if(!r.ok)throw new Error(`Jina Reader HTTP ${r.status}`);
         const t=await r.text();
-        if(!t||t.trim().length<80||isBlocked(t))throw new Error("Bị chặn Cloudflare/Anti-bot");
+        if(isBlocked(t))throw new Error("Jina bị chặn hoặc rỗng");
         return {source:"Jina Reader",content:t.substring(0,45000)};
       };
       const tryTavily=async()=>{
@@ -396,27 +396,52 @@
         const r=await fetch("https://api.tavily.com/extract",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({api_key:tk,urls:[url]})});
         if(!r.ok)throw new Error(`Tavily Extract HTTP ${r.status}`);
         const d=await r.json();
-        if(d.results?.[0]?.raw_content){
-          const t=d.results[0].raw_content;
-          if(t.length>50&&!isBlocked(t))return {source:"Tavily Extract",content:t.substring(0,45000)};
-        }
-        throw new Error("Tavily không trích xuất được!");
+        const t=d.results?.[0]?.raw_content;
+        if(t&&!isBlocked(t))return {source:"Tavily Extract",content:t.substring(0,45000)};
+        throw new Error("Tavily Extract rỗng hoặc bị chặn!");
       };
       const tryProxy=async()=>{
         const r=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`), d=await r.json();
         const doc=new DOMParser().parseFromString(d.contents,"text/html"), t=doc.body.innerText.replace(/\s+/g,' ').trim();
-        if(isBlocked(t)||t.length<50)throw new Error("Proxy bị chặn!");
+        if(isBlocked(t))throw new Error("Proxy rỗng!");
         return {source:"Web Proxy",content:t.substring(0,30000)};
       };
 
-      if(mode==='tavily'){ try{return await tryTavily();}catch(e){return await tryJina();} }
-      else if(mode==='jina'){ return await tryJina(); }
-      else {
-        try{ return await tryJina(); }
+      // 🛡️ CƠ CHẾ CỨU HỘ: TÌM KIẾM DỮ LIỆU CỦA TRANG WEB KHI LINK GỐC CHẶN IP NƯỚC NGOÀI
+      const trySearchAssist=async()=>{
+        let domain="", slug="";
+        try{ const parsed = new URL(url); domain = parsed.hostname.replace('www.', ''); slug = parsed.pathname.split('/').filter(Boolean).pop()?.replace(/[-_.]/g, ' ') || ''; }catch(e){}
+        const smartQuery = `${slug} ${domain} bảng giá mới nhất hôm nay`.trim();
+        
+        if(tk){
+          const tRes = await fetchTavilySearch(smartQuery);
+          if(tRes) return {source:"Tavily Search Assist (Dữ liệu dự phòng)", content:tRes};
+        }
+        const jRes = await fetchJinaSearch(smartQuery);
+        if(jRes) return {source:"Jina Search Assist (Dữ liệu dự phòng)", content:jRes};
+        throw new Error("Không thể bóc tách hoặc tìm thấy dữ liệu.");
+      };
+
+      if(mode==='tavily'){
+        try{return await tryTavily();}
         catch(e){
-          console.warn("Jina Reader bị chặn hoặc lỗi, chuyển sang Tavily Extract...",e);
-          try{ return await tryTavily(); }
-          catch(e2){ return await tryProxy(); }
+          try{return await tryJina();}
+          catch(e2){
+            try{return await tryProxy();}
+            catch(e3){return await trySearchAssist();}
+          }
+        }
+      }else if(mode==='jina'){
+        try{return await tryJina();}
+        catch(e){return await trySearchAssist();}
+      }else{
+        try{return await tryJina();}
+        catch(e){
+          try{return await tryTavily();}
+          catch(e2){
+            try{return await tryProxy();}
+            catch(e3){return await trySearchAssist();}
+          }
         }
       }
     }
@@ -444,7 +469,7 @@
       for(const u of urlsToFetch){
         try{
           const ext = await extractWebPageContent(u);
-          resText += `\n[DỮ LIỆU TRÍCH XUẤT TỪ NGUỒN CHỈ ĐỊNH ${u} QUA ${ext.source} (THEO SYSTEM INSTRUCTION)]:\n${ext.content}\n`;
+          resText += `\n[DỮ LIỆU TỪ NGUỒN CHỈ ĐỊNH ${u} QUA ${ext.source}]:\n${ext.content}\n`;
         }catch(e){ console.warn("Lỗi cào URL từ SI:", u, e); }
       }
       return resText;
@@ -453,7 +478,7 @@
     // --- GEMINI MULTIMODAL LIVE CALL API ---
     let liveWs=null, liveAudioCtx=null, liveMediaStream=null, livePlaybackState={nextPlayTime:0,activeSources:[]}, liveCamInterval=null, isLiveMicMuted=false, isLiveCamOn=false, isLiveSetupComplete=false;
 
-    function getLiveCallSI(prefetchedData = ""){
+    function getLiveCallSI(){
       const cs=sessions.find(x=>x.id===activeId), sSI=(DOM.sysInst?.value.trim())||cs?.sys||'', g=DOM.globContext?.value.trim()||'', useGlob=DOM.toggleGlob?.checked!==false;
       const now=new Date(), days=['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'], timeStr=getNowTime24h();
       const dateStr=`${days[now.getDay()]}, ngày ${now.getDate()} tháng ${now.getMonth()+1} năm ${now.getFullYear()}`;
@@ -461,14 +486,10 @@
       let si=`[VAI TRÒ & NGỮ CẢNH PHIÊN]:\n`;
       if(useGlob&&g)si+=`--- TOÀN CỤC: ${g}\n\n`;
       si+=sSI?`--- RIÊNG: ${sSI}\n\n`:`Bạn là Javiss thông minh, thân thiện.\n\n`;
-      
-      if(prefetchedData){
-        si+=`[DỮ LIỆU TƯƠI MỚI TỪ NGUỒN CHỈ ĐỊNH ĐÃ ĐƯỢC NẠP SẴN]:\n${prefetchedData}\n\n`;
-      }
 
-      si+=`[QUY TẮC ĐÀM THOẠI THOẠI & CHỈ THỊ CƯỠNG CHẾ BÓC TÁCH WEB]:
-- Bạn ĐƯỢC TRANG BỊ ĐẦY ĐỦ CÁC CÔNG CỤ DUYỆT WEB ('read_url' và 'search_web'). TUYỆT ĐỐI KHÔNG ĐƯỢC TỪ CHỐI hoặc nói 'Tôi không thể truy cập internet/link'.
-- Khi người dùng hỏi về bất kỳ chủ đề hoặc trang web nào có liên kết trong ngữ cảnh hoặc trong lời nói, bạn BẮT BUỘC phải đọc dữ liệu đã nạp sẵn ở trên HOẶC GỌI NGAY CÔNG CỤ 'read_url' (với đường link) hoặc 'search_web' (với từ khóa) để lấy số liệu thực tế trước khi trả lời.
+      si+=`[QUY TẮC ĐÀM THOẠI THOẠI & CHỈ THỊ CƯỠNG CHẾ DUYỆT WEB]:
+- Bạn ĐƯỢC TRANG BỊ ĐẦY ĐỦ CÁC CÔNG CỤ DUYỆT WEB ('read_url' và 'search_web'). TUYỆT ĐỐI KHÔNG ĐƯỢC TỪ CHỐI hoặc nói 'Tôi không thể truy cập link'.
+- Khi người dùng hỏi về bất kỳ chủ đề hoặc link web nào trong [VAI TRÒ & NGỮ CẢNH PHIÊN], bạn BẮT BUỘC phải GỌI NGAY CÔNG CỤ 'read_url' (với đường link) hoặc 'search_web' (với từ khóa) để lấy dữ liệu thực tế.
 - Trả lời bằng Tiếng Việt tự nhiên, ngắn gọn trong 1-2 câu như nói chuyện điện thoại đời thực, tuyệt đối không đọc code dài dòng.
 [THỜI GIAN CHUẨN]: ${dateStr}, lúc ${timeStr}.`;
 
@@ -517,27 +538,8 @@
     async function startLiveVoiceCall(){
       const ko=getLiveApiKey(), key=ko.key; if(!key)return showToast("Cần Google API Key!","danger");
       const m=document.getElementById('live-call-modal'), st=document.getElementById('live-call-status'), tr=document.getElementById('live-transcript'), orb=document.getElementById('live-orb');
-      m.style.display='flex'; st.innerText=`Đang chuẩn bị phiên [Key ${ko.index+1}]...`; tr.innerHTML='<i>Đang kết nối và quét dữ liệu System Instruction...</i>'; orb.className='live-orb listening';
+      m.style.display='flex'; st.innerText=`Đang kết nối [Key ${ko.index+1}]...`; tr.innerHTML='<i>Đang mở micro & kết nối máy chủ Google...</i>'; orb.className='live-orb listening';
       livePlaybackState={nextPlayTime:0,activeSources:[]}; isLiveSetupComplete=false;
-
-      // 🎯 1. TỰ ĐỘNG PRE-FETCH CÁC LINK TRONG SYSTEM INSTRUCTION NGAY KHI MỞ CUỘC GỌI
-      let prefetchedData = "";
-      try {
-        const cs = sessions.find(x => x.id === activeId);
-        const sSI = (DOM.sysInst?.value.trim()) || cs?.sys || '';
-        const gCtx = DOM.globContext?.value.trim() || '';
-        const fullSI = sSI + "\n" + (DOM.toggleGlob?.checked !== false ? gCtx : '');
-        const siUrls = Array.from(fullSI.matchAll(/(https?:\/\/[^\s"'<>]+)/g)).map(x => x[0]);
-        if (siUrls.length > 0) {
-          st.innerText = `🌐 Đang nạp sẵn dữ liệu web từ System Instruction...`;
-          for (const u of siUrls) {
-            try {
-              const ext = await extractWebPageContent(u);
-              prefetchedData += `\n[Nội dung cập nhật từ ${u} qua ${ext.source}]:\n${ext.content.substring(0, 10000)}\n`;
-            } catch(err){}
-          }
-        }
-      } catch(e){}
 
       try{
         const AC=window.AudioContext||window.webkitAudioContext; liveAudioCtx=new AC({sampleRate:16000}); if(liveAudioCtx.state==='suspended')await liveAudioCtx.resume();
@@ -547,9 +549,8 @@
         liveWs.onopen=()=>{
           const voice=document.getElementById('live-voice-select')?.value||'Charon', temp=parseFloat(document.getElementById('live-temperature')?.value||0.7);
           const enableSearch=document.getElementById('live-toggle-search')?.checked!==false;
-          const setupMsg={setup:{model:"models/gemini-3.1-flash-live-preview",generationConfig:{responseModalities:["AUDIO"],temperature:temp,speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voice}}}},systemInstruction:{parts:[{text:getLiveCallSI(prefetchedData)}]}}};
+          const setupMsg={setup:{model:"models/gemini-3.1-flash-live-preview",generationConfig:{responseModalities:["AUDIO"],temperature:temp,speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voice}}}},systemInstruction:{parts:[{text:getLiveCallSI()}]}}};
           
-          // 🚀 KHAI BÁO CẢ 2 CÔNG CỤ: READ_URL VÀ SEARCH_WEB ĐỂ AI KHÔNG BAO GIỜ TỪ CHỐI
           if(enableSearch){
             setupMsg.setup.tools=[
               {
@@ -594,11 +595,16 @@
 
                 if(c.name === "read_url" && c.args?.url){
                   const targetUrl = c.args.url;
-                  tr.innerHTML=`<span style="color:#38bdf8;">🌐 Đọc link chỉ định: "<strong>${targetUrl.substring(0,30)}...</strong>"...</span>`;
+                  tr.innerHTML=`<span style="color:#38bdf8;">🌐 Đọc link: "<strong>${targetUrl.substring(0,25)}...</strong>"...</span>`;
                   try{
                     const ext = await extractWebPageContent(targetUrl);
-                    txt = `[Nội dung bóc tách từ ${targetUrl} qua ${ext.source}]:\n${ext.content.substring(0, 10000)}`;
-                  }catch(err){ txt = `Lỗi đọc URL: ${err.message}`; }
+                    txt = `[Dữ liệu từ ${targetUrl} qua ${ext.source}]:\n${ext.content.substring(0, 10000)}`;
+                  }catch(err){
+                    try{
+                      const sRes = await fetchTavilySearch(targetUrl);
+                      txt = `[Dữ liệu tìm kiếm dự phòng cho ${targetUrl}]:\n${sRes}`;
+                    }catch(e){ txt = "Không thể tải trang web, hãy cung cấp thông tin dựa trên dữ liệu sẵn có."; }
+                  }
                 }
                 else if(c.name === "search_web" && c.args?.query){
                   const q = c.args.query;
@@ -606,11 +612,16 @@
                   
                   if(urlMatch){
                     const targetUrl = urlMatch[0];
-                    tr.innerHTML=`<span style="color:#38bdf8;">🌐 Đọc link: "<strong>${targetUrl.substring(0,30)}...</strong>"...</span>`;
+                    tr.innerHTML=`<span style="color:#38bdf8;">🌐 Đọc link: "<strong>${targetUrl.substring(0,25)}...</strong>"...</span>`;
                     try{
                       const ext = await extractWebPageContent(targetUrl);
-                      txt = `[Nội dung từ ${targetUrl} qua ${ext.source}]:\n${ext.content.substring(0, 10000)}`;
-                    }catch(err){ txt = `Lỗi đọc URL: ${err.message}`; }
+                      txt = `[Dữ liệu từ ${targetUrl} qua ${ext.source}]:\n${ext.content.substring(0, 10000)}`;
+                    }catch(err){
+                      try{
+                        const sRes = await fetchTavilySearch(targetUrl);
+                        txt = `[Dữ liệu dự phòng cho ${targetUrl}]:\n${sRes}`;
+                      }catch(e){ txt = "Không thể tải dữ liệu link."; }
+                    }
                   } else {
                     tr.innerHTML=`<span style="color:#38bdf8;">⚡ Tra cứu: "<strong>${q}</strong>"...</span>`;
                     try{
