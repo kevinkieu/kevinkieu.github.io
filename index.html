@@ -234,7 +234,7 @@
           <div style="font-size:0.75rem;color:var(--text-muted);background:var(--input-bg);padding:8px;border-radius:6px;margin-bottom:8px;">💡 <b>Đồng bộ thông minh:</b> Cuộc gọi Live tự động kế thừa <b>System Instruction riêng của phiên</b> & Ngữ cảnh toàn cục!</div>
           <div class="slider-row"><label>Sáng tạo thoại (Temp: <span id="live-temp-val">0.7</span>):</label><input type="range" id="live-temperature" min="0" max="2" step="0.1" value="0.7"></div>
           <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
-            <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="live-toggle-search" checked> 🌐 Tra cứu Web thời gian thực qua Search_Web</label>
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="live-toggle-search" checked> 🌐 Tra cứu Web & Đọc link thời gian thực</label>
             <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="live-toggle-context" checked> 🧠 Kế thừa 10 tin nhắn gần nhất</label>
           </div>
         </fieldset>
@@ -453,7 +453,7 @@
     // --- GEMINI MULTIMODAL LIVE CALL API ---
     let liveWs=null, liveAudioCtx=null, liveMediaStream=null, livePlaybackState={nextPlayTime:0,activeSources:[]}, liveCamInterval=null, isLiveMicMuted=false, isLiveCamOn=false, isLiveSetupComplete=false;
 
-    function getLiveCallSI(){
+    function getLiveCallSI(prefetchedData = ""){
       const cs=sessions.find(x=>x.id===activeId), sSI=(DOM.sysInst?.value.trim())||cs?.sys||'', g=DOM.globContext?.value.trim()||'', useGlob=DOM.toggleGlob?.checked!==false;
       const now=new Date(), days=['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'], timeStr=getNowTime24h();
       const dateStr=`${days[now.getDay()]}, ngày ${now.getDate()} tháng ${now.getMonth()+1} năm ${now.getFullYear()}`;
@@ -461,10 +461,15 @@
       let si=`[VAI TRÒ & NGỮ CẢNH PHIÊN]:\n`;
       if(useGlob&&g)si+=`--- TOÀN CỤC: ${g}\n\n`;
       si+=sSI?`--- RIÊNG: ${sSI}\n\n`:`Bạn là Javiss thông minh, thân thiện.\n\n`;
-      si+=`[QUY TẮC ĐÀM THOẠI THOẠI]:
+      
+      if(prefetchedData){
+        si+=`[DỮ LIỆU TƯƠI MỚI TỪ NGUỒN CHỈ ĐỊNH ĐÃ ĐƯỢC NẠP SẴN]:\n${prefetchedData}\n\n`;
+      }
+
+      si+=`[QUY TẮC ĐÀM THOẠI THOẠI & CHỈ THỊ CƯỠNG CHẾ BÓC TÁCH WEB]:
+- Bạn ĐƯỢC TRANG BỊ ĐẦY ĐỦ CÁC CÔNG CỤ DUYỆT WEB ('read_url' và 'search_web'). TUYỆT ĐỐI KHÔNG ĐƯỢC TỪ CHỐI hoặc nói 'Tôi không thể truy cập internet/link'.
+- Khi người dùng hỏi về bất kỳ chủ đề hoặc trang web nào có liên kết trong ngữ cảnh hoặc trong lời nói, bạn BẮT BUỘC phải đọc dữ liệu đã nạp sẵn ở trên HOẶC GỌI NGAY CÔNG CỤ 'read_url' (với đường link) hoặc 'search_web' (với từ khóa) để lấy số liệu thực tế trước khi trả lời.
 - Trả lời bằng Tiếng Việt tự nhiên, ngắn gọn trong 1-2 câu như nói chuyện điện thoại đời thực, tuyệt đối không đọc code dài dòng.
-- Khi người dùng hỏi về bất kỳ chủ đề nào có gắn kèm đường link URL trong [VAI TRÒ & NGỮ CẢNH PHIÊN], bạn hãy GỌI NGAY CÔNG CỤ 'search_web' với đối số là chính đường link URL đó để hệ thống bóc tách dữ liệu mới nhất từ trang web đó cho bạn.
-- Khi người dùng hỏi tin tức, giá cả, thời tiết chung chung, hãy gọi 'search_web' với từ khóa tìm kiếm.
 [THỜI GIAN CHUẨN]: ${dateStr}, lúc ${timeStr}.`;
 
       if(document.getElementById('live-toggle-context')?.checked&&chatHistory.length){
@@ -512,8 +517,27 @@
     async function startLiveVoiceCall(){
       const ko=getLiveApiKey(), key=ko.key; if(!key)return showToast("Cần Google API Key!","danger");
       const m=document.getElementById('live-call-modal'), st=document.getElementById('live-call-status'), tr=document.getElementById('live-transcript'), orb=document.getElementById('live-orb');
-      m.style.display='flex'; st.innerText=`Đang kết nối [Key ${ko.index+1}]...`; tr.innerHTML='<i>Đang mở micro & kết nối...</i>'; orb.className='live-orb listening';
+      m.style.display='flex'; st.innerText=`Đang chuẩn bị phiên [Key ${ko.index+1}]...`; tr.innerHTML='<i>Đang kết nối và quét dữ liệu System Instruction...</i>'; orb.className='live-orb listening';
       livePlaybackState={nextPlayTime:0,activeSources:[]}; isLiveSetupComplete=false;
+
+      // 🎯 1. TỰ ĐỘNG PRE-FETCH CÁC LINK TRONG SYSTEM INSTRUCTION NGAY KHI MỞ CUỘC GỌI
+      let prefetchedData = "";
+      try {
+        const cs = sessions.find(x => x.id === activeId);
+        const sSI = (DOM.sysInst?.value.trim()) || cs?.sys || '';
+        const gCtx = DOM.globContext?.value.trim() || '';
+        const fullSI = sSI + "\n" + (DOM.toggleGlob?.checked !== false ? gCtx : '');
+        const siUrls = Array.from(fullSI.matchAll(/(https?:\/\/[^\s"'<>]+)/g)).map(x => x[0]);
+        if (siUrls.length > 0) {
+          st.innerText = `🌐 Đang nạp sẵn dữ liệu web từ System Instruction...`;
+          for (const u of siUrls) {
+            try {
+              const ext = await extractWebPageContent(u);
+              prefetchedData += `\n[Nội dung cập nhật từ ${u} qua ${ext.source}]:\n${ext.content.substring(0, 10000)}\n`;
+            } catch(err){}
+          }
+        }
+      } catch(e){}
 
       try{
         const AC=window.AudioContext||window.webkitAudioContext; liveAudioCtx=new AC({sampleRate:16000}); if(liveAudioCtx.state==='suspended')await liveAudioCtx.resume();
@@ -523,9 +547,26 @@
         liveWs.onopen=()=>{
           const voice=document.getElementById('live-voice-select')?.value||'Charon', temp=parseFloat(document.getElementById('live-temperature')?.value||0.7);
           const enableSearch=document.getElementById('live-toggle-search')?.checked!==false;
-          const setupMsg={setup:{model:"models/gemini-3.1-flash-live-preview",generationConfig:{responseModalities:["AUDIO"],temperature:temp,speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voice}}}},systemInstruction:{parts:[{text:getLiveCallSI()}]}}};
+          const setupMsg={setup:{model:"models/gemini-3.1-flash-live-preview",generationConfig:{responseModalities:["AUDIO"],temperature:temp,speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voice}}}},systemInstruction:{parts:[{text:getLiveCallSI(prefetchedData)}]}}};
+          
+          // 🚀 KHAI BÁO CẢ 2 CÔNG CỤ: READ_URL VÀ SEARCH_WEB ĐỂ AI KHÔNG BAO GIỜ TỪ CHỐI
           if(enableSearch){
-            setupMsg.setup.tools=[{functionDeclarations:[{name:"search_web",description:"Tìm kiếm tin tức thời gian thực hoặc bóc tách URL chỉ định",parameters:{type:"OBJECT",properties:{query:{type:"STRING",description:"Từ khóa tìm kiếm hoặc đường link URL cần đọc"}},required:["query"]}}]}];
+            setupMsg.setup.tools=[
+              {
+                functionDeclarations:[
+                  {
+                    name:"read_url",
+                    description:"Đọc và bóc tách nội dung văn bản thực tế từ một đường link trang web (URL) cụ thể.",
+                    parameters:{type:"OBJECT",properties:{url:{type:"STRING",description:"Đường link URL cần đọc"}},required:["url"]}
+                  },
+                  {
+                    name:"search_web",
+                    description:"Tìm kiếm thông tin tổng hợp trên Internet khi chưa có đường link cụ thể.",
+                    parameters:{type:"OBJECT",properties:{query:{type:"STRING",description:"Từ khóa tìm kiếm hoặc đường link URL"}},required:["query"]}
+                  }
+                ]
+              }
+            ];
           }
           liveWs.send(JSON.stringify(setupMsg));
 
@@ -548,17 +589,27 @@
             let fc=[]; if(msg.toolCall?.functionCalls)fc=msg.toolCall.functionCalls;
             if(fc.length){
               for(const c of fc){
-                if(c.name==="search_web"&&c.args?.query){
-                  const q=c.args.query, cid=c.id;
+                const cid = c.id;
+                let txt = "";
+
+                if(c.name === "read_url" && c.args?.url){
+                  const targetUrl = c.args.url;
+                  tr.innerHTML=`<span style="color:#38bdf8;">🌐 Đọc link chỉ định: "<strong>${targetUrl.substring(0,30)}...</strong>"...</span>`;
+                  try{
+                    const ext = await extractWebPageContent(targetUrl);
+                    txt = `[Nội dung bóc tách từ ${targetUrl} qua ${ext.source}]:\n${ext.content.substring(0, 10000)}`;
+                  }catch(err){ txt = `Lỗi đọc URL: ${err.message}`; }
+                }
+                else if(c.name === "search_web" && c.args?.query){
+                  const q = c.args.query;
                   const urlMatch = q.match(/https?:\/\/[^\s"'<>]+/);
-                  let txt="";
                   
                   if(urlMatch){
                     const targetUrl = urlMatch[0];
-                    tr.innerHTML=`<span style="color:#38bdf8;">🌐 Đọc nguồn chỉ định: "<strong>${targetUrl.substring(0,25)}...</strong>"...</span>`;
+                    tr.innerHTML=`<span style="color:#38bdf8;">🌐 Đọc link: "<strong>${targetUrl.substring(0,30)}...</strong>"...</span>`;
                     try{
                       const ext = await extractWebPageContent(targetUrl);
-                      txt = `[Nội dung từ ${targetUrl} qua ${ext.source}]:\n${ext.content.substring(0, 8000)}`;
+                      txt = `[Nội dung từ ${targetUrl} qua ${ext.source}]:\n${ext.content.substring(0, 10000)}`;
                     }catch(err){ txt = `Lỗi đọc URL: ${err.message}`; }
                   } else {
                     tr.innerHTML=`<span style="color:#38bdf8;">⚡ Tra cứu: "<strong>${q}</strong>"...</span>`;
@@ -570,9 +621,9 @@
                       else txt=await fetchJinaSearch(q);
                     }catch(err){txt=`Lỗi: ${err.message}`;}
                   }
-                  
-                  liveWs?.send(JSON.stringify({toolResponse:{functionResponses:[{response:{output:{results:txt||"Không có kết quả"}},id:cid}]}}));
                 }
+                
+                liveWs?.send(JSON.stringify({toolResponse:{functionResponses:[{response:{output:{results:txt||"Không có dữ liệu phù hợp."}},id:cid}]}}));
               }
             }
             if(msg.serverContent){
@@ -777,7 +828,7 @@
       const m=DOM.model?.value==='openai/gpt-oss-120b'?"openai/gpt-oss-120b":"groq/compound";
       const payload={model:m,messages:buildStructuredMessages(p),stream:true,max_tokens:4096};
       try{
-        const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:'POST',headers:{'Authorization':`Bearer ${k}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:'POST',headers:{'Authorization':`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
         if(!res.ok)throw new Error(`Groq HTTP ${res.status}`);
         const r=res.body.getReader(), dec=new TextDecoder(); let buf="", inThk=false;
         while(true){
