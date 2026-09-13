@@ -863,6 +863,37 @@
     window.applySnippet=p=>{ if(DOM.input){DOM.input.value=p+"\n"+DOM.input.value;DOM.input.dispatchEvent(new Event('input'));DOM.input.focus();} DOM.snippetsContainer.style.display='none'; };
     DOM.btnToggleSnippets.onclick=()=>DOM.snippetsContainer.style.display=DOM.snippetsContainer.style.display==='flex'?'none':'flex';
 
+    // 📎 HÀM XỬ LÝ ĐÍNH KÈM FILE / ẢNH / PDF
+    async function processUploadFiles(fs){
+      DOM.fileCount.innerText="⏳";
+      for(let f of fs){
+        if(f.type.startsWith('image/')||f.type==='video/mp4'){
+          if(filesData.length<MAX_IMAGES)filesData.push(f);
+        }else if(f.type==='application/pdf'){
+          const p=await readPDF(f);
+          txtContent+=`\n[PDF: ${f.name}]:\n${p.substring(0,50000)}\n`;
+          DOM.textFileList.innerHTML+=`📑 ${f.name}<br>`;
+        }else{
+          const t=await f.text();
+          txtContent+=`\n[Văn bản: ${f.name}]:\n${t.substring(0,50000)}\n`;
+          DOM.textFileList.innerHTML+=`📄 ${f.name}<br>`;
+        }
+      }
+      renderFiles();
+      updateTokenCount();
+    }
+
+    DOM.fileUpload.onchange = async (e) => {
+      await processUploadFiles(Array.from(e.target.files));
+      DOM.fileUpload.value = '';
+    };
+
+    async function readPDF(f){
+      const p=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise; let t="";
+      for(let i=1;i<=p.numPages;i++)t+=(await(await p.getPage(i)).getTextContent()).items.map(x=>x.str).join(' ')+"\n";
+      return t;
+    }
+
     DOM.btnAddUrl.onclick=async()=>{
       const u=prompt("Nhập link URL:"); if(!u||!u.match(/https?:\/\//))return;
       DOM.btnAddUrl.innerHTML="⏳...";
@@ -886,11 +917,20 @@
     document.querySelectorAll('.close-btn').forEach(b=>b.onclick=closeModals); oLay.onclick=closeModals;
 
     document.getElementById('btn-camera-snap').onclick=async()=>{document.getElementById('camera-modal').style.display='flex';oLay.style.display='block';try{document.getElementById('camera-preview').srcObject=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});}catch(e){showToast(e.message,'danger');}};
-    document.getElementById('btn-take-photo').onclick=()=>{ const v=document.getElementById('camera-preview'); if(!v.srcObject)return; const c=document.createElement('canvas'); c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0); c.toBlob(b=>{filesData.push(new File([b],`Cam_${Date.now()}.jpg`,{type:'image/jpeg'}));renderFiles();closeModals();showToast("Đã chụp!");},'image/jpeg',0.85); };
+    document.getElementById('btn-take-photo').onclick=()=>{ const v=document.getElementById('camera-preview'); if(!v.srcObject)return; const c=document.createElement('canvas'); c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0); c.toBlob(b=>{processUploadFiles([new File([b],`Cam_${Date.now()}.jpg`,{type:'image/jpeg'})]);closeModals();showToast("Đã chụp!");},'image/jpeg',0.85); };
     document.getElementById('btn-global-search').onclick=()=>{document.getElementById('search-modal').style.display='flex';oLay.style.display='block';};
     DOM.btnFileLibrary.onclick=()=>{document.getElementById('file-library-modal').style.display='flex';oLay.style.display='block';renderLibrary();};
+    
+    document.getElementById('library-upload-input').onchange = async (e) => {
+      for(let f of Array.from(e.target.files)){
+        if(f.size > 50*1024*1024) continue;
+        await saveFileToLib({ id: Date.now()+Math.random().toString().slice(2,7), name: f.name, type: f.type, size: f.size, blob: f, added: new Date().toISOString() });
+      }
+      showToast("Đã tải lên thư viện!"); renderLibrary(); e.target.value = '';
+    };
+
     async function renderLibrary(){ const c=document.getElementById('library-files-container'), fs=await getAllFilesFromLib(); if(!fs.length)return c.innerHTML="<i>Trống.</i>"; c.innerHTML=fs.map(f=>`<div class="search-result-item" style="display:flex;justify-content:space-between;align-items:center;"><div><strong>${f.name}</strong><br><small>${(f.size/1024).toFixed(1)} KB</small></div><div><button class="btn primary" onclick="addFileFromLib('${f.id}')">➕</button></div></div>`).join(''); }
-    window.addFileFromLib=async id=>{ const f=(await getAllFilesFromLib()).find(x=>x.id===id); if(f){filesData.push(new File([f.blob],f.name,{type:f.type}));renderFiles();closeModals();showToast(`Đã đính: ${f.name}`);} };
+    window.addFileFromLib=async id=>{ const f=(await getAllFilesFromLib()).find(x=>x.id===id); if(f){await processUploadFiles([new File([f.blob],f.name,{type:f.type})]);closeModals();showToast(`Đã đính: ${f.name}`);} };
 
     function renderTabs(){
       DOM.tabsContainer.innerHTML='';
