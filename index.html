@@ -800,8 +800,8 @@
     document.getElementById('btn-open-settings').onclick=()=>{document.getElementById('settings-modal').style.display='flex';document.getElementById('modal-overlay').style.display='block';};
 
     window.copy=b=>{ const c=b.closest('.message-container').querySelector('.user-message, .bot-message'); if(c)copyRawText(c.getAttribute('data-raw')||c.innerText||''); };
-    window.deleteMsg=async i=>{ if(!confirm("Xóa tin này?"))return; chatHistory.splice(i,1); const s=sessions.find(x=>x.id===activeId); if(s){s.his=chatHistory;s.lastInteractionId=null;await saveToDB(s);} DOM.chat.innerHTML=''; chatHistory.forEach((m,j)=>appendMsg(m.role==='model'?'bot':'user',m.text,j,true)); };
-    window.retryMsg=async i=>{ if(isProcessing)return; let up=""; if(i>0&&chatHistory[i-1].role==='user')up=chatHistory[i-1].text; else return; chatHistory.splice(i,1); const s=sessions.find(x=>x.id===activeId); if(s){s.his=chatHistory;s.lastInteractionId=null;await saveToDB(s);} DOM.chat.innerHTML=''; for(let j=0;j<chatHistory.length;j++)await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); if(DOM.input){DOM.input.value=up;DOM.input.dispatchEvent(new Event('input'));} DOM.sendBtn.click(); };
+    window.deleteMsg=async i=>{ if(!confirm("Xóa tin này?"))return; chatHistory.splice(i,1); const s=sessions.find(x=>x.id===activeId); if(s){s.his=chatHistory;s.lastInteractionId=null;await saveToDB(s);document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`;} DOM.chat.innerHTML=''; chatHistory.forEach((m,j)=>appendMsg(m.role==='model'?'bot':'user',m.text,j,true)); };
+    window.retryMsg=async i=>{ if(isProcessing)return; let up=""; if(i>0&&chatHistory[i-1].role==='user')up=chatHistory[i-1].text; else return; chatHistory.splice(i,1); const s=sessions.find(x=>x.id===activeId); if(s){s.his=chatHistory;s.lastInteractionId=null;await saveToDB(s);document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`;} DOM.chat.innerHTML=''; for(let j=0;j<chatHistory.length;j++)await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); if(DOM.input){DOM.input.value=up;DOM.input.dispatchEvent(new Event('input'));} DOM.sendBtn.click(); };
 
     function getDynamicSI(){
       const b=DOM.sysInst?.value||"Bạn là Javiss AI.", g=DOM.globContext?.value||'', useGlob=DOM.toggleGlob?.checked!==false;
@@ -1105,17 +1105,24 @@
         }
 
         chatHistory.push({role:'user',text:fP}); chatHistory.push({role:'model',text:finalResp,interactionId:capId,time:botTime});
-        if(cs){ cs.his=chatHistory; if(capId)cs.lastInteractionId=capId; await saveToDB(cs); }
+        if(cs){ cs.his=chatHistory; if(capId)cs.lastInteractionId=capId; await saveToDB(cs); document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`; }
         if(bD.querySelector('.bot-message')){
           bD.querySelector('.bot-message').setAttribute('data-raw',finalResp);
           bD.querySelector('.message-header').innerHTML=`<span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span>`+(capId?`<span class="interaction-id-badge" onclick="copyRawText('${capId}')">📋 ID</span>`:'');
+          
+          // 🛠️ KHÔI PHỤC NGAY CỤM NÚT THAO TÁC (COPY, RETRY, DELETE) CHO TIN NHẮN BOT VỪA SINH RA
+          const botIdx = chatHistory.length - 1;
+          const aDiv = document.createElement('div');
+          aDiv.className = 'msg-actions';
+          aDiv.innerHTML = `<button class="action-btn" onclick="copy(this)">📋</button><button class="action-btn" onclick="retryMsg(${botIdx})">🔄</button><button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${botIdx})">🗑️</button>`;
+          bD.appendChild(aDiv);
         }
       }catch(err){ showToast("Lỗi: "+err.message,'danger'); }
       finally{ isProcessing=false; DOM.sendBtn.innerText='Gửi 📤'; }
     };
 
-    window.editMsg=async i=>{ DOM.input.value=chatHistory[i].text; DOM.input.dispatchEvent(new Event('input')); chatHistory=chatHistory.slice(0,i); const s=sessions.find(x=>x.id===activeId); if(s){s.his=chatHistory;await saveToDB(s);} DOM.chat.innerHTML=''; for(let j=0;j<chatHistory.length;j++)await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); };
-    window.clearActiveSession=async()=>{ if(confirm("Xóa sạch phiên này?")){ chatHistory=[]; const s=sessions.find(x=>x.id===activeId); if(s){s.his=[];s.lastInteractionId=null;await saveToDB(s);} DOM.chat.innerHTML=''; showToast('Đã dọn sạch'); } };
+    window.editMsg=async i=>{ DOM.input.value=chatHistory[i].text; DOM.input.dispatchEvent(new Event('input')); chatHistory=chatHistory.slice(0,i); const s=sessions.find(x=>x.id===activeId); if(s){s.his=chatHistory;await saveToDB(s);document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`;} DOM.chat.innerHTML=''; for(let j=0;j<chatHistory.length;j++)await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); };
+    window.clearActiveSession=async()=>{ if(confirm("Xóa sạch phiên này?")){ chatHistory=[]; const s=sessions.find(x=>x.id===activeId); if(s){s.his=[];s.lastInteractionId=null;await saveToDB(s);document.getElementById('session-msg-count').innerText=`0 tin nhắn`;} DOM.chat.innerHTML=''; showToast('Đã dọn sạch'); } };
 
     window.exportAllSessions=async()=>{
       const cfgs={}; for(let i=1;i<=10;i++)cfgs[`javiss_api_${i}`]=localStorage.getItem(`javiss_api_${i}`)||"";
