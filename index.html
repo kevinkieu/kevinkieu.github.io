@@ -358,26 +358,46 @@
     document.getElementById('btn-font-reset').onclick = () => applyFontSize(16);
     applyFontSize(currentFontSize);
 
-    // 🚀 BỘ ĐIỀU PHỐI ĐỒNG BỘ STREAM TIMER 35MS (HIỂN THỊ TỰ NHIÊN - ĐỨNG YÊN ĐẦU TRANG ĐỂ ĐỌC)
+    // 🚀 BỘ ĐIỀU PHỐI STREAM TYPEWRITER PUMP (HÀNG ĐỢI ĐỆM NHẢ CHỮ ĐẶC TRỊ CHROME ANDROID)
     function createStreamRenderer(targetEl){
-      let lastRenderTime = 0;
+      let fullText = "";
+      let displayedIndex = 0;
       let timer = null;
+      let isFlushing = false;
+      let resolveFlush = null;
+
+      function tick(){
+        if(displayedIndex < fullText.length){
+          const diff = fullText.length - displayedIndex;
+          const step = diff > 80 ? Math.min(diff, 14) : (diff > 30 ? 6 : (diff > 10 ? 3 : 1));
+          displayedIndex += step;
+          targetEl.innerHTML = marked.parse(fullText.substring(0, displayedIndex));
+          timer = setTimeout(tick, 18);
+        } else {
+          if(isFlushing && resolveFlush){
+            targetEl.innerHTML = marked.parse(fullText);
+            resolveFlush();
+          }
+        }
+      }
 
       return {
-        push: (text) => {
-          const now = performance.now();
-          if(now - lastRenderTime >= 35){
-            lastRenderTime = now;
-            targetEl.innerHTML = marked.parse(text);
-          } else {
+        push: (chunk) => {
+          fullText += chunk;
+          if(!timer || displayedIndex >= fullText.length - chunk.length){
             clearTimeout(timer);
-            timer = setTimeout(() => {
-              targetEl.innerHTML = marked.parse(text);
-              lastRenderTime = performance.now();
-            }, 35);
+            tick();
           }
         },
         flush: async (finalText) => {
+          fullText = finalText;
+          isFlushing = true;
+          if(displayedIndex < fullText.length){
+            await new Promise((resolve) => {
+              resolveFlush = resolve;
+              setTimeout(resolve, 350);
+            });
+          }
           clearTimeout(timer);
           await renderMsgContent(targetEl, finalText);
         }
@@ -1021,7 +1041,7 @@
       await renderMsgContent(m.querySelector('.msg-content'),sd==='user'?t.replace(/\n/g,'<br>'):t);
     }
 
-    // --- XỬ LÝ GỬI TIN NHẮN (INTERACTIONS API + HIỂN THỊ TỰ NHIÊN ĐỨNG YÊN ĐẦU TRANG) ---
+    // --- XỬ LÝ GỬI TIN NHẮN (INTERACTIONS API + BỘ ĐIỀU PHỐI TYPEWRITER STREAM PUMP) ---
     DOM.sendBtn.onclick=async()=>{
       const am=DOM.model?.value||'gemini-3.8-flash', isExt=am.endsWith('-dify')||externalModels.includes(am);
       let msg=DOM.input?.value.trim()||''; if(!msg&&!filesData.length&&!txtContent)return; if(isProcessing)return;
@@ -1040,11 +1060,11 @@
         bD.innerHTML=`<div class="bot-message"><div class="message-header"><span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span><span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`;
         DOM.chat.appendChild(bD); 
         
-        // 🎯 ĐỊNH VỊ 1 LẦN DUY NHẤT VỀ ĐẦU TIN NHẮN CỦA BOT ĐỂ ĐỌC TỪNG TỪ MÀ KHÔNG BỊ GIẬT XUỐNG ĐÁY
+        // 🎯 Định vị 1 lần duy nhất ngay đầu câu trả lời của AI
         bD.scrollIntoView({block:'start'}); 
         const cD=bD.querySelector('.msg-content');
 
-        // 🚀 BỘ RENDER STREAM 35MS THỜI GIAN THỰC
+        // 🚀 KHỞI TẠO BỘ ĐỆM NHẢ CHỮ TYPEWRITER STREAM PUMP
         const renderer = createStreamRenderer(cD);
         let fnP=fP;
 
@@ -1099,7 +1119,7 @@
           const onCk=c=>{ 
             if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
             finalResp+=c; 
-            renderer.push(finalResp);
+            renderer.push(c);
           };
           const onErr=e=>showToast("Lỗi: "+e.message,'danger');
           if(am.endsWith('-dify')){ await callDifyStream(serializeHistoryForDify(DOM.toggleMemory?.checked?chatHistory.slice(-16):[],fnP),onCk,onErr,imgs); }
@@ -1118,7 +1138,7 @@
                   if(ck.text){ 
                     if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
                     finalResp+=ck.text; 
-                    renderer.push(finalResp);
+                    renderer.push(ck.text);
                   } 
                 }
                 await renderer.flush(finalResp); return true;
@@ -1130,13 +1150,13 @@
                   if(ck.text){ 
                     if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
                     finalResp+=ck.text; 
-                    renderer.push(finalResp);
+                    renderer.push(ck.text);
                   } 
                 }
                 await renderer.flush(finalResp); return true;
               }
 
-              // 🚀 INTERACTIONS API CHUẨN XÁC VỚI BỘ BÓC TÁCH GÓI TIN ĐA TẦNG
+              // 🚀 INTERACTIONS API ĐẦY ĐỦ VỚI BỘ BÓC TÁCH GÓI TIN ĐA TẦNG
               const pyld={
                 model:mod,
                 input:inp,
@@ -1177,7 +1197,7 @@
                 if(txt){
                   if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove();
                   finalResp+=txt;
-                  renderer.push(finalResp);
+                  renderer.push(txt); // Nạp từng chunk vào Typewriter Pump
                 }
 
                 if(ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id)){
