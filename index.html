@@ -334,6 +334,31 @@
     function formatGoogleApiError(e){ const m=e?.message||""; if(m.includes("429")||m.includes("RESOURCE_EXHAUSTED"))return "⚠️ Hết Quota (429)."; if(m.includes("503")||m.includes("UNAVAILABLE"))return "⚠️ Máy chủ quá tải (503)."; return m?`❌ Lỗi: ${m}`:"❌ Lỗi máy chủ Google."; }
     function updateChatContentAndScroll(el,html){ el.innerHTML=html; }
 
+    // 🚀 BỘ ĐIỀU PHỐI ĐỒNG BỘ KHUNG HÌNH (REQUEST ANIMATION FRAME STREAM RENDERER)
+    function createStreamRenderer(targetEl){
+      let renderPending = false;
+      let latestText = "";
+
+      return {
+        push: (text) => {
+          latestText = text;
+          if(!renderPending){
+            renderPending = true;
+            requestAnimationFrame(() => {
+              targetEl.innerHTML = marked.parse(latestText);
+              DOM.chat.scrollTop = DOM.chat.scrollHeight;
+              renderPending = false;
+            });
+          }
+        },
+        flush: async (finalText) => {
+          renderPending = false;
+          await renderMsgContent(targetEl, finalText);
+          DOM.chat.scrollTop = DOM.chat.scrollHeight;
+        }
+      };
+    }
+
     window.saveOrShareBlob=function(b,fn){ try{ const u=URL.createObjectURL(b), a=document.createElement('a'); a.href=u; a.download=fn; document.body.appendChild(a); a.click(); setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(u);},1000); showToast(`📥 Đã tải: ${fn}`); }catch(e){ showToast(`❌ Lỗi: ${e.message}`,'danger'); }};
     window.copyRawText=function(t,msg='📋 Đã copy!'){ if(!t)return showToast('Trống!','warning'); if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(()=>showToast(msg)).catch(()=>fbCopy(t,msg)); else fbCopy(t,msg); };
     function fbCopy(t,msg){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); showToast(msg); }catch(e){ showToast('Lỗi copy','danger'); } document.body.removeChild(ta); }
@@ -1017,6 +1042,8 @@
         bD.innerHTML=`<div class="bot-message"><div class="message-header"><span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span><span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`;
         DOM.chat.appendChild(bD); bD.scrollIntoView({behavior:'smooth',block:'start'}); const cD=bD.querySelector('.msg-content');
 
+        // 🚀 KHỞI TẠO BỘ RENDER 60 FPS CHO KHUNG CHAT
+        const renderer = createStreamRenderer(cD);
         let fnP=fP;
 
         // 🚀 1. TỰ ĐỘNG BÓC TÁCH LINK TRỰC TIẾP TRONG PROMPT CỦA BẠN
@@ -1068,11 +1095,15 @@
 
         // 🤖 4. NẠP VÀO MÔ HÌNH XỬ LÝ (DIFY, GROQ, HOẶC GEMINI INTERACTIONS)
         if(am.endsWith('-dify')||externalModels.includes(am)){
-          const onCk=c=>{ if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); finalResp+=c; updateChatContentAndScroll(cD,marked.parse(finalResp)); };
+          const onCk=c=>{ 
+            if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
+            finalResp+=c; 
+            renderer.push(finalResp);
+          };
           const onErr=e=>showToast("Lỗi: "+e.message,'danger');
           if(am.endsWith('-dify')){ await callDifyStream(serializeHistoryForDify(DOM.toggleMemory?.checked?chatHistory.slice(-16):[],fnP),onCk,onErr,imgs); }
           else{ await callGroqStream(fnP,onCk,onErr); }
-          if(finalResp.trim())await renderMsgContent(cD,finalResp); else{ bD.remove(); return; }
+          if(finalResp.trim()){ await renderer.flush(finalResp); } else{ bD.remove(); return; }
         }else{
           let pS=false, lastErr=null; const fChain=getFallbackModelsFor(am);
           async function tryGoogle(mod){
@@ -1081,23 +1112,40 @@
               let inp=imgs.length?[{type:'text',text:fnP},...(await Promise.all(imgs.map(fileToInteractionPart)))]:fnP;
               if(mod==='gemini-2.5-flash'&&DOM.toggleSearch?.checked&&selEng==='google'){
                 const st=await aiM.models.generateContentStream({model:'gemini-2.5-flash',contents:inp,config:{tools:[{googleSearch:{}}],safetySettings:SAFETY}});
-                for await(const ck of st){ if(ck.text){ if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); finalResp+=ck.text; updateChatContentAndScroll(cD,marked.parse(finalResp)); } }
-                await renderMsgContent(cD,finalResp); return true;
+                for await(const ck of st){ 
+                  if(ck.text){ 
+                    if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
+                    finalResp+=ck.text; 
+                    renderer.push(finalResp);
+                  } 
+                }
+                await renderer.flush(finalResp); return true;
               }
               if(mod.startsWith('gemini-2.5')){
                 const st=await aiM.models.generateContentStream({model:mod,contents:inp,config:{systemInstruction:getDynamicSI(),safetySettings:SAFETY,temperature:+DOM.temp.value}});
-                for await(const ck of st){ if(ck.text){ if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); finalResp+=ck.text; updateChatContentAndScroll(cD,marked.parse(finalResp)); } }
-                await renderMsgContent(cD,finalResp); return true;
+                for await(const ck of st){ 
+                  if(ck.text){ 
+                    if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
+                    finalResp+=ck.text; 
+                    renderer.push(finalResp);
+                  } 
+                }
+                await renderer.flush(finalResp); return true;
               }
               const pyld={model:mod,input:inp,system_instruction:getDynamicSI(),generation_config:{thinking_level:DOM.thinking.value},stream:true};
               if(DOM.toggleMemory?.checked&&cs?.lastInteractionId)pyld.previous_interaction_id=cs.lastInteractionId;
               let rSt; try{ rSt=await aiM.interactions.create(pyld); }catch(e){ if(pyld.previous_interaction_id){delete pyld.previous_interaction_id; rSt=await aiM.interactions.create(pyld);} else throw e; }
               for await(const ck of rSt){
-                const txt=ck.delta?.text||ck.text||""; if(txt){ if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); finalResp+=txt; updateChatContentAndScroll(cD,marked.parse(finalResp)); }
+                const txt=ck.delta?.text||ck.text||""; 
+                if(txt){ 
+                  if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
+                  finalResp+=txt; 
+                  renderer.push(finalResp);
+                }
                 if(ck.interaction_id||ck.id)capId=ck.interaction_id||ck.id;
               }
               if(!finalResp.trim()&&rSt.output_text)finalResp=rSt.output_text;
-              await renderMsgContent(cD,finalResp); return true;
+              await renderer.flush(finalResp); return true;
             }catch(e){ lastErr=e; return false; }
           }
           for(let mod of fChain){ finalResp=""; pS=await tryGoogle(mod); if(pS)break; }
@@ -1110,7 +1158,7 @@
           bD.querySelector('.bot-message').setAttribute('data-raw',finalResp);
           bD.querySelector('.message-header').innerHTML=`<span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span>`+(capId?`<span class="interaction-id-badge" onclick="copyRawText('${capId}')">📋 ID</span>`:'');
           
-          // 🛠️ KHÔI PHỤC NGAY CỤM NÚT THAO TÁC (COPY, RETRY, DELETE) CHO TIN NHẮN BOT VỪA SINH RA
+          // 🛠️ CỤM NÚT THAO TÁC XUẤT HIỆN NGAY TỨC THÌ
           const botIdx = chatHistory.length - 1;
           const aDiv = document.createElement('div');
           aDiv.className = 'msg-actions';
