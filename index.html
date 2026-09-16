@@ -361,25 +361,29 @@
     document.getElementById('btn-font-reset').onclick = () => applyFontSize(16);
     applyFontSize(currentFontSize);
 
-    // 🚀 BỘ ĐIỀU PHỐI ĐỒNG BỘ KHUNG HÌNH (REQUEST ANIMATION FRAME STREAM RENDERER)
+    // 🚀 BỘ ĐIỀU PHỐI ĐỒNG BỘ STREAM TIMER 40MS (KHẮC PHỤC TRIỆT ĐỂ LỖI ĐƠ 10S TRÊN ANDROID)
     function createStreamRenderer(targetEl){
-      let renderPending = false;
-      let latestText = "";
+      let lastRenderTime = 0;
+      let timer = null;
 
       return {
         push: (text) => {
-          latestText = text;
-          if(!renderPending){
-            renderPending = true;
-            requestAnimationFrame(() => {
-              targetEl.innerHTML = marked.parse(latestText);
+          const now = performance.now();
+          if(now - lastRenderTime >= 40){
+            lastRenderTime = now;
+            targetEl.innerHTML = marked.parse(text);
+            DOM.chat.scrollTop = DOM.chat.scrollHeight;
+          } else {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+              targetEl.innerHTML = marked.parse(text);
               DOM.chat.scrollTop = DOM.chat.scrollHeight;
-              renderPending = false;
-            });
+              lastRenderTime = performance.now();
+            }, 40);
           }
         },
         flush: async (finalText) => {
-          renderPending = false;
+          clearTimeout(timer);
           await renderMsgContent(targetEl, finalText);
           DOM.chat.scrollTop = DOM.chat.scrollHeight;
         }
@@ -1069,7 +1073,7 @@
         bD.innerHTML=`<div class="bot-message"><div class="message-header"><span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span><span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`;
         DOM.chat.appendChild(bD); bD.scrollIntoView({behavior:'smooth',block:'start'}); const cD=bD.querySelector('.msg-content');
 
-        // 🚀 KHỞI TẠO BỘ RENDER 60 FPS CHO KHUNG CHAT
+        // 🚀 KHỞI TẠO BỘ RENDER STREAM 40MS (ĐỒNG BỘ MƯỢT MÀ CHO CẢ DI ĐỘNG & PC)
         const renderer = createStreamRenderer(cD);
         let fnP=fP;
 
