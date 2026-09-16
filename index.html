@@ -124,7 +124,6 @@
             <div id="search-engine-box" style="margin-left:20px;display:none;">
               <select id="search-engine-select" class="modern-select" style="font-size:0.75rem;padding:3px 6px;">
                 <option value="auto" selected>🔄 Tự động (Smart Auto-Search)</option>
-                <option value="jina">🦎 Jina AI Search</option>
                 <option value="tavily">⚡ Tavily AI Search</option>
                 <option value="serper">🔎 Serper.dev Google</option>
                 <option value="brave">🦁 Brave Search</option>
@@ -269,20 +268,18 @@
           <div style="display:flex;flex-direction:column;gap:8px;">
             <div><label class="field-label">Công cụ mặc định cho Tự Động (Auto-Search):</label>
               <select id="auto-search-engine-input" class="modern-select">
-                <option value="jina" selected>🦎 Jina AI Search (Miễn phí)</option>
-                <option value="tavily">⚡ Tavily AI Search (1.000 lượt free)</option>
+                <option value="tavily" selected>⚡ Tavily AI Search (Khuyên dùng)</option>
                 <option value="serper">🔎 Serper.dev Google (2.500 lượt free)</option>
                 <option value="brave">🦁 Brave Search (2.000 lượt free)</option>
               </select>
             </div>
             <div><label class="field-label">📖 Công cụ Bóc tách Link Website:</label>
               <select id="web-extract-engine-input" class="modern-select">
-                <option value="auto" selected>🔄 Tự động (Jina ➔ Tavily nếu dính Cloudflare)</option>
+                <option value="auto" selected>🔄 Tự động (Tavily Extract ➔ Search Assist)</option>
                 <option value="tavily">⚡ Tavily Extract (Chuyên trị web truyện/chống bot)</option>
-                <option value="jina">🦎 Luôn dùng Jina Reader</option>
+                <option value="proxy">🌐 Web Proxy</option>
               </select>
             </div>
-            <div><label class="field-label">Jina API Key (Dùng cho Jina Search & Reader proxy):</label><input type="password" id="jina-key-input" placeholder="Nhập Key (jina_...)" class="modern-input"></div>
             <div><label class="field-label">Tavily API Key (Search & Extract Cloudflare):</label><input type="password" id="tavily-key-input" placeholder="Nhập Key (tvly-...)" class="modern-input"></div>
             <div><label class="field-label">Serper API Key:</label><input type="password" id="serper-key-input" class="modern-input"></div>
             <div><label class="field-label">Brave Search API Key:</label><input type="password" id="brave-key-input" class="modern-input"></div>
@@ -361,7 +358,7 @@
     document.getElementById('btn-font-reset').onclick = () => applyFontSize(16);
     applyFontSize(currentFontSize);
 
-    // 🚀 BỘ ĐIỀU PHỐI ĐỒNG BỘ STREAM TIMER 40MS (KHẮC PHỤC TRIỆT ĐỂ LỖI ĐƠ 10S TRÊN ANDROID)
+    // 🚀 BỘ ĐIỀU PHỐI ĐỒNG BỘ STREAM TIMER 35MS (HIỂN THỊ TỰ NHIÊN - ĐỨNG YÊN ĐẦU TRANG ĐỂ ĐỌC)
     function createStreamRenderer(targetEl){
       let lastRenderTime = 0;
       let timer = null;
@@ -369,23 +366,20 @@
       return {
         push: (text) => {
           const now = performance.now();
-          if(now - lastRenderTime >= 40){
+          if(now - lastRenderTime >= 35){
             lastRenderTime = now;
             targetEl.innerHTML = marked.parse(text);
-            DOM.chat.scrollTop = DOM.chat.scrollHeight;
           } else {
             clearTimeout(timer);
             timer = setTimeout(() => {
               targetEl.innerHTML = marked.parse(text);
-              DOM.chat.scrollTop = DOM.chat.scrollHeight;
               lastRenderTime = performance.now();
-            }, 40);
+            }, 35);
           }
         },
         flush: async (finalText) => {
           clearTimeout(timer);
           await renderMsgContent(targetEl, finalText);
-          DOM.chat.scrollTop = DOM.chat.scrollHeight;
         }
       };
     }
@@ -396,16 +390,7 @@
     function extractQuotedKeywords(t){ if(!t)return null; const m=Array.from(t.matchAll(/["“«]([^"”»]+)["”»]/g)).map(x=>x[1].trim()).filter(Boolean); return m.length?m.join(' '):null; }
     function shouldTriggerAutoSearch(t){ if(!t||t.length<3)return false; if(/["“«][^"”»]+["”»]/.test(t))return true; return /\b(hôm nay|ngày mai|hôm qua|mới nhất|giá|tỷ giá|vàng|xăng|thời tiết|tin tức|bảng xếp hạng|2025|2026|2027)\b/i.test(t); }
 
-    // --- CÔNG CỤ TÌM KIẾM WEB ---
-    async function fetchJinaSearch(q){
-      const k=localStorage.getItem('jina_api_key')||'', h={"Accept":"application/json"};
-      if(k)h["Authorization"]=`Bearer ${k}`;
-      const r=await fetch(`https://s.jina.ai/${encodeURIComponent(q)}`,{headers:h});
-      if(!r.ok)throw new Error(`Jina Search HTTP ${r.status}`);
-      const d=await r.json(), res=[];
-      if(d.data&&d.data.length){ d.data.slice(0,5).forEach(x=>res.push(`- **${x.title||'Tin'}**\n  *Nội dung*: ${(x.content||x.description||'').substring(0,800)}\n  *Nguồn*: ${x.url}`)); }
-      return res.join('\n\n');
-    }
+    // --- CÔNG CỤ TÌM KIẾM WEB (TAVILY, SERPER, BRAVE) ---
     async function fetchTavilySearch(q){
       const k=localStorage.getItem('tavily_api_key')||''; if(!k)throw new Error("Chưa có Tavily Key!");
       const r=await fetch("https://api.tavily.com/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({api_key:k,query:q,max_results:5,include_answer:true})});
@@ -434,19 +419,11 @@
       return res.join('\n\n');
     }
 
-    // --- BỘ BÓC TÁCH LINK WEB (TỰ ĐỘNG CHUYỂN SEARCH-ASSIST KHI BỊ CHẶN IP) ---
+    // --- BỘ BÓC TÁCH LINK WEB (TAVILY EXTRACT -> PROXY -> SEARCH ASSIST) ---
     async function extractWebPageContent(url){
-      const mode=localStorage.getItem('web_extract_engine')||'auto', jk=localStorage.getItem('jina_api_key')||'', tk=localStorage.getItem('tavily_api_key')||'';
+      const mode=localStorage.getItem('web_extract_engine')||'auto', tk=localStorage.getItem('tavily_api_key')||'';
       const isBlocked=(txt)=>!txt||txt.trim().length<60||/(just a moment|security verification|verify you are human|cloudflare|ddos protection|challenge-platform|enable javascript|access denied|403 forbidden)/i.test(txt);
 
-      const tryJina=async()=>{
-        const h={"Accept":"text/plain"}; if(jk)h["Authorization"]=`Bearer ${jk}`;
-        const r=await fetch(`https://r.jina.ai/${url}`,{headers:h});
-        if(!r.ok)throw new Error(`Jina Reader HTTP ${r.status}`);
-        const t=await r.text();
-        if(isBlocked(t))throw new Error("Jina bị chặn hoặc rỗng");
-        return {source:"Jina Reader",content:t.substring(0,45000)};
-      };
       const tryTavily=async()=>{
         if(!tk)throw new Error("Chưa có Tavily Key!");
         const r=await fetch("https://api.tavily.com/extract",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({api_key:tk,urls:[url]})});
@@ -463,41 +440,26 @@
         return {source:"Web Proxy",content:t.substring(0,30000)};
       };
 
-      // 🛡️ CƠ CHẾ CỨU HỘ: TÌM KIẾM DỮ LIỆU CỦA TRANG WEB KHI LINK GỐC CHẶN IP NƯỚC NGOÀI
       const trySearchAssist=async()=>{
         let domain="", slug="";
         try{ const parsed = new URL(url); domain = parsed.hostname.replace('www.', ''); slug = parsed.pathname.split('/').filter(Boolean).pop()?.replace(/[-_.]/g, ' ') || ''; }catch(e){}
-        const smartQuery = `${slug} ${domain} bảng giá mới nhất hôm nay`.trim();
-        
+        const smartQuery = `${slug} ${domain} bảng giá thông tin mới nhất`.trim();
         if(tk){
           const tRes = await fetchTavilySearch(smartQuery);
           if(tRes) return {source:"Tavily Search Assist (Dữ liệu dự phòng)", content:tRes};
         }
-        const jRes = await fetchJinaSearch(smartQuery);
-        if(jRes) return {source:"Jina Search Assist (Dữ liệu dự phòng)", content:jRes};
-        throw new Error("Không thể bóc tách hoặc tìm thấy dữ liệu.");
+        const bRes = await fetchBraveSearch(smartQuery);
+        if(bRes) return {source:"Brave Search Assist (Dữ liệu dự phòng)", content:bRes};
+        throw new Error("Không thể bóc tách hoặc tìm thấy dữ liệu từ link này.");
       };
 
-      if(mode==='tavily'){
+      if(mode==='proxy'){
+        try{return await tryProxy();}catch(e){return await trySearchAssist();}
+      }else{
         try{return await tryTavily();}
         catch(e){
-          try{return await tryJina();}
-          catch(e2){
-            try{return await tryProxy();}
-            catch(e3){return await trySearchAssist();}
-          }
-        }
-      }else if(mode==='jina'){
-        try{return await tryJina();}
-        catch(e){return await trySearchAssist();}
-      }else{
-        try{return await tryJina();}
-        catch(e){
-          try{return await tryTavily();}
-          catch(e2){
-            try{return await tryProxy();}
-            catch(e3){return await trySearchAssist();}
-          }
+          try{return await tryProxy();}
+          catch(e2){return await trySearchAssist();}
         }
       }
     }
@@ -681,11 +643,10 @@
                   } else {
                     tr.innerHTML=`<span style="color:#38bdf8;">⚡ Tra cứu: "<strong>${q}</strong>"...</span>`;
                     try{
-                      const eng=localStorage.getItem('auto_search_default_engine')||'jina';
-                      if(eng==='tavily')txt=await fetchTavilySearch(q);
-                      else if(eng==='serper')txt=await fetchSerperSearch(q);
+                      const eng=localStorage.getItem('auto_search_default_engine')||'tavily';
+                      if(eng==='serper')txt=await fetchSerperSearch(q);
                       else if(eng==='brave')txt=await fetchBraveSearch(q);
-                      else txt=await fetchJinaSearch(q);
+                      else txt=await fetchTavilySearch(q);
                     }catch(err){txt=`Lỗi: ${err.message}`;}
                   }
                 }
@@ -778,14 +739,14 @@
     const cfgMap=[
       ['dify-key-gemini','dify_key_gemini'],['dify-key-lite','dify_key_lite'],['dify-key-pro','dify_key_pro'],
       ['dify-key-gpt','dify_key_gpt'],['dify-key-opus','dify_key_opus'],['dify-endpoint-input','dify_api_endpoint'],
-      ['dify-var-input','dify_var_key'],['groq-key-input','groq_api_key'],['jina-key-input','jina_api_key'],
+      ['dify-var-input','dify_var_key'],['groq-key-input','groq_api_key'],
       ['tavily-key-input','tavily_api_key'],['serper-key-input','serper_api_key'],['brave-key-input','brave_api_key'],
       ['brave-worker-url-input','brave_worker_url'],['auto-search-engine-input','auto_search_default_engine'],
       ['web-extract-engine-input','web_extract_engine'],['live-temperature','live_temperature']
     ];
 
     function initExternalConfigs(){
-      cfgMap.forEach(([id,k])=>{ const el=document.getElementById(id); if(el)el.value=localStorage.getItem(k)||(id==='dify-endpoint-input'?'https://api.dify.ai/v1':id==='dify-var-input'?'query':id==='auto-search-engine-input'?'jina':id==='web-extract-engine-input'?'auto':id==='live-temperature'?'0.7':''); });
+      cfgMap.forEach(([id,k])=>{ const el=document.getElementById(id); if(el)el.value=localStorage.getItem(k)||(id==='dify-endpoint-input'?'https://api.dify.ai/v1':id==='dify-var-input'?'query':id==='auto-search-engine-input'?'tavily':id==='web-extract-engine-input'?'auto':id==='live-temperature'?'0.7':''); });
       const ltv=document.getElementById('live-temp-val'); if(ltv)ltv.innerText=localStorage.getItem('live_temperature')||'0.7';
       const lts=document.getElementById('live-toggle-search'); if(lts)lts.checked=localStorage.getItem('live_search_enabled')!=='false';
       const ltc=document.getElementById('live-toggle-context'); if(ltc)ltc.checked=localStorage.getItem('live_context_enabled')!=='false';
@@ -1001,7 +962,7 @@
     DOM.btnDeleteFolder.onclick=async()=>{ if(activeFolder==="All"||activeFolder==="Mặc định")return showToast("Không xóa được TM này!"); if(confirm(`Xóa "${activeFolder}"?`)){ folders=folders.filter(f=>f!==activeFolder); localStorage.setItem('javiss_folders',JSON.stringify(folders)); for(let s of sessions){if(s.folder===activeFolder){s.folder="Mặc định";await saveToDB(s);}} activeFolder="All"; renderFolders(); renderSel(); } };
 
     async function loadSess(){ try{await initDB(); let d=await getAllFromDB(); if(d?.length){ sessions=d.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0)); renderFolders(); activeId=localStorage.getItem('javiss_active_id')||sessions[0].id; if(!sessions.find(s=>s.id===activeId))activeId=sessions[0].id; await switchSess(activeId); }else{renderFolders();await newSess();} }catch(e){await newSess();} }
-    async function newSess(n){ const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:'gemini-3.8-flash',keySel:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,schEngine:'jina',mem:true,useGlob:true,orderIndex:0}; sessions.unshift(s); await saveToDB(s); await switchSess(id); }
+    async function newSess(n){ const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:'gemini-3.8-flash',keySel:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,schEngine:'tavily',mem:true,useGlob:true,orderIndex:0}; sessions.unshift(s); await saveToDB(s); await switchSess(id); }
     document.getElementById('btn-new-session').onclick=()=>newSess();
 
     async function switchSess(id){
@@ -1011,7 +972,7 @@
         if(DOM.temp){DOM.temp.value=s.tmp||0.5;DOM.tempVal.innerText=DOM.temp.value;} if(DOM.topP){DOM.topP.value=s.tpp||0.9;DOM.toppVal.innerText=DOM.topP.value;}
         if(DOM.topK)DOM.topK.value=s.top||40; updateThinkingVisibility(); if(DOM.thinking)DOM.thinking.value=s.thk||'medium';
         if(DOM.toggleGlob)DOM.toggleGlob.checked=s.useGlob!==false; if(DOM.toggleSearch){DOM.toggleSearch.checked=s.sch||false;DOM.searchEngineBox.style.display=s.sch?'block':'none';}
-        if(DOM.searchEngineSel)DOM.searchEngineSel.value=s.schEngine||'jina'; if(DOM.toggleMemory)DOM.toggleMemory.checked=s.mem!==false;
+        if(DOM.searchEngineSel)DOM.searchEngineSel.value=s.schEngine||'tavily'; if(DOM.toggleMemory)DOM.toggleMemory.checked=s.mem!==false;
         const mi=document.getElementById('manual-interaction-id'); if(mi)mi.value=s.lastInteractionId||'';
       }
       DOM.chat.innerHTML=''; for(let j=0;j<chatHistory.length;j++)await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true);
@@ -1027,7 +988,7 @@
       if(s){
         s.sys=DOM.sysInst?.value||''; s.mod=DOM.model?.value||'gemini-3.8-flash'; s.keySel=DOM.apiKeySel?.value||'auto';
         s.tmp=DOM.temp?.value||0.5; s.tpp=DOM.topP?.value||0.9; s.top=DOM.topK?.value||40; s.thk=DOM.thinking?.value||'medium';
-        s.useGlob=DOM.toggleGlob?.checked!==false; s.sch=DOM.toggleSearch?.checked||false; s.schEngine=DOM.searchEngineSel?.value||'jina';
+        s.useGlob=DOM.toggleGlob?.checked!==false; s.sch=DOM.toggleSearch?.checked||false; s.schEngine=DOM.searchEngineSel?.value||'tavily';
         s.mem=DOM.toggleMemory?.checked!==false; await saveToDB(s);
       }
       if(DOM.searchEngineBox)DOM.searchEngineBox.style.display=DOM.toggleSearch?.checked?'block':'none';
@@ -1046,7 +1007,13 @@
     async function appendMsg(sd,t,i,iHL=false){
       const c=document.createElement('div'); c.className='message-container';
       const m=document.createElement('div'); m.className=sd==='user'?'user-message':'bot-message'; m.setAttribute('data-raw',t);
-      let tH='', idH=''; if(sd==='bot'&&chatHistory[i]){ tH=`<span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${chatHistory[i].time||getNowTime24h()}</span>`; if(chatHistory[i].interactionId)idH=`<span class="interaction-id-badge" onclick="copyRawText('${chatHistory[i].interactionId}')">📋 ID</span>`; }
+      let tH='', idH=''; 
+      if(sd==='bot'&&chatHistory[i]){ 
+        tH=`<span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${chatHistory[i].time||getNowTime24h()}</span>`; 
+        if(chatHistory[i].interactionId){
+          idH=`<span class="interaction-id-badge" onclick="copyRawText('${chatHistory[i].interactionId}')">📋 ID: ${chatHistory[i].interactionId.substring(0,8)}...</span>`;
+        }
+      }
       m.innerHTML=`<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Chatbot'}</span>${tH}${idH}</div><div class="msg-content"></div>`;
       const a=document.createElement('div'); a.className='msg-actions';
       a.innerHTML=`<button class="action-btn" onclick="copy(this)">📋</button>`+(sd==='user'?`<button class="action-btn" onclick="editMsg(${i})">✏️</button>`:`<button class="action-btn" onclick="retryMsg(${i})">🔄</button>`)+`<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})">🗑️</button>`;
@@ -1054,7 +1021,7 @@
       await renderMsgContent(m.querySelector('.msg-content'),sd==='user'?t.replace(/\n/g,'<br>'):t);
     }
 
-    // --- XỬ LÝ GỬI TIN NHẮN (TỰ ĐỘNG BÓC TÁCH LINK VÀ TRA CỨU WEB) ---
+    // --- XỬ LÝ GỬI TIN NHẮN (INTERACTIONS API + HIỂN THỊ TỰ NHIÊN ĐỨNG YÊN ĐẦU TRANG) ---
     DOM.sendBtn.onclick=async()=>{
       const am=DOM.model?.value||'gemini-3.8-flash', isExt=am.endsWith('-dify')||externalModels.includes(am);
       let msg=DOM.input?.value.trim()||''; if(!msg&&!filesData.length&&!txtContent)return; if(isProcessing)return;
@@ -1071,13 +1038,17 @@
 
         const bD=document.createElement('div'); bD.className='message-container';
         bD.innerHTML=`<div class="bot-message"><div class="message-header"><span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span><span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`;
-        DOM.chat.appendChild(bD); bD.scrollIntoView({behavior:'smooth',block:'start'}); const cD=bD.querySelector('.msg-content');
+        DOM.chat.appendChild(bD); 
+        
+        // 🎯 ĐỊNH VỊ 1 LẦN DUY NHẤT VỀ ĐẦU TIN NHẮN CỦA BOT ĐỂ ĐỌC TỪNG TỪ MÀ KHÔNG BỊ GIẬT XUỐNG ĐÁY
+        bD.scrollIntoView({block:'start'}); 
+        const cD=bD.querySelector('.msg-content');
 
-        // 🚀 KHỞI TẠO BỘ RENDER STREAM 40MS (ĐỒNG BỘ MƯỢT MÀ CHO CẢ DI ĐỘNG & PC)
+        // 🚀 BỘ RENDER STREAM 35MS THỜI GIAN THỰC
         const renderer = createStreamRenderer(cD);
         let fnP=fP;
 
-        // 🚀 1. TỰ ĐỘNG BÓC TÁCH LINK TRỰC TIẾP TRONG PROMPT CỦA BẠN
+        // 🚀 1. TỰ ĐỘNG BÓC TÁCH LINK TRỰC TIẾP TRONG PROMPT
         const urlMatches=Array.from(fnP.matchAll(/(https?:\/\/[^\s]+)/g)).map(x=>x[0]);
         if(urlMatches.length){
           const targetUrl=urlMatches[0];
@@ -1091,7 +1062,7 @@
           }
         }
 
-        // 🎯 2. TỰ ĐỘNG BÓC TÁCH LINK CHỈ ĐỊNH TỪ SYSTEM INSTRUCTION CỦA PHIÊN
+        // 🎯 2. TỰ ĐỘNG BÓC TÁCH LINK TỪ SYSTEM INSTRUCTION CỦA PHIÊN
         const sSI=(DOM.sysInst?.value.trim())||cs?.sys||'', gCtx=DOM.globContext?.value.trim()||'';
         const siUrlData = await getRelevantSIUrlData(fnP, sSI + "\n" + (DOM.toggleGlob?.checked!==false ? gCtx : ''));
         if(siUrlData){
@@ -1101,30 +1072,29 @@
         }
 
         // 🔍 3. TRA CỨU WEB NẾU BẬT HOẶC TỰ ĐỘNG
-        const selEng=DOM.searchEngineSel?.value||'jina';
+        const selEng=DOM.searchEngineSel?.value||'tavily';
         if(DOM.toggleSearch?.checked){
           let tgtEng=selEng, need=true;
-          if(selEng==='auto'){ need=shouldTriggerAutoSearch(fnP); tgtEng=localStorage.getItem('auto_search_default_engine')||'jina'; }
+          if(selEng==='auto'){ need=shouldTriggerAutoSearch(fnP); tgtEng=localStorage.getItem('auto_search_default_engine')||'tavily'; }
           if(need){
             const q=extractQuotedKeywords(fnP)||fnP;
             if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').innerText=`🔍 Tìm: "${q}"...`;
             let sText="", sName="";
             try{
-              if(tgtEng==='jina'){ sText=await fetchJinaSearch(q); sName="JINA SEARCH"; }
-              else if(tgtEng==='tavily'){ sText=await fetchTavilySearch(q); sName="TAVILY SEARCH"; }
-              else if(tgtEng==='serper'){ sText=await fetchSerperSearch(q); sName="GOOGLE SERPER"; }
+              if(tgtEng==='serper'){ sText=await fetchSerperSearch(q); sName="GOOGLE SERPER"; }
               else if(tgtEng==='brave'){ sText=await fetchBraveSearch(q); sName="BRAVE SEARCH"; }
               else if(tgtEng==='google'&&am!=='gemini-2.5-flash'){
                 const aiS=new GoogleGenAI({apiKey:gKey||apiKeys[0]});
                 const wr=await aiS.models.generateContent({model:"gemini-2.5-flash",contents:`Tìm thông tin: ${q}`,config:{tools:[{googleSearch:{}}],safetySettings:SAFETY}});
                 sText=wr.text; sName="GEMINI 2.5 GROUNDING";
               }
+              else { sText=await fetchTavilySearch(q); sName="TAVILY SEARCH"; }
               if(sText)fnP=`[DỮ LIỆU TÌM ĐƯỢC QUA ${sName}]:\n${sText}\n\n[YÊU CẦU]: ${fnP}`;
             }catch(e){showToast(e.message,'danger');}
           }
         }
 
-        // 🤖 4. NẠP VÀO MÔ HÌNH XỬ LÝ (DIFY, GROQ, HOẶC GEMINI INTERACTIONS)
+        // 🤖 4. GỌI STREAM MÔ HÌNH (DIFY, GROQ, HOẶC GOOGLE INTERACTIONS API)
         if(am.endsWith('-dify')||externalModels.includes(am)){
           const onCk=c=>{ 
             if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
@@ -1141,6 +1111,7 @@
             try{
               const aiM=new GoogleGenAI({apiKey:gKey});
               let inp=imgs.length?[{type:'text',text:fnP},...(await Promise.all(imgs.map(fileToInteractionPart)))]:fnP;
+              
               if(mod==='gemini-2.5-flash'&&DOM.toggleSearch?.checked&&selEng==='google'){
                 const st=await aiM.models.generateContentStream({model:'gemini-2.5-flash',contents:inp,config:{tools:[{googleSearch:{}}],safetySettings:SAFETY}});
                 for await(const ck of st){ 
@@ -1152,6 +1123,7 @@
                 }
                 await renderer.flush(finalResp); return true;
               }
+
               if(mod.startsWith('gemini-2.5')){
                 const st=await aiM.models.generateContentStream({model:mod,contents:inp,config:{systemInstruction:getDynamicSI(),safetySettings:SAFETY,temperature:+DOM.temp.value}});
                 for await(const ck of st){ 
@@ -1163,33 +1135,84 @@
                 }
                 await renderer.flush(finalResp); return true;
               }
-              const pyld={model:mod,input:inp,system_instruction:getDynamicSI(),generation_config:{thinking_level:DOM.thinking.value},stream:true};
-              if(DOM.toggleMemory?.checked&&cs?.lastInteractionId)pyld.previous_interaction_id=cs.lastInteractionId;
-              let rSt; try{ rSt=await aiM.interactions.create(pyld); }catch(e){ if(pyld.previous_interaction_id){delete pyld.previous_interaction_id; rSt=await aiM.interactions.create(pyld);} else throw e; }
+
+              // 🚀 INTERACTIONS API CHUẨN XÁC VỚI BỘ BÓC TÁCH GÓI TIN ĐA TẦNG
+              const pyld={
+                model:mod,
+                input:inp,
+                system_instruction:getDynamicSI(),
+                generation_config:{thinking_level:DOM.thinking.value},
+                stream:true
+              };
+
+              if(DOM.toggleMemory?.checked&&cs?.lastInteractionId){
+                pyld.previous_interaction_id=cs.lastInteractionId;
+              }
+
+              let rSt;
+              try{
+                rSt=await aiM.interactions.create(pyld);
+              }catch(e){
+                if(pyld.previous_interaction_id){
+                  delete pyld.previous_interaction_id;
+                  if(cs)cs.lastInteractionId=null;
+                  rSt=await aiM.interactions.create(pyld);
+                }else throw e;
+              }
+
               for await(const ck of rSt){
-                const txt=ck.delta?.text||ck.text||""; 
-                if(txt){ 
-                  if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
-                  finalResp+=txt; 
+                let txt = "";
+                if(ck.event_type === "step.delta" && ck.delta?.text){
+                  txt = ck.delta.text;
+                } else if(ck.delta?.text){
+                  txt = ck.delta.text;
+                } else if(ck.outputs?.[0]?.text){
+                  txt = ck.outputs[0].text;
+                } else if(ck.text_delta){
+                  txt = ck.text_delta;
+                } else if(ck.text){
+                  txt = ck.text;
+                }
+
+                if(txt){
+                  if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove();
+                  finalResp+=txt;
                   renderer.push(finalResp);
                 }
-                if(ck.interaction_id||ck.id)capId=ck.interaction_id||ck.id;
+
+                if(ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id)){
+                  capId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
+                }
               }
+
               if(!finalResp.trim()&&rSt.output_text)finalResp=rSt.output_text;
-              await renderer.flush(finalResp); return true;
+              await renderer.flush(finalResp);
+              return true;
             }catch(e){ lastErr=e; return false; }
           }
+
           for(let mod of fChain){ finalResp=""; pS=await tryGoogle(mod); if(pS)break; }
           if(!pS){ bD.remove(); showToast(formatGoogleApiError(lastErr),'danger'); return; }
         }
 
-        chatHistory.push({role:'user',text:fP}); chatHistory.push({role:'model',text:finalResp,interactionId:capId,time:botTime});
-        if(cs){ cs.his=chatHistory; if(capId)cs.lastInteractionId=capId; await saveToDB(cs); document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`; }
+        chatHistory.push({role:'user',text:fP}); 
+        chatHistory.push({role:'model',text:finalResp,interactionId:capId,time:botTime});
+        if(cs){ 
+          cs.his=chatHistory; 
+          if(capId){
+            cs.lastInteractionId=capId;
+            const mi=document.getElementById('manual-interaction-id');
+            if(mi)mi.value=capId;
+          }
+          await saveToDB(cs); 
+          document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`; 
+        }
+        
         if(bD.querySelector('.bot-message')){
           bD.querySelector('.bot-message').setAttribute('data-raw',finalResp);
-          bD.querySelector('.message-header').innerHTML=`<span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span>`+(capId?`<span class="interaction-id-badge" onclick="copyRawText('${capId}')">📋 ID</span>`:'');
+          const idH = capId ? `<span class="interaction-id-badge" onclick="copyRawText('${capId}')">📋 ID: ${capId.substring(0,8)}...</span>` : '';
+          bD.querySelector('.message-header').innerHTML=`<span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span>${idH}`;
           
-          // 🛠️ CỤM NÚT THAO TÁC XUẤT HIỆN NGAY TỨC THÌ
           const botIdx = chatHistory.length - 1;
           const aDiv = document.createElement('div');
           aDiv.className = 'msg-actions';
