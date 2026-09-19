@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NekoWeb - Telegram Client</title>
+  <script src="https://cdn.jsdelivr.net/npm/telegram@2.22.2/browser/index.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0e1621;
+      --bg-secondary: #17212b;
+      --bg-chat-header: #17212b;
+      --bg-active-chat: #2b5278;
+      --bg-msg-out: #2b5278;
+      --bg-msg-in: #182533;
+      --text-main: #f5f5f5;
+      --text-muted: #7f91a4;
+      --border-color: rgba(0, 0, 0, 0.25);
+      --primary: #5288c1;
+      --primary-hover: #6499d3;
+      --danger: #e53935;
+      --bubble-radius: 12px;
+    }
+    [data-theme="light"] {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f4f4f5;
+      --bg-chat-header: #ffffff;
+      --bg-active-chat: #e3f2fd;
+      --bg-msg-out: #effdde;
+      --bg-msg-in: #ffffff;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+      --border-color: #e5e7eb;
+      --primary: #3390ec;
+      --primary-hover: #267fd9;
+      --danger: #d32f2f;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { display: flex; width: 100vw; height: 100dvh; background: var(--bg-primary); color: var(--text-main); overflow: hidden; }
+
+    /* Auth Screens */
+    #auth-container {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+      background: var(--bg-primary); z-index: 9999;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .auth-card {
+      background: var(--bg-secondary); border: 1px solid var(--border-color);
+      padding: 30px 24px; border-radius: 16px; width: 100%; max-width: 420px;
+      display: flex; flex-direction: column; gap: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .auth-title { text-align: center; font-size: 1.3rem; font-weight: 700; color: var(--primary); }
+    .auth-subtitle { text-align: center; font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-top: -6px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+    .modern-input {
+      width: 100%; padding: 12px 14px; border-radius: 10px;
+      background: var(--bg-primary); border: 1px solid var(--border-color);
+      color: var(--text-main); font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+    }
+    .modern-input:focus { border-color: var(--primary); }
+    .btn {
+      padding: 12px; border-radius: 10px; border: none; font-weight: 600;
+      font-size: 0.95rem; cursor: pointer; transition: 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); }
+    .auth-step { display: none; flex-direction: column; gap: 14px; }
+    .auth-step.active { display: flex; }
+
+    /* Main App Layout */
+    .app-layout { display: flex; width: 100%; height: 100%; position: relative; }
+    .sidebar-pane {
+      width: 380px; min-width: 320px; max-width: 420px;
+      background: var(--bg-secondary); border-right: 1px solid var(--border-color);
+      display: flex; flex-direction: column; height: 100%; z-index: 10;
+    }
+    .chat-pane {
+      flex: 1; display: flex; flex-direction: column; height: 100%;
+      background: var(--bg-primary); position: relative;
+    }
+
+    /* Sidebar Components */
+    .sidebar-header {
+      padding: 12px 16px; border-bottom: 1px solid var(--border-color);
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .search-box {
+      padding: 8px 16px; border-bottom: 1px solid var(--border-color);
+    }
+    .search-input {
+      width: 100%; padding: 8px 12px; border-radius: 18px;
+      background: var(--bg-primary); border: 1px solid var(--border-color);
+      color: var(--text-main); font-size: 0.85rem; outline: none;
+    }
+    .dialogs-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+    .dialog-item {
+      padding: 10px 16px; display: flex; align-items: center; gap: 12px;
+      cursor: pointer; border-bottom: 1px solid rgba(0,0,0,0.05);
+      transition: background 0.15s;
+    }
+    .dialog-item:hover { background: rgba(255,255,255,0.03); }
+    .dialog-item.active { background: var(--bg-active-chat); }
+    .avatar {
+      width: 46px; height: 46px; border-radius: 50%;
+      background: var(--primary); color: #fff; display: flex;
+      align-items: center; justify-content: center; font-weight: 700;
+      font-size: 1.1rem; flex-shrink: 0; user-select: none;
+    }
+    .dialog-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .dialog-row { display: flex; justify-content: space-between; align-items: center; }
+    .dialog-title { font-size: 0.95rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dialog-time { font-size: 0.72rem; color: var(--text-muted); }
+    .dialog-preview { font-size: 0.82rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .unread-badge {
+      background: var(--primary); color: #fff; font-size: 0.7rem;
+      font-weight: 700; padding: 2px 7px; border-radius: 10px; margin-left: 6px;
+    }
+
+    /* Chat Area Components */
+    .chat-header {
+      height: 58px; padding: 0 16px; border-bottom: 1px solid var(--border-color);
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg-chat-header); z-index: 5;
+    }
+    .chat-header-info { display: flex; align-items: center; gap: 12px; }
+    .messages-container {
+      flex: 1; overflow-y: auto; padding: 16px; display: flex;
+      flex-direction: column; gap: 10px; scroll-behavior: smooth;
+    }
+    .msg-bubble {
+      max-width: 75%; padding: 8px 12px; border-radius: var(--bubble-radius);
+      line-height: 1.45; font-size: 0.95rem; word-break: break-word; position: relative;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .msg-out {
+      align-self: flex-end; background: var(--bg-msg-out);
+      border-bottom-right-radius: 3px; color: #fff;
+    }
+    .msg-in {
+      align-self: flex-start; background: var(--bg-msg-in);
+      border-bottom-left-radius: 3px; color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+    .msg-time { font-size: 0.68rem; opacity: 0.7; align-self: flex-end; margin-top: 2px; }
+
+    /* Input Bar */
+    .chat-input-bar {
+      padding: 10px 16px; background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color); display: flex;
+      align-items: flex-end; gap: 10px;
+    }
+    .chat-textarea {
+      flex: 1; background: var(--bg-primary); border: 1px solid var(--border-color);
+      border-radius: 20px; padding: 10px 16px; color: var(--text-main);
+      font-size: 0.95rem; outline: none; resize: none; max-height: 120px; min-height: 42px;
+    }
+    .send-btn {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: var(--primary); color: #fff; border: none;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0; transition: 0.2s;
+    }
+    .send-btn:hover { background: var(--primary-hover); }
+
+    /* Empty state */
+    .empty-chat {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 12px; color: var(--text-muted);
+    }
+
+    .icon-btn {
+      background: none; border: none; color: var(--text-main);
+      font-size: 1.2rem; cursor: pointer; padding: 6px; border-radius: 50%;
+    }
+
+    /* Mobile Responsive View */
+    @media (max-width: 768px) {
+      .sidebar-pane { width: 100%; max-width: 100%; }
+      .chat-pane {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        transform: translateX(100%); transition: transform 0.25s ease;
+      }
+      .chat-pane.active { transform: translateX(0); }
+      .mobile-back-btn { display: inline-flex !important; }
+    }
+    .mobile-back-btn { display: none; margin-right: 6px; }
+  </style>
+</head>
+<body>
+
+  <!-- MÀN HÌNH ĐĂNG NHẬP (AUTH FLOW) -->
+  <div id="auth-container">
+    <div class="auth-card">
+      <div class="auth-title">🐾 NekoWeb Telegram</div>
+      <div class="auth-subtitle">Trình duyệt Telegram cá nhân độc lập qua MTProto 2.0</div>
+
+      <!-- BƯỚC 1: API ID & SỐ ĐIỆN THOẠI -->
+      <div id="auth-step-1" class="auth-step active">
+        <div class="form-group">
+          <label class="form-label">Telegram API ID:</label>
+          <input type="number" id="auth-api-id" class="modern-input" placeholder="Ví dụ: 12345678">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Telegram API HASH:</label>
+          <input type="text" id="auth-api-hash" class="modern-input" placeholder="Nhập chuỗi 32 ký tự hash...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Số điện thoại (Kèm mã quốc gia):</label>
+          <input type="text" id="auth-phone" class="modern-input" placeholder="+84987654321">
+        </div>
+        <button id="btn-send-code" class="btn btn-primary">📲 Gửi mã xác thực OTP</button>
+        <div style="font-size:0.75rem; color:var(--text-muted); text-align:center; line-height:1.4;">
+          Lấy API ID & Hash miễn phí tại <a href="https://my.telegram.org" target="_blank" style="color:var(--primary);">my.telegram.org</a>. Dữ liệu chỉ lưu trực tiếp trên máy của bạn.
+        </div>
+      </div>
+
+      <!-- BƯỚC 2: NHẬP MÃ OTP -->
+      <div id="auth-step-2" class="auth-step">
+        <div class="form-group">
+          <label class="form-label">Mã xác thực Telegram (5 số):</label>
+          <input type="text" id="auth-otp" class="modern-input" placeholder="Nhập mã gửi vào Telegram..." maxlength="6">
+        </div>
+        <button id="btn-submit-otp" class="btn btn-primary">🔓 Xác nhận Đăng nhập</button>
+        <button id="btn-back-step-1" class="btn btn-secondary">Quay lại</button>
+      </div>
+
+      <!-- BƯỚC 3: MẬT KHẨ 2FA (NẾU CÓ) -->
+      <div id="auth-step-3" class="auth-step">
+        <div class="form-group">
+          <label class="form-label">Mật khẩu xác minh 2 bước (2FA):</label>
+          <input type="password" id="auth-2fa" class="modern-input" placeholder="Nhập mật khẩu 2FA của bạn...">
+        </div>
+        <button id="btn-submit-2fa" class="btn btn-primary">Xác nhận 2FA</button>
+      </div>
+
+      <div id="auth-status-msg" style="font-size:0.85rem; text-align:center; font-weight:600;"></div>
+    </div>
+  </div>
+
+  <!-- GIAO DIỆN CHÍNH (APP LAYOUT) -->
+  <div class="app-layout" id="app-layout" style="display:none;">
+    
+    <!-- CỘT BÊN TRÁI: DANH SÁCH CUỘC HỘI THOẠI -->
+    <aside class="sidebar-pane">
+      <div class="sidebar-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="avatar" id="my-avatar" style="width:36px;height:36px;font-size:.9rem;">ME</div>
+          <div>
+            <div id="my-name" style="font-size:0.95rem; font-weight:700;">Đang kết nối...</div>
+            <div id="connection-status" style="font-size:0.72rem; color:#10b981;">Online</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:4px;">
+          <button id="btn-theme-toggle" class="icon-btn" title="Chuyển theme Sáng/Tối">🌙</button>
+          <button id="btn-logout" class="icon-btn" style="color:var(--danger);" title="Đăng xuất">🚪</button>
+        </div>
+      </div>
+
+      <div class="search-box">
+        <input type="text" id="dialog-search" class="search-input" placeholder="🔍 Tìm kiếm cuộc trò chuyện...">
+      </div>
+
+      <div class="dialogs-list" id="dialogs-list">
+        <div style="padding:20px; text-align:center; color:var(--text-muted);">Đang tải danh sách tin nhắn...</div>
+      </div>
+    </aside>
+
+    <!-- CỘT BÊN PHẢI: KHUNG CHAT CHI TIẾT -->
+    <main class="chat-pane" id="chat-pane">
+      
+      <!-- HEADER KHUNG CHAT -->
+      <header class="chat-header">
+        <div class="chat-header-info">
+          <button id="btn-back-sidebar" class="icon-btn mobile-back-btn">←</button>
+          <div class="avatar" id="active-chat-avatar" style="width:38px;height:38px;font-size:0.95rem;">?</div>
+          <div>
+            <div id="active-chat-title" style="font-weight:700; font-size:0.95rem;">Chọn một hội thoại</div>
+            <div id="active-chat-status" style="font-size:0.72rem; color:var(--text-muted);">Telegram MTProto</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- DANH SÁCH TIN NHẮN -->
+      <div class="messages-container" id="messages-container">
+        <div class="empty-chat">
+          <span style="font-size:3rem;">🐾</span>
+          <p>Hãy chọn một cuộc trò chuyện từ danh sách bên trái để bắt đầu nhắn tin.</p>
+        </div>
+      </div>
+
+      <!-- KHUNG NHẬP TIN NHẮN -->
+      <footer class="chat-input-bar" id="chat-input-bar" style="display:none;">
+        <textarea id="msg-input" class="chat-textarea" rows="1" placeholder="Nhập tin nhắn..."></textarea>
+        <button id="btn-send-msg" class="send-btn">➤</button>
+      </footer>
+
+    </main>
+
+  </div>
+
+  <script>
+    const { TelegramClient, Api } = telegram;
+    const { StringSession } = telegram.sessions;
+    const { NewMessage } = telegram.events;
+
+    let client = null;
+    let currentPhoneCodeHash = null;
+    let activeDialogEntity = null;
+    let allDialogs = [];
+
+    // --- CẤU HÌNH & GIAO DIỆN ---
+    const DOM = {
+      authContainer: document.getElementById('auth-container'),
+      appLayout: document.getElementById('app-layout'),
+      step1: document.getElementById('auth-step-1'),
+      step2: document.getElementById('auth-step-2'),
+      step3: document.getElementById('auth-step-3'),
+      authMsg: document.getElementById('auth-status-msg'),
+      apiId: document.getElementById('auth-api-id'),
+      apiHash: document.getElementById('auth-api-hash'),
+      phone: document.getElementById('auth-phone'),
+      otp: document.getElementById('auth-otp'),
+      pass2fa: document.getElementById('auth-2fa'),
+      btnSendCode: document.getElementById('btn-send-code'),
+      btnSubmitOtp: document.getElementById('btn-submit-otp'),
+      btnSubmit2fa: document.getElementById('btn-submit-2fa'),
+      btnBackStep1: document.getElementById('btn-back-step-1'),
+      dialogsList: document.getElementById('dialogs-list'),
+      dialogSearch: document.getElementById('dialog-search'),
+      chatPane: document.getElementById('chat-pane'),
+      messagesContainer: document.getElementById('messages-container'),
+      chatInputBar: document.getElementById('chat-input-bar'),
+      msgInput: document.getElementById('msg-input'),
+      btnSendMsg: document.getElementById('btn-send-msg'),
+      activeAvatar: document.getElementById('active-chat-avatar'),
+      activeTitle: document.getElementById('active-chat-title'),
+      activeStatus: document.getElementById('active-chat-status'),
+      myName: document.getElementById('my-name'),
+      myAvatar: document.getElementById('my-avatar'),
+      btnBackSidebar: document.getElementById('btn-back-sidebar'),
+      btnLogout: document.getElementById('btn-logout'),
+      btnTheme: document.getElementById('btn-theme-toggle')
+    };
+
+    function showAuthMsg(msg, isError = false) {
+      DOM.authMsg.innerText = msg;
+      DOM.authMsg.style.color = isError ? 'var(--danger)' : '#10b981';
+    }
+
+    function getInitials(name) {
+      if (!name) return '?';
+      const parts = name.trim().split(/\s+/);
+      return parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : name.substring(0, 2).toUpperCase();
+    }
+
+    // --- KHỞI TẠO CLIENT MTPROTO ---
+    async function initClient(sessionStr = "") {
+      const apiId = parseInt(localStorage.getItem('tg_api_id') || DOM.apiId.value.trim());
+      const apiHash = localStorage.getItem('tg_api_hash') || DOM.apiHash.value.trim();
+
+      if (!apiId || !apiHash) return null;
+
+      const stringSession = new StringSession(sessionStr);
+      client = new TelegramClient(stringSession, apiId, apiHash, {
+        connectionRetries: 5,
+        useWSS: true // Bắt buộc cho giao thức WebSockets an toàn trên trình duyệt
+      });
+
+      return client;
+    }
+
+    // --- KIỂM TRA PHIÊN CŨ KHI MỞ TRANG ---
+    async function checkExistingSession() {
+      const savedSession = localStorage.getItem('tg_session_string');
+      const savedApiId = localStorage.getItem('tg_api_id');
+      const savedApiHash = localStorage.getItem('tg_api_hash');
+
+      if (savedApiId) DOM.apiId.value = savedApiId;
+      if (savedApiHash) DOM.apiHash.value = savedApiHash;
+
+      if (savedSession && savedApiId && savedApiHash) {
+        showAuthMsg("Đang kết nối lại Telegram qua WebSocket MTProto...");
+        try {
+          await initClient(savedSession);
+          await client.connect();
+
+          const me = await client.getMe();
+          if (me) {
+            onLoginSuccess(me);
+            return;
+          }
+        } catch (err) {
+          console.error("Lỗi phiên cũ:", err);
+          localStorage.removeItem('tg_session_string');
+          showAuthMsg("Phiên cũ đã hết hạn, vui lòng đăng nhập lại.", true);
+        }
+      }
+    }
+
+    // --- ĐĂNG NHẬP BƯỚC 1: GỬI MÃ OTP ---
+    DOM.btnSendCode.onclick = async () => {
+      const apiId = parseInt(DOM.apiId.value.trim());
+      const apiHash = DOM.apiHash.value.trim();
+      const phone = DOM.phone.value.trim();
+
+      if (!apiId || !apiHash || !phone) return showAuthMsg("Vui lòng điền đầy đủ API ID, API Hash và Số điện thoại!", true);
+
+      localStorage.setItem('tg_api_id', apiId);
+      localStorage.setItem('tg_api_hash', apiHash);
+
+      DOM.btnSendCode.innerText = "⏳ Đang gửi mã...";
+      showAuthMsg("Đang kết nối máy chủ Telegram...");
+
+      try {
+        await initClient("");
+        await client.connect();
+
+        const res = await client.sendCode({ apiId, apiHash }, phone);
+        currentPhoneCodeHash = res.phoneCodeHash;
+
+        DOM.step1.classList.remove('active');
+        DOM.step2.classList.add('active');
+        showAuthMsg(`Đã gửi mã xác thực tới ứng dụng Telegram số ${phone}!`);
+      } catch (err) {
+        showAuthMsg("Lỗi: " + (err.errorMessage || err.message), true);
+      } finally {
+        DOM.btnSendCode.innerText = "📲 Gửi mã xác thực OTP";
+      }
+    };
+
+    // --- ĐĂNG NHẬP BƯỚC 2: XÁC NHẬN OTP ---
+    DOM.btnSubmitOtp.onclick = async () => {
+      const phone = DOM.phone.value.trim();
+      const otp = DOM.otp.value.trim();
+      const apiId = parseInt(localStorage.getItem('tg_api_id'));
+      const apiHash = localStorage.getItem('tg_api_hash');
+
+      if (!otp) return showAuthMsg("Chưa nhập mã OTP!", true);
+
+      DOM.btnSubmitOtp.innerText = "⏳ Đang xác minh...";
+      try {
+        await client.invoke(new Api.auth.SignIn({
+          phoneNumber: phone,
+          phoneCodeHash: currentPhoneCodeHash,
+          phoneCode: otp
+        }));
+
+        const me = await client.getMe();
+        onLoginSuccess(me);
+      } catch (err) {
+        if (err.errorMessage === 'SESSION_PASSWORD_NEEDED') {
+          DOM.step2.classList.remove('active');
+          DOM.step3.classList.add('active');
+          showAuthMsg("Tài khoản có bật bảo mật 2 bước. Hãy nhập mật khẩu 2FA!");
+        } else {
+          showAuthMsg("Lỗi mã OTP: " + (err.errorMessage || err.message), true);
+        }
+      } finally {
+        DOM.btnSubmitOtp.innerText = "🔓 Xác nhận Đăng nhập";
+      }
+    };
+
+    // --- ĐĂNG NHẬP BƯỚC 3: MẬT KHẨ 2FA ---
+    DOM.btnSubmit2fa.onclick = async () => {
+      const pass = DOM.pass2fa.value.trim();
+      if (!pass) return showAuthMsg("Chưa nhập mật khẩu 2FA!", true);
+
+      DOM.btnSubmit2fa.innerText = "⏳ Đang kiểm tra 2FA...";
+      try {
+        await client.signInWithPassword({
+          password: () => pass
+        });
+        const me = await client.getMe();
+        onLoginSuccess(me);
+      } catch (err) {
+        showAuthMsg("Lỗi 2FA: " + (err.errorMessage || err.message), true);
+      } finally {
+        DOM.btnSubmit2fa.innerText = "Xác nhận 2FA";
+      }
+    };
+
+    DOM.btnBackStep1.onclick = () => {
+      DOM.step2.classList.remove('active');
+      DOM.step1.classList.add('active');
+      showAuthMsg("");
+    };
+
+    // --- KHI ĐĂNG NHẬP THÀNH CÔNG ---
+    async function onLoginSuccess(me) {
+      localStorage.setItem('tg_session_string', client.session.save());
+
+      DOM.authContainer.style.display = 'none';
+      DOM.appLayout.style.display = 'flex';
+
+      const myFullName = `${me.firstName || ''} ${me.lastName || ''}`.trim() || me.username || "Tôi";
+      DOM.myName.innerText = myFullName;
+      DOM.myAvatar.innerText = getInitials(myFullName);
+
+      loadDialogs();
+      listenRealtimeMessages();
+    }
+
+    // --- TẢI DANH SÁCH DIALOGS / CHATS ---
+    async function loadDialogs() {
+      try {
+        allDialogs = await client.getDialogs({ limit: 40 });
+        renderDialogsList(allDialogs);
+      } catch (err) {
+        DOM.dialogsList.innerHTML = `<div style="padding:20px;text-align:center;color:var(--danger);">Lỗi tải hội thoại: ${err.message}</div>`;
+      }
+    }
+
+    function renderDialogsList(dialogs) {
+      if (!dialogs.length) {
+        DOM.dialogsList.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-muted);">Không có cuộc trò chuyện nào.</div>`;
+        return;
+      }
+
+      DOM.dialogsList.innerHTML = '';
+      dialogs.forEach((d) => {
+        const title = d.title || d.name || "Người dùng";
+        const messageText = d.message?.message || (d.message?.media ? "[Phương tiện/File]" : "Chưa có tin nhắn");
+        const unreadCount = d.unreadCount || 0;
+        
+        const item = document.createElement('div');
+        item.className = `dialog-item ${activeDialogEntity?.id?.value === d.entity?.id?.value ? 'active' : ''}`;
+        item.innerHTML = `
+          <div class="avatar">${getInitials(title)}</div>
+          <div class="dialog-info">
+            <div class="dialog-row">
+              <span class="dialog-title">${title}</span>
+              <span class="dialog-time">${d.message?.date ? new Date(d.message.date * 1000).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}) : ''}</span>
+            </div>
+            <div class="dialog-row">
+              <span class="dialog-preview">${messageText}</span>
+              ${unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : ''}
+            </div>
+          </div>
+        `;
+
+        item.onclick = () => selectChat(d);
+        DOM.dialogsList.appendChild(item);
+      });
+    }
+
+    // --- CHỌN VÀ MỞ MỘT CUỘC TRÒ CHUYỆN ---
+    async function selectChat(dialog) {
+      activeDialogEntity = dialog.entity;
+      const title = dialog.title || dialog.name || "Hội thoại";
+
+      DOM.activeTitle.innerText = title;
+      DOM.activeAvatar.innerText = getInitials(title);
+      DOM.activeStatus.innerText = dialog.isGroup ? "Nhóm chat" : (dialog.isChannel ? "Kênh" : "Tin nhắn riêng");
+
+      DOM.chatInputBar.style.display = 'flex';
+      DOM.chatPane.classList.add('active'); // Chuyển màn hình trên mobile
+
+      // Cập nhật trạng thái active ở sidebar
+      document.querySelectorAll('.dialog-item').forEach(el => el.classList.remove('active'));
+      renderDialogsList(allDialogs);
+
+      DOM.messagesContainer.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">⏳ Đang tải tin nhắn...</div>';
+
+      try {
+        const msgs = await client.getMessages(activeDialogEntity, { limit: 40 });
+        renderMessages(msgs.reverse());
+      } catch (err) {
+        DOM.messagesContainer.innerHTML = `<div style="text-align:center;padding:20px;color:var(--danger);">Lỗi tải tin nhắn: ${err.message}</div>`;
+      }
+    }
+
+    function renderMessages(msgs) {
+      DOM.messagesContainer.innerHTML = '';
+      if (!msgs.length) {
+        DOM.messagesContainer.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Chưa có tin nhắn nào trong hội thoại này.</div>';
+        return;
+      }
+
+      msgs.forEach(m => {
+        if (!m.message && !m.media) return;
+        const isOut = m.out;
+        const timeStr = m.date ? new Date(m.date * 1000).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'}) : '';
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `msg-bubble ${isOut ? 'msg-out' : 'msg-in'}`;
+        msgDiv.innerHTML = `
+          <div>${m.message ? m.message.replace(/\n/g, '<br>') : '<i>[Tệp đính kèm/Hình ảnh]</i>'}</div>
+          <div class="msg-time">${timeStr} ${isOut ? '✓' : ''}</div>
+        `;
+        DOM.messagesContainer.appendChild(msgDiv);
+      });
+
+      DOM.messagesContainer.scrollTop = DOM.messagesContainer.scrollHeight;
+    }
+
+    // --- GỬI TIN NHẮN ---
+    DOM.btnSendMsg.onclick = async () => {
+      const text = DOM.msgInput.value.trim();
+      if (!text || !activeDialogEntity) return;
+
+      DOM.msgInput.value = '';
+      DOM.msgInput.style.height = '42px';
+
+      // Tạo bong bóng tạm thời hiển thị ngay lập tức
+      const tempDiv = document.createElement('div');
+      tempDiv.className = 'msg-bubble msg-out';
+      tempDiv.innerHTML = `<div>${text.replace(/\n/g, '<br>')}</div><div class="msg-time">Đang gửi...</div>`;
+      DOM.messagesContainer.appendChild(tempDiv);
+      DOM.messagesContainer.scrollTop = DOM.messagesContainer.scrollHeight;
+
+      try {
+        await client.sendMessage(activeDialogEntity, { message: text });
+        tempDiv.querySelector('.msg-time').innerText = `${new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'})} ✓`;
+        loadDialogs(); // Cập nhật preview ở sidebar
+      } catch (err) {
+        tempDiv.querySelector('.msg-time').innerText = "❌ Lỗi gửi";
+        tempDiv.style.background = "var(--danger)";
+      }
+    };
+
+    // Auto-expand textarea
+    DOM.msgInput.oninput = () => {
+      DOM.msgInput.style.height = 'auto';
+      DOM.msgInput.style.height = Math.min(DOM.msgInput.scrollHeight, 120) + 'px';
+    };
+
+    // Gửi bằng phím Enter (Shift+Enter để xuống dòng)
+    DOM.msgInput.onkeydown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        DOM.btnSendMsg.click();
+      }
+    };
+
+    // --- LẮNG NGHE TIN NHẮN THỜI GIAN THỰC (REAL-TIME WS EVENT) ---
+    function listenRealtimeMessages() {
+      client.addEventHandler(async (event) => {
+        const msg = event.message;
+        if (!msg) return;
+
+        // Nếu tin nhắn thuộc về cuộc trò chuyện đang mở
+        if (activeDialogEntity && msg.peerId) {
+          const activeId = activeDialogEntity.id?.value || activeDialogEntity.id;
+          const msgPeerId = msg.peerId.userId?.value || msg.peerId.chatId?.value || msg.peerId.channelId?.value || msg.peerId.userId || msg.peerId.chatId || msg.peerId.channelId;
+
+          if (activeId && msgPeerId && activeId.toString() === msgPeerId.toString()) {
+            const isOut = msg.out;
+            const timeStr = new Date(msg.date * 1000).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `msg-bubble ${isOut ? 'msg-out' : 'msg-in'}`;
+            msgDiv.innerHTML = `
+              <div>${msg.message ? msg.message.replace(/\n/g, '<br>') : '<i>[Phương tiện]</i>'}</div>
+              <div class="msg-time">${timeStr}</div>
+            `;
+            DOM.messagesContainer.appendChild(msgDiv);
+            DOM.messagesContainer.scrollTop = DOM.messagesContainer.scrollHeight;
+          }
+        }
+
+        // Cập nhật lại danh sách hội thoại
+        loadDialogs();
+      }, new NewMessage({}));
+    }
+
+    // --- TÌM KIẾM HỘI THOẠI ---
+    DOM.dialogSearch.oninput = () => {
+      const q = DOM.dialogSearch.value.trim().toLowerCase();
+      if (!q) return renderDialogsList(allDialogs);
+      const filtered = allDialogs.filter(d => (d.title || d.name || '').toLowerCase().includes(q));
+      renderDialogsList(filtered);
+    };
+
+    // --- NÚT QUAY LẠI TRÊN MOBILE ---
+    DOM.btnBackSidebar.onclick = () => {
+      DOM.chatPane.classList.remove('active');
+    };
+
+    // --- CHUYỂN ĐỔI THEME SÁNG / TỐI ---
+    DOM.btnTheme.onclick = () => {
+      const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+      const nxt = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', nxt);
+      DOM.btnTheme.innerText = nxt === 'dark' ? '🌙' : '☀️';
+    };
+
+    // --- ĐĂNG XUẤT ---
+    DOM.btnLogout.onclick = async () => {
+      if (!confirm("Bạn có chắc muốn đăng xuất khỏi Telegram trên thiết bị này?")) return;
+      try {
+        await client.logOut();
+      } catch(e){}
+      localStorage.removeItem('tg_session_string');
+      location.reload();
+    };
+
+    // Khởi chạy kiểm tra phiên khi mở app
+    checkExistingSession();
+  </script>
+</body>
+</html>
