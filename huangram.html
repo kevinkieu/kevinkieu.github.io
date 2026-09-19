@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>NekoWeb - Telegram Client</title>
-  <script src="https://cdn.jsdelivr.net/npm/telegram@2.22.2/browser/index.js"></script>
   <style>
     :root {
       --bg-primary: #0e1621;
@@ -209,7 +208,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Số điện thoại (Kèm mã quốc gia):</label>
-          <input type="text" id="auth-phone" class="modern-input" placeholder="+84987654321">
+          <input type="text" id="auth-phone" class="modern-input" placeholder="+84899518895">
         </div>
         <button id="btn-send-code" class="btn btn-primary">📲 Gửi mã xác thực OTP</button>
         <div style="font-size:0.75rem; color:var(--text-muted); text-align:center; line-height:1.4;">
@@ -301,17 +300,17 @@
 
   </div>
 
-  <script>
-    const { TelegramClient, Api } = telegram;
-    const { StringSession } = telegram.sessions;
-    const { NewMessage } = telegram.events;
+  <!-- NẠP THƯ VIỆN GRAMJS CHUẨN ES MODULE CHO TRÌNH DUYỆT -->
+  <script type="module">
+    import { TelegramClient, Api } from "https://esm.sh/telegram@2.22.2?bundle";
+    import { StringSession } from "https://esm.sh/telegram@2.22.2/sessions/index.js?bundle";
+    import { NewMessage } from "https://esm.sh/telegram@2.22.2/events/index.js?bundle";
 
     let client = null;
     let currentPhoneCodeHash = null;
     let activeDialogEntity = null;
     let allDialogs = [];
 
-    // --- CẤU HÌNH & GIAO DIỆN ---
     const DOM = {
       authContainer: document.getElementById('auth-container'),
       appLayout: document.getElementById('app-layout'),
@@ -406,26 +405,30 @@
       const apiHash = DOM.apiHash.value.trim();
       const phone = DOM.phone.value.trim();
 
-      if (!apiId || !apiHash || !phone) return showAuthMsg("Vui lòng điền đầy đủ API ID, API Hash và Số điện thoại!", true);
+      if (!apiId || !apiHash || !phone) {
+        return showAuthMsg("Vui lòng điền đầy đủ API ID, API Hash và Số điện thoại!", true);
+      }
 
       localStorage.setItem('tg_api_id', apiId);
       localStorage.setItem('tg_api_hash', apiHash);
 
-      DOM.btnSendCode.innerText = "⏳ Đang gửi mã...";
-      showAuthMsg("Đang kết nối máy chủ Telegram...");
+      DOM.btnSendCode.innerText = "⏳ Đang gửi mã OTP...";
+      showAuthMsg("Đang kết nối Data Center Telegram qua WebSocket...");
 
       try {
         await initClient("");
         await client.connect();
 
+        showAuthMsg("Đang yêu cầu Telegram gửi mã xác thực...");
         const res = await client.sendCode({ apiId, apiHash }, phone);
         currentPhoneCodeHash = res.phoneCodeHash;
 
         DOM.step1.classList.remove('active');
         DOM.step2.classList.add('active');
-        showAuthMsg(`Đã gửi mã xác thực tới ứng dụng Telegram số ${phone}!`);
+        showAuthMsg(`✅ Đã gửi mã OTP tới app Telegram của số ${phone}!`);
       } catch (err) {
-        showAuthMsg("Lỗi: " + (err.errorMessage || err.message), true);
+        console.error("Lỗi gửi OTP:", err);
+        showAuthMsg("Lỗi: " + (err.errorMessage || err.message || JSON.stringify(err)), true);
       } finally {
         DOM.btnSendCode.innerText = "📲 Gửi mã xác thực OTP";
       }
@@ -435,8 +438,6 @@
     DOM.btnSubmitOtp.onclick = async () => {
       const phone = DOM.phone.value.trim();
       const otp = DOM.otp.value.trim();
-      const apiId = parseInt(localStorage.getItem('tg_api_id'));
-      const apiHash = localStorage.getItem('tg_api_hash');
 
       if (!otp) return showAuthMsg("Chưa nhập mã OTP!", true);
 
@@ -603,7 +604,6 @@
       DOM.msgInput.value = '';
       DOM.msgInput.style.height = '42px';
 
-      // Tạo bong bóng tạm thời hiển thị ngay lập tức
       const tempDiv = document.createElement('div');
       tempDiv.className = 'msg-bubble msg-out';
       tempDiv.innerHTML = `<div>${text.replace(/\n/g, '<br>')}</div><div class="msg-time">Đang gửi...</div>`;
@@ -613,20 +613,18 @@
       try {
         await client.sendMessage(activeDialogEntity, { message: text });
         tempDiv.querySelector('.msg-time').innerText = `${new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'})} ✓`;
-        loadDialogs(); // Cập nhật preview ở sidebar
+        loadDialogs();
       } catch (err) {
         tempDiv.querySelector('.msg-time').innerText = "❌ Lỗi gửi";
         tempDiv.style.background = "var(--danger)";
       }
     };
 
-    // Auto-expand textarea
     DOM.msgInput.oninput = () => {
       DOM.msgInput.style.height = 'auto';
       DOM.msgInput.style.height = Math.min(DOM.msgInput.scrollHeight, 120) + 'px';
     };
 
-    // Gửi bằng phím Enter (Shift+Enter để xuống dòng)
     DOM.msgInput.onkeydown = (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -640,7 +638,6 @@
         const msg = event.message;
         if (!msg) return;
 
-        // Nếu tin nhắn thuộc về cuộc trò chuyện đang mở
         if (activeDialogEntity && msg.peerId) {
           const activeId = activeDialogEntity.id?.value || activeDialogEntity.id;
           const msgPeerId = msg.peerId.userId?.value || msg.peerId.chatId?.value || msg.peerId.channelId?.value || msg.peerId.userId || msg.peerId.chatId || msg.peerId.channelId;
@@ -658,13 +655,10 @@
             DOM.messagesContainer.scrollTop = DOM.messagesContainer.scrollHeight;
           }
         }
-
-        // Cập nhật lại danh sách hội thoại
         loadDialogs();
       }, new NewMessage({}));
     }
 
-    // --- TÌM KIẾM HỘI THOẠI ---
     DOM.dialogSearch.oninput = () => {
       const q = DOM.dialogSearch.value.trim().toLowerCase();
       if (!q) return renderDialogsList(allDialogs);
@@ -672,12 +666,10 @@
       renderDialogsList(filtered);
     };
 
-    // --- NÚT QUAY LẠI TRÊN MOBILE ---
     DOM.btnBackSidebar.onclick = () => {
       DOM.chatPane.classList.remove('active');
     };
 
-    // --- CHUYỂN ĐỔI THEME SÁNG / TỐI ---
     DOM.btnTheme.onclick = () => {
       const cur = document.documentElement.getAttribute('data-theme') || 'dark';
       const nxt = cur === 'dark' ? 'light' : 'dark';
@@ -685,7 +677,6 @@
       DOM.btnTheme.innerText = nxt === 'dark' ? '🌙' : '☀️';
     };
 
-    // --- ĐĂNG XUẤT ---
     DOM.btnLogout.onclick = async () => {
       if (!confirm("Bạn có chắc muốn đăng xuất khỏi Telegram trên thiết bị này?")) return;
       try {
@@ -695,7 +686,7 @@
       location.reload();
     };
 
-    // Khởi chạy kiểm tra phiên khi mở app
+    // Khởi chạy kiểm tra phiên
     checkExistingSession();
   </script>
 </body>
