@@ -11,7 +11,6 @@
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10.8.0/dist/mermaid.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
   <style>
     :root{--bg-main:#f0f4f9;--bg-sidebar:#e9eef6;--bg-card:#ffffff;--border:#c4c7c5;--text-main:#1f1f1f;--text-muted:#444746;--bg-msg-user:#d3e3fd;--bg-msg-bot:transparent;--primary:#0b57d0;--primary-container:#d3e3fd;--danger:#b3261e;--input-bg:#f0f4f9;--shadow:0 1px 3px rgba(0,0,0,0.1);--transition:all 0.2s ease;--chat-font-size:16px}
     [data-theme="dark"]{--bg-main:#131314;--bg-sidebar:#1e1f20;--bg-card:#282a2c;--border:#444746;--text-main:#e3e3e3;--text-muted:#c4c7c5;--bg-msg-user:#004a77;--bg-msg-bot:transparent;--primary:#a8c7fa;--primary-container:#004a77;--danger:#f2b8b5;--input-bg:#1e1f20;--shadow:0 1px 3px rgba(0,0,0,0.4)}
@@ -132,7 +131,7 @@
               </optgroup>
             </select>
           </div>
-          <div style="margin-top:6px;"><span class="section-title">🧠 Think Depth:</span><select id="thinking-level" class="modern-select"><option value="minimal" selected>Min (Tối thiểu)</option><option value="low">Low (Thấp)</option><option value="medium">Med (Chuẩn)</option><option value="high">High (Sâu)</option></select></div>
+          <div style="margin-top:6px;"><span class="section-title">🧠 Think Depth:</span><select id="thinking-level" class="modern-select"><option value="minimal" selected>Min (Tối thiểu)</option><option value="low">Low (Thấp)</option><option value="medium" selected>Med (Chuẩn)</option><option value="high">High (Sâu)</option></select></div>
           <div style="margin-top:6px;"><span class="section-title">🔑 Google API Key:</span><select id="api-key-select" class="modern-select"><option value="auto">🔄 Tự động xoay tua</option></select></div>
           <div class="side-btn-grid" style="margin-top:6px;"><button id="btn-new-session" class="btn primary">➕ Thêm</button><button id="btn-rename-session" class="btn">✏️ Sửa</button><button id="btn-move-session" class="btn">📂 Chuyển</button><button id="btn-delete-session" class="btn danger">🗑️ Xóa</button></div>
           <div class="side-btn-row" style="margin-top:6px;"><button id="btn-move-up" class="btn" style="flex:1;">⬆️ Lên</button><button id="btn-move-down" class="btn" style="flex:1;">⬇️ Xuống</button></div>
@@ -250,7 +249,7 @@
             <div><label class="field-label">Dify Key - GPT-5.5:</label><input type="password" id="dify-key-gpt" class="modern-input"></div>
             <div><label class="field-label">Dify Key - Claude 4 Opus:</label><input type="password" id="dify-key-opus" class="modern-input"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-              <div><label class="field-label">Dify Endpoint:</label><input type="text" id="dify-endpoint-input" value="[https://api.dify.ai/v1](https://api.dify.ai/v1)" class="modern-input"></div>
+              <div><label class="field-label">Dify Endpoint:</label><input type="text" id="dify-endpoint-input" value="https://api.dify.ai/v1" class="modern-input"></div>
               <div><label class="field-label">Variable Key:</label><input type="text" id="dify-var-input" value="query" class="modern-input"></div>
             </div>
             <div style="margin-top:4px;"><label class="field-label">Groq API Key:</label><input type="password" id="groq-key-input" class="modern-input"></div>
@@ -267,7 +266,7 @@
   </div>
   <div id="toast" class="toast"></div><button id="scroll-to-top" title="Lên đầu">▲</button>
 
-  <script type="importmap">{ "imports": { "@google/genai": "[https://esm.run/@google/genai](https://esm.run/@google/genai)" } }</script>
+  <script type="importmap">{ "imports": { "@google/genai": "https://esm.run/@google/genai" } }</script>
   <script type="module">
     import { GoogleGenAI } from "@google/genai";
     const $ = id => document.getElementById(id), ls = localStorage;
@@ -295,7 +294,7 @@
     $('btn-font-reset').onclick = () => applyFontSize(16);
     applyFontSize(currentFontSize);
 
-    // 🚀 BỘ RENDER STREAM 60FPS CHỐNG GIẬT
+    // 🚀 BỘ RENDER STREAM 60FPS CHỐNG GIẬT (GIỮ VỊ TRÍ ĐỌC TỪ ĐẦU)
     function createStreamRenderer(targetEl) {
       let pending = false, latest = "";
       const isBot = () => (DOM.chat.scrollHeight - DOM.chat.scrollTop - DOM.chat.clientHeight) < 60;
@@ -304,14 +303,31 @@
           latest = text;
           if (!pending) {
             pending = true;
-            requestAnimationFrame(() => { const b = isBot(); targetEl.innerHTML = marked.parse(latest); if (b) DOM.chat.scrollTop = DOM.chat.scrollHeight; pending = false; });
+            requestAnimationFrame(() => { 
+              const b = isBot(); 
+              targetEl.innerHTML = marked.parse(latest); 
+              if (b) DOM.chat.scrollTop = DOM.chat.scrollHeight; 
+              pending = false; 
+            });
           }
         },
-        flush: async finalText => { pending = false; const b = isBot(); await renderMsgContent(targetEl, finalText); if (b) DOM.chat.scrollTop = DOM.chat.scrollHeight; }
+        flush: async finalText => { 
+          pending = false; 
+          const b = isBot(); 
+          await renderMsgContent(targetEl, finalText); 
+          if (b) DOM.chat.scrollTop = DOM.chat.scrollHeight; 
+        }
       };
     }
 
-    window.saveOrShareBlob = (b, fn) => { try { const u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = fn; document.body.appendChild(a); a.click(); setTimeout(() => { a.remove(); URL.revokeObjectURL(u); }, 1000); showToast(`📥 Đã tải: ${fn}`); } catch(e) { showToast(`❌ Lỗi: ${e.message}`, 'danger'); } };
+    window.saveOrShareBlob = (b, fn) => { 
+      try { 
+        const u = URL.createObjectURL(b), a = document.createElement('a'); 
+        a.href = u; a.download = fn; document.body.appendChild(a); a.click(); 
+        setTimeout(() => { a.remove(); URL.revokeObjectURL(u); }, 1000); 
+        showToast(`📥 Đã tải: ${fn}`); 
+      } catch(e) { showToast(`❌ Lỗi: ${e.message}`, 'danger'); } 
+    };
     window.copyRawText = (t, msg = '📋 Đã copy!') => {
       if (!t) return showToast('Trống!', 'warning');
       const fb = () => { const ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); showToast(msg); } catch { showToast('Lỗi copy', 'danger'); } ta.remove(); };
@@ -320,25 +336,25 @@
 
     // --- TÌM KIẾM & BÓC TÁCH WEB ---
     async function fetchJinaSearch(q) {
-      const k = ls.getItem('jina_api_key') || '', r = await fetch(`[https://s.jina.ai/$](https://s.jina.ai/$){encodeURIComponent(q)}`, { headers: { Accept: "application/json", ...(k ? { Authorization: `Bearer ${k}` } : {}) } });
+      const k = ls.getItem('jina_api_key') || '', r = await fetch(`https://s.jina.ai/${encodeURIComponent(q)}`, { headers: { Accept: "application/json", ...(k ? { Authorization: `Bearer ${k}` } : {}) } });
       if (!r.ok) throw new Error(`Jina HTTP ${r.status}`);
       return ((await r.json()).data || []).slice(0, 5).map(x => `- **${x.title||'Tin'}**\n  *Nội dung*: ${(x.content||x.description||'').substring(0,800)}\n  *Nguồn*: ${x.url}`).join('\n\n');
     }
     async function fetchTavilySearch(q) {
       const k = ls.getItem('tavily_api_key') || ''; if (!k) throw new Error("Chưa có Tavily Key!");
-      const r = await fetch("[https://api.tavily.com/search](https://api.tavily.com/search)", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ api_key: k, query: q, max_results: 5, include_answer: true }) });
+      const r = await fetch("https://api.tavily.com/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ api_key: k, query: q, max_results: 5, include_answer: true }) });
       if (!r.ok) throw new Error(`Tavily HTTP ${r.status}`);
       const d = await r.json(); return [...(d.answer ? [`💡 **Tóm tắt**: ${d.answer}`] : []), ...(d.results || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.content}\n  *Nguồn*: ${x.url}`)].join('\n\n');
     }
     async function fetchSerperSearch(q) {
       const k = ls.getItem('serper_api_key') || ''; if (!k) throw new Error("Chưa có Serper Key!");
-      const r = await fetch("[https://google.serper.dev/search](https://google.serper.dev/search)", { method: "POST", headers: { "X-API-KEY": k, "Content-Type": "application/json" }, body: JSON.stringify({ q, gl: "vn", hl: "vi", num: 5 }) });
+      const r = await fetch("https://google.serper.dev/search", { method: "POST", headers: { "X-API-KEY": k, "Content-Type": "application/json" }, body: JSON.stringify({ q, gl: "vn", hl: "vi", num: 5 }) });
       if (!r.ok) throw new Error(`Serper HTTP ${r.status}`);
       const d = await r.json(); return [...(d.answerBox?.snippet ? [`💡 **Google**: ${d.answerBox.snippet}`] : []), ...(d.organic || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.snippet}\n  *Nguồn*: ${x.link}`)].join('\n\n');
     }
     async function fetchBraveSearch(q) {
       const k = ls.getItem('brave_api_key') || ''; if (!k) throw new Error("Chưa có Brave Key!");
-      const w = (ls.getItem('brave_worker_url') || '').replace(/\/+$/, ''), ep = `${w || '[https://api.search.brave.com/res/v1/web/search](https://api.search.brave.com/res/v1/web/search)'}?q=${encodeURIComponent(q)}&count=5`;
+      const w = (ls.getItem('brave_worker_url') || '').replace(/\/+$/, ''), ep = `${w || 'https://api.search.brave.com/res/v1/web/search'}?q=${encodeURIComponent(q)}&count=5`;
       const r = await fetch(ep, { headers: { Accept: "application/json", "X-Subscription-Token": k } });
       if (!r.ok) throw new Error(`Brave HTTP ${r.status}`);
       return ((await r.json()).web?.results || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.description}\n  *Nguồn*: ${x.url}`).join('\n\n');
@@ -346,10 +362,10 @@
 
     async function extractWebPageContent(url) {
       const mode = ls.getItem('web_extract_engine') || 'auto', jk = ls.getItem('jina_api_key') || '', tk = ls.getItem('tavily_api_key') || '';
-      const isBlocked = t => !t || t.trim().length < 60 || /(just a moment|security verification|verify you are human|cloudflare|ddos protection|challenge-platform|enable javascript|access denied|403 forbidden)/i.test(t);
-      const jina = async () => { const r = await fetch(`[https://r.jina.ai/$](https://r.jina.ai/$){url}`, { headers: { Accept: "text/plain", ...(jk ? { Authorization: `Bearer ${jk}` } : {}) } }); if (!r.ok) throw 0; const t = await r.text(); if (isBlocked(t)) throw 0; return { source: "Jina Reader", content: t.substring(0, 45000) }; };
-      const tavily = async () => { if (!tk) throw 0; const r = await fetch("[https://api.tavily.com/extract](https://api.tavily.com/extract)", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ api_key: tk, urls: [url] }) }); const t = (await r.json()).results?.[0]?.raw_content; if (isBlocked(t)) throw 0; return { source: "Tavily Extract", content: t.substring(0, 45000) }; };
-      const proxy = async () => { const d = await (await fetch(`[https://api.allorigins.win/get?url=$](https://api.allorigins.win/get?url=$){encodeURIComponent(url)}`)).json(); const t = new DOMParser().parseFromString(d.contents, "text/html").body.innerText.replace(/\s+/g, ' ').trim(); if (isBlocked(t)) throw 0; return { source: "Web Proxy", content: t.substring(0, 30000) }; };
+      const isBlocked = t => !t || t.trim().length < 60 || /(just a moment|security verification|verify you are human|cloudflare|ddos protection|challenge-platform|enable javascript|access denied|403 forbidden)/i.test(txt => txt);
+      const jina = async () => { const r = await fetch(`https://r.jina.ai/${url}`, { headers: { Accept: "text/plain", ...(jk ? { Authorization: `Bearer ${jk}` } : {}) } }); if (!r.ok) throw 0; const t = await r.text(); if (isBlocked(t)) throw 0; return { source: "Jina Reader", content: t.substring(0, 45000) }; };
+      const tavily = async () => { if (!tk) throw 0; const r = await fetch("https://api.tavily.com/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ api_key: tk, urls: [url] }) }); const t = (await r.json()).results?.[0]?.raw_content; if (isBlocked(t)) throw 0; return { source: "Tavily Extract", content: t.substring(0, 45000) }; };
+      const proxy = async () => { const d = await (await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`)).json(); const t = new DOMParser().parseFromString(d.contents, "text/html").body.innerText.replace(/\s+/g, ' ').trim(); if (isBlocked(t)) throw 0; return { source: "Web Proxy", content: t.substring(0, 30000) }; };
       const assist = async () => {
         let q = url; try { const p = new URL(url); q = `${p.pathname.split('/').filter(Boolean).pop()?.replace(/[-_.]/g,' ')||''} ${p.hostname.replace('www.','')} bảng giá mới nhất hôm nay`.trim(); } catch {}
         if (tk) { const r = await fetchTavilySearch(q); if (r) return { source: "Tavily Search Assist", content: r }; }
@@ -361,8 +377,8 @@
       throw new Error("Không thể bóc tách dữ liệu.");
     }
 
-    // --- GEMINI MULTIMODAL LIVE CALL (GEMINI 3.8 LIVE + AUDIOWORKLET) ---
-    let liveWs = null, liveAudioCtx = null, liveMediaStream = null, liveWorkletNode = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] }, liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
+    // --- GEMINI MULTIMODAL LIVE CALL (CHUẨN 3.1 LIVE FLASH PREVIEW) ---
+    let liveWs = null, liveAudioCtx = null, liveMediaStream = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] }, liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
 
     function getLiveCallSI() {
       const cs = sessions.find(x => x.id === activeId), sSI = DOM.sysInst?.value.trim() || cs?.sys || '', g = DOM.globContext?.value.trim() || '';
@@ -378,6 +394,12 @@
       return apiKeys.length ? { key: apiKeys[liveKeyIndex % apiKeys.length], index: liveKeyIndex % apiKeys.length } : { key: '', index: -1 };
     }
 
+    function floatTo16BitPCM(f32) {
+      const b = new ArrayBuffer(f32.length * 2), v = new DataView(b); let o = 0;
+      for (let i = 0; i < f32.length; i++, o += 2) { let s = Math.max(-1, Math.min(1, f32[i])); v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true); }
+      return new Uint8Array(b);
+    }
+
     function playPcm24k(b64, ctx, st) {
       const bin = atob(b64), b = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
       const i16 = new Int16Array(b.buffer), f32 = new Float32Array(i16.length); for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
@@ -391,7 +413,6 @@
     function cleanupLive() {
       isLiveSetupComplete = false;
       liveMediaStream?.getTracks().forEach(t => t.stop()); liveMediaStream = null;
-      liveWorkletNode?.disconnect(); liveWorkletNode = null;
       try { liveAudioCtx?.close(); } catch {} liveAudioCtx = null;
       clearInterval(liveCamInterval); liveCamInterval = null;
       const cv = $('live-camera-video'); if (cv) { cv.srcObject = null; cv.style.display = 'none'; }
@@ -410,11 +431,17 @@
         liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
         if (liveAudioCtx.state === 'suspended') await liveAudioCtx.resume();
         liveMediaStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true } });
-        liveWs = new WebSocket(`wss://[generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=$](https://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=$){key}`);
+        liveWs = new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`);
 
-        liveWs.onopen = async () => {
+        liveWs.onopen = () => {
           const voice = $('live-voice-select')?.value || 'Charon', temp = parseFloat($('live-temperature')?.value || 0.7);
-          const setupMsg = { setup: { model: "models/gemini-3.8-live", generationConfig: { responseModalities: ["AUDIO"], temperature: temp, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } }, systemInstruction: { parts: [{ text: getLiveCallSI() }] } } };
+          const setupMsg = { 
+            setup: { 
+              model: "models/gemini-3.1-flash-live-preview", 
+              generationConfig: { responseModalities: ["AUDIO"], temperature: temp, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } }, 
+              systemInstruction: { parts: [{ text: getLiveCallSI() }] } 
+            } 
+          };
           if ($('live-toggle-search')?.checked !== false) {
             setupMsg.setup.tools = [{ functionDeclarations: [
               { name: "read_url", description: "Đọc nội dung từ URL cụ thể.", parameters: { type: "OBJECT", properties: { url: { type: "STRING" } }, required: ["url"] } },
@@ -423,16 +450,16 @@
           }
           liveWs.send(JSON.stringify(setupMsg));
 
-          const blob = new Blob([`class P extends AudioWorkletProcessor{process(i){const c=i[0]?.[0];if(c){const p=new Int16Array(c.length);for(let j=0;j<c.length;j++){let s=Math.max(-1,Math.min(1,c[j]));p[j]=s<0?s*0x8000:s*0x7FFF;}this.port.postMessage(p.buffer,[p.buffer]);}return true;}}registerProcessor('pcm-p',P);`], { type: 'application/javascript' });
-          const u = URL.createObjectURL(blob); await liveAudioCtx.audioWorklet.addModule(u); URL.revokeObjectURL(u);
-          liveWorkletNode = new AudioWorkletNode(liveAudioCtx, 'pcm-p');
-          liveWorkletNode.port.onmessage = e => {
+          const src = liveAudioCtx.createMediaStreamSource(liveMediaStream);
+          const proc = liveAudioCtx.createScriptProcessor(2048, 1, 1);
+          proc.onaudioprocess = e => {
             if (!isLiveSetupComplete || isLiveMicMuted || liveWs?.readyState !== WebSocket.OPEN) return;
-            const p = new Int16Array(e.data); let bin = ''; for (let i = 0; i < p.length; i++) bin += String.fromCharCode(p[i]);
+            const pcm = floatTo16BitPCM(e.inputBuffer.getChannelData(0));
+            let bin = ''; for (let i = 0; i < pcm.length; i++) bin += String.fromCharCode(pcm[i]);
             liveWs.send(JSON.stringify({ realtimeInput: { audio: { mimeType: "audio/pcm;rate=16000", data: btoa(bin) } } }));
           };
-          liveAudioCtx.createMediaStreamSource(liveMediaStream).connect(liveWorkletNode);
-          liveWorkletNode.connect(liveAudioCtx.destination);
+          src.connect(proc);
+          proc.connect(liveAudioCtx.destination);
         };
 
         liveWs.onmessage = async e => {
@@ -494,7 +521,7 @@
     $('api-keys-container').innerHTML = Array.from({ length: 10 }, (_, i) => `<input type="password" id="api-key-${i+1}" placeholder="Key ${i+1}" class="modern-input">`).join('');
     const cfgMap = [
       ['dify-key-gemini','dify_key_gemini'],['dify-key-lite','dify_key_lite'],['dify-key-pro','dify_key_pro'],['dify-key-gpt','dify_key_gpt'],['dify-key-opus','dify_key_opus'],
-      ['dify-endpoint-input','dify_api_endpoint','[https://api.dify.ai/v1](https://api.dify.ai/v1)'],['dify-var-input','dify_var_key','query'],['groq-key-input','groq_api_key'],['jina-key-input','jina_api_key'],
+      ['dify-endpoint-input','dify_api_endpoint','https://api.dify.ai/v1'],['dify-var-input','dify_var_key','query'],['groq-key-input','groq_api_key'],['jina-key-input','jina_api_key'],
       ['tavily-key-input','tavily_api_key'],['serper-key-input','serper_api_key'],['brave-key-input','brave_api_key'],['brave-worker-url-input','brave_worker_url'],
       ['auto-search-engine-input','auto_search_default_engine','jina'],['web-extract-engine-input','web_extract_engine','auto'],['live-temperature','live_temperature','0.7']
     ];
@@ -537,12 +564,27 @@
     };
     initAPIKeys(); initExternalConfigs();
 
-    // --- INDEXED DB (IDB) ---
+    // --- INDEXED DB NGUYÊN BẢN (KHÔNG PHỤ THUỘC THƯ VIỆN NGOÀI) ---
     const DB_NAME = "JavissUltimateOS_DB", STORE_NAME = "chat_sessions", FILE_STORE = "file_library";
-    let dbPromise;
-    const initDB = () => { dbPromise = idb.openDB(DB_NAME, 5, { upgrade(db) { [STORE_NAME, FILE_STORE].forEach(s => { if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: "id" }); }); } }); };
-    const saveToDB = async s => (await dbPromise).put(STORE_NAME, s), deleteFromDB = async i => (await dbPromise).delete(STORE_NAME, i), getAllFromDB = async () => (await dbPromise).getAll(STORE_NAME), clearAllDB = async () => (await dbPromise).clear(STORE_NAME);
-    const saveFileToLib = async f => (await dbPromise).put(FILE_STORE, f), getAllFilesFromLib = async () => (await dbPromise).getAll(FILE_STORE);
+    let db;
+    function initDB() {
+      return new Promise((res, rej) => {
+        const rq = indexedDB.open(DB_NAME, 5);
+        rq.onupgradeneeded = e => {
+          let d = e.target.result;
+          if (!d.objectStoreNames.contains(STORE_NAME)) d.createObjectStore(STORE_NAME, { keyPath: "id" });
+          if (!d.objectStoreNames.contains(FILE_STORE)) d.createObjectStore(FILE_STORE, { keyPath: "id" });
+        };
+        rq.onsuccess = e => { db = e.target.result; res(); };
+        rq.onerror = e => rej(e);
+      });
+    }
+    const saveToDB = s => new Promise(r => { const t = db.transaction(STORE_NAME, "readwrite"); t.objectStore(STORE_NAME).put(s); t.oncomplete = () => r(); });
+    const deleteFromDB = i => new Promise(r => { const t = db.transaction(STORE_NAME, "readwrite"); t.objectStore(STORE_NAME).delete(i); t.oncomplete = () => r(); });
+    const getAllFromDB = () => new Promise(r => { const rq = db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll(); rq.onsuccess = () => r(rq.result); });
+    const clearAllDB = () => new Promise(r => { const t = db.transaction(STORE_NAME, "readwrite"); t.objectStore(STORE_NAME).clear(); t.oncomplete = () => r(); });
+    const saveFileToLib = f => new Promise(r => { const t = db.transaction(FILE_STORE, "readwrite"); t.objectStore(FILE_STORE).put(f); t.oncomplete = () => r(); });
+    const getAllFilesFromLib = () => new Promise(r => { const rq = db.transaction(FILE_STORE, "readonly").objectStore(FILE_STORE).getAll(); rq.onsuccess = () => r(rq.result); });
 
     const DOM = { chat: $('chat-container'), input: $('user-input'), sendBtn: $('send-button'), fileUpload: $('file-upload'), previewBox: $('image-preview-container'), previewGrid: $('image-preview-grid'), textFileList: $('text-files-list'), clearFilesBtn: $('clear-all-images'), fileCount: $('file-count'), toast: $('toast'), folderSelect: $('folder-select'), btnNewFolder: $('btn-new-folder'), btnDeleteFolder: $('btn-delete-folder'), selSession: $('session-select'), sysInst: $('system-instruction-input'), globContext: $('global-context-input'), model: $('model-select'), apiKeySel: $('api-key-select'), toggleGlob: $('toggle-global-context'), toggleSearch: $('toggle-search'), searchEngineBox: $('search-engine-box'), searchEngineSel: $('search-engine-select'), toggleMemory: $('toggle-memory'), temp: $('temperature'), tempVal: $('temp-val'), topP: $('top-p'), toppVal: $('topp-val'), topK: $('top-k'), thinking: $('thinking-level'), searchInput: $('search-chat-input'), scrollTopBtn: $('scroll-to-top'), snippetsContainer: $('snippets-container'), btnToggleSnippets: $('btn-toggle-snippets'), btnFileLibrary: $('btn-file-library'), btnAddUrl: $('btn-add-url'), btnTheme: $('btn-theme'), tabsContainer: $('tabs-container') };
     let sessions = [], activeId = null, chatHistory = [], filesData = [], txtContent = "", isProcessing = false, folders = JSON.parse(ls.getItem('javiss_folders') || '["Mặc định"]'), activeFolder = ls.getItem('javiss_active_folder') || "All", openTabs = JSON.parse(ls.getItem('javiss_tabs') || '[]');
@@ -590,8 +632,15 @@
     async function callDifyStream(p, onCk, onErr, signal) {
       const kMap = { 'gemini-3.5-flash-dify':'dify_key_gemini', 'gemini-3.1-flash-lite-dify':'dify_key_lite', 'gemini-3.1-pro-dify':'dify_key_pro', 'gpt-5.5-dify':'dify_key_gpt', 'opus-4-dify':'dify_key_opus' };
       const key = ls.getItem(kMap[DOM.model?.value] || '') || ''; if (!key) return onErr(new Error("Chưa nhập Key Dify!"));
-      const ep = (ls.getItem('dify_api_endpoint') || '[https://api.dify.ai/v1').replace(/](https://api.dify.ai/v1').replace(/)\/+$/, ''), vk = ls.getItem('dify_var_key') || 'query';
-      try { await readSSE(await fetch(`${ep}/completion-messages`, { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: { [vk]: p }, response_mode: "streaming", user: "u_" + Date.now() }), signal }), js => { if (js.answer) onCk(js.answer); }); } catch(e) { onErr(e); }
+      const ep = (ls.getItem('dify_api_endpoint') || 'https://api.dify.ai/v1').replace(/\/+$/, ''), vk = ls.getItem('dify_var_key') || 'query';
+      try { 
+        await readSSE(await fetch(`${ep}/completion-messages`, { 
+          method: 'POST', 
+          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ inputs: { [vk]: p }, response_mode: "streaming", user: "u_" + Date.now() }), 
+          signal 
+        }), js => { if (js.answer) onCk(js.answer); }); 
+      } catch(e) { onErr(e); }
     }
     async function callGroqStream(p, onCk, onErr, signal) {
       const k = ls.getItem('groq_api_key') || ''; if (!k) return onErr(new Error("Chưa có Groq Key!"));
@@ -599,7 +648,12 @@
       const payload = { model: isOss ? "openai/gpt-oss-120b" : "groq/compound", messages: msgs, stream: true, max_tokens: 4096, ...(isOss ? { reasoning_effort: DOM.thinking?.value || 'medium' } : {}) };
       let inThk = false;
       try {
-        await readSSE(await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", { method: 'POST', headers: { Authorization: `Bearer ${k}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal }), js => {
+        await readSSE(await fetch("https://api.groq.com/openai/v1/chat/completions", { 
+          method: 'POST', 
+          headers: { Authorization: `Bearer ${k}`, 'Content-Type': 'application/json' }, 
+          body: JSON.stringify(payload), 
+          signal 
+        }), js => {
           const d = js.choices?.[0]?.delta;
           if (d?.reasoning_content || d?.reasoning) { if (!inThk) { onCk("<think>Đang suy nghĩ...</think>\n\n"); inThk = true; } }
           else if (d?.content) { inThk = false; onCk(d.content); }
@@ -648,7 +702,8 @@
     document.querySelectorAll('.close-btn').forEach(b => b.onclick = closeModals); oLay.onclick = closeModals;
     $('btn-camera-snap').onclick = async () => { $('camera-modal').style.display = 'flex'; oLay.style.display = 'block'; try {$('camera-preview').srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); } catch(e) { showToast(e.message, 'danger'); } };
     $('btn-take-photo').onclick = () => { const v =$('camera-preview'); if (!v.srcObject) return; const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0); c.toBlob(b => { processUploadFiles([new File([b], `Cam_${Date.now()}.jpg`, { type: 'image/jpeg' })]); closeModals(); showToast("Đã chụp!"); }, 'image/jpeg', 0.85); };
-    DOM.btnFileLibrary.onclick = () => { $('file-library-modal').style.display = 'flex'; oLay.style.display = 'block'; renderLibrary(); };$('library-upload-input').onchange = async e => { for (const f of e.target.files) if (f.size <= 50*1024*1024) await saveFileToLib({ id: Date.now() + Math.random().toString().slice(2,7), name: f.name, type: f.type, size: f.size, blob: f, added: new Date().toISOString() }); showToast("Đã tải lên thư viện!"); renderLibrary(); e.target.value = ''; };
+    DOM.btnFileLibrary.onclick = () => { $('file-library-modal').style.display = 'flex'; oLay.style.display = 'block'; renderLibrary(); };
+    $('library-upload-input').onchange = async e => { for (const f of e.target.files) if (f.size <= 50*1024*1024) await saveFileToLib({ id: Date.now() + Math.random().toString().slice(2,7), name: f.name, type: f.type, size: f.size, blob: f, added: new Date().toISOString() }); showToast("Đã tải lên thư viện!"); renderLibrary(); e.target.value = ''; };
     async function renderLibrary() { const c = $('library-files-container'), fs = await getAllFilesFromLib(); c.innerHTML = fs.length ? fs.map(f => `<div class="search-result-item" style="display:flex;justify-content:space-between;align-items:center;"><div><strong>${f.name}</strong><br><small>${(f.size/1024).toFixed(1)} KB</small></div><button class="btn primary" onclick="addFileFromLib('${f.id}')">➕</button></div>`).join('') : "<i>Trống.</i>"; }
     window.addFileFromLib = async id => { const f = (await getAllFilesFromLib()).find(x => x.id === id); if (f) { await processUploadFiles([new File([f.blob], f.name, { type: f.type })]); closeModals(); showToast(`Đã đính: ${f.name}`); } };
 
@@ -663,7 +718,24 @@
     DOM.btnNewFolder.onclick = () => { const n = prompt("Tên Thư mục:"); if (n && !folders.includes(n)) { folders.push(n); ls.setItem('javiss_folders', JSON.stringify(folders)); activeFolder = n; renderFolders(); renderSel(); } };
     DOM.btnDeleteFolder.onclick = async () => { if (activeFolder === "All" || activeFolder === "Mặc định") return showToast("Không xóa được TM này!"); if (confirm(`Xóa "${activeFolder}"?`)) { folders = folders.filter(f => f !== activeFolder); ls.setItem('javiss_folders', JSON.stringify(folders)); for (const s of sessions) if (s.folder === activeFolder) { s.folder = "Mặc định"; await saveToDB(s); } activeFolder = "All"; renderFolders(); renderSel(); } };
 
-    async function loadSess() { try { initDB(); const d = await getAllFromDB(); if (d?.length) { sessions = d.sort((a,b) => (a.orderIndex||0) - (b.orderIndex||0)); renderFolders(); activeId = ls.getItem('javiss_active_id') || sessions[0].id; if (!sessions.find(s => s.id === activeId)) activeId = sessions[0].id; await switchSess(activeId); } else { renderFolders(); await newSess(); } } catch { await newSess(); } }
+    async function loadSess() { 
+      try { 
+        await initDB(); 
+        const d = await getAllFromDB(); 
+        if (d?.length) { 
+          sessions = d.sort((a,b) => (a.orderIndex||0) - (b.orderIndex||0)); 
+          renderFolders(); 
+          activeId = ls.getItem('javiss_active_id') || sessions[0].id; 
+          if (!sessions.find(s => s.id === activeId)) activeId = sessions[0].id; 
+          await switchSess(activeId); 
+        } else { 
+          renderFolders(); 
+          await newSess(); 
+        } 
+      } catch (e) { 
+        await newSess(); 
+      } 
+    }
     async function newSess(n) { const id = 's_' + Date.now(), s = { id, name: n || `Hội thoại ${sessions.length+1}`, folder: activeFolder === "All" ? "Mặc định" : activeFolder, his: [], sys: '', mod: 'gemini-3.5-flash-lite', keySel: 'auto', tmp: 0.5, tpp: 0.9, top: 40, thk: 'minimal', sch: false, schEngine: 'jina', mem: true, useGlob: true, orderIndex: 0 }; sessions.unshift(s); await saveToDB(s); await switchSess(id); }
     $('btn-new-session').onclick = () => newSess();
 
