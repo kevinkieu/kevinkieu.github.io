@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HK Workshop</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.8.0/dist/mermaid.min.js"></script>
+  <script src="[https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js](https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js)"></script>
+  <script src="[https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js](https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js)"></script>
+  <script src="[https://cdn.jsdelivr.net/npm/marked/marked.min.js](https://cdn.jsdelivr.net/npm/marked/marked.min.js)"></script>
+  <link rel="stylesheet" href="[https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css](https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css)">
+  <script src="[https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js](https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js)"></script>
+  <script src="[https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js](https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js)"></script>
+  <script src="[https://cdn.jsdelivr.net/npm/mermaid@10.8.0/dist/mermaid.min.js](https://cdn.jsdelivr.net/npm/mermaid@10.8.0/dist/mermaid.min.js)"></script>
   <style>
     :root{--bg-main:#f0f4f9;--bg-sidebar:#e9eef6;--bg-card:#ffffff;--border:#c4c7c5;--text-main:#1f1f1f;--text-muted:#444746;--bg-msg-user:#d3e3fd;--bg-msg-bot:transparent;--primary:#0b57d0;--primary-container:#d3e3fd;--danger:#b3261e;--input-bg:#f0f4f9;--shadow:0 1px 3px rgba(0,0,0,0.1);--transition:all 0.2s ease;--chat-font-size:16px}
     [data-theme="dark"]{--bg-main:#131314;--bg-sidebar:#1e1f20;--bg-card:#282a2c;--border:#444746;--text-main:#e3e3e3;--text-muted:#c4c7c5;--bg-msg-user:#004a77;--bg-msg-bot:transparent;--primary:#a8c7fa;--primary-container:#004a77;--danger:#f2b8b5;--input-bg:#1e1f20;--shadow:0 1px 3px rgba(0,0,0,0.4)}
@@ -187,7 +187,7 @@
       <div class="token-counter-bar"><span>⏱️ Latency: <span id="latency-val">0</span>ms</span><span>~ <span id="token-count">0</span> tokens</span></div>
       <div id="snippets-container">
         <div class="snippet-chip" onclick="applySnippet('Hãy tóm tắt ngắn gọn thành BẢNG đối chiếu và GẠCH ĐẦU DÒNG:')">📝 Tóm tắt</div>
-        <div class="snippet-chip" onclick="applySnippet('Vẽ sơ đồ tư duy bằng code Mermaid trong ```mermaid:')">📊 Sơ đồ</div>
+        <div class="snippet-chip" onclick="applySnippet('Vẽ sơ đồ tư duy bằng code Mermaid trong &#96;&#96;&#96;mermaid:')">📊 Sơ đồ</div>
         <div class="snippet-chip" onclick="applySnippet('Giải thích chi tiết từng bước kèm ví dụ:')">📖 Giải thích</div>
         <div class="snippet-chip" onclick="applySnippet('Viết mã nguồn sạch, tối ưu, bọc trong markdown:')">💻 Viết Code</div>
       </div>
@@ -208,7 +208,7 @@
     <!-- Modal Cuộc gọi Live Voice AI -->
     <div id="live-call-modal">
       <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
-        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">📞</span><div><h3 style="font-size:1rem;font-weight:700;">Live AI Voice</h3><span id="live-call-status" style="font-size:0.75rem;color:#94a3b8;">Đang kết nối...</span></div></div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">📞</span><div><h3 style="font-size:1rem;font-weight:700;">Live AI Voice (3.8 Live)</h3><span id="live-call-status" style="font-size:0.75rem;color:#94a3b8;">Đang kết nối...</span></div></div>
         <video id="live-camera-video" autoplay playsinline muted></video>
       </div>
       <div class="live-orb-container"><div id="live-orb" class="live-orb"></div><div id="live-transcript" class="live-transcript-box"><i>Hãy nói chuyện tự nhiên vào micro...</i></div></div>
@@ -238,7 +238,7 @@
           </div>
         </fieldset>
 
-        <fieldset class="settings-group"><legend>📞 Cuộc gọi Live AI</legend>
+        <fieldset class="settings-group"><legend>📞 Cuộc gọi Live AI (Gemini 3.8 Live)</legend>
           <div style="font-size:0.75rem;color:var(--text-muted);background:var(--input-bg);padding:8px;border-radius:6px;margin-bottom:8px;">💡 <b>Đồng bộ thông minh:</b> Cuộc gọi Live tự động kế thừa <b>System Instruction riêng của phiên</b> & Ngữ cảnh toàn cục!</div>
           <div class="slider-row"><label>Sáng tạo thoại (Temp: <span id="live-temp-val">0.7</span>):</label><input type="range" id="live-temperature" min="0" max="2" step="0.1" value="0.7"></div>
           <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
@@ -499,7 +499,7 @@
       }
     }
 
-    // --- GEMINI MULTIMODAL LIVE CALL API ---
+    // --- GEMINI MULTIMODAL LIVE CALL API (GEMINI 3.8 LIVE) ---
     let liveWs=null, liveAudioCtx=null, liveMediaStream=null, livePlaybackState={nextPlayTime:0,activeSources:[]}, liveCamInterval=null, isLiveMicMuted=false, isLiveCamOn=false, isLiveSetupComplete=false;
 
     function getLiveCallSI(){
@@ -518,7 +518,7 @@
 [THỜI GIAN CHUẨN]: ${dateStr}, lúc ${timeStr}.`;
 
       if(document.getElementById('live-toggle-context')?.checked&&chatHistory.length){
-        const l10=chatHistory.slice(-10).map(m=>`${m.role==='model'?'AI':'Bạn'}: ${m.text.replace(/<[^>]+>/g,'').replace(/```[\s\S]*?```/g,'[mã code]')}`).join('\n');
+        const l10=chatHistory.slice(-10).map(m=>`${m.role==='model'?'AI':'Bạn'}: ${m.text.replace(/<[^>]+>/g,'').replace(/\x60{3}[\s\S]*?\x60{3}/g,'[mã code]')}`).join('\n');
         si+=`\n\n[LỊCH SỬ 10 TIN TRƯỚC]:\n${l10}`;
       }
       return si;
@@ -573,7 +573,7 @@
         liveWs.onopen=()=>{
           const voice=document.getElementById('live-voice-select')?.value||'Charon', temp=parseFloat(document.getElementById('live-temperature')?.value||0.7);
           const enableSearch=document.getElementById('live-toggle-search')?.checked!==false;
-          const setupMsg={setup:{model:"models/gemini-3.1-flash-live-preview",generationConfig:{responseModalities:["AUDIO"],temperature:temp,speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voice}}}},systemInstruction:{parts:[{text:getLiveCallSI()}]}}};
+          const setupMsg={setup:{model:"models/gemini-3.8-live",generationConfig:{responseModalities:["AUDIO"],temperature:temp,speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voice}}}},systemInstruction:{parts:[{text:getLiveCallSI()}]}}};
           
           if(enableSearch){
             setupMsg.setup.tools=[
@@ -609,7 +609,7 @@
           try{
             let d=e.data; if(d instanceof Blob)d=await d.text(); const msg=JSON.parse(d);
             if(msg.setupComplete||msg.serverContent?.setupComplete){
-              isLiveSetupComplete=true; liveRetryCount=0; st.innerText=`🟢 Đã kết nối Live AI!`; tr.innerHTML='<i>Hãy nói vào micro...</i>'; return;
+              isLiveSetupComplete=true; liveRetryCount=0; st.innerText=`🟢 Đã kết nối Gemini 3.8 Live!`; tr.innerHTML='<i>Hãy nói vào micro...</i>'; return;
             }
             let fc=[]; if(msg.toolCall?.functionCalls)fc=msg.toolCall.functionCalls;
             if(fc.length){
@@ -1016,7 +1016,9 @@
       if(s){
         if(DOM.sysInst)DOM.sysInst.value=s.sys||''; if(DOM.model)DOM.model.value=s.mod||'gemini-3.5-flash-lite'; if(DOM.apiKeySel)DOM.apiKeySel.value=s.keySel||'auto';
         if(DOM.temp){DOM.temp.value=s.tmp||0.5;DOM.tempVal.innerText=DOM.temp.value;} if(DOM.topP){DOM.topP.value=s.tpp||0.9;DOM.toppVal.innerText=DOM.topP.value;}
-        if(DOM.topK)DOM.topK.value=s.top||40; updateThinkingVisibility(); if(DOM.thinking)DOM.thinking.value=s.thk||'minimal';
+        if(DOM.topK)DOM.topK.value=s.top||40;
+        updateThinkingVisibility();
+        if(DOM.thinking && s.thk && [...DOM.thinking.options].some(o=>o.value===s.thk)) DOM.thinking.value=s.thk;
         if(DOM.toggleGlob)DOM.toggleGlob.checked=s.useGlob!==false; if(DOM.toggleSearch){DOM.toggleSearch.checked=s.sch||false;DOM.searchEngineBox.style.display=s.sch?'block':'none';}
         if(DOM.searchEngineSel)DOM.searchEngineSel.value=s.schEngine||'jina'; if(DOM.toggleMemory)DOM.toggleMemory.checked=s.mem!==false;
       }
@@ -1151,7 +1153,7 @@
               }
               const aiM=new GoogleGenAI({apiKey:gKey});
               
-              // 🧠 CƠ CHẾ CỬA SỔ TRƯỢT (SLIDING WINDOW): LẤY 16 TIN NHẮN GẦN NHẤT ĐỂ STREAM SIÊU TỐC VÀ NHỚ DAI
+              // 🧠 CỬA SỔ TRƯỢT (SLIDING WINDOW): LẤY 16 TIN NHẮN GẦN NHẤT
               const contentsPayload = [];
               if(DOM.toggleMemory?.checked && chatHistory.length > 0){
                 const recentHistory = chatHistory.slice(-16);
@@ -1178,16 +1180,16 @@
                 safetySettings: SAFETY
               };
 
-              // Chỉ gắn temperature, topP, topK cho dòng 2.5 (dòng Gemini 3.x đã loại bỏ các tham số này)
+              // Chỉ gắn temperature, topP, topK cho dòng 2.5
               if(!isGemini3){
                 genConfig.temperature = +DOM.temp.value;
                 genConfig.topP = +DOM.topP.value;
                 genConfig.topK = +DOM.topK.value;
               }
 
-              // Cấu hình độ sâu suy nghĩ chuẩn theo từng thế hệ Model (Gemini 3.x dùng thinkingLevel, 2.5 dùng thinkingBudget)
-              const thk = DOM.thinking?.value;
-              if(thk && thk !== 'none'){
+              // Cấu hình độ sâu suy nghĩ chuẩn theo từng thế hệ Model
+              const thk = DOM.thinking?.value || 'minimal';
+              if(thk !== 'none'){
                 if(isGemini3){
                   const safeLevel = (mod === 'gemini-3.8-flash' && thk === 'minimal') ? 'low' : thk;
                   genConfig.thinkingConfig = { thinkingLevel: safeLevel };
@@ -1207,7 +1209,6 @@
               const t0 = performance.now();
               let firstChunk = true;
 
-              // ⚡ STREAM TRỰC TIẾP: NHẢ CHỮ NGAY SAU 0.3 GIÂY
               const resStream = await aiM.models.generateContentStream({
                 model: mod,
                 contents: contentsPayload,
@@ -1248,7 +1249,6 @@
           bD.querySelector('.bot-message').setAttribute('data-raw',finalResp);
           bD.querySelector('.message-header').innerHTML=`<span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span>`;
           
-          // 🛠️ CỤM NÚT THAO TÁC XUẤT HIỆN NGAY TỨC THÌ
           const botIdx = chatHistory.length - 1;
           const aDiv = document.createElement('div');
           aDiv.className = 'msg-actions';
