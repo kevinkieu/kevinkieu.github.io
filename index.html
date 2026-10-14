@@ -131,11 +131,11 @@
                 <option value="google">🔍 Google Grounding (Gemini 2.5)</option>
               </select>
             </div>
-            <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:red;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-memory" checked> 🧠 Interactions API</label>
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:green;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-memory" checked> 🧠 Bộ nhớ ngữ cảnh (16 tin)</label>
           </div>
           <div style="margin-top:6px;"><span class="section-title">🤖 Mô hình chính:</span>
             <select id="model-select" class="modern-select">
-              <optgroup label="✨ Google Gemini (Interactions API)">
+              <optgroup label="✨ Google Gemini">
                 <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash Lite (Mặc định)</option>
                 <option value="gemini-3.8-flash">Gemini 3.8 Flash (Mới nhất)</option>
                 <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
@@ -157,9 +157,6 @@
           </div>
           <div style="margin-top:6px;"><span class="section-title">🧠 Think Depth:</span>
             <select id="thinking-level" class="modern-select"><option value="minimal" selected>Min (Tối thiểu)</option><option value="low">Low (Thấp)</option><option value="medium">Med (Chuẩn)</option><option value="high">High (Sâu)</option></select>
-          </div>
-          <div style="margin-top:6px;"><span class="section-title">🔗 Interactions ID:</span>
-            <div style="display:flex;gap:4px;"><input type="text" id="manual-interaction-id" placeholder="Chưa có liên kết" class="modern-input" style="font-size:0.75rem;"><button id="btn-update-interaction-id" class="btn" style="padding:4px 8px;font-size:0.7rem;">Lưu</button></div>
           </div>
           <div style="margin-top:6px;"><span class="section-title">🔑 Google API Key:</span>
             <select id="api-key-select" class="modern-select"><option value="auto">🔄 Tự động xoay tua</option></select>
@@ -204,7 +201,7 @@
           <button id="btn-add-url" class="tool-chip">🌐 Đọc Link/YT</button>
           <button id="btn-paste-clipboard" class="tool-chip">📋 Dán</button>
         </div>
-        <div class="input-container-box"><textarea id="user-input" rows="1" placeholder="Nhập tin nhắn hoặc dán link URL..."></textarea><button id="send-button">Gửi 📤</button></div>
+        <div class="input-container-box"><textarea id="user-input" rows="1" placeholder="Nhập tin nhắn (dùng &quot;từ khóa&quot; để tìm web, hoặc dán link)..."></textarea><button id="send-button">Gửi 📤</button></div>
       </div>
     </main>
 
@@ -252,7 +249,7 @@
 
         <fieldset class="settings-group"><legend>⚙️ Ngữ cảnh Phiên Chat & Live (System Prompt)</legend>
           <div style="display:flex;flex-direction:column;gap:8px;">
-            <div><label class="field-label">System Instruction riêng phiên (Có thể gán link theo chủ đề):</label><textarea id="system-instruction-input" rows="2" class="modern-textarea"></textarea></div>
+            <div><label class="field-label">System Instruction riêng phiên:</label><textarea id="system-instruction-input" rows="2" class="modern-textarea"></textarea></div>
             <div><label class="field-label">🌍 Ngữ cảnh Toàn cục:</label><textarea id="global-context-input" rows="2" class="modern-textarea"></textarea></div>
           </div>
         </fieldset>
@@ -372,10 +369,8 @@
           if(!renderPending){
             renderPending = true;
             requestAnimationFrame(() => {
-              // Kiểm tra xem người dùng có đang chủ động cuộn xuống đáy hay không
               const isUserAtBottom = (DOM.chat.scrollHeight - DOM.chat.scrollTop - DOM.chat.clientHeight) < 60;
               targetEl.innerHTML = marked.parse(latestText);
-              // CHỈ cuộn nếu người dùng đã ở đáy; nếu đang đọc ở trên thì GIỮ NGUYÊN không giật màn hình
               if(isUserAtBottom) {
                 DOM.chat.scrollTop = DOM.chat.scrollHeight;
               }
@@ -398,7 +393,6 @@
     window.copyRawText=function(t,msg='📋 Đã copy!'){ if(!t)return showToast('Trống!','warning'); if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(()=>showToast(msg)).catch(()=>fbCopy(t,msg)); else fbCopy(t,msg); };
     function fbCopy(t,msg){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); showToast(msg); }catch(e){ showToast('Lỗi copy','danger'); } document.body.removeChild(ta); }
     function extractQuotedKeywords(t){ if(!t)return null; const m=Array.from(t.matchAll(/["“«]([^"”»]+)["”»]/g)).map(x=>x[1].trim()).filter(Boolean); return m.length?m.join(' '):null; }
-    function shouldTriggerAutoSearch(t){ if(!t||t.length<3)return false; if(/["“«][^"”»]+["”»]/.test(t))return true; return /\b(hôm nay|ngày mai|hôm qua|mới nhất|giá|tỷ giá|vàng|xăng|thời tiết|tin tức|bảng xếp hạng|2025|2026|2027)\b/i.test(t); }
 
     // --- CÔNG CỤ TÌM KIẾM WEB ---
     async function fetchJinaSearch(q){
@@ -467,7 +461,6 @@
         return {source:"Web Proxy",content:t.substring(0,30000)};
       };
 
-      // 🛡️ CƠ CHẾ CỨU HỘ: TÌM KIẾM DỮ LIỆU CỦA TRANG WEB KHI LINK GỐC CHẶN IP NƯỚC NGOÀI
       const trySearchAssist=async()=>{
         let domain="", slug="";
         try{ const parsed = new URL(url); domain = parsed.hostname.replace('www.', ''); slug = parsed.pathname.split('/').filter(Boolean).pop()?.replace(/[-_.]/g, ' ') || ''; }catch(e){}
@@ -504,35 +497,6 @@
           }
         }
       }
-    }
-
-    // 🎯 HÀM QUÉT VÀ CÀO DỮ LIỆU CÁC LINK ĐƯỢC CHỈ ĐỊNH TRONG SYSTEM INSTRUCTION CỦA PHIÊN
-    async function getRelevantSIUrlData(userQuery, siText){
-      if(!siText) return "";
-      const lines = siText.split(/[\n;.]+/);
-      const urlsToFetch = new Set();
-      const qLower = userQuery.toLowerCase();
-
-      for(const line of lines){
-        const urlMatches = Array.from(line.matchAll(/(https?:\/\/[^\s"'<>]+)/g)).map(m=>m[0]);
-        if(urlMatches.length > 0){
-          const lineText = line.replace(/(https?:\/\/[^\s"'<>]+)/g, '').toLowerCase();
-          const words = lineText.split(/[\s,/:()]+/).filter(w => w.length >= 2 && !['khi','tôi','hỏi','về','thì','tìm','trên','trang','và','cho','ở','tại','link','web','url','này','đó'].includes(w));
-          if(words.some(w => qLower.includes(w))){
-            urlMatches.forEach(u => urlsToFetch.add(u));
-          }
-        }
-      }
-
-      if(urlsToFetch.size === 0) return "";
-      let resText = "";
-      for(const u of urlsToFetch){
-        try{
-          const ext = await extractWebPageContent(u);
-          resText += `\n[DỮ LIỆU TỪ NGUỒN CHỈ ĐỊNH ${u} QUA ${ext.source}]:\n${ext.content}\n`;
-        }catch(e){ console.warn("Lỗi cào URL từ SI:", u, e); }
-      }
-      return resText;
     }
 
     // --- GEMINI MULTIMODAL LIVE CALL API ---
@@ -609,7 +573,7 @@
         liveWs.onopen=()=>{
           const voice=document.getElementById('live-voice-select')?.value||'Charon', temp=parseFloat(document.getElementById('live-temperature')?.value||0.7);
           const enableSearch=document.getElementById('live-toggle-search')?.checked!==false;
-          const setupMsg={setup:{model:"models/gemini-3.8-live",generationConfig:{responseModalities:["AUDIO"],temperature:temp,speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voice}}}},systemInstruction:{parts:[{text:getLiveCallSI()}]}}};
+          const setupMsg={setup:{model:"models/gemini-3.1-flash-live-preview",generationConfig:{responseModalities:["AUDIO"],temperature:temp,speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voice}}}},systemInstruction:{parts:[{text:getLiveCallSI()}]}}};
           
           if(enableSearch){
             setupMsg.setup.tools=[
@@ -820,11 +784,6 @@
       showToast(dups.length?`⚠️ Có ${dups.length} key trùng!`:"✅ Không có key trùng.");
     };
 
-    document.getElementById('btn-update-interaction-id').onclick=async()=>{
-      const v=document.getElementById('manual-interaction-id')?.value.trim(), s=sessions.find(x=>x.id===activeId);
-      if(s){ s.lastInteractionId=v||null; await saveToDB(s); showToast("Đã lưu ID liên kết!"); }
-    };
-
     initAPIKeys(); initExternalConfigs();
 
     // --- INDEXED DB & SESSIONS ---
@@ -869,8 +828,8 @@
     document.getElementById('btn-open-settings').onclick=()=>{document.getElementById('settings-modal').style.display='flex';document.getElementById('modal-overlay').style.display='block';};
 
     window.copy=b=>{ const c=b.closest('.message-container').querySelector('.user-message, .bot-message'); if(c)copyRawText(c.getAttribute('data-raw')||c.innerText||''); };
-    window.deleteMsg=async i=>{ if(!confirm("Xóa tin này?"))return; chatHistory.splice(i,1); const s=sessions.find(x=>x.id===activeId); if(s){s.his=chatHistory;s.lastInteractionId=null;await saveToDB(s);document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`;} DOM.chat.innerHTML=''; chatHistory.forEach((m,j)=>appendMsg(m.role==='model'?'bot':'user',m.text,j,true)); };
-    window.retryMsg=async i=>{ if(isProcessing)return; let up=""; if(i>0&&chatHistory[i-1].role==='user')up=chatHistory[i-1].text; else return; chatHistory.splice(i,1); const s=sessions.find(x=>x.id===activeId); if(s){s.his=chatHistory;s.lastInteractionId=null;await saveToDB(s);document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`;} DOM.chat.innerHTML=''; for(let j=0;j<chatHistory.length;j++)await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); if(DOM.input){DOM.input.value=up;DOM.input.dispatchEvent(new Event('input'));} DOM.sendBtn.click(); };
+    window.deleteMsg=async i=>{ if(!confirm("Xóa tin này?"))return; chatHistory.splice(i,1); const s=sessions.find(x=>x.id===activeId); if(s){s.his=chatHistory;await saveToDB(s);document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`;} DOM.chat.innerHTML=''; chatHistory.forEach((m,j)=>appendMsg(m.role==='model'?'bot':'user',m.text,j,true)); };
+    window.retryMsg=async i=>{ if(isProcessing)return; let up=""; if(i>0&&chatHistory[i-1].role==='user')up=chatHistory[i-1].text; else return; chatHistory.splice(i,1); const s=sessions.find(x=>x.id===activeId); if(s){s.his=chatHistory;await saveToDB(s);document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`;} DOM.chat.innerHTML=''; for(let j=0;j<chatHistory.length;j++)await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); if(DOM.input){DOM.input.value=up;DOM.input.dispatchEvent(new Event('input'));} DOM.sendBtn.click(); };
 
     function getDynamicSI(){
       const b=DOM.sysInst?.value||"Bạn là Javiss AI.", g=DOM.globContext?.value||'', useGlob=DOM.toggleGlob?.checked!==false;
@@ -1026,7 +985,6 @@
         name:n||`Hội thoại ${sessions.length+1}`,
         folder:activeFolder==="All"?"Mặc định":activeFolder,
         his:[],
-        lastInteractionId:null,
         sys:'',
         mod:'gemini-3.5-flash-lite',
         keySel:'auto',
@@ -1052,7 +1010,6 @@
         if(DOM.topK)DOM.topK.value=s.top||40; updateThinkingVisibility(); if(DOM.thinking)DOM.thinking.value=s.thk||'minimal';
         if(DOM.toggleGlob)DOM.toggleGlob.checked=s.useGlob!==false; if(DOM.toggleSearch){DOM.toggleSearch.checked=s.sch||false;DOM.searchEngineBox.style.display=s.sch?'block':'none';}
         if(DOM.searchEngineSel)DOM.searchEngineSel.value=s.schEngine||'jina'; if(DOM.toggleMemory)DOM.toggleMemory.checked=s.mem!==false;
-        const mi=document.getElementById('manual-interaction-id'); if(mi)mi.value=s.lastInteractionId||'';
       }
       DOM.chat.innerHTML=''; for(let j=0;j<chatHistory.length;j++)await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true);
       DOM.chat.scrollTop=DOM.chat.scrollHeight; renderSel(); if(!openTabs.includes(id))openTabs.push(id); renderTabs();
@@ -1087,15 +1044,15 @@
     async function appendMsg(sd,t,i,iHL=false){
       const c=document.createElement('div'); c.className='message-container';
       const m=document.createElement('div'); m.className=sd==='user'?'user-message':'bot-message'; m.setAttribute('data-raw',t);
-      let tH='', idH=''; if(sd==='bot'&&chatHistory[i]){ tH=`<span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${chatHistory[i].time||getNowTime24h()}</span>`; if(chatHistory[i].interactionId)idH=`<span class="interaction-id-badge" onclick="copyRawText('${chatHistory[i].interactionId}')">📋 ID</span>`; }
-      m.innerHTML=`<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Chatbot'}</span>${tH}${idH}</div><div class="msg-content"></div>`;
+      let tH=`<span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${chatHistory[i]?.time||getNowTime24h()}</span>`;
+      m.innerHTML=`<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Chatbot'}</span>${tH}</div><div class="msg-content"></div>`;
       const a=document.createElement('div'); a.className='msg-actions';
       a.innerHTML=`<button class="action-btn" onclick="copy(this)">📋</button>`+(sd==='user'?`<button class="action-btn" onclick="editMsg(${i})">✏️</button>`:`<button class="action-btn" onclick="retryMsg(${i})">🔄</button>`)+`<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})">🗑️</button>`;
       c.append(m,a); DOM.chat.appendChild(c); if(!iHL&&sd==='user')DOM.chat.scrollTop=DOM.chat.scrollHeight;
       await renderMsgContent(m.querySelector('.msg-content'),sd==='user'?t.replace(/\n/g,'<br>'):t);
     }
 
-    // --- XỬ LÝ GỬI TIN NHẮN (TỰ ĐỘNG BÓC TÁCH LINK VÀ TRA CỨU WEB) ---
+    // --- XỬ LÝ GỬI TIN NHẮN (STREAM TRỰC TIẾP QUA GENERATE CONTENT STREAM + SLIDING WINDOW) ---
     DOM.sendBtn.onclick=async()=>{
       const am=DOM.model?.value||'gemini-3.5-flash-lite', isExt=am.endsWith('-dify')||externalModels.includes(am);
       let msg=DOM.input?.value.trim()||''; if(!msg&&!filesData.length&&!txtContent)return; if(isProcessing)return;
@@ -1103,7 +1060,7 @@
       if(!isExt&&!gKey)return showToast("Cần Google API Key!","danger");
 
       localStorage.removeItem('javiss_draft'); isProcessing=true; DOM.sendBtn.innerHTML='⏳';
-      let finalResp="", capId=null, botTime=getNowTime24h();
+      let finalResp="", botTime=getNowTime24h();
 
       try{
         let dispText=msg||"📎 [Gửi tệp]", fP=txtContent?(msg?msg+"\n\n"+txtContent:txtContent):msg; if(!fP.trim())fP="Hãy đọc và phân tích tài liệu này.";
@@ -1114,15 +1071,15 @@
         bD.innerHTML=`<div class="bot-message"><div class="message-header"><span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span><span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`;
         DOM.chat.appendChild(bD); 
         
-        // 🎯 GHIM ÊM ÁI VÀO ĐẦU TIN NHẮN CỦA BOT ĐỂ BẠN ĐỌC TỪ DÒNG ĐẦU TIÊN
+        // 🎯 GHIM VÀO ĐẦU TIN NHẮN CỦA BOT ĐỂ BẠN ĐỌC TỪ DÒNG ĐẦU TIÊN
         bD.scrollIntoView({behavior:'smooth',block:'start'}); 
         const cD=bD.querySelector('.msg-content');
 
-        // 🚀 KHỞI TẠO BỘ RENDER STREAM CHỐNG GIẬT MÀN HÌNH
+        // 🚀 BỘ RENDER STREAM 60 FPS
         const renderer = createStreamRenderer(cD);
         let fnP=fP;
 
-        // 🚀 1. TỰ ĐỘNG BÓC TÁCH LINK TRỰC TIẾP TRONG PROMPT CỦA BẠN
+        // 🚀 1. CHỈ BÓC TÁCH KHI BẠN GÕ TRỰC TIẾP LINK URL VÀO PROMPT
         const urlMatches=Array.from(fnP.matchAll(/(https?:\/\/[^\s]+)/g)).map(x=>x[0]);
         if(urlMatches.length){
           const targetUrl=urlMatches[0];
@@ -1136,40 +1093,28 @@
           }
         }
 
-        // 🎯 2. TỰ ĐỘNG BÓC TÁCH LINK CHỈ ĐỊNH TỪ SYSTEM INSTRUCTION CỦA PHIÊN
-        const sSI=(DOM.sysInst?.value.trim())||cs?.sys||'', gCtx=DOM.globContext?.value.trim()||'';
-        const siUrlData = await getRelevantSIUrlData(fnP, sSI + "\n" + (DOM.toggleGlob?.checked!==false ? gCtx : ''));
-        if(siUrlData){
-          if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').innerText=`🌐 Đang nạp link từ System Instruction...`;
-          fnP = `${siUrlData}\n[YÊU CẦU CỦA BẠN]:\n${fnP}`;
-          showToast(`Đã nạp dữ liệu từ System Instruction!`);
+        // 🔍 2. CHỈ TÌM KIẾM WEB KHI CÂU HỎI CỦA BẠN CHỨA DẤU NGOẶC KÉP "..." (TRÁNH CÀO BỪA BÃI LÀM DELAY)
+        const quotedQuery = extractQuotedKeywords(fnP);
+        if(quotedQuery && DOM.toggleSearch?.checked){
+          const selEng=DOM.searchEngineSel?.value||'jina';
+          const tgtEng=selEng==='auto'?(localStorage.getItem('auto_search_default_engine')||'jina'):selEng;
+          if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').innerText=`🔍 Tìm "${quotedQuery}"...`;
+          let sText="", sName="";
+          try{
+            if(tgtEng==='jina'){ sText=await fetchJinaSearch(quotedQuery); sName="JINA SEARCH"; }
+            else if(tgtEng==='tavily'){ sText=await fetchTavilySearch(quotedQuery); sName="TAVILY SEARCH"; }
+            else if(tgtEng==='serper'){ sText=await fetchSerperSearch(quotedQuery); sName="GOOGLE SERPER"; }
+            else if(tgtEng==='brave'){ sText=await fetchBraveSearch(quotedQuery); sName="BRAVE SEARCH"; }
+            else if(tgtEng==='google'&&am!=='gemini-2.5-flash'){
+              const aiS=new GoogleGenAI({apiKey:gKey||apiKeys[0]});
+              const wr=await aiS.models.generateContent({model:"gemini-2.5-flash",contents:`Tìm thông tin: ${quotedQuery}`,config:{tools:[{googleSearch:{}}],safetySettings:SAFETY}});
+              sText=wr.text; sName="GEMINI 2.5 GROUNDING";
+            }
+            if(sText)fnP=`[DỮ LIỆU TÌM ĐƯỢC CHO "${quotedQuery}" QUA ${sName}]:\n${sText}\n\n[YÊU CẦU]: ${fnP}`;
+          }catch(e){showToast(e.message,'danger');}
         }
 
-        // 🔍 3. TRA CỨU WEB NẾU BẬT HOẶC TỰ ĐỘNG
-        const selEng=DOM.searchEngineSel?.value||'jina';
-        if(DOM.toggleSearch?.checked){
-          let tgtEng=selEng, need=true;
-          if(selEng==='auto'){ need=shouldTriggerAutoSearch(fnP); tgtEng=localStorage.getItem('auto_search_default_engine')||'jina'; }
-          if(need){
-            const q=extractQuotedKeywords(fnP)||fnP;
-            if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').innerText=`🔍 Tìm: "${q}"...`;
-            let sText="", sName="";
-            try{
-              if(tgtEng==='jina'){ sText=await fetchJinaSearch(q); sName="JINA SEARCH"; }
-              else if(tgtEng==='tavily'){ sText=await fetchTavilySearch(q); sName="TAVILY SEARCH"; }
-              else if(tgtEng==='serper'){ sText=await fetchSerperSearch(q); sName="GOOGLE SERPER"; }
-              else if(tgtEng==='brave'){ sText=await fetchBraveSearch(q); sName="BRAVE SEARCH"; }
-              else if(tgtEng==='google'&&am!=='gemini-2.5-flash'){
-                const aiS=new GoogleGenAI({apiKey:gKey||apiKeys[0]});
-                const wr=await aiS.models.generateContent({model:"gemini-2.5-flash",contents:`Tìm thông tin: ${q}`,config:{tools:[{googleSearch:{}}],safetySettings:SAFETY}});
-                sText=wr.text; sName="GEMINI 2.5 GROUNDING";
-              }
-              if(sText)fnP=`[DỮ LIỆU TÌM ĐƯỢC QUA ${sName}]:\n${sText}\n\n[YÊU CẦU]: ${fnP}`;
-            }catch(e){showToast(e.message,'danger');}
-          }
-        }
-
-        // 🤖 4. NẠP VÀO MÔ HÌNH XỬ LÝ (DIFY, GROQ, HOẶC GEMINI INTERACTIONS)
+        // 🤖 3. NẠP VÀO MÔ HÌNH XỬ LÝ (DIFY, GROQ, HOẶC DIRECT GEMINI STREAM GENERATION)
         if(am.endsWith('-dify')||externalModels.includes(am)){
           const onCk=c=>{ 
             if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
@@ -1182,61 +1127,85 @@
           if(finalResp.trim()){ await renderer.flush(finalResp); } else{ bD.remove(); return; }
         }else{
           let pS=false, lastErr=null; const fChain=getFallbackModelsFor(am);
+          
           async function tryGoogle(mod){
             try{
               const aiM=new GoogleGenAI({apiKey:gKey});
-              let inp=imgs.length?[{type:'text',text:fnP},...(await Promise.all(imgs.map(fileToInteractionPart)))]:fnP;
-              if(mod==='gemini-2.5-flash'&&DOM.toggleSearch?.checked&&selEng==='google'){
-                const st=await aiM.models.generateContentStream({model:'gemini-2.5-flash',contents:inp,config:{tools:[{googleSearch:{}}],safetySettings:SAFETY}});
-                for await(const ck of st){ 
-                  if(ck.text){ 
-                    if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
-                    finalResp+=ck.text; 
-                    renderer.push(finalResp);
-                  } 
+              
+              // 🧠 CƠ CHẾ CỬA SỔ TRƯỢT (SLIDING WINDOW): LẤY 16 TIN NHẮN GẦN NHẤT ĐỂ STREAM SIÊU TỐC VÀ NHỚ DAI
+              const contentsPayload = [];
+              if(DOM.toggleMemory?.checked && chatHistory.length > 0){
+                const recentHistory = chatHistory.slice(-16);
+                for(const item of recentHistory){
+                  contentsPayload.push({
+                    role: item.role === 'model' ? 'model' : 'user',
+                    parts: [{ text: item.text }]
+                  });
                 }
-                await renderer.flush(finalResp); return true;
               }
-              if(mod.startsWith('gemini-2.5')){
-                const st=await aiM.models.generateContentStream({model:mod,contents:inp,config:{systemInstruction:getDynamicSI(),safetySettings:SAFETY,temperature:+DOM.temp.value}});
-                for await(const ck of st){ 
-                  if(ck.text){ 
-                    if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
-                    finalResp+=ck.text; 
-                    renderer.push(finalResp);
-                  } 
+
+              // Đóng gói tin nhắn hiện tại kèm tệp/ảnh
+              const currentTurnParts = [{ text: fnP }];
+              if(imgs.length > 0){
+                for(let f of imgs){
+                  currentTurnParts.push(await fileToInteractionPart(f));
                 }
-                await renderer.flush(finalResp); return true;
               }
-              const genCfg = {};
-              if(DOM.thinking?.value && DOM.thinking.value !== 'none'){
-                genCfg.thinking_level = DOM.thinking.value;
+              contentsPayload.push({ role: 'user', parts: currentTurnParts });
+
+              const genConfig = {
+                systemInstruction: getDynamicSI(),
+                safetySettings: SAFETY,
+                temperature: +DOM.temp.value,
+                topP: +DOM.topP.value,
+                topK: +DOM.topK.value
+              };
+
+              // Cấu hình độ sâu suy nghĩ (Thinking Config)
+              const thk = DOM.thinking?.value;
+              if(thk && thk !== 'none'){
+                if(thk === 'minimal') genConfig.thinkingConfig = { thinkingBudget: 0 };
+                else if(thk === 'low') genConfig.thinkingConfig = { thinkingBudget: 1024 };
+                else if(thk === 'medium') genConfig.thinkingConfig = { thinkingBudget: 4096 };
+                else if(thk === 'high') genConfig.thinkingConfig = { thinkingBudget: 8192 };
               }
-              const pyld={model:mod,input:inp,system_instruction:getDynamicSI(),generation_config:genCfg,stream:true};
-              if(DOM.toggleMemory?.checked&&cs?.lastInteractionId)pyld.previous_interaction_id=cs.lastInteractionId;
-              let rSt; try{ rSt=await aiM.interactions.create(pyld); }catch(e){ if(pyld.previous_interaction_id){delete pyld.previous_interaction_id; rSt=await aiM.interactions.create(pyld);} else throw e; }
-              for await(const ck of rSt){
-                const txt=ck.delta?.text||ck.text||""; 
-                if(txt){ 
-                  if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
-                  finalResp+=txt; 
+
+              // Google Grounding 1-Req nếu dùng Gemini 2.5 Flash
+              if(mod === 'gemini-2.5-flash' && DOM.toggleSearch?.checked && DOM.searchEngineSel?.value === 'google'){
+                genConfig.tools = [{ googleSearch: {} }];
+              }
+
+              // ⚡ STREAM TRỰC TIẾP: NHẢ CHỮ NGAY SAU 0.2 GIÂY
+              const resStream = await aiM.models.generateContentStream({
+                model: mod,
+                contents: contentsPayload,
+                config: genConfig
+              });
+
+              for await (const ck of resStream){
+                const txt = ck.text || "";
+                if(txt){
+                  if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                  finalResp += txt;
                   renderer.push(finalResp);
                 }
-                if(ck.interaction_id||ck.id)capId=ck.interaction_id||ck.id;
               }
-              if(!finalResp.trim()&&rSt.output_text)finalResp=rSt.output_text;
-              await renderer.flush(finalResp); return true;
+
+              await renderer.flush(finalResp); 
+              return true;
             }catch(e){ lastErr=e; return false; }
           }
+
           for(let mod of fChain){ finalResp=""; pS=await tryGoogle(mod); if(pS)break; }
           if(!pS){ bD.remove(); showToast(formatGoogleApiError(lastErr),'danger'); return; }
         }
 
-        chatHistory.push({role:'user',text:fP}); chatHistory.push({role:'model',text:finalResp,interactionId:capId,time:botTime});
-        if(cs){ cs.his=chatHistory; if(capId)cs.lastInteractionId=capId; await saveToDB(cs); document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`; }
+        chatHistory.push({role:'user',text:fP}); 
+        chatHistory.push({role:'model',text:finalResp,time:botTime});
+        if(cs){ cs.his=chatHistory; await saveToDB(cs); document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`; }
         if(bD.querySelector('.bot-message')){
           bD.querySelector('.bot-message').setAttribute('data-raw',finalResp);
-          bD.querySelector('.message-header').innerHTML=`<span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span>`+(capId?`<span class="interaction-id-badge" onclick="copyRawText('${capId}')">📋 ID</span>`:'');
+          bD.querySelector('.message-header').innerHTML=`<span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span>`;
           
           // 🛠️ CỤM NÚT THAO TÁC XUẤT HIỆN NGAY TỨC THÌ
           const botIdx = chatHistory.length - 1;
@@ -1250,7 +1219,7 @@
     };
 
     window.editMsg=async i=>{ DOM.input.value=chatHistory[i].text; DOM.input.dispatchEvent(new Event('input')); chatHistory=chatHistory.slice(0,i); const s=sessions.find(x=>x.id===activeId); if(s){s.his=chatHistory;await saveToDB(s);document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`;} DOM.chat.innerHTML=''; for(let j=0;j<chatHistory.length;j++)await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true); };
-    window.clearActiveSession=async()=>{ if(confirm("Xóa sạch phiên này?")){ chatHistory=[]; const s=sessions.find(x=>x.id===activeId); if(s){s.his=[];s.lastInteractionId=null;await saveToDB(s);document.getElementById('session-msg-count').innerText=`0 tin nhắn`;} DOM.chat.innerHTML=''; showToast('Đã dọn sạch'); } };
+    window.clearActiveSession=async()=>{ if(confirm("Xóa sạch phiên này?")){ chatHistory=[]; const s=sessions.find(x=>x.id===activeId); if(s){s.his=[];await saveToDB(s);document.getElementById('session-msg-count').innerText=`0 tin nhắn`;} DOM.chat.innerHTML=''; showToast('Đã dọn sạch'); } };
 
     window.exportAllSessions=async()=>{
       const cfgs={}; for(let i=1;i<=10;i++)cfgs[`javiss_api_${i}`]=localStorage.getItem(`javiss_api_${i}`)||"";
