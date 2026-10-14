@@ -437,7 +437,7 @@
           const voice = $('live-voice-select')?.value || 'Charon', temp = parseFloat($('live-temperature')?.value || 0.7);
           const setupMsg = { 
             setup: { 
-              model: "models/gemini-3.1-flash-live-preview", 
+              model: "models/gemini-3.8-live", 
               generationConfig: { responseModalities: ["AUDIO"], temperature: temp, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } }, 
               systemInstruction: { parts: [{ text: getLiveCallSI() }] } 
             } 
