@@ -124,6 +124,7 @@
             <div id="search-engine-box" style="margin-left:20px;display:none;">
               <select id="search-engine-select" class="modern-select" style="font-size:0.75rem;padding:3px 6px;">
                 <option value="auto" selected>🔄 Tự động (Smart Auto-Search)</option>
+                <option value="jina">🦎 Jina AI Search</option>
                 <option value="tavily">⚡ Tavily AI Search</option>
                 <option value="serper">🔎 Serper.dev Google</option>
                 <option value="brave">🦁 Brave Search</option>
@@ -135,11 +136,9 @@
           <div style="margin-top:6px;"><span class="section-title">🤖 Mô hình chính:</span>
             <select id="model-select" class="modern-select">
               <optgroup label="✨ Google Gemini (Interactions API)">
-                <option value="gemini-3.8-flash" selected>Gemini 3.8 Flash (Mới nhất)</option>
-                <option value="gemini-3.7-flash">Gemini 3.7 Flash</option>
+                <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash Lite (Mặc định)</option>
+                <option value="gemini-3.8-flash">Gemini 3.8 Flash (Mới nhất)</option>
                 <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
-                <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
-                <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
                 <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash (Web Grounding 1-Req)</option>
               </optgroup>
@@ -157,7 +156,7 @@
             </select>
           </div>
           <div style="margin-top:6px;"><span class="section-title">🧠 Think Depth:</span>
-            <select id="thinking-level" class="modern-select"><option value="low">Low (Thấp)</option><option value="medium" selected>Med (Chuẩn)</option><option value="high">High (Sâu)</option></select>
+            <select id="thinking-level" class="modern-select"><option value="minimal" selected>Min (Tối thiểu)</option><option value="low">Low (Thấp)</option><option value="medium">Med (Chuẩn)</option><option value="high">High (Sâu)</option></select>
           </div>
           <div style="margin-top:6px;"><span class="section-title">🔗 Interactions ID:</span>
             <div style="display:flex;gap:4px;"><input type="text" id="manual-interaction-id" placeholder="Chưa có liên kết" class="modern-input" style="font-size:0.75rem;"><button id="btn-update-interaction-id" class="btn" style="padding:4px 8px;font-size:0.7rem;">Lưu</button></div>
@@ -268,18 +267,20 @@
           <div style="display:flex;flex-direction:column;gap:8px;">
             <div><label class="field-label">Công cụ mặc định cho Tự Động (Auto-Search):</label>
               <select id="auto-search-engine-input" class="modern-select">
-                <option value="tavily" selected>⚡ Tavily AI Search (Khuyên dùng)</option>
+                <option value="jina" selected>🦎 Jina AI Search (Miễn phí)</option>
+                <option value="tavily">⚡ Tavily AI Search (1.000 lượt free)</option>
                 <option value="serper">🔎 Serper.dev Google (2.500 lượt free)</option>
                 <option value="brave">🦁 Brave Search (2.000 lượt free)</option>
               </select>
             </div>
             <div><label class="field-label">📖 Công cụ Bóc tách Link Website:</label>
               <select id="web-extract-engine-input" class="modern-select">
-                <option value="auto" selected>🔄 Tự động (Tavily Extract ➔ Search Assist)</option>
+                <option value="auto" selected>🔄 Tự động (Jina ➔ Tavily nếu dính Cloudflare)</option>
                 <option value="tavily">⚡ Tavily Extract (Chuyên trị web truyện/chống bot)</option>
-                <option value="proxy">🌐 Web Proxy</option>
+                <option value="jina">🦎 Luôn dùng Jina Reader</option>
               </select>
             </div>
+            <div><label class="field-label">Jina API Key (Dùng cho Jina Search & Reader proxy):</label><input type="password" id="jina-key-input" placeholder="Nhập Key (jina_...)" class="modern-input"></div>
             <div><label class="field-label">Tavily API Key (Search & Extract Cloudflare):</label><input type="password" id="tavily-key-input" placeholder="Nhập Key (tvly-...)" class="modern-input"></div>
             <div><label class="field-label">Serper API Key:</label><input type="password" id="serper-key-input" class="modern-input"></div>
             <div><label class="field-label">Brave Search API Key:</label><input type="password" id="brave-key-input" class="modern-input"></div>
@@ -336,11 +337,13 @@
     marked.use({ breaks: true }); mermaid.initialize({ startOnLoad: false, theme: 'default' });
     let apiKeys=[], globalKeyIndex = 0, liveKeyIndex = 0, liveRetryCount = 0;
     const SAFETY = ['HARM_CATEGORY_HARASSMENT','HARM_CATEGORY_HATE_SPEECH','HARM_CATEGORY_SEXUALLY_EXPLICIT','HARM_CATEGORY_DANGEROUS_CONTENT','HARM_CATEGORY_CIVIC_INTEGRITY'].map(c=>({category:c,threshold:'BLOCK_NONE'}));
-    const GOOGLE_FALLBACK_CHAIN = ['gemini-3.8-flash','gemini-3.7-flash','gemini-3.6-flash','gemini-3.5-flash','gemini-3.5-flash-lite','gemini-3.1-flash-lite','gemini-2.5-flash'];
     const externalModels = ['qwen/qwen3.6-27b','openai/gpt-oss-120b'];
 
     function getNowTime24h(){ const d=new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
-    function getFallbackModelsFor(m){ const i=GOOGLE_FALLBACK_CHAIN.indexOf(m); return i!==-1?GOOGLE_FALLBACK_CHAIN.slice(i):[m,...GOOGLE_FALLBACK_CHAIN]; }
+    function getFallbackModelsFor(m){
+      const chain = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash'];
+      return [m, ...chain.filter(x => x !== m)];
+    }
     function formatGoogleApiError(e){ const m=e?.message||""; if(m.includes("429")||m.includes("RESOURCE_EXHAUSTED"))return "⚠️ Hết Quota (429)."; if(m.includes("503")||m.includes("UNAVAILABLE"))return "⚠️ Máy chủ quá tải (503)."; return m?`❌ Lỗi: ${m}`:"❌ Lỗi máy chủ Google."; }
     function updateChatContentAndScroll(el,html){ el.innerHTML=html; }
 
@@ -358,48 +361,27 @@
     document.getElementById('btn-font-reset').onclick = () => applyFontSize(16);
     applyFontSize(currentFontSize);
 
-    // 🚀 BỘ ĐIỀU PHỐI STREAM TYPEWRITER PUMP (HÀNG ĐỢI ĐỆM NHẢ CHỮ ĐẶC TRỊ CHROME ANDROID)
+    // 🚀 BỘ ĐIỀU PHỐI ĐỒNG BỘ KHUNG HÌNH (REQUEST ANIMATION FRAME STREAM RENDERER)
     function createStreamRenderer(targetEl){
-      let fullText = "";
-      let displayedIndex = 0;
-      let timer = null;
-      let isFlushing = false;
-      let resolveFlush = null;
-
-      function tick(){
-        if(displayedIndex < fullText.length){
-          const diff = fullText.length - displayedIndex;
-          const step = diff > 80 ? Math.min(diff, 14) : (diff > 30 ? 6 : (diff > 10 ? 3 : 1));
-          displayedIndex += step;
-          targetEl.innerHTML = marked.parse(fullText.substring(0, displayedIndex));
-          timer = setTimeout(tick, 18);
-        } else {
-          if(isFlushing && resolveFlush){
-            targetEl.innerHTML = marked.parse(fullText);
-            resolveFlush();
-          }
-        }
-      }
+      let renderPending = false;
+      let latestText = "";
 
       return {
-        push: (chunk) => {
-          fullText += chunk;
-          if(!timer || displayedIndex >= fullText.length - chunk.length){
-            clearTimeout(timer);
-            tick();
+        push: (text) => {
+          latestText = text;
+          if(!renderPending){
+            renderPending = true;
+            requestAnimationFrame(() => {
+              targetEl.innerHTML = marked.parse(latestText);
+              DOM.chat.scrollTop = DOM.chat.scrollHeight;
+              renderPending = false;
+            });
           }
         },
         flush: async (finalText) => {
-          fullText = finalText;
-          isFlushing = true;
-          if(displayedIndex < fullText.length){
-            await new Promise((resolve) => {
-              resolveFlush = resolve;
-              setTimeout(resolve, 350);
-            });
-          }
-          clearTimeout(timer);
+          renderPending = false;
           await renderMsgContent(targetEl, finalText);
+          DOM.chat.scrollTop = DOM.chat.scrollHeight;
         }
       };
     }
@@ -410,7 +392,16 @@
     function extractQuotedKeywords(t){ if(!t)return null; const m=Array.from(t.matchAll(/["“«]([^"”»]+)["”»]/g)).map(x=>x[1].trim()).filter(Boolean); return m.length?m.join(' '):null; }
     function shouldTriggerAutoSearch(t){ if(!t||t.length<3)return false; if(/["“«][^"”»]+["”»]/.test(t))return true; return /\b(hôm nay|ngày mai|hôm qua|mới nhất|giá|tỷ giá|vàng|xăng|thời tiết|tin tức|bảng xếp hạng|2025|2026|2027)\b/i.test(t); }
 
-    // --- CÔNG CỤ TÌM KIẾM WEB (TAVILY, SERPER, BRAVE) ---
+    // --- CÔNG CỤ TÌM KIẾM WEB ---
+    async function fetchJinaSearch(q){
+      const k=localStorage.getItem('jina_api_key')||'', h={"Accept":"application/json"};
+      if(k)h["Authorization"]=`Bearer ${k}`;
+      const r=await fetch(`https://s.jina.ai/${encodeURIComponent(q)}`,{headers:h});
+      if(!r.ok)throw new Error(`Jina Search HTTP ${r.status}`);
+      const d=await r.json(), res=[];
+      if(d.data&&d.data.length){ d.data.slice(0,5).forEach(x=>res.push(`- **${x.title||'Tin'}**\n  *Nội dung*: ${(x.content||x.description||'').substring(0,800)}\n  *Nguồn*: ${x.url}`)); }
+      return res.join('\n\n');
+    }
     async function fetchTavilySearch(q){
       const k=localStorage.getItem('tavily_api_key')||''; if(!k)throw new Error("Chưa có Tavily Key!");
       const r=await fetch("https://api.tavily.com/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({api_key:k,query:q,max_results:5,include_answer:true})});
@@ -439,11 +430,19 @@
       return res.join('\n\n');
     }
 
-    // --- BỘ BÓC TÁCH LINK WEB (TAVILY EXTRACT -> PROXY -> SEARCH ASSIST) ---
+    // --- BỘ BÓC TÁCH LINK WEB (TỰ ĐỘNG CHUYỂN SEARCH-ASSIST KHI BỊ CHẶN IP) ---
     async function extractWebPageContent(url){
-      const mode=localStorage.getItem('web_extract_engine')||'auto', tk=localStorage.getItem('tavily_api_key')||'';
+      const mode=localStorage.getItem('web_extract_engine')||'auto', jk=localStorage.getItem('jina_api_key')||'', tk=localStorage.getItem('tavily_api_key')||'';
       const isBlocked=(txt)=>!txt||txt.trim().length<60||/(just a moment|security verification|verify you are human|cloudflare|ddos protection|challenge-platform|enable javascript|access denied|403 forbidden)/i.test(txt);
 
+      const tryJina=async()=>{
+        const h={"Accept":"text/plain"}; if(jk)h["Authorization"]=`Bearer ${jk}`;
+        const r=await fetch(`https://r.jina.ai/${url}`,{headers:h});
+        if(!r.ok)throw new Error(`Jina Reader HTTP ${r.status}`);
+        const t=await r.text();
+        if(isBlocked(t))throw new Error("Jina bị chặn hoặc rỗng");
+        return {source:"Jina Reader",content:t.substring(0,45000)};
+      };
       const tryTavily=async()=>{
         if(!tk)throw new Error("Chưa có Tavily Key!");
         const r=await fetch("https://api.tavily.com/extract",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({api_key:tk,urls:[url]})});
@@ -460,26 +459,41 @@
         return {source:"Web Proxy",content:t.substring(0,30000)};
       };
 
+      // 🛡️ CƠ CHẾ CỨU HỘ: TÌM KIẾM DỮ LIỆU CỦA TRANG WEB KHI LINK GỐC CHẶN IP NƯỚC NGOÀI
       const trySearchAssist=async()=>{
         let domain="", slug="";
         try{ const parsed = new URL(url); domain = parsed.hostname.replace('www.', ''); slug = parsed.pathname.split('/').filter(Boolean).pop()?.replace(/[-_.]/g, ' ') || ''; }catch(e){}
-        const smartQuery = `${slug} ${domain} bảng giá thông tin mới nhất`.trim();
+        const smartQuery = `${slug} ${domain} bảng giá mới nhất hôm nay`.trim();
+        
         if(tk){
           const tRes = await fetchTavilySearch(smartQuery);
           if(tRes) return {source:"Tavily Search Assist (Dữ liệu dự phòng)", content:tRes};
         }
-        const bRes = await fetchBraveSearch(smartQuery);
-        if(bRes) return {source:"Brave Search Assist (Dữ liệu dự phòng)", content:bRes};
-        throw new Error("Không thể bóc tách hoặc tìm thấy dữ liệu từ link này.");
+        const jRes = await fetchJinaSearch(smartQuery);
+        if(jRes) return {source:"Jina Search Assist (Dữ liệu dự phòng)", content:jRes};
+        throw new Error("Không thể bóc tách hoặc tìm thấy dữ liệu.");
       };
 
-      if(mode==='proxy'){
-        try{return await tryProxy();}catch(e){return await trySearchAssist();}
-      }else{
+      if(mode==='tavily'){
         try{return await tryTavily();}
         catch(e){
-          try{return await tryProxy();}
-          catch(e2){return await trySearchAssist();}
+          try{return await tryJina();}
+          catch(e2){
+            try{return await tryProxy();}
+            catch(e3){return await trySearchAssist();}
+          }
+        }
+      }else if(mode==='jina'){
+        try{return await tryJina();}
+        catch(e){return await trySearchAssist();}
+      }else{
+        try{return await tryJina();}
+        catch(e){
+          try{return await tryTavily();}
+          catch(e2){
+            try{return await tryProxy();}
+            catch(e3){return await trySearchAssist();}
+          }
         }
       }
     }
@@ -663,10 +677,11 @@
                   } else {
                     tr.innerHTML=`<span style="color:#38bdf8;">⚡ Tra cứu: "<strong>${q}</strong>"...</span>`;
                     try{
-                      const eng=localStorage.getItem('auto_search_default_engine')||'tavily';
-                      if(eng==='serper')txt=await fetchSerperSearch(q);
+                      const eng=localStorage.getItem('auto_search_default_engine')||'jina';
+                      if(eng==='tavily')txt=await fetchTavilySearch(q);
+                      else if(eng==='serper')txt=await fetchSerperSearch(q);
                       else if(eng==='brave')txt=await fetchBraveSearch(q);
-                      else txt=await fetchTavilySearch(q);
+                      else txt=await fetchJinaSearch(q);
                     }catch(err){txt=`Lỗi: ${err.message}`;}
                   }
                 }
@@ -759,14 +774,14 @@
     const cfgMap=[
       ['dify-key-gemini','dify_key_gemini'],['dify-key-lite','dify_key_lite'],['dify-key-pro','dify_key_pro'],
       ['dify-key-gpt','dify_key_gpt'],['dify-key-opus','dify_key_opus'],['dify-endpoint-input','dify_api_endpoint'],
-      ['dify-var-input','dify_var_key'],['groq-key-input','groq_api_key'],
+      ['dify-var-input','dify_var_key'],['groq-key-input','groq_api_key'],['jina-key-input','jina_api_key'],
       ['tavily-key-input','tavily_api_key'],['serper-key-input','serper_api_key'],['brave-key-input','brave_api_key'],
       ['brave-worker-url-input','brave_worker_url'],['auto-search-engine-input','auto_search_default_engine'],
       ['web-extract-engine-input','web_extract_engine'],['live-temperature','live_temperature']
     ];
 
     function initExternalConfigs(){
-      cfgMap.forEach(([id,k])=>{ const el=document.getElementById(id); if(el)el.value=localStorage.getItem(k)||(id==='dify-endpoint-input'?'https://api.dify.ai/v1':id==='dify-var-input'?'query':id==='auto-search-engine-input'?'tavily':id==='web-extract-engine-input'?'auto':id==='live-temperature'?'0.7':''); });
+      cfgMap.forEach(([id,k])=>{ const el=document.getElementById(id); if(el)el.value=localStorage.getItem(k)||(id==='dify-endpoint-input'?'https://api.dify.ai/v1':id==='dify-var-input'?'query':id==='auto-search-engine-input'?'jina':id==='web-extract-engine-input'?'auto':id==='live-temperature'?'0.7':''); });
       const ltv=document.getElementById('live-temp-val'); if(ltv)ltv.innerText=localStorage.getItem('live_temperature')||'0.7';
       const lts=document.getElementById('live-toggle-search'); if(lts)lts.checked=localStorage.getItem('live_search_enabled')!=='false';
       const ltc=document.getElementById('live-toggle-context'); if(ltc)ltc.checked=localStorage.getItem('live_context_enabled')!=='false';
@@ -823,8 +838,17 @@
 
     function updateThinkingVisibility(){
       const m=DOM.model?.value||'', t=DOM.thinking; if(!t)return;
-      const is37=(m==='gemini-3.7-flash'||m==='gemini-3.8-flash');
-      t.innerHTML=is37?`<option value="low">Low</option><option value="medium" selected>Med</option><option value="high">High</option>`:`<option value="minimal">Min</option><option value="low">Low</option><option value="medium" selected>Med</option><option value="high">High</option>`;
+      const prev=t.value; let opts=[];
+      if(m==='gemini-3.8-flash'||m==='openai/gpt-oss-120b'){
+        opts=[{val:'low',label:'Low (Thấp)'},{val:'medium',label:'Med (Chuẩn)'},{val:'high',label:'High (Sâu)'}];
+      } else if(m==='gemini-3.5-flash-lite'||m==='gemini-3.6-flash'||m==='gemini-3.1-flash-lite'){
+        opts=[{val:'minimal',label:'Min (Tối thiểu)'},{val:'low',label:'Low (Thấp)'},{val:'medium',label:'Med (Chuẩn)'},{val:'high',label:'High (Sâu)'}];
+      } else {
+        opts=[{val:'none',label:'Không áp dụng'}];
+      }
+      t.innerHTML=opts.map(o=>`<option value="${o.val}">${o.label}</option>`).join('');
+      if(opts.some(o=>o.val===prev)) t.value=prev;
+      else t.value = (m==='gemini-3.5-flash-lite'&&opts.some(o=>o.val==='minimal')) ? 'minimal' : (opts.some(o=>o.val==='medium')?'medium':opts[0].val);
     }
     function updateTokenCount(){ const c=(DOM.input?.value.length||0)+(txtContent?.length||0); const el=document.getElementById('token-count'); if(el)el.innerText=Math.ceil(c/3.2).toLocaleString('vi-VN'); }
 
@@ -875,8 +899,14 @@
       const k=localStorage.getItem('groq_api_key')||''; if(!k)return onErr(new Error("Chưa có Groq Key!"));
       const m=DOM.model?.value==='openai/gpt-oss-120b'?"openai/gpt-oss-120b":"groq/compound";
       const payload={model:m,messages:buildStructuredMessages(p),stream:true,max_tokens:4096};
+      
+      if(m==='openai/gpt-oss-120b'){
+        const thk=DOM.thinking?.value||'medium';
+        payload.reasoning_effort = thk==='high'?'high':thk==='low'?'low':'medium';
+      }
+
       try{
-        const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:'POST',headers:{'Authorization':`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:'POST',headers:{'Authorization':`Bearer ${k}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
         if(!res.ok)throw new Error(`Groq HTTP ${res.status}`);
         const r=res.body.getReader(), dec=new TextDecoder(); let buf="", inThk=false;
         while(true){
@@ -982,17 +1012,38 @@
     DOM.btnDeleteFolder.onclick=async()=>{ if(activeFolder==="All"||activeFolder==="Mặc định")return showToast("Không xóa được TM này!"); if(confirm(`Xóa "${activeFolder}"?`)){ folders=folders.filter(f=>f!==activeFolder); localStorage.setItem('javiss_folders',JSON.stringify(folders)); for(let s of sessions){if(s.folder===activeFolder){s.folder="Mặc định";await saveToDB(s);}} activeFolder="All"; renderFolders(); renderSel(); } };
 
     async function loadSess(){ try{await initDB(); let d=await getAllFromDB(); if(d?.length){ sessions=d.sort((a,b)=>(a.orderIndex||0)-(b.orderIndex||0)); renderFolders(); activeId=localStorage.getItem('javiss_active_id')||sessions[0].id; if(!sessions.find(s=>s.id===activeId))activeId=sessions[0].id; await switchSess(activeId); }else{renderFolders();await newSess();} }catch(e){await newSess();} }
-    async function newSess(n){ const id='s_'+Date.now(), s={id,name:n||`Hội thoại ${sessions.length+1}`,folder:activeFolder==="All"?"Mặc định":activeFolder,his:[],lastInteractionId:null,sys:'',mod:'gemini-3.8-flash',keySel:'auto',tmp:0.5,tpp:0.9,top:40,thk:'medium',sch:false,schEngine:'tavily',mem:true,useGlob:true,orderIndex:0}; sessions.unshift(s); await saveToDB(s); await switchSess(id); }
+    async function newSess(n){
+      const id='s_'+Date.now(), s={
+        id,
+        name:n||`Hội thoại ${sessions.length+1}`,
+        folder:activeFolder==="All"?"Mặc định":activeFolder,
+        his:[],
+        lastInteractionId:null,
+        sys:'',
+        mod:'gemini-3.5-flash-lite',
+        keySel:'auto',
+        tmp:0.5,
+        tpp:0.9,
+        top:40,
+        thk:'minimal',
+        sch:false,
+        schEngine:'jina',
+        mem:true,
+        useGlob:true,
+        orderIndex:0
+      };
+      sessions.unshift(s); await saveToDB(s); await switchSess(id);
+    }
     document.getElementById('btn-new-session').onclick=()=>newSess();
 
     async function switchSess(id){
       activeId=id; localStorage.setItem('javiss_active_id',id); const s=sessions.find(x=>x.id===id); chatHistory=s?[...s.his]:[];
       if(s){
-        if(DOM.sysInst)DOM.sysInst.value=s.sys||''; if(DOM.model)DOM.model.value=s.mod||'gemini-3.8-flash'; if(DOM.apiKeySel)DOM.apiKeySel.value=s.keySel||'auto';
+        if(DOM.sysInst)DOM.sysInst.value=s.sys||''; if(DOM.model)DOM.model.value=s.mod||'gemini-3.5-flash-lite'; if(DOM.apiKeySel)DOM.apiKeySel.value=s.keySel||'auto';
         if(DOM.temp){DOM.temp.value=s.tmp||0.5;DOM.tempVal.innerText=DOM.temp.value;} if(DOM.topP){DOM.topP.value=s.tpp||0.9;DOM.toppVal.innerText=DOM.topP.value;}
-        if(DOM.topK)DOM.topK.value=s.top||40; updateThinkingVisibility(); if(DOM.thinking)DOM.thinking.value=s.thk||'medium';
+        if(DOM.topK)DOM.topK.value=s.top||40; updateThinkingVisibility(); if(DOM.thinking)DOM.thinking.value=s.thk||'minimal';
         if(DOM.toggleGlob)DOM.toggleGlob.checked=s.useGlob!==false; if(DOM.toggleSearch){DOM.toggleSearch.checked=s.sch||false;DOM.searchEngineBox.style.display=s.sch?'block':'none';}
-        if(DOM.searchEngineSel)DOM.searchEngineSel.value=s.schEngine||'tavily'; if(DOM.toggleMemory)DOM.toggleMemory.checked=s.mem!==false;
+        if(DOM.searchEngineSel)DOM.searchEngineSel.value=s.schEngine||'jina'; if(DOM.toggleMemory)DOM.toggleMemory.checked=s.mem!==false;
         const mi=document.getElementById('manual-interaction-id'); if(mi)mi.value=s.lastInteractionId||'';
       }
       DOM.chat.innerHTML=''; for(let j=0;j<chatHistory.length;j++)await appendMsg(chatHistory[j].role==='model'?'bot':'user',chatHistory[j].text,j,true);
@@ -1006,14 +1057,15 @@
     async function updateConfig(){
       const s=sessions.find(x=>x.id===activeId);
       if(s){
-        s.sys=DOM.sysInst?.value||''; s.mod=DOM.model?.value||'gemini-3.8-flash'; s.keySel=DOM.apiKeySel?.value||'auto';
-        s.tmp=DOM.temp?.value||0.5; s.tpp=DOM.topP?.value||0.9; s.top=DOM.topK?.value||40; s.thk=DOM.thinking?.value||'medium';
-        s.useGlob=DOM.toggleGlob?.checked!==false; s.sch=DOM.toggleSearch?.checked||false; s.schEngine=DOM.searchEngineSel?.value||'tavily';
+        s.sys=DOM.sysInst?.value||''; s.mod=DOM.model?.value||'gemini-3.5-flash-lite'; s.keySel=DOM.apiKeySel?.value||'auto';
+        s.tmp=DOM.temp?.value||0.5; s.tpp=DOM.topP?.value||0.9; s.top=DOM.topK?.value||40; s.thk=DOM.thinking?.value||'minimal';
+        s.useGlob=DOM.toggleGlob?.checked!==false; s.sch=DOM.toggleSearch?.checked||false; s.schEngine=DOM.searchEngineSel?.value||'jina';
         s.mem=DOM.toggleMemory?.checked!==false; await saveToDB(s);
       }
       if(DOM.searchEngineBox)DOM.searchEngineBox.style.display=DOM.toggleSearch?.checked?'block':'none';
     }
-    [DOM.sysInst,DOM.model,DOM.apiKeySel,DOM.toggleGlob,DOM.toggleSearch,DOM.searchEngineSel,DOM.toggleMemory,DOM.topK,DOM.thinking].forEach(el=>el?.addEventListener('change',updateConfig));
+    DOM.model?.addEventListener('change', () => { updateThinkingVisibility(); updateConfig(); });
+    [DOM.sysInst,DOM.apiKeySel,DOM.toggleGlob,DOM.toggleSearch,DOM.searchEngineSel,DOM.toggleMemory,DOM.topK,DOM.thinking].forEach(el=>el?.addEventListener('change',updateConfig));
     DOM.temp?.addEventListener('input',()=>{DOM.tempVal.innerText=DOM.temp.value;updateConfig();});
     DOM.topP?.addEventListener('input',()=>{DOM.toppVal.innerText=DOM.topP.value;updateConfig();});
 
@@ -1027,13 +1079,7 @@
     async function appendMsg(sd,t,i,iHL=false){
       const c=document.createElement('div'); c.className='message-container';
       const m=document.createElement('div'); m.className=sd==='user'?'user-message':'bot-message'; m.setAttribute('data-raw',t);
-      let tH='', idH=''; 
-      if(sd==='bot'&&chatHistory[i]){ 
-        tH=`<span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${chatHistory[i].time||getNowTime24h()}</span>`; 
-        if(chatHistory[i].interactionId){
-          idH=`<span class="interaction-id-badge" onclick="copyRawText('${chatHistory[i].interactionId}')">📋 ID: ${chatHistory[i].interactionId.substring(0,8)}...</span>`;
-        }
-      }
+      let tH='', idH=''; if(sd==='bot'&&chatHistory[i]){ tH=`<span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${chatHistory[i].time||getNowTime24h()}</span>`; if(chatHistory[i].interactionId)idH=`<span class="interaction-id-badge" onclick="copyRawText('${chatHistory[i].interactionId}')">📋 ID</span>`; }
       m.innerHTML=`<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Chatbot'}</span>${tH}${idH}</div><div class="msg-content"></div>`;
       const a=document.createElement('div'); a.className='msg-actions';
       a.innerHTML=`<button class="action-btn" onclick="copy(this)">📋</button>`+(sd==='user'?`<button class="action-btn" onclick="editMsg(${i})">✏️</button>`:`<button class="action-btn" onclick="retryMsg(${i})">🔄</button>`)+`<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})">🗑️</button>`;
@@ -1041,9 +1087,9 @@
       await renderMsgContent(m.querySelector('.msg-content'),sd==='user'?t.replace(/\n/g,'<br>'):t);
     }
 
-    // --- XỬ LÝ GỬI TIN NHẮN (INTERACTIONS API + BỘ ĐIỀU PHỐI TYPEWRITER STREAM PUMP) ---
+    // --- XỬ LÝ GỬI TIN NHẮN (TỰ ĐỘNG BÓC TÁCH LINK VÀ TRA CỨU WEB) ---
     DOM.sendBtn.onclick=async()=>{
-      const am=DOM.model?.value||'gemini-3.8-flash', isExt=am.endsWith('-dify')||externalModels.includes(am);
+      const am=DOM.model?.value||'gemini-3.5-flash-lite', isExt=am.endsWith('-dify')||externalModels.includes(am);
       let msg=DOM.input?.value.trim()||''; if(!msg&&!filesData.length&&!txtContent)return; if(isProcessing)return;
       const cs=sessions.find(x=>x.id===activeId), gKey=!isExt?getSessionApiKey(cs):'';
       if(!isExt&&!gKey)return showToast("Cần Google API Key!","danger");
@@ -1058,17 +1104,13 @@
 
         const bD=document.createElement('div'); bD.className='message-container';
         bD.innerHTML=`<div class="bot-message"><div class="message-header"><span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span><span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`;
-        DOM.chat.appendChild(bD); 
-        
-        // 🎯 Định vị 1 lần duy nhất ngay đầu câu trả lời của AI
-        bD.scrollIntoView({block:'start'}); 
-        const cD=bD.querySelector('.msg-content');
+        DOM.chat.appendChild(bD); bD.scrollIntoView({behavior:'smooth',block:'start'}); const cD=bD.querySelector('.msg-content');
 
-        // 🚀 KHỞI TẠO BỘ ĐỆM NHẢ CHỮ TYPEWRITER STREAM PUMP
+        // 🚀 KHỞI TẠO BỘ RENDER 60 FPS CHO KHUNG CHAT
         const renderer = createStreamRenderer(cD);
         let fnP=fP;
 
-        // 🚀 1. TỰ ĐỘNG BÓC TÁCH LINK TRỰC TIẾP TRONG PROMPT
+        // 🚀 1. TỰ ĐỘNG BÓC TÁCH LINK TRỰC TIẾP TRONG PROMPT CỦA BẠN
         const urlMatches=Array.from(fnP.matchAll(/(https?:\/\/[^\s]+)/g)).map(x=>x[0]);
         if(urlMatches.length){
           const targetUrl=urlMatches[0];
@@ -1082,7 +1124,7 @@
           }
         }
 
-        // 🎯 2. TỰ ĐỘNG BÓC TÁCH LINK TỪ SYSTEM INSTRUCTION CỦA PHIÊN
+        // 🎯 2. TỰ ĐỘNG BÓC TÁCH LINK CHỈ ĐỊNH TỪ SYSTEM INSTRUCTION CỦA PHIÊN
         const sSI=(DOM.sysInst?.value.trim())||cs?.sys||'', gCtx=DOM.globContext?.value.trim()||'';
         const siUrlData = await getRelevantSIUrlData(fnP, sSI + "\n" + (DOM.toggleGlob?.checked!==false ? gCtx : ''));
         if(siUrlData){
@@ -1092,34 +1134,35 @@
         }
 
         // 🔍 3. TRA CỨU WEB NẾU BẬT HOẶC TỰ ĐỘNG
-        const selEng=DOM.searchEngineSel?.value||'tavily';
+        const selEng=DOM.searchEngineSel?.value||'jina';
         if(DOM.toggleSearch?.checked){
           let tgtEng=selEng, need=true;
-          if(selEng==='auto'){ need=shouldTriggerAutoSearch(fnP); tgtEng=localStorage.getItem('auto_search_default_engine')||'tavily'; }
+          if(selEng==='auto'){ need=shouldTriggerAutoSearch(fnP); tgtEng=localStorage.getItem('auto_search_default_engine')||'jina'; }
           if(need){
             const q=extractQuotedKeywords(fnP)||fnP;
             if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').innerText=`🔍 Tìm: "${q}"...`;
             let sText="", sName="";
             try{
-              if(tgtEng==='serper'){ sText=await fetchSerperSearch(q); sName="GOOGLE SERPER"; }
+              if(tgtEng==='jina'){ sText=await fetchJinaSearch(q); sName="JINA SEARCH"; }
+              else if(tgtEng==='tavily'){ sText=await fetchTavilySearch(q); sName="TAVILY SEARCH"; }
+              else if(tgtEng==='serper'){ sText=await fetchSerperSearch(q); sName="GOOGLE SERPER"; }
               else if(tgtEng==='brave'){ sText=await fetchBraveSearch(q); sName="BRAVE SEARCH"; }
               else if(tgtEng==='google'&&am!=='gemini-2.5-flash'){
                 const aiS=new GoogleGenAI({apiKey:gKey||apiKeys[0]});
                 const wr=await aiS.models.generateContent({model:"gemini-2.5-flash",contents:`Tìm thông tin: ${q}`,config:{tools:[{googleSearch:{}}],safetySettings:SAFETY}});
                 sText=wr.text; sName="GEMINI 2.5 GROUNDING";
               }
-              else { sText=await fetchTavilySearch(q); sName="TAVILY SEARCH"; }
               if(sText)fnP=`[DỮ LIỆU TÌM ĐƯỢC QUA ${sName}]:\n${sText}\n\n[YÊU CẦU]: ${fnP}`;
             }catch(e){showToast(e.message,'danger');}
           }
         }
 
-        // 🤖 4. GỌI STREAM MÔ HÌNH (DIFY, GROQ, HOẶC GOOGLE INTERACTIONS API)
+        // 🤖 4. NẠP VÀO MÔ HÌNH XỬ LÝ (DIFY, GROQ, HOẶC GEMINI INTERACTIONS)
         if(am.endsWith('-dify')||externalModels.includes(am)){
           const onCk=c=>{ 
             if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
             finalResp+=c; 
-            renderer.push(c);
+            renderer.push(finalResp);
           };
           const onErr=e=>showToast("Lỗi: "+e.message,'danger');
           if(am.endsWith('-dify')){ await callDifyStream(serializeHistoryForDify(DOM.toggleMemory?.checked?chatHistory.slice(-16):[],fnP),onCk,onErr,imgs); }
@@ -1131,108 +1174,59 @@
             try{
               const aiM=new GoogleGenAI({apiKey:gKey});
               let inp=imgs.length?[{type:'text',text:fnP},...(await Promise.all(imgs.map(fileToInteractionPart)))]:fnP;
-              
               if(mod==='gemini-2.5-flash'&&DOM.toggleSearch?.checked&&selEng==='google'){
                 const st=await aiM.models.generateContentStream({model:'gemini-2.5-flash',contents:inp,config:{tools:[{googleSearch:{}}],safetySettings:SAFETY}});
                 for await(const ck of st){ 
                   if(ck.text){ 
                     if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
                     finalResp+=ck.text; 
-                    renderer.push(ck.text);
+                    renderer.push(finalResp);
                   } 
                 }
                 await renderer.flush(finalResp); return true;
               }
-
               if(mod.startsWith('gemini-2.5')){
                 const st=await aiM.models.generateContentStream({model:mod,contents:inp,config:{systemInstruction:getDynamicSI(),safetySettings:SAFETY,temperature:+DOM.temp.value}});
                 for await(const ck of st){ 
                   if(ck.text){ 
                     if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
                     finalResp+=ck.text; 
-                    renderer.push(ck.text);
+                    renderer.push(finalResp);
                   } 
                 }
                 await renderer.flush(finalResp); return true;
               }
-
-              // 🚀 INTERACTIONS API ĐẦY ĐỦ VỚI BỘ BÓC TÁCH GÓI TIN ĐA TẦNG
-              const pyld={
-                model:mod,
-                input:inp,
-                system_instruction:getDynamicSI(),
-                generation_config:{thinking_level:DOM.thinking.value},
-                stream:true
-              };
-
-              if(DOM.toggleMemory?.checked&&cs?.lastInteractionId){
-                pyld.previous_interaction_id=cs.lastInteractionId;
+              const genCfg = {};
+              if(DOM.thinking?.value && DOM.thinking.value !== 'none'){
+                genCfg.thinking_level = DOM.thinking.value;
               }
-
-              let rSt;
-              try{
-                rSt=await aiM.interactions.create(pyld);
-              }catch(e){
-                if(pyld.previous_interaction_id){
-                  delete pyld.previous_interaction_id;
-                  if(cs)cs.lastInteractionId=null;
-                  rSt=await aiM.interactions.create(pyld);
-                }else throw e;
-              }
-
+              const pyld={model:mod,input:inp,system_instruction:getDynamicSI(),generation_config:genCfg,stream:true};
+              if(DOM.toggleMemory?.checked&&cs?.lastInteractionId)pyld.previous_interaction_id=cs.lastInteractionId;
+              let rSt; try{ rSt=await aiM.interactions.create(pyld); }catch(e){ if(pyld.previous_interaction_id){delete pyld.previous_interaction_id; rSt=await aiM.interactions.create(pyld);} else throw e; }
               for await(const ck of rSt){
-                let txt = "";
-                if(ck.event_type === "step.delta" && ck.delta?.text){
-                  txt = ck.delta.text;
-                } else if(ck.delta?.text){
-                  txt = ck.delta.text;
-                } else if(ck.outputs?.[0]?.text){
-                  txt = ck.outputs[0].text;
-                } else if(ck.text_delta){
-                  txt = ck.text_delta;
-                } else if(ck.text){
-                  txt = ck.text;
+                const txt=ck.delta?.text||ck.text||""; 
+                if(txt){ 
+                  if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
+                  finalResp+=txt; 
+                  renderer.push(finalResp);
                 }
-
-                if(txt){
-                  if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove();
-                  finalResp+=txt;
-                  renderer.push(txt); // Nạp từng chunk vào Typewriter Pump
-                }
-
-                if(ck.interaction_id || ck.interactionId || ck.id || (ck.interaction && ck.interaction.id)){
-                  capId = ck.interaction_id || ck.interactionId || ck.id || ck.interaction.id;
-                }
+                if(ck.interaction_id||ck.id)capId=ck.interaction_id||ck.id;
               }
-
               if(!finalResp.trim()&&rSt.output_text)finalResp=rSt.output_text;
-              await renderer.flush(finalResp);
-              return true;
+              await renderer.flush(finalResp); return true;
             }catch(e){ lastErr=e; return false; }
           }
-
           for(let mod of fChain){ finalResp=""; pS=await tryGoogle(mod); if(pS)break; }
           if(!pS){ bD.remove(); showToast(formatGoogleApiError(lastErr),'danger'); return; }
         }
 
-        chatHistory.push({role:'user',text:fP}); 
-        chatHistory.push({role:'model',text:finalResp,interactionId:capId,time:botTime});
-        if(cs){ 
-          cs.his=chatHistory; 
-          if(capId){
-            cs.lastInteractionId=capId;
-            const mi=document.getElementById('manual-interaction-id');
-            if(mi)mi.value=capId;
-          }
-          await saveToDB(cs); 
-          document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`; 
-        }
-        
+        chatHistory.push({role:'user',text:fP}); chatHistory.push({role:'model',text:finalResp,interactionId:capId,time:botTime});
+        if(cs){ cs.his=chatHistory; if(capId)cs.lastInteractionId=capId; await saveToDB(cs); document.getElementById('session-msg-count').innerText=`${chatHistory.length} tin`; }
         if(bD.querySelector('.bot-message')){
           bD.querySelector('.bot-message').setAttribute('data-raw',finalResp);
-          const idH = capId ? `<span class="interaction-id-badge" onclick="copyRawText('${capId}')">📋 ID: ${capId.substring(0,8)}...</span>` : '';
-          bD.querySelector('.message-header').innerHTML=`<span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span>${idH}`;
+          bD.querySelector('.message-header').innerHTML=`<span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span>`+(capId?`<span class="interaction-id-badge" onclick="copyRawText('${capId}')">📋 ID</span>`:'');
           
+          // 🛠️ CỤM NÚT THAO TÁC XUẤT HIỆN NGAY TỨC THÌ
           const botIdx = chatHistory.length - 1;
           const aDiv = document.createElement('div');
           aDiv.className = 'msg-actions';
