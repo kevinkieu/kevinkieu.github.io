@@ -361,7 +361,7 @@
     document.getElementById('btn-font-reset').onclick = () => applyFontSize(16);
     applyFontSize(currentFontSize);
 
-    // 🚀 BỘ ĐIỀU PHỐI ĐỒNG BỘ KHUNG HÌNH (REQUEST ANIMATION FRAME STREAM RENDERER)
+    // 🚀 BỘ ĐIỀU PHỐI STREAM THÔNG MINH (CHỐNG GIẬT MÀN HÌNH - GIỮ YÊN VỊ TRÍ ĐỌC TỪ ĐẦU)
     function createStreamRenderer(targetEl){
       let renderPending = false;
       let latestText = "";
@@ -372,16 +372,24 @@
           if(!renderPending){
             renderPending = true;
             requestAnimationFrame(() => {
+              // Kiểm tra xem người dùng có đang chủ động cuộn xuống đáy hay không
+              const isUserAtBottom = (DOM.chat.scrollHeight - DOM.chat.scrollTop - DOM.chat.clientHeight) < 60;
               targetEl.innerHTML = marked.parse(latestText);
-              DOM.chat.scrollTop = DOM.chat.scrollHeight;
+              // CHỈ cuộn nếu người dùng đã ở đáy; nếu đang đọc ở trên thì GIỮ NGUYÊN không giật màn hình
+              if(isUserAtBottom) {
+                DOM.chat.scrollTop = DOM.chat.scrollHeight;
+              }
               renderPending = false;
             });
           }
         },
         flush: async (finalText) => {
           renderPending = false;
+          const isUserAtBottom = (DOM.chat.scrollHeight - DOM.chat.scrollTop - DOM.chat.clientHeight) < 60;
           await renderMsgContent(targetEl, finalText);
-          DOM.chat.scrollTop = DOM.chat.scrollHeight;
+          if(isUserAtBottom) {
+            DOM.chat.scrollTop = DOM.chat.scrollHeight;
+          }
         }
       };
     }
@@ -601,7 +609,7 @@
         liveWs.onopen=()=>{
           const voice=document.getElementById('live-voice-select')?.value||'Charon', temp=parseFloat(document.getElementById('live-temperature')?.value||0.7);
           const enableSearch=document.getElementById('live-toggle-search')?.checked!==false;
-          const setupMsg={setup:{model:"models/gemini-3.1-flash-live-preview",generationConfig:{responseModalities:["AUDIO"],temperature:temp,speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voice}}}},systemInstruction:{parts:[{text:getLiveCallSI()}]}}};
+          const setupMsg={setup:{model:"models/gemini-3.8-live",generationConfig:{responseModalities:["AUDIO"],temperature:temp,speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voice}}}},systemInstruction:{parts:[{text:getLiveCallSI()}]}}};
           
           if(enableSearch){
             setupMsg.setup.tools=[
@@ -906,7 +914,7 @@
       }
 
       try{
-        const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:'POST',headers:{'Authorization':`Bearer ${k}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:'POST',headers:{'Authorization':`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
         if(!res.ok)throw new Error(`Groq HTTP ${res.status}`);
         const r=res.body.getReader(), dec=new TextDecoder(); let buf="", inThk=false;
         while(true){
@@ -1104,9 +1112,13 @@
 
         const bD=document.createElement('div'); bD.className='message-container';
         bD.innerHTML=`<div class="bot-message"><div class="message-header"><span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span><span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`;
-        DOM.chat.appendChild(bD); bD.scrollIntoView({behavior:'smooth',block:'start'}); const cD=bD.querySelector('.msg-content');
+        DOM.chat.appendChild(bD); 
+        
+        // 🎯 GHIM ÊM ÁI VÀO ĐẦU TIN NHẮN CỦA BOT ĐỂ BẠN ĐỌC TỪ DÒNG ĐẦU TIÊN
+        bD.scrollIntoView({behavior:'smooth',block:'start'}); 
+        const cD=bD.querySelector('.msg-content');
 
-        // 🚀 KHỞI TẠO BỘ RENDER 60 FPS CHO KHUNG CHAT
+        // 🚀 KHỞI TẠO BỘ RENDER STREAM CHỐNG GIẬT MÀN HÌNH
         const renderer = createStreamRenderer(cD);
         let fnP=fP;
 
