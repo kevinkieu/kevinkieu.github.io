@@ -254,7 +254,7 @@
           </div>
         </fieldset>
 
-        <fieldset class="settings-group"><legend>🚀 Tham số AI</legend>
+        <fieldset class="settings-group"><legend>🚀 Tham số AI (Dành cho Gemini 2.5)</legend>
           <div class="slider-row"><label>Temperature (<span id="temp-val">0.5</span>):</label><input type="range" id="temperature" min="0" max="2" step="0.1" value="0.5"></div>
           <div class="slider-row" style="margin-top:6px;"><label>TopP (<span id="topp-val">0.9</span>):</label><input type="range" id="top-p" min="0" max="1" step="0.1" value="0.9"></div>
           <div style="margin-top:6px;"><label style="font-size:.8rem;">TopK: <input type="number" id="top-k" min="1" max="100" value="40" class="modern-input" style="width:65px;display:inline-block;"></label></div>
@@ -311,7 +311,7 @@
             <div><label class="field-label">Dify Key - GPT-5.5:</label><input type="password" id="dify-key-gpt" class="modern-input"></div>
             <div><label class="field-label">Dify Key - Claude 4 Opus:</label><input type="password" id="dify-key-opus" class="modern-input"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-              <div><label class="field-label">Dify Endpoint:</label><input type="text" id="dify-endpoint-input" value="https://api.dify.ai/v1" class="modern-input"></div>
+              <div><label class="field-label">Dify Endpoint:</label><input type="text" id="dify-endpoint-input" value="[https://api.dify.ai/v1](https://api.dify.ai/v1)" class="modern-input"></div>
               <div><label class="field-label">Variable Key:</label><input type="text" id="dify-var-input" value="query" class="modern-input"></div>
             </div>
             <div style="margin-top:4px;"><label class="field-label">Groq API Key:</label><input type="password" id="groq-key-input" class="modern-input"></div>
@@ -328,7 +328,7 @@
   </div>
   <div id="toast" class="toast"></div><button id="scroll-to-top" title="Lên đầu">▲</button>
 
-  <script type="importmap">{ "imports": { "@google/genai": "https://esm.run/@google/genai" } }</script>
+  <script type="importmap">{ "imports": { "@google/genai": "[https://esm.run/@google/genai](https://esm.run/@google/genai)" } }</script>
   <script type="module">
     import { GoogleGenAI } from "@google/genai";
     marked.use({ breaks: true }); mermaid.initialize({ startOnLoad: false, theme: 'default' });
@@ -398,7 +398,7 @@
     async function fetchJinaSearch(q){
       const k=localStorage.getItem('jina_api_key')||'', h={"Accept":"application/json"};
       if(k)h["Authorization"]=`Bearer ${k}`;
-      const r=await fetch(`https://s.jina.ai/${encodeURIComponent(q)}`,{headers:h});
+      const r=await fetch(`[https://s.jina.ai/$](https://s.jina.ai/$){encodeURIComponent(q)}`,{headers:h});
       if(!r.ok)throw new Error(`Jina Search HTTP ${r.status}`);
       const d=await r.json(), res=[];
       if(d.data&&d.data.length){ d.data.slice(0,5).forEach(x=>res.push(`- **${x.title||'Tin'}**\n  *Nội dung*: ${(x.content||x.description||'').substring(0,800)}\n  *Nguồn*: ${x.url}`)); }
@@ -406,7 +406,7 @@
     }
     async function fetchTavilySearch(q){
       const k=localStorage.getItem('tavily_api_key')||''; if(!k)throw new Error("Chưa có Tavily Key!");
-      const r=await fetch("https://api.tavily.com/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({api_key:k,query:q,max_results:5,include_answer:true})});
+      const r=await fetch("[https://api.tavily.com/search](https://api.tavily.com/search)",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({api_key:k,query:q,max_results:5,include_answer:true})});
       if(!r.ok)throw new Error(`Tavily HTTP ${r.status}`);
       const d=await r.json(), res=[];
       if(d.answer)res.push(`💡 **Tóm tắt**: ${d.answer}`);
@@ -415,7 +415,7 @@
     }
     async function fetchSerperSearch(q){
       const k=localStorage.getItem('serper_api_key')||''; if(!k)throw new Error("Chưa có Serper Key!");
-      const r=await fetch("https://google.serper.dev/search",{method:"POST",headers:{"X-API-KEY":k,"Content-Type":"application/json"},body:JSON.stringify({q,gl:"vn",hl:"vi",num:5})});
+      const r=await fetch("[https://google.serper.dev/search](https://google.serper.dev/search)",{method:"POST",headers:{"X-API-KEY":k,"Content-Type":"application/json"},body:JSON.stringify({q,gl:"vn",hl:"vi",num:5})});
       if(!r.ok)throw new Error(`Serper HTTP ${r.status}`);
       const d=await r.json(), res=[];
       if(d.answerBox?.snippet)res.push(`💡 **Google**: ${d.answerBox.snippet}`);
@@ -424,7 +424,7 @@
     }
     async function fetchBraveSearch(q){
       const k=localStorage.getItem('brave_api_key')||''; if(!k)throw new Error("Chưa có Brave Key!");
-      const w=localStorage.getItem('brave_worker_url')||'', ep=w?`${w.replace(/\/+$/,'')}?q=${encodeURIComponent(q)}&count=5`:`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(q)}&count=5`;
+      const w=localStorage.getItem('brave_worker_url')||'', ep=w?`${w.replace(/\/+$/,'')}?q=${encodeURIComponent(q)}&count=5`:`[https://api.search.brave.com/res/v1/web/search?q=$](https://api.search.brave.com/res/v1/web/search?q=$){encodeURIComponent(q)}&count=5`;
       const r=await fetch(ep,{headers:{"Accept":"application/json","X-Subscription-Token":k}});
       if(!r.ok)throw new Error(`Brave HTTP ${r.status}`);
       const d=await r.json(), res=[];
@@ -439,7 +439,7 @@
 
       const tryJina=async()=>{
         const h={"Accept":"text/plain"}; if(jk)h["Authorization"]=`Bearer ${jk}`;
-        const r=await fetch(`https://r.jina.ai/${url}`,{headers:h});
+        const r=await fetch(`[https://r.jina.ai/$](https://r.jina.ai/$){url}`,{headers:h});
         if(!r.ok)throw new Error(`Jina Reader HTTP ${r.status}`);
         const t=await r.text();
         if(isBlocked(t))throw new Error("Jina bị chặn hoặc rỗng");
@@ -447,7 +447,7 @@
       };
       const tryTavily=async()=>{
         if(!tk)throw new Error("Chưa có Tavily Key!");
-        const r=await fetch("https://api.tavily.com/extract",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({api_key:tk,urls:[url]})});
+        const r=await fetch("[https://api.tavily.com/extract](https://api.tavily.com/extract)",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({api_key:tk,urls:[url]})});
         if(!r.ok)throw new Error(`Tavily Extract HTTP ${r.status}`);
         const d=await r.json();
         const t=d.results?.[0]?.raw_content;
@@ -455,7 +455,7 @@
         throw new Error("Tavily Extract rỗng hoặc bị chặn!");
       };
       const tryProxy=async()=>{
-        const r=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`), d=await r.json();
+        const r=await fetch(`[https://api.allorigins.win/get?url=$](https://api.allorigins.win/get?url=$){encodeURIComponent(url)}`), d=await r.json();
         const doc=new DOMParser().parseFromString(d.contents,"text/html"), t=doc.body.innerText.replace(/\s+/g,' ').trim();
         if(isBlocked(t))throw new Error("Proxy rỗng!");
         return {source:"Web Proxy",content:t.substring(0,30000)};
@@ -568,7 +568,7 @@
       try{
         const AC=window.AudioContext||window.webkitAudioContext; liveAudioCtx=new AC({sampleRate:16000}); if(liveAudioCtx.state==='suspended')await liveAudioCtx.resume();
         liveMediaStream=await navigator.mediaDevices.getUserMedia({audio:{sampleRate:16000,channelCount:1,echoCancellation:true,noiseSuppression:true}});
-        liveWs=new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`);
+        liveWs=new WebSocket(`wss://[generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=$](https://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=$){key}`);
 
         liveWs.onopen=()=>{
           const voice=document.getElementById('live-voice-select')?.value||'Charon', temp=parseFloat(document.getElementById('live-temperature')?.value||0.7);
@@ -753,7 +753,7 @@
     ];
 
     function initExternalConfigs(){
-      cfgMap.forEach(([id,k])=>{ const el=document.getElementById(id); if(el)el.value=localStorage.getItem(k)||(id==='dify-endpoint-input'?'https://api.dify.ai/v1':id==='dify-var-input'?'query':id==='auto-search-engine-input'?'jina':id==='web-extract-engine-input'?'auto':id==='live-temperature'?'0.7':''); });
+      cfgMap.forEach(([id,k])=>{ const el=document.getElementById(id); if(el)el.value=localStorage.getItem(k)||(id==='dify-endpoint-input'?'[https://api.dify.ai/v1':id==='dify-var-input'?'query':id==='auto-search-engine-input'?'jina':id==='web-extract-engine-input'?'auto':id==='live-temperature'?'0.7](https://api.dify.ai/v1':id==='dify-var-input'?'query':id==='auto-search-engine-input'?'jina':id==='web-extract-engine-input'?'auto':id==='live-temperature'?'0.7)':''); });
       const ltv=document.getElementById('live-temp-val'); if(ltv)ltv.innerText=localStorage.getItem('live_temperature')||'0.7';
       const lts=document.getElementById('live-toggle-search'); if(lts)lts.checked=localStorage.getItem('live_search_enabled')!=='false';
       const ltc=document.getElementById('live-toggle-context'); if(ltc)ltc.checked=localStorage.getItem('live_context_enabled')!=='false';
@@ -773,7 +773,7 @@
       let ok=0, tot=0;
       for(let i=1;i<=10;i++){
         const el=document.getElementById(`api-key-${i}`), k=el?.value.trim(); if(!k)continue; tot++;
-        try{ const ai=new GoogleGenAI({apiKey:k}); await ai.models.generateContent({model:"gemini-3.1-flash-lite",contents:"p",config:{maxOutputTokens:1}}); el.style.border="2px solid green"; ok++; }
+        try{ const ai=new GoogleGenAI({apiKey:k}); await ai.models.generateContent({model:"gemini-3.5-flash-lite",contents:"p",config:{maxOutputTokens:1,thinkingConfig:{thinkingLevel:"minimal"}}}); el.style.border="2px solid green"; ok++; }
         catch(e){ el.style.border="2px solid red"; }
       }
       b.innerText="🔍 Kiểm tra"; showToast(`Hoạt động: ${ok}/${tot} Keys`);
@@ -808,7 +808,7 @@
       const prev=t.value; let opts=[];
       if(m==='gemini-3.8-flash'||m==='openai/gpt-oss-120b'){
         opts=[{val:'low',label:'Low (Thấp)'},{val:'medium',label:'Med (Chuẩn)'},{val:'high',label:'High (Sâu)'}];
-      } else if(m==='gemini-3.5-flash-lite'||m==='gemini-3.6-flash'||m==='gemini-3.1-flash-lite'){
+      } else if(m==='gemini-3.5-flash-lite'||m==='gemini-3.6-flash'||m==='gemini-3.1-flash-lite'||m==='gemini-2.5-flash'){
         opts=[{val:'minimal',label:'Min (Tối thiểu)'},{val:'low',label:'Low (Thấp)'},{val:'medium',label:'Med (Chuẩn)'},{val:'high',label:'High (Sâu)'}];
       } else {
         opts=[{val:'none',label:'Không áp dụng'}];
@@ -844,11 +844,20 @@
       msgs.push({role:"user",content:p}); return msgs;
     }
 
+    function serializeHistoryForDify(his, p){
+      const si = getDynamicSI();
+      let out = si ? `${si}\n\n` : "";
+      if(his && his.length){
+        out += "[LỊCH SỬ TRÒ CHUYỆN]:\n" + his.map(m => `${m.role==='model'?'Assistant':'User'}: ${m.text}`).join('\n') + "\n\n";
+      }
+      return out + `[YÊU CẦU HIỆN TẠI]:\n${p}`;
+    }
+
     // --- CÁC HÀM GỌI STREAM MÔ HÌNH DIFY & GROQ ---
     async function callDifyStream(p,onCk,onErr,files=[]){
       const m=DOM.model?.value||'', kMap={'gemini-3.5-flash-dify':'dify_key_gemini','gemini-3.1-flash-lite-dify':'dify_key_lite','gemini-3.1-pro-dify':'dify_key_pro','gpt-5.5-dify':'dify_key_gpt','opus-4-dify':'dify_key_opus'};
       const key=localStorage.getItem(kMap[m]||'')||''; if(!key)return onErr(new Error("Chưa nhập Key Dify!"));
-      const ep=(localStorage.getItem('dify_api_endpoint')||'https://api.dify.ai/v1').replace(/\/+$/,''), vk=localStorage.getItem('dify_var_key')||'query';
+      const ep=(localStorage.getItem('dify_api_endpoint')||'[https://api.dify.ai/v1').replace(/](https://api.dify.ai/v1').replace(/)\/+$/,''), vk=localStorage.getItem('dify_var_key')||'query';
       try{
         const inputs={}; inputs[vk]=p;
         const res=await fetch(`${ep}/completion-messages`,{method:'POST',headers:{'Authorization':`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({inputs,response_mode:"streaming",user:"u_"+Date.now()})});
@@ -863,7 +872,7 @@
     }
 
     async function callGroqStream(p,onCk,onErr){
-      const k=localStorage.getItem('groq_api_key')||''; if(!k)return onErr(new Error("Chưa có Groq Key!"));
+      const key=localStorage.getItem('groq_api_key')||''; if(!key)return onErr(new Error("Chưa có Groq Key!"));
       const m=DOM.model?.value==='openai/gpt-oss-120b'?"openai/gpt-oss-120b":"groq/compound";
       const payload={model:m,messages:buildStructuredMessages(p),stream:true,max_tokens:4096};
       
@@ -873,7 +882,7 @@
       }
 
       try{
-        const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:'POST',headers:{'Authorization':`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const res=await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)",{method:'POST',headers:{'Authorization':`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
         if(!res.ok)throw new Error(`Groq HTTP ${res.status}`);
         const r=res.body.getReader(), dec=new TextDecoder(); let buf="", inThk=false;
         while(true){
@@ -1079,8 +1088,8 @@
         const renderer = createStreamRenderer(cD);
         let fnP=fP;
 
-        // 🚀 1. CHỈ BÓC TÁCH KHI BẠN GÕ TRỰC TIẾP LINK URL VÀO PROMPT
-        const urlMatches=Array.from(fnP.matchAll(/(https?:\/\/[^\s]+)/g)).map(x=>x[0]);
+        // 🚀 1. CHỈ BÓC TÁCH KHI BẠN GÕ TRỰC TIẾP LINK URL VÀO Ô NHẬP LIỆU (msg)
+        const urlMatches=Array.from(msg.matchAll(/(https?:\/\/[^\s]+)/g)).map(x=>x[0]);
         if(urlMatches.length){
           const targetUrl=urlMatches[0];
           if(!targetUrl.includes("youtube.com")&&!targetUrl.includes("youtu.be")){
@@ -1094,7 +1103,7 @@
         }
 
         // 🔍 2. CHỈ TÌM KIẾM WEB KHI CÂU HỎI CỦA BẠN CHỨA DẤU NGOẶC KÉP "..." (TRÁNH CÀO BỪA BÃI LÀM DELAY)
-        const quotedQuery = extractQuotedKeywords(fnP);
+        const quotedQuery = extractQuotedKeywords(msg);
         if(quotedQuery && DOM.toggleSearch?.checked){
           const selEng=DOM.searchEngineSel?.value||'jina';
           const tgtEng=selEng==='auto'?(localStorage.getItem('auto_search_default_engine')||'jina'):selEng;
@@ -1116,8 +1125,15 @@
 
         // 🤖 3. NẠP VÀO MÔ HÌNH XỬ LÝ (DIFY, GROQ, HOẶC DIRECT GEMINI STREAM GENERATION)
         if(am.endsWith('-dify')||externalModels.includes(am)){
+          const t0 = performance.now();
+          let firstCk = true;
           const onCk=c=>{ 
-            if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
+            if(firstCk){
+              firstCk = false;
+              const latEl = document.getElementById('latency-val');
+              if(latEl) latEl.innerText = Math.round(performance.now() - t0);
+              if(bD.querySelector('.streaming-indicator'))bD.querySelector('.streaming-indicator').remove(); 
+            }
             finalResp+=c; 
             renderer.push(finalResp);
           };
@@ -1130,6 +1146,9 @@
           
           async function tryGoogle(mod){
             try{
+              if(bD.querySelector('.streaming-indicator')){
+                bD.querySelector('.streaming-indicator').innerText = `⚡ Đang kết nối ${mod}...`;
+              }
               const aiM=new GoogleGenAI({apiKey:gKey});
               
               // 🧠 CƠ CHẾ CỬA SỔ TRƯỢT (SLIDING WINDOW): LẤY 16 TIN NHẮN GẦN NHẤT ĐỂ STREAM SIÊU TỐC VÀ NHỚ DAI
@@ -1148,26 +1167,36 @@
               const currentTurnParts = [{ text: fnP }];
               if(imgs.length > 0){
                 for(let f of imgs){
-                  currentTurnParts.push(await fileToInteractionPart(f));
+                  currentTurnParts.push(await fileToGenerativePart(f));
                 }
               }
               contentsPayload.push({ role: 'user', parts: currentTurnParts });
 
+              const isGemini3 = mod.startsWith('gemini-3');
               const genConfig = {
                 systemInstruction: getDynamicSI(),
-                safetySettings: SAFETY,
-                temperature: +DOM.temp.value,
-                topP: +DOM.topP.value,
-                topK: +DOM.topK.value
+                safetySettings: SAFETY
               };
 
-              // Cấu hình độ sâu suy nghĩ (Thinking Config)
+              // Chỉ gắn temperature, topP, topK cho dòng 2.5 (dòng Gemini 3.x đã loại bỏ các tham số này)
+              if(!isGemini3){
+                genConfig.temperature = +DOM.temp.value;
+                genConfig.topP = +DOM.topP.value;
+                genConfig.topK = +DOM.topK.value;
+              }
+
+              // Cấu hình độ sâu suy nghĩ chuẩn theo từng thế hệ Model (Gemini 3.x dùng thinkingLevel, 2.5 dùng thinkingBudget)
               const thk = DOM.thinking?.value;
               if(thk && thk !== 'none'){
-                if(thk === 'minimal') genConfig.thinkingConfig = { thinkingBudget: 0 };
-                else if(thk === 'low') genConfig.thinkingConfig = { thinkingBudget: 1024 };
-                else if(thk === 'medium') genConfig.thinkingConfig = { thinkingBudget: 4096 };
-                else if(thk === 'high') genConfig.thinkingConfig = { thinkingBudget: 8192 };
+                if(isGemini3){
+                  const safeLevel = (mod === 'gemini-3.8-flash' && thk === 'minimal') ? 'low' : thk;
+                  genConfig.thinkingConfig = { thinkingLevel: safeLevel };
+                } else {
+                  if(thk === 'minimal') genConfig.thinkingConfig = { thinkingBudget: 0 };
+                  else if(thk === 'low') genConfig.thinkingConfig = { thinkingBudget: 1024 };
+                  else if(thk === 'medium') genConfig.thinkingConfig = { thinkingBudget: 4096 };
+                  else if(thk === 'high') genConfig.thinkingConfig = { thinkingBudget: 8192 };
+                }
               }
 
               // Google Grounding 1-Req nếu dùng Gemini 2.5 Flash
@@ -1175,7 +1204,10 @@
                 genConfig.tools = [{ googleSearch: {} }];
               }
 
-              // ⚡ STREAM TRỰC TIẾP: NHẢ CHỮ NGAY SAU 0.2 GIÂY
+              const t0 = performance.now();
+              let firstChunk = true;
+
+              // ⚡ STREAM TRỰC TIẾP: NHẢ CHỮ NGAY SAU 0.3 GIÂY
               const resStream = await aiM.models.generateContentStream({
                 model: mod,
                 contents: contentsPayload,
@@ -1185,7 +1217,12 @@
               for await (const ck of resStream){
                 const txt = ck.text || "";
                 if(txt){
-                  if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                  if(firstChunk){
+                    firstChunk = false;
+                    const latEl = document.getElementById('latency-val');
+                    if(latEl) latEl.innerText = Math.round(performance.now() - t0);
+                    if(bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').remove();
+                  }
                   finalResp += txt;
                   renderer.push(finalResp);
                 }
@@ -1193,7 +1230,11 @@
 
               await renderer.flush(finalResp); 
               return true;
-            }catch(e){ lastErr=e; return false; }
+            }catch(e){
+              console.warn(`[Fallback] Model ${mod} gặp lỗi:`, e.message);
+              lastErr=e;
+              return false;
+            }
           }
 
           for(let mod of fChain){ finalResp=""; pS=await tryGoogle(mod); if(pS)break; }
@@ -1235,7 +1276,7 @@
 
     function renderFiles(){ DOM.previewGrid.innerHTML=''; DOM.previewBox.style.display=(filesData.length||txtContent)?'block':'none'; DOM.fileCount.innerText=filesData.length+(txtContent?1:0); filesData.forEach((f,i)=>{ DOM.previewGrid.innerHTML+=`<div style="position:relative;width:45px;height:45px;background:#333;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;">${f.type.startsWith('image')?`<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`:'FILE'}<button onclick="rmImg(${i})" style="position:absolute;top:-4px;right:-4px;background:red;color:white;border:none;border-radius:50%;width:16px;height:16px;cursor:pointer;">×</button></div>`; }); }
     window.rmImg=i=>{filesData.splice(i,1);renderFiles();updateTokenCount();}; DOM.clearFilesBtn.onclick=()=>{filesData=[];txtContent="";DOM.textFileList.innerHTML="";renderFiles();updateTokenCount();};
-    async function fileToInteractionPart(f){ return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>r({type:f.type.startsWith('image')?'image':'document',mime_type:f.type,data:rd.result.split(',')[1]}); rd.readAsDataURL(f);}); }
+    async function fileToGenerativePart(f){ return new Promise(r=>{const rd=new FileReader(); rd.onloadend=()=>r({inlineData:{mimeType:f.type,data:rd.result.split(',')[1]}}); rd.readAsDataURL(f);}); }
 
     window.exportChatDoc=()=>{ let h=`<html><body><h2>${sessions.find(s=>s.id===activeId)?.name||'Chat'}</h2>`; chatHistory.forEach(m=>{h+=`<p><b>${m.role==='user'?'Bạn':'Javiss'}:</b><br>${m.role==='model'?marked.parse(m.text):m.text}</p><hr>`;}); h+="</body></html>"; saveOrShareBlob(new Blob(['\ufeff',h],{type:'application/msword'}),`Chat_${Date.now()}.doc`); };
     window.exportChatPDF=()=>{ const e=document.createElement('div'); e.innerHTML=chatHistory.map(m=>`<div style="margin:10px 0;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br>${m.role==='model'?marked.parse(m.text):m.text}</div><hr>`).join(''); html2pdf().from(e).outputPdf('blob').then(b=>saveOrShareBlob(b,`Chat_${Date.now()}.pdf`)); };
