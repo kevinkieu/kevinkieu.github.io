@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gemini TTS Studio Pro - Standalone</title>
+  <style>
+    :root {
+      --bg-main: #f0f4f9;
+      --bg-card: #ffffff;
+      --border: #c4c7c5;
+      --text-main: #1f1f1f;
+      --text-muted: #444746;
+      --primary: #0b57d0;
+      --primary-container: #d3e3fd;
+      --danger: #b3261e;
+      --input-bg: #f0f4f9;
+      --shadow: 0 4px 16px rgba(0,0,0,0.06);
+      --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    [data-theme="dark"] {
+      --bg-main: #131314;
+      --bg-card: #282a2c;
+      --border: #444746;
+      --text-main: #e3e3e3;
+      --text-muted: #c4c7c5;
+      --primary: #a8c7fa;
+      --primary-container: #004a77;
+      --danger: #f2b8b5;
+      --input-bg: #1e1f20;
+      --shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+    body {
+      background: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 16px;
+      transition: var(--transition);
+    }
+    .container {
+      width: 100%;
+      max-width: 800px;
+      background: var(--bg-card);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      height: fit-content;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-area h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .studio-group {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      background: rgba(0,0,0,0.01);
+    }
+    .studio-group legend {
+      font-weight: 600;
+      padding: 0 8px;
+      color: var(--primary);
+      font-size: 0.9rem;
+    }
+    .api-keys-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .input-key-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .input-key-wrapper label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .modern-input, .modern-select, .modern-textarea {
+      width: 100%;
+      background: var(--input-bg);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      outline: none;
+      font-size: 0.9rem;
+      transition: var(--transition);
+    }
+    .modern-input:focus, .modern-select:focus, .modern-textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-container);
+    }
+    .btn {
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-main);
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: var(--transition);
+    }
+    .btn:hover {
+      background: var(--input-bg);
+    }
+    .btn.primary {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+    }
+    .btn.primary:hover {
+      opacity: 0.9;
+    }
+    .btn.danger {
+      color: var(--danger);
+      border-color: var(--danger);
+    }
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .field-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field-block label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .preset-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    #tts-char-counter {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    #tts-player-box {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      background: var(--primary-container);
+      color: var(--text-main);
+      border-radius: 12px;
+      border: 1px solid var(--primary);
+    }
+    .player-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .player-controls audio {
+      flex: 1;
+      min-width: 200px;
+    }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #323232;
+      color: #ffffff;
+      padding: 12px 20px;
+      border-radius: 24px;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: var(--transition);
+      font-size: 0.85rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .toast.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .toast.danger {
+      background: #c62828;
+    }
+    .toast.success {
+      background: #2e7d32;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="logo-area">
+        <span style="font-size: 1.5rem;">🎙️</span>
+        <h1>Gemini TTS Studio Pro</h1>
+      </div>
+      <button id="btn-theme" class="btn" style="min-width: 100px;">🌙 Tự động</button>
+    </header>
+
+    <!-- Block 5 API Keys -->
+    <fieldset class="studio-group">
+      <legend>🔑 Cấu hình 5 Google API Keys</legend>
+      <div class="api-keys-grid">
+        <div class="input-key-wrapper">
+          <label>API Key 1:</label>
+          <input type="password" id="api-key-1" placeholder="Nhập Key 1..." class="modern-input">
+        </div>
+        <div class="input-key-wrapper">
+          <label>API Key 2:</label>
+          <input type="password" id="api-key-2" placeholder="Nhập Key 2..." class="modern-input">
+        </div>
+        <div class="input-key-wrapper">
+          <label>API Key 3:</label>
+          <input type="password" id="api-key-3" placeholder="Nhập Key 3..." class="modern-input">
+        </div>
+        <div class="input-key-wrapper">
+          <label>API Key 4:</label>
+          <input type="password" id="api-key-4" placeholder="Nhập Key 4..." class="modern-input">
+        </div>
+        <div class="input-key-wrapper">
+          <label>API Key 5:</label>
+          <input type="password" id="api-key-5" placeholder="Nhập Key 5..." class="modern-input">
+        </div>
+      </div>
+     
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <label style="font-size: 0.85rem; font-weight: 600;" for="key-mode-select">Chế độ Key:</label>
+          <select id="key-mode-select" class="modern-select" style="width: auto; padding: 6px 12px; height: 36px;">
+            <option value="auto">🔄 Tự động xoay tua (1-5)</option>
+            <option value="1">🔑 Cố định Key 1</option>
+            <option value="2">🔑 Cố định Key 2</option>
+            <option value="3">🔑 Cố định Key 3</option>
+            <option value="4">🔑 Cố định Key 4</option>
+            <option value="5">🔑 Cố định Key 5</option>
+          </select>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button id="btn-save-keys" class="btn primary" style="padding: 8px 12px;">💾 Lưu Keys</button>
+          <button id="btn-check-keys" class="btn" style="padding: 8px 12px;">🔍 Check Keys</button>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Cấu hình giọng đọc -->
+    <fieldset class="studio-group">
+      <legend>⚙️ Cấu hình giọng đọc & Phong cách</legend>
+      <div class="config-grid">
+        <div class="field-block">
+          <label>Ngôn ngữ:</label>
+          <select id="tts-lang-select" class="modern-select">
+            <option value="vi" selected>🇻🇳 Tiếng Việt (Vietnamese)</option>
+            <option value="en">🇬🇧/🇺🇸 Tiếng Anh (English)</option>
+            <option value="ja">🇯🇵 Tiếng Nhật (Japanese)</option>
+            <option value="ko">🇰🇷 Tiếng Hàn (Korean)</option>
+            <option value="zh">🇨🇳 Tiếng Trung (Mandarin)</option>
+            <option value="fr">🇫🇷 Tiếng Pháp (French)</option>
+            <option value="de">🇩🇪 Tiếng Đức (German)</option>
+            <option value="es">🇪🇸 Tiếng Tây Ban Nha (Spanish)</option>
+            <option value="th">🇹🇭 Tiếng Thái (Thai)</option>
+            <option value="ru">🇷🇺 Tiếng Nga (Russian)</option>
+          </select>
+        </div>
+
+        <div class="field-block">
+          <label>Vùng miền / Chất giọng:</label>
+          <select id="tts-dialect-select" class="modern-select"></select>
+        </div>
+
+        <div class="field-block">
+          <label>Giọng đọc AI (Giọng chuẩn Google):</label>
+          <select id="tts-voice-select" class="modern-select">
+            <optgroup label="👨 Giọng Nam (Male)">
+              <option value="Charon" selected>Charon (Nam trầm phát thanh viên)</option>
+              <option value="Puck">Puck (Nam tươi vui, hoạt bát)</option>
+              <option value="Fenrir">Fenrir (Nam dứt khoát, sôi nổi)</option>
+              <option value="Enceladus">Enceladus (Nam mộc mạc, trầm ấm)</option>
+              <option value="Alnilam">Alnilam (Nam vững chãi, đĩnh đạc)</option>
+              <option value="Rasalgethi">Rasalgethi (Nam truyền cảm)</option>
+              <option value="Iapetus">Iapetus (Nam dày dặn, nội lực)</option>
+              <option value="Algieba">Algieba (Nam tự tin)</option>
+              <option value="Algenib">Algenib (Nam điềm đạm, ấm áp)</option>
+              <option value="Orus">Orus (Nam trẻ trung, hiện đại)</option>
+              <option value="Schedar">Schedar (Nam chững chạc, uy lực)</option>
+            </optgroup>
+            <optgroup label="👩 Giọng Nữ (Female)">
+              <option value="Aoede">Aoede (Nữ truyền cảm, tự nhiên)</option>
+              <option value="Kore">Kore (Nữ trầm ấm, dịu dàng)</option>
+              <option value="Leda">Leda (Nữ trẻ trung, tươi sáng)</option>
+              <option value="Zephyr">Zephyr (Nữ nhẹ nhàng, êm dịu)</option>
+              <option value="Autonoe">Autonoe (Nữ tươi vui, rạng rỡ)</option>
+              <option value="Callirrhoe">Callirrhoe (Nữ thư thái)</option>
+              <option value="Despina">Despina (Nữ mượt mà, thanh lịch)</option>
+              <option value="Galatea">Galatea (Nữ tinh tế, rõ ràng)</option>
+              <option value="Thalassa">Thalassa (Nữ trong trẻo, sinh động)</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <div class="field-block">
+          <label>Phong cách đọc (Đủ 15 kiểu):</label>
+          <select id="tts-style-select" class="modern-select">
+            <option value="Truyền cảm, ấm áp" selected>🎙️ Truyền cảm, ấm áp</option>
+            <option value="Bản tin, chuyên nghiệp">📰 Bản tin, chuyên nghiệp</option>
+            <option value="Kể chuyện, chậm rãi">📖 Kể chuyện, chậm rãi</option>
+            <option value="Vui vẻ, năng động">✨ Vui vẻ, năng động</option>
+            <option value="Thân thiện, tâm tình">📻 Thân thiện, tâm tình (Radio)</option>
+            <option value="Trang trọng, nghiêm túc">🏢 Trang trọng, nghiêm túc</option>
+            <option value="Hào hùng, truyền lửa">🔥 Hào hùng, truyền lửa</option>
+            <option value="Ngọt ngào, dỗ dành">🍬 Ngọt ngào, dỗ dành</option>
+            <option value="Hài hước, dí dỏm">😂 Hài hước, dí dỏm</option>
+            <option value="Gấp gáp, khẩn trương">⚡ Gấp gáp, khẩn trương</option>
+            <option value="Thì thầm, bí ẩn">🤫 Thì thầm, bí ẩn (ASMR)</option>
+            <option value="Lạnh lùng, xa cách">❄️ Lạnh lùng, xa cách</option>
+            <option value="Buồn bã, đồng cảm">💔 Buồn bã, đồng cảm</option>
+            <option value="Giận dữ, nghiêm khắc">😡 Giận dữ, nghiêm khắc</option>
+            <option value="Sợ hãi, hồi hộp">👻 Sợ hãi, hồi hộp (Kinh dị)</option>
+          </select>
+        </div>
+
+        <div class="field-block">
+          <label>Tốc độ đọc:</label>
+          <select id="tts-speed-select" class="modern-select">
+            <option value="rất chậm rãi">0.8x - Rất chậm</option>
+            <option value="hơi chậm">0.9x - Hơi chậm</option>
+            <option value="vừa phải, tự nhiên" selected>1.0x - Chuẩn tự nhiên</option>
+            <option value="hơi nhanh, hoạt bát">1.15x - Nhanh, hoạt bát</option>
+            <option value="nhanh, dồn dập">1.3x - Rất nhanh</option>
+          </select>
+        </div>
+
+        <div class="field-block">
+          <label>Đối tượng người nghe:</label>
+          <input type="text" id="tts-audience-input" placeholder="VD: Khách hàng, học sinh..." value="Khán giả đại chúng" class="modern-input">
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Nhập văn bản -->
+    <div class="field-block">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <label style="font-weight: 600;">Văn bản cần chuyển sang giọng nói:</label>
+        <span id="tts-char-counter">0 ký tự</span>
+      </div>
+      <textarea id="tts-studio-text" rows="5" class="modern-textarea" placeholder="Nhập nội dung cần đọc tại đây..."></textarea>
+     
+      <div class="preset-row">
+        <button class="btn" onclick="applyTtsPreset('news')">Mẫu Bản tin</button>
+        <button class="btn" onclick="applyTtsPreset('story')">Mẫu Kể chuyện</button>
+        <button class="btn" onclick="applyTtsPreset('ads')">Mẫu Quảng cáo</button>
+        <button class="btn danger" onclick="document.getElementById('tts-studio-text').value=''; document.getElementById('tts-char-counter').innerText='0 ký tự';">Xóa toàn bộ</button>
+      </div>
+    </div>
+
+    <!-- Nút thực thi chính -->
+    <button id="btn-tts-generate" class="btn primary" style="width: 100%; padding: 14px; font-size: 1rem;">
+      🔊 Bắt đầu Tạo Giọng Đọc (Generate Audio)
+    </button>
+
+    <!-- Kết quả đầu ra -->
+    <div id="tts-player-box">
+      <strong style="font-size: 0.9rem;">🎧 Kết quả âm thanh:</strong>
+      <div class="player-controls">
+        <audio id="tts-audio-player" controls></audio>
+        <button id="btn-tts-download" class="btn" style="background:#2e7d32; color:white; border:none;">⬇️ Tải file .WAV</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    let apiKeys = [];
+    let globalKeyIndex = 0;
+    let ttsCurrentBlob = null;
+    let ttsCurrentUrl = null;
+
+    // --- Chế độ Sáng/Tối ---
+    function applyTheme(m) {
+      let t = m;
+      if (m === 'auto') {
+        const h = new Date().getHours();
+        t = (h >= 18 || h < 6) ? 'dark' : 'light';
+        document.getElementById('btn-theme').innerText = "🌙 Tự động";
+      } else {
+        document.getElementById('btn-theme').innerText = m === 'dark' ? "🌙 Tối" : "☀️ Sáng";
+      }
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('tts_theme', m);
+    }
+    applyTheme(localStorage.getItem('tts_theme') || 'auto');
+    document.getElementById('btn-theme').onclick = () => {
+      let c = localStorage.getItem('tts_theme') || 'auto';
+      applyTheme(c === 'auto' ? 'dark' : (c === 'dark' ? 'light' : 'auto'));
+    };
+
+    // --- Khởi tạo và Lưu API Keys ---
+    function initAPIKeys() {
+      apiKeys = [];
+      for (let i = 1; i <= 5; i++) {
+        let el = document.getElementById(`api-key-${i}`);
+        let k = localStorage.getItem(`tts_api_${i}`) || "";
+        if (el) {
+          el.value = k;
+          el.style.border = "1px solid var(--border)";
+        }
+        if (k.trim() !== "") apiKeys.push(k.trim());
+      }
+      globalKeyIndex = 0;
+    }
+
+    document.getElementById('btn-save-keys').onclick = () => {
+      for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById(`api-key-${i}`);
+        if (el) localStorage.setItem(`tts_api_${i}`, el.value.trim());
+      }
+      initAPIKeys();
+      showToast("💾 Đã lưu cấu hình API Keys thành công!", "success");
+    };
+
+    // --- Kiểm tra API Keys ---
+    document.getElementById('btn-check-keys').onclick = async () => {
+      const btn = document.getElementById('btn-check-keys');
+      btn.innerText = "⏳...";
+      let validCount = 0;
+      let totalChecked = 0;
+
+      for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById(`api-key-${i}`);
+        if (!el) continue;
+        const key = el.value.trim();
+        if (!key) {
+          el.style.border = "1px solid var(--border)";
+          continue;
+        }
+
+        totalChecked++;
+        el.style.border = "2px solid #f57c00";
+
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-lite-tts:generateContent?key=${key}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: "ping" }] }],
+              generationConfig: { responseModalities: ["AUDIO"] }
+            })
+          });
+          if (res.ok) {
+            el.style.border = "2px solid #2e7d32";
+            validCount++;
+          } else {
+            el.style.border = "2px solid #c62828";
+          }
+        } catch (err) {
+          el.style.border = "2px solid #c62828";
+        }
+      }
+      btn.innerText = "🔍 Check Keys";
+      showToast(`📊 Kiểm tra xong: ${validCount}/${totalChecked} Keys hoạt động!`, validCount > 0 ? "success" : "danger");
+    };
+
+    // --- Chọn hoặc tự động xoay tua API Key ---
+    function getSelectedApiKey() {
+      const mode = document.getElementById('key-mode-select').value;
+      if (mode !== 'auto') {
+        const idx = parseInt(mode);
+        const k = localStorage.getItem(`tts_api_${idx}`) || "";
+        if (k.trim() === "") {
+          showToast(`⚠️ Không có API Key ở ô ${idx}!`, "danger");
+          return "";
+        }
+        return k.trim();
+      }
+      // Chế độ tự động xoay tua
+      if (apiKeys.length > 0) {
+        const chosenIdx = globalKeyIndex % apiKeys.length;
+        const chosenKey = apiKeys[chosenIdx];
+        globalKeyIndex = (globalKeyIndex + 1) % apiKeys.length;
+        const masked = chosenKey.length > 8 ? chosenKey.substring(0, 6) + '...' + chosenKey.slice(-4) : '******';
+        showToast(`🔄 Đang dùng API Key ô ${chosenIdx + 1} (${masked})`, "info");
+        return chosenKey;
+      }
+      return "";
+    }
+
+    // --- Dynamic Vùng miền / Dialects ---
+    function updateTtsDialects() {
+      const lang = document.getElementById('tts-lang-select').value;
+      const dSel = document.getElementById('tts-dialect-select');
+      dSel.innerHTML = '';
+      if (lang === 'vi') {
+        dSel.disabled = false;
+        dSel.innerHTML = `
+          <option value="Giọng miền Nam" selected>Miền Nam (Sài Gòn)</option>
+          <option value="Giọng miền Bắc">Miền Bắc (Hà Nội)</option>
+          <option value="Giọng miền Trung">Miền Trung (Huế / Đà Nẵng)</option>
+          <option value="Giọng miền Tây Nam Bộ">Miền Tây</option>
+        `;
+      } else if (lang === 'en') {
+        dSel.disabled = false;
+        dSel.innerHTML = `
+          <option value="American English (US)" selected>🇺🇸 Anh - Mỹ (US)</option>
+          <option value="British English (UK)">🇬🇧 Anh - Anh (UK)</option>
+          <option value="Australian English (AU)">🇦🇺 Anh - Úc (AU)</option>
+        `;
+      } else {
+        dSel.disabled = true;
+        dSel.innerHTML = `<option value="Giọng bản xứ chuẩn" selected>🌐 Giọng chuẩn bản xứ</option>`;
+      }
+    }
+    document.getElementById('tts-lang-select').addEventListener('change', updateTtsDialects);
+    updateTtsDialects();
+
+    // --- Presets ---
+    const ttsTextArea = document.getElementById('tts-studio-text');
+    ttsTextArea.addEventListener('input', () => {
+      document.getElementById('tts-char-counter').innerText = `${ttsTextArea.value.length} ký tự`;
+    });
+
+    window.applyTtsPreset = type => {
+      const lang = document.getElementById('tts-lang-select').value;
+      if (type === 'news') {
+        ttsTextArea.value = lang === 'en'
+          ? "Good morning. Here is the latest global tech report: Artificial intelligence synthesis and natural voice models are achieving record-breaking benchmarks across multi-language processing."
+          : "Bản tin hôm nay: Trí tuệ nhân tạo đang tạo ra bước nhảy vọt trong xử lý dữ liệu và tự động hóa quy trình, mang lại hiệu quả vượt trội cho các ngành công nghiệp trên toàn thế giới.";
+        document.getElementById('tts-style-select').value = "Bản tin, chuyên nghiệp";
+      } else if (type === 'story') {
+        ttsTextArea.value = lang === 'en'
+          ? "Once upon a time, nestled in a tranquil valley illuminated by the early dawn, a curious little rabbit looked up at the quiet mountains and wondered what lay beyond the clouds..."
+          : "Ngày xửa ngày xưa, tại một thung lũng xanh mướt ngập tràn ánh ban mai, có một chú thỏ nhỏ luôn tò mò muốn biết vì sao các vì sao lại có thể lấp lánh trên bầu trời đêm...";
+        document.getElementById('tts-style-select').value = "Kể chuyện, chậm rãi";
+      } else if (type === 'ads') {
+        ttsTextArea.value = lang === 'en'
+          ? "Exclusive offer today only! Upgrade your workflow with next-generation smart tools and claim your exclusive benefits right now!"
+          : "Cơ hội có một không hai! Đăng ký trải nghiệm ngay hôm nay để nhận trọn bộ giải pháp thông minh cùng vô số ưu đãi hấp dẫn dành riêng cho bạn!";
+        document.getElementById('tts-style-select').value = "Vui vẻ, năng động";
+      }
+      document.getElementById('tts-char-counter').innerText = `${ttsTextArea.value.length} ký tự`;
+    };
+
+    // --- Wav Creator ---
+    function writeWavString(view, offset, string) {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    }
+
+    function createWavBlob(pcmArray, sampleRate = 24000) {
+      const buffer = new ArrayBuffer(44 + pcmArray.length);
+      const view = new DataView(buffer);
+      writeWavString(view, 0, 'RIFF');
+      view.setUint32(4, 36 + pcmArray.length, true);
+      writeWavString(view, 8, 'WAVE');
+      writeWavString(view, 12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeWavString(view, 36, 'data');
+      view.setUint32(40, pcmArray.length, true);
+      new Uint8Array(buffer, 44).set(pcmArray);
+      return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    // --- TTS Generation Logic ---
+    async function generateGeminiTTS({ text, lang = 'vi', voice = 'Charon', region = 'Giọng miền Nam', style = 'Truyền cảm, ấm áp', speed = 'vừa phải, tự nhiên', audience = 'Khán giả đại chúng' }) {
+      const key = getSelectedApiKey();
+      if (!key) throw new Error("Vui lòng cấu hình ít nhất 1 API Key hợp lệ và lưu lại!");
+
+      const maleVoiceNames = ['Charon', 'Puck', 'Fenrir', 'Enceladus', 'Alnilam', 'Rasalgethi', 'Iapetus', 'Algieba', 'Algenib', 'Orus', 'Schedar'];
+      const isMale = maleVoiceNames.includes(voice);
+      const genderInstruction = isMale
+        ? "BẮT BUỘC: Sử dụng chất giọng NAM tính, phát âm với âm sắc đàn ông trầm ấm, dứt khoát, tuyệt đối không dùng giọng nữ."
+        : "BẮT BUỘC: Sử dụng chất giọng NỮ tính, phát âm mềm mại, tự nhiên, tuyệt đối không dùng giọng nam.";
+
+      let promptedText = '';
+      if (lang === 'vi') {
+        promptedText = `[HƯỚNG DẪN BẮT BUỘC: Hãy đọc toàn bộ văn bản bằng Tiếng Việt với ${region} duy nhất. ${genderInstruction} Giữ vững phong cách: ${style}, tốc độ đọc: ${speed} từ đầu đến cuối] `;
+      } else if (lang === 'en') {
+        promptedText = `[MANDATORY INSTRUCTION: Read the entire text purely in English with a single ${region} accent throughout. ${genderInstruction} Maintain style: ${style}, speed: ${speed} consistently] `;
+      } else {
+        promptedText = `[MANDATORY INSTRUCTION: Read the entire text purely in the chosen language with native standard pronunciation. ${genderInstruction} Maintain style: ${style}, speed: ${speed} consistently] `;
+      }
+
+      if (audience) promptedText += `[Đối tượng nghe: ${audience}] `;
+      promptedText += `\nNội dung văn bản: ${text}`;
+
+      const payload = {
+        contents: [{ role: "user", parts: [{ text: promptedText }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: voice
+              }
+            }
+          }
+        }
+      };
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-lite-tts:generateContent?key=${key}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+     
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Google API returned status ${res.status}: ${errorText}`);
+      }
+     
+      const data = await res.json();
+      let base64Audio = null;
+      if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
+        for (const part of data.candidates[0].content.parts) {
+          if (part.inlineData && part.inlineData.mimeType && part.inlineData.mimeType.startsWith('audio/')) {
+            base64Audio = part.inlineData.data;
+            break;
+          }
+        }
+      }
+      if (!base64Audio) throw new Error("Mô hình không trả về dữ liệu âm thanh hợp lệ.");
+
+      let b64 = base64Audio.replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+      return createWavBlob(bytes, 24000);
+    }
+
+    document.getElementById('btn-tts-generate').onclick = async () => {
+      const text = ttsTextArea.value.trim();
+      if (!text) return showToast("Vui lòng nhập văn bản cần đọc!", "warning");
+      const btn = document.getElementById('btn-tts-generate');
+      btn.disabled = true;
+      btn.innerHTML = "⏳ Đang tạo âm thanh...";
+
+      try {
+        const wavBlob = await generateGeminiTTS({
+          text,
+          lang: document.getElementById('tts-lang-select').value,
+          voice: document.getElementById('tts-voice-select').value,
+          region: document.getElementById('tts-dialect-select').value,
+          style: document.getElementById('tts-style-select').value,
+          speed: document.getElementById('tts-speed-select').value,
+          audience: document.getElementById('tts-audience-input').value.trim()
+        });
+
+        ttsCurrentBlob = wavBlob;
+        if (ttsCurrentUrl) URL.revokeObjectURL(ttsCurrentUrl);
+        ttsCurrentUrl = URL.createObjectURL(wavBlob);
+
+        const playerBox = document.getElementById('tts-player-box');
+        const audioPlayer = document.getElementById('tts-audio-player');
+        audioPlayer.src = ttsCurrentUrl;
+        playerBox.style.display = 'flex';
+        audioPlayer.play().catch(()=>{});
+
+        document.getElementById('btn-tts-download').onclick = () => {
+          saveOrShareBlob(ttsCurrentBlob, `Gemini_TTS_${Date.now()}.wav`);
+        };
+        showToast("🎉 Đã tạo giọng đọc thành công!");
+      } catch (err) {
+        showToast("❌ Lỗi: " + err.message, "danger");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = "🔊 Bắt đầu Tạo Giọng Đọc (Generate Audio)";
+      }
+    };
+
+    function saveOrShareBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    let toastTimeout;
+    function showToast(message, type = 'success', duration = 3000) {
+      const toast = document.getElementById('toast');
+      if (!toast) return;
+      clearTimeout(toastTimeout);
+      toast.innerText = message;
+      toast.className = `toast ${type} show`;
+      toastTimeout = setTimeout(() => toast.classList.remove('show'), duration);
+    }
+
+    // --- On Load ---
+    initAPIKeys();
+  </script>
+</body>
+</html>
