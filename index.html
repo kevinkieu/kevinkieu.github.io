@@ -48,7 +48,7 @@
     #user-input{flex:1;background:transparent;border:none;color:var(--text-main);font-size:1rem;outline:none;resize:none;max-height:150px;min-height:38px;line-height:1.5;padding-top:6px}
     #send-button{background:var(--primary);color:white;border:none;padding:8px 16px;border-radius:18px;font-weight:600;cursor:pointer;height:38px;white-space:nowrap;transition:background 0.2s}
     .modern-select,.modern-input,.modern-textarea{width:100%;background:var(--bg-card);color:var(--text-main);border:1px solid var(--border);border-radius:8px;padding:6px 8px;outline:none;font-size:.85rem}
-    .btn{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-main);font-size:.8rem;cursor:pointer;font-weight:500;display:flex;align-items:center;justify-content:center;gap:4px}
+    .btn{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-main);font-size:.8rem;cursor:pointer;font-weight:500;display:flex;align-items:center;justify-content:center;gap:4px;user-select:none}
     .btn.primary{background:var(--primary);color:white;border:none}.btn.danger{color:var(--danger);border-color:var(--danger)}.btn.warning{color:#b06000;border-color:#b06000}
     .side-btn-row{display:flex;gap:6px;width:100%}.side-btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%}
     .icon-btn{background:none;border:none;color:var(--text-main);cursor:pointer;font-size:1.2rem;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center}
@@ -135,8 +135,16 @@
           </div>
           <div style="margin-top:6px;"><span class="section-title">🧠 Think Depth:</span><select id="thinking-level" class="modern-select"><option value="minimal" selected>Min (Tối thiểu)</option><option value="low">Low (Thấp)</option><option value="medium">Med (Chuẩn)</option><option value="high">High (Sâu)</option></select></div>
           <div style="margin-top:6px;"><span class="section-title">🔑 Google API Key:</span><select id="api-key-select" class="modern-select"><option value="auto">🔄 Tự động xoay tua</option></select></div>
-          <div class="side-btn-grid" style="margin-top:6px;"><button id="btn-new-session" class="btn primary">➕ Thêm</button><button id="btn-rename-session" class="btn">✏️ Sửa</button><button id="btn-move-session" class="btn">📂 Chuyển</button><button id="btn-delete-session" class="btn danger">🗑️ Xóa</button></div>
-          <div class="side-btn-row" style="margin-top:6px;"><button id="btn-move-up" class="btn" style="flex:1;">⬆️ Lên</button><button id="btn-move-down" class="btn" style="flex:1;">⬇️ Xuống</button></div>
+          <div class="side-btn-grid" style="margin-top:6px;">
+            <button id="btn-new-session" class="btn primary">➕ Thêm</button>
+            <button id="btn-rename-session" class="btn">✏️ Sửa</button>
+            <button id="btn-move-session" class="btn">📂 Chuyển</button>
+            <button id="btn-delete-session" class="btn danger">🗑️ Xóa</button>
+          </div>
+          <div class="side-btn-row" style="margin-top:6px;">
+            <button id="btn-move-up" class="btn" style="flex:1;">⬆️ Lên</button>
+            <button id="btn-move-down" class="btn" style="flex:1;">⬇️ Xuống</button>
+          </div>
           <button id="btn-bulk-edit" class="btn warning" style="margin-top:6px;width:100%;">🛠️ Quản lý Lịch sử</button>
         </div>
       </div>
@@ -170,7 +178,7 @@
           <label class="tool-chip" for="file-upload" style="cursor:pointer;">📎 Đính(<span id="file-count">0</span>)</label><input type="file" id="file-upload" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;">
           <button id="btn-enhance-prompt" class="tool-chip magic">🪄 Enhance</button><button id="btn-camera-snap" class="tool-chip">📷 Chụp</button><button id="btn-toggle-snippets" class="tool-chip">⚡ Lệnh nhanh</button><button id="btn-file-library" class="tool-chip">🗄️ Thư viện</button><button id="btn-add-url" class="tool-chip">🌐 Đọc Link/YT</button><button id="btn-paste-clipboard" class="tool-chip">📋 Dán</button>
         </div>
-        <div class="input-container-box"><textarea id="user-input" rows="1" placeholder="Nhập tin nhắn (dùng &quot;từ khóa&quot; để tìm web, hoặc dán link)..."></textarea><button id="send-button">Gửi 📤</button></div>
+        <div class="input-container-box"><textarea id="user-input" rows="1" placeholder="Nhập tin nhắn (Ctrl+Enter để gửi, dùng &quot;từ khóa&quot; để tìm web)..."></textarea><button id="send-button">Gửi 📤</button></div>
       </div>
     </main>
 
@@ -181,6 +189,10 @@
       </div>
       <div class="live-orb-container"><div id="live-orb" class="live-orb"></div><div id="live-transcript" class="live-transcript-box"><i>Hãy nói chuyện tự nhiên vào micro...</i></div></div>
       <div class="live-controls">
+        <select id="live-model-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2);height:40px;border-radius:20px;font-size:0.75rem;">
+          <option value="models/gemini-3.8-live" selected>⚡ Gemini 3.8 Live</option>
+          <option value="models/gemini-3.8-live-extended-thinking">🧠 Gemini 3.8 Extended</option>
+        </select>
         <select id="live-key-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2);height:40px;border-radius:20px;font-size:0.75rem;"><option value="auto">🔄 Tự động Key</option></select>
         <select id="live-voice-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2);height:40px;border-radius:20px;font-size:0.75rem;"><option value="Aoede">👩 Aoede</option><option value="Charon" selected>👨 Charon</option><option value="Puck">👨 Puck</option><option value="Kore">👩 Kore</option><option value="Fenrir">👨 Fenrir</option></select>
         <button id="btn-live-mic-toggle" class="live-control-btn active" title="Micro">🎙️</button>
@@ -199,7 +211,7 @@
           </div>
         </fieldset>
         <fieldset class="settings-group"><legend>📞 Cuộc gọi Live AI</legend>
-          <div style="font-size:0.75rem;color:var(--text-muted);background:var(--input-bg);padding:8px;border-radius:6px;margin-bottom:8px;">💡 <b>Đồng bộ thông minh:</b> Cuộc gọi Live tự động kế thừa <b>System Instruction</b> & Ngữ cảnh toàn cục của Huân MU!</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);background:var(--input-bg);padding:8px;border-radius:6px;margin-bottom:8px;">💡 <b>Live 3.8 Engine:</b> Hoạt động trên giao thức giọng nói hai chiều trực tiếp của Google.</div>
           <div class="slider-row"><label>Sáng tạo thoại (Temp: <span id="live-temp-val">0.7</span>):</label><input type="range" id="live-temperature" min="0" max="2" step="0.1" value="0.7"></div>
           <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
             <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="live-toggle-search" checked> 🌐 Tra cứu Web thời gian thực</label>
@@ -249,7 +261,19 @@
     <div id="search-modal" class="modal-box"><div class="modal-header"><h3>🔍 Tìm kiếm nâng cao</h3><button class="close-btn">&times;</button></div><div style="padding:16px;"><input type="text" id="global-search-input" placeholder="Từ khóa..." class="modern-input"><div id="search-results" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-top:10px;"></div></div></div>
     <div id="file-library-modal" class="modal-box"><div class="modal-header"><h3>🗄️ Thư viện Tài liệu</h3><button class="close-btn">&times;</button></div><div style="padding:16px;"><label class="btn primary" style="cursor:pointer;display:inline-block;margin-bottom:10px;">➕ Tải lên<input type="file" id="library-upload-input" multiple style="display:none;"></label><div id="library-files-container" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;"></div></div></div>
     <div id="camera-modal" class="modal-box"><div class="modal-header"><h3>📷 Camera</h3><button class="close-btn">&times;</button></div><div style="padding:10px;display:flex;flex-direction:column;gap:8px;"><video id="camera-preview" autoplay playsinline style="width:100%;max-height:300px;border-radius:8px;background:#000;"></video><button id="btn-take-photo" class="btn primary" style="padding:10px;">📸 Bấm để Chụp</button></div></div>
-    <div id="bulk-edit-modal" class="modal-box"><div class="modal-header"><h3>🛠️ Quản lý Lịch sử</h3><button class="close-btn">&times;</button></div><div style="padding:16px;flex:1;display:flex;flex-direction:column;"><div style="margin-bottom:8px;display:flex;justify-content:space-between;"><button id="btn-select-all-bulk" class="btn">☑️ Chọn hết</button><button id="btn-delete-selected-bulk" class="btn danger">🗑️ Xóa</button></div><div id="bulk-edit-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px;"></div></div></div>
+    
+    <!-- MODAL QUẢN LÝ LỊCH SỬ TIN NHẮN HÀNG LOẠT -->
+    <div id="bulk-edit-modal" class="modal-box">
+      <div class="modal-header"><h3>🛠️ Quản lý Lịch sử Tin nhắn</h3><button class="close-btn">&times;</button></div>
+      <div style="padding:16px;flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="margin-bottom:8px;display:flex;justify-content:space-between;gap:6px;">
+          <button id="btn-select-all-bulk" class="btn">☑️ Chọn tất cả</button>
+          <button id="btn-delete-selected-bulk" class="btn danger">🗑️ Xóa đã chọn</button>
+        </div>
+        <div id="bulk-edit-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:6px;max-height:50vh;padding:4px;"></div>
+      </div>
+    </div>
+    
     <div id="modal-overlay" class="modal-overlay-bg"></div>
   </div>
   <div id="toast" class="toast"></div><button id="scroll-to-top" title="Lên đầu">▲</button>
@@ -263,7 +287,7 @@
     let apiKeys = [], globalKeyIndex = 0, liveKeyIndex = 0, liveRetryCount = 0, abortController = null;
     const SAFETY = ['HARM_CATEGORY_HARASSMENT','HARM_CATEGORY_HATE_SPEECH','HARM_CATEGORY_SEXUALLY_EXPLICIT','HARM_CATEGORY_DANGEROUS_CONTENT','HARM_CATEGORY_CIVIC_INTEGRITY'].map(category => ({ category, threshold: 'BLOCK_NONE' }));
     
-    // 🕒 ĐỒNG HỒ GIỜ VIỆT NAM (GMT+7) CHUẨN XÁC 24H
+    // 🕒 ĐỒNG HỒ GIỜ VIỆT NAM (GMT+7)
     const getNowTime24h = () => {
       const d = new Date();
       return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
@@ -286,7 +310,7 @@
     $('btn-font-reset').onclick = () => applyFontSize(16);
     applyFontSize(currentFontSize);
 
-    // 🚀 BỘ RENDER STREAM 60FPS CHỐNG GIẬT (GHIM ĐẦU TRANG, KHÔNG ÉP CUỘN ĐÁY)
+    // 🚀 BỘ RENDER STREAM 60FPS CHỐNG GIẬT
     function createStreamRenderer(targetEl) {
       let pending = false, latest = "";
       return {
@@ -364,7 +388,7 @@
       throw new Error("Không thể bóc tách dữ liệu.");
     }
 
-    // --- GEMINI MULTIMODAL LIVE CALL ---
+    // --- GEMINI MULTIMODAL LIVE CALL (CHUẨN GEMINI 3.8 LIVE & MEDIANUNKS KHÔNG LỖI 1007) ---
     let liveWs = null, liveAudioCtx = null, liveMediaStream = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] }, liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
 
     function getLiveCallSI() {
@@ -412,7 +436,7 @@
     async function startLiveVoiceCall() {
       const { key, index } = getLiveApiKey(); if (!key) return showToast("Cần Google API Key!", "danger");
       const m = $('live-call-modal'), st = $('live-call-status'), tr = $('live-transcript'), orb = $('live-orb');
-      m.style.display = 'flex'; st.innerText = `Đang kết nối [Key ${index+1}]...`; tr.innerHTML = '<i>Đang mở micro & kết nối máy chủ Google...</i>'; orb.className = 'live-orb listening';
+      m.style.display = 'flex'; st.innerText = `Đang kết nối [Key ${index+1}]...`; tr.innerHTML = '<i>Đang khởi tạo Gemini 3.8 Live...</i>'; orb.className = 'live-orb listening';
       livePlaybackState = { nextPlayTime: 0, activeSources: [] }; isLiveSetupComplete = false;
 
       try {
@@ -422,20 +446,25 @@
         liveWs = new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`);
 
         liveWs.onopen = () => {
+          const selectedLiveModel = $('live-model-select')?.value || 'models/gemini-3.8-live';
           const voice = $('live-voice-select')?.value || 'Charon', temp = parseFloat($('live-temperature')?.value || 0.7);
+          
           const setupMsg = { 
             setup: { 
-              model: "models/gemini-3.1-flash-live-preview", 
-              generationConfig: { responseModalities: ["AUDIO"], temperature: temp, speechConfig: { voiceConfig: { voiceName: voice } } }, 
+              model: selectedLiveModel, 
+              generationConfig: { 
+                responseModalities: ["AUDIO"], 
+                temperature: temp, 
+                speechConfig: { 
+                  voiceConfig: { 
+                    prebuiltVoiceConfig: { voiceName: voice } 
+                  } 
+                } 
+              }, 
               systemInstruction: { parts: [{ text: getLiveCallSI() }] } 
             } 
           };
-          if ($('live-toggle-search')?.checked !== false) {
-            setupMsg.setup.tools = [{ functionDeclarations: [
-              { name: "read_url", description: "Đọc nội dung từ URL cụ thể.", parameters: { type: "OBJECT", properties: { url: { type: "STRING" } }, required: ["url"] } },
-              { name: "search_web", description: "Tìm kiếm thông tin trên Internet.", parameters: { type: "OBJECT", properties: { query: { type: "STRING" } }, required: ["query"] } }
-            ] }];
-          }
+          
           liveWs.send(JSON.stringify(setupMsg));
 
           const src = liveAudioCtx.createMediaStreamSource(liveMediaStream);
@@ -444,7 +473,16 @@
             if (!isLiveSetupComplete || isLiveMicMuted || liveWs?.readyState !== WebSocket.OPEN) return;
             const pcm = floatTo16BitPCM(e.inputBuffer.getChannelData(0));
             let bin = ''; for (let i = 0; i < pcm.length; i++) bin += String.fromCharCode(pcm[i]);
-            liveWs.send(JSON.stringify({ realtimeInput: { audio: { mimeType: "audio/pcm;rate=16000", data: btoa(bin) } } }));
+            
+            // ⚡ SỬA CHUẨN GIAO THỨC GOOGLE: mediaChunks (KHẮC PHỤC TRIỆT ĐỂ LỖI 1007)
+            liveWs.send(JSON.stringify({ 
+              realtimeInput: { 
+                mediaChunks: [{ 
+                  mimeType: "audio/pcm;rate=16000", 
+                  data: btoa(bin) 
+                }] 
+              } 
+            }));
           };
           src.connect(proc);
           proc.connect(liveAudioCtx.destination);
@@ -453,23 +491,21 @@
         liveWs.onmessage = async e => {
           try {
             const msg = JSON.parse(e.data instanceof Blob ? await e.data.text() : e.data);
-            if (msg.setupComplete || msg.serverContent?.setupComplete) { isLiveSetupComplete = true; liveRetryCount = 0; st.innerText = `🟢 Đã kết nối Live AI!`; tr.innerHTML = '<i>Hãy nói vào micro...</i>'; return; }
-            for (const c of (msg.toolCall?.functionCalls || [])) {
-              let txt = "", u = c.args?.url || (c.args?.query || '').match(/https?:\/\/[^\s"'<>]+/)?.[0];
-              if (u) {
-                tr.innerHTML = `<span style="color:#38bdf8;">🌐 Đọc link: "<strong>${u.substring(0,25)}...</strong>"</span>`;
-                try { const ext = await extractWebPageContent(u); txt = `[Dữ liệu từ ${u}]:\n${ext.content.substring(0,10000)}`; } catch { try { txt = await fetchTavilySearch(u); } catch { txt = "Không thể tải link."; } }
-              } else if (c.args?.query) {
-                const q = c.args.query, eng = ls.getItem('auto_search_default_engine') || 'jina';
-                tr.innerHTML = `<span style="color:#38bdf8;">⚡ Tra cứu: "<strong>${q}</strong>"...</span>`;
-                try { txt = await ({ tavily: fetchTavilySearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[eng] || fetchJinaSearch)(q); } catch(err) { txt = `Lỗi: ${err.message}`; }
-              }
-              liveWs?.send(JSON.stringify({ toolResponse: { functionResponses: [{ response: { output: { results: txt || "Không có dữ liệu." } }, id: c.id }] } }));
+            if (msg.setupComplete || msg.serverContent?.setupComplete) { 
+              isLiveSetupComplete = true; 
+              liveRetryCount = 0; 
+              st.innerText = `🟢 Đã kết nối Live 3.8!`; 
+              tr.innerHTML = '<i>Hãy nói tự nhiên vào micro...</i>'; 
+              return; 
             }
-            if (msg.serverContent?.interrupted) { livePlaybackState.activeSources.forEach(s => { try { s.stop(); } catch {} }); livePlaybackState = { nextPlayTime: liveAudioCtx?.currentTime || 0, activeSources: [] }; orb.className = 'live-orb listening'; }
+            if (msg.serverContent?.interrupted) { 
+              livePlaybackState.activeSources.forEach(s => { try { s.stop(); } catch {} }); 
+              livePlaybackState = { nextPlayTime: liveAudioCtx?.currentTime || 0, activeSources: [] }; 
+              orb.className = 'live-orb listening'; 
+            }
             for (const p of (msg.serverContent?.modelTurn?.parts || [])) {
               if (p.inlineData?.data) playPcm24k(p.inlineData.data, liveAudioCtx, livePlaybackState);
-              if (p.text) tr.innerHTML = `<strong>AI:</strong> ${p.text}`;
+              if (p.text) tr.innerHTML = `<strong>Huân MU:</strong> ${p.text}`;
             }
           } catch {}
         };
@@ -479,13 +515,15 @@
           if ((ev.code === 1011 || ev.reason?.includes('quota')) && apiKeys.length > 1 && liveRetryCount < apiKeys.length) {
             liveRetryCount++; liveKeyIndex = (liveKeyIndex + 1) % apiKeys.length; st.innerText = `⚠️ Đổi Key ${liveKeyIndex+1}...`; setTimeout(startLiveVoiceCall, 600); return;
           }
-          st.innerText = `Đã ngắt (Mã: ${ev.code})`; tr.innerHTML = `<span>Phiên gọi kết thúc.</span>`;
+          st.innerText = `Đã ngắt (Mã: ${ev.code})`; 
+          tr.innerHTML = `<span>Phiên thoại kết thúc.</span>`;
         };
-      } catch(err) { st.innerText = 'Lỗi Micro'; tr.innerHTML = `<span>${err.message}</span>`; cleanupLive(); }
+      } catch(err) { st.innerText = 'Lỗi kết nối'; tr.innerHTML = `<span>${err.message}</span>`; cleanupLive(); }
     }
 
     $('btn-live-call-open').onclick = startLiveVoiceCall;
     $('btn-live-end-call').onclick = () => { try { liveWs?.close(); } catch {} liveWs = null; cleanupLive(); $('live-call-modal').style.display = 'none'; };
+    $('live-model-select').onchange = () => { if (liveWs?.readyState === WebSocket.OPEN) { liveWs.close(); setTimeout(startLiveVoiceCall, 300); } };
     $('live-voice-select').onchange = e => { ls.setItem('live_voice_name', e.target.value); if (liveWs?.readyState === WebSocket.OPEN) { liveWs.close(); setTimeout(startLiveVoiceCall, 300); } };
     $('live-key-select').onchange = e => { ls.setItem('live_selected_key', e.target.value); if (liveWs?.readyState === WebSocket.OPEN) { liveWs.close(); setTimeout(startLiveVoiceCall, 300); } };
     $('btn-live-mic-toggle').onclick = () => { isLiveMicMuted = !isLiveMicMuted; const b = $('btn-live-mic-toggle'); b.className = `live-control-btn ${isLiveMicMuted ? '' : 'active'}`; b.innerHTML = isLiveMicMuted ? '🔇' : '🎙️'; };
@@ -499,7 +537,8 @@
           liveCamInterval = setInterval(() => {
             if (!isLiveCamOn || liveWs?.readyState !== WebSocket.OPEN || !isLiveSetupComplete) return;
             cv.width = v.videoWidth || 320; cv.height = v.videoHeight || 240; cx.drawImage(v, 0, 0, cv.width, cv.height);
-            liveWs.send(JSON.stringify({ realtimeInput: { video: { mimeType: "image/jpeg", data: cv.toDataURL('image/jpeg', 0.6).split(',')[1] } } }));
+            // Sửa thành mediaChunks cho video frames
+            liveWs.send(JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: "image/jpeg", data: cv.toDataURL('image/jpeg', 0.6).split(',')[1] }] } }));
           }, 1000);
         } catch(e) { showToast("Lỗi Cam: " + e.message, 'danger'); }
       } else { v.srcObject?.getTracks().forEach(t => t.stop()); v.style.display = 'none'; clearInterval(liveCamInterval); isLiveCamOn = false; b.className = 'live-control-btn'; }
@@ -558,39 +597,18 @@
     };
     initAPIKeys(); initExternalConfigs();
 
-    // --- INDEXED DB NGUYÊN BẢN (KHÔI PHỤC VÙNG NHỚ CŨ ĐỂ KHÔNG MẤT PHIÊN CHAT) ---
+    // --- INDEXED DB ---
     const DB_NAME = "JavissUltimateOS_DB", STORE_NAME = "chat_sessions", FILE_STORE = "file_library";
     let db;
     function initDB() {
       return new Promise((res, rej) => {
-        // Mở đúng DB cũ để giữ lại 100% dữ liệu lịch sử
         const rq = indexedDB.open(DB_NAME, 5);
         rq.onupgradeneeded = e => {
           let d = e.target.result;
           if (!d.objectStoreNames.contains(STORE_NAME)) d.createObjectStore(STORE_NAME, { keyPath: "id" });
           if (!d.objectStoreNames.contains(FILE_STORE)) d.createObjectStore(FILE_STORE, { keyPath: "id" });
         };
-        rq.onsuccess = async e => { 
-          db = e.target.result; 
-          // Tự động kiểm tra và nhập gộp dữ liệu nếu người dùng có tạo phiên mới ở DB HuanMU_DB lúc nãy
-          try {
-            const checkRq = indexedDB.open("HuanMU_DB", 6);
-            checkRq.onsuccess = () => {
-              const hDb = checkRq.result;
-              if (hDb.objectStoreNames.contains(STORE_NAME)) {
-                const getItems = hDb.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll();
-                getItems.onsuccess = () => {
-                  const items = getItems.result || [];
-                  if (items.length) {
-                    const wrTrans = db.transaction(STORE_NAME, "readwrite");
-                    items.forEach(it => wrTrans.objectStore(STORE_NAME).put(it));
-                  }
-                };
-              }
-            };
-          } catch {}
-          res(); 
-        };
+        rq.onsuccess = async e => { db = e.target.result; res(); };
         rq.onerror = e => rej(e);
       });
     }
@@ -643,6 +661,7 @@
     const applyTheme = m => { const t = m === 'auto' ? ((new Date().getHours() >= 18 || new Date().getHours() < 6) ? 'dark' : 'light') : m; DOM.btnTheme.innerText = m === 'auto' ? "🌙 Tự động" : m === 'dark' ? "🌙 Tối" : "☀️ Sáng"; document.documentElement.setAttribute('data-theme', t); ls.setItem('theme', m); };
     applyTheme(ls.getItem('theme') || 'auto'); DOM.btnTheme.onclick = () => { const c = ls.getItem('theme') || 'auto'; applyTheme(c === 'auto' ? 'dark' : c === 'dark' ? 'light' : 'auto'); };
 
+    // ⌨️ PHÍM TẮT CTRL + ENTER ĐỂ GỬI TRÊN MÁY TÍNH
     if (DOM.input) { 
       DOM.input.value = ls.getItem('huanmu_draft') || ls.getItem('javiss_draft') || ''; 
       updateTokenCount(); 
@@ -652,22 +671,25 @@
         DOM.input.style.height = Math.min(DOM.input.scrollHeight, 140) + 'px'; 
         updateTokenCount(); 
       }; 
+      DOM.input.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          DOM.sendBtn.click();
+        }
+      });
     }
+
     $('toggle-sidebar-btn').onclick = () => { $('sidebar').classList.add('active'); $('sidebar-overlay').classList.add('active'); };
     $('close-sidebar-btn').onclick = $('sidebar-overlay').onclick = () => { $('sidebar').classList.remove('active'); $('sidebar-overlay').classList.remove('active'); };
     $('btn-open-settings').onclick = () => { $('settings-modal').style.display = 'flex'; $('modal-overlay').style.display = 'block'; };
 
-    // 🕒 ĐỒNG BỘ THỜI GIAN THỰC TẾ VIỆT NAM (GMT+7) VÀO PROMPT
     const getDynamicSI = () => {
       const b = DOM.sysInst?.value || "Bạn là Huân MU AI - trợ lý thông minh và chuẩn xác.", 
             g = DOM.globContext?.value || '', 
             now = new Date(), 
             days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
-      const hh = String(now.getHours()).padStart(2, '0');
-      const mm = String(now.getMinutes()).padStart(2, '0');
-      const ss = String(now.getSeconds()).padStart(2, '0');
-      const timeStr = `${hh}:${mm}:${ss}`;
-      const dateStr = `${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+      const hh = String(now.getHours()).padStart(2, '0'), mm = String(now.getMinutes()).padStart(2, '0'), ss = String(now.getSeconds()).padStart(2, '0');
+      const timeStr = `${hh}:${mm}:${ss}`, dateStr = `${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
       return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}\n\n[MỐC THỜI GIAN THỰC TẾ]: Hiện tại chính xác là ${timeStr} (${dateStr}, Múi giờ Việt Nam GMT+7).\nQUY TẮC BẮT BUỘC: Khi người dùng hỏi bây giờ là mấy giờ, thời gian hiện tại hoặc ngày tháng, bạn PHẢI trả lời chính xác theo mốc giờ ${timeStr} và ngày ${dateStr} này.`;
     };
 
@@ -717,7 +739,7 @@
     async function renderLibrary() { const c = $('library-files-container'), fs = await getAllFilesFromLib(); c.innerHTML = fs.length ? fs.map(f => `<div class="search-result-item" style="display:flex;justify-content:space-between;align-items:center;"><div><strong>${f.name}</strong><br><small>${(f.size/1024).toFixed(1)} KB</small></div><button class="btn primary" onclick="addFileFromLib('${f.id}')">➕ Đính</button></div>`).join('') : "<i>Thư viện trống.</i>"; }
     window.addFileFromLib = async id => { const f = (await getAllFilesFromLib()).find(x => x.id === id); if (f) { await processUploadFiles([new File([f.blob], f.name, { type: f.type })]); closeModals(); showToast(`Đã đính: ${f.name}`); } };
 
-    // --- TABS, THƯ MỤC & SESSIONS ---
+    // --- TABS, THƯ MỤC & TOÀN BỘ 7 NÚT QUẢN LÝ PHIÊN ---
     function renderTabs() {
       DOM.tabsContainer.innerHTML = openTabs.map(tId => { const s = sessions.find(x => x.id === tId); return s ? `<div class="tab-item ${tId===activeId?'active':''}"><span onclick="window.switchSess('${tId}')">${s.name.substring(0,14)}</span> <span class="tab-close" onclick="window.closeTab('${tId}',event)">×</span></div>` : ''; }).join('');
       ls.setItem('huanmu_tabs', JSON.stringify(openTabs));
@@ -725,8 +747,8 @@
     window.switchSess = switchSess; window.closeTab = (id, e) => { e.stopPropagation(); openTabs = openTabs.filter(x => x !== id); id === activeId ? (openTabs.length ? switchSess(openTabs[0]) : newSess()) : renderTabs(); };
     function renderFolders() { DOM.folderSelect.innerHTML = `<option value="All">📁 Tất cả</option>` + folders.map(f => `<option value="${f}">📁 ${f}</option>`).join(''); DOM.folderSelect.value = activeFolder; }
     DOM.folderSelect.onchange = e => { activeFolder = e.target.value; ls.setItem('huanmu_active_folder', activeFolder); renderSel(); const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder); if (v.length && !v.find(s => s.id === activeId)) switchSess(v[0].id); };
-    DOM.btnNewFolder.onclick = () => { const n = prompt("Tên Thư mục:"); if (n && !folders.includes(n)) { folders.push(n); ls.setItem('huanmu_folders', JSON.stringify(folders)); activeFolder = n; renderFolders(); renderSel(); } };
-    DOM.btnDeleteFolder.onclick = async () => { if (activeFolder === "All" || activeFolder === "Mặc định") return showToast("Không thể xóa TM này!"); if (confirm(`Xóa "${activeFolder}"?`)) { folders = folders.filter(f => f !== activeFolder); ls.setItem('huanmu_folders', JSON.stringify(folders)); for (const s of sessions) if (s.folder === activeFolder) { s.folder = "Mặc định"; await saveToDB(s); } activeFolder = "All"; renderFolders(); renderSel(); } };
+    DOM.btnNewFolder.onclick = () => { const n = prompt("Tên Thư mục:"); if (n && !folders.includes(n)) { folders.push(n); ls.setItem('huanmu_folders', JSON.stringify(folders)); activeFolder = n; renderFolders(); renderSel(); showToast("Đã tạo thư mục!"); } };
+    DOM.btnDeleteFolder.onclick = async () => { if (activeFolder === "All" || activeFolder === "Mặc định") return showToast("Không thể xóa TM này!"); if (confirm(`Xóa "${activeFolder}"?`)) { folders = folders.filter(f => f !== activeFolder); ls.setItem('huanmu_folders', JSON.stringify(folders)); for (const s of sessions) if (s.folder === activeFolder) { s.folder = "Mặc định"; await saveToDB(s); } activeFolder = "All"; renderFolders(); renderSel(); showToast("Đã xóa thư mục!"); } };
 
     async function loadSess() { 
       try { 
@@ -766,13 +788,17 @@
         schEngine: 'jina', 
         mem: true, 
         useGlob: true, 
-        orderIndex: 0 
+        orderIndex: Date.now() 
       }; 
       sessions.unshift(s); 
       await saveToDB(s); 
       await switchSess(id); 
+      showToast("➕ Đã tạo phiên mới!");
+      if (window.innerWidth <= 768) {
+        $('sidebar').classList.remove('active'); 
+        $('sidebar-overlay').classList.remove('active');
+      }
     }
-    $('btn-new-session').onclick = () => newSess();
 
     async function switchSess(id) {
       activeId = id; ls.setItem('huanmu_active_id', id); ls.setItem('javiss_active_id', id);
@@ -808,8 +834,128 @@
       const kInfo = (curS?.engine === 'interactions' && curS?.assignedApiKey) ? ` • 🔒 Ghim Key ${apiKeys.indexOf(curS.assignedApiKey) + 1}` : '';
       $('session-msg-count').innerText = `${chatHistory.length} tin${kInfo}`; 
     }
-    $('btn-rename-session').onclick = async () => { const n = prompt("Tên mới:"); if (n) { const s = sessions.find(x => x.id === activeId); s.name = n; await saveToDB(s); renderSel(); renderTabs(); } };
-    $('btn-delete-session').onclick = async () => { if (sessions.length <= 1) return showToast("Cần giữ lại ít nhất 1 phiên!"); if (confirm("Xóa phiên này?")) { await deleteFromDB(activeId); sessions = sessions.filter(s => s.id !== activeId); openTabs = openTabs.filter(x => x !== activeId); await switchSess(sessions[0].id); } };
+
+    // 1️⃣ NÚT THÊM PHIÊN
+    $('btn-new-session').onclick = () => newSess();
+
+    // 2️⃣ NÚT SỬA TÊN PHIÊN
+    $('btn-rename-session').onclick = async () => { 
+      const s = sessions.find(x => x.id === activeId); 
+      if (!s) return;
+      const n = prompt("Nhập tên mới cho phiên:", s.name); 
+      if (n && n.trim()) { 
+        s.name = n.trim(); 
+        await saveToDB(s); 
+        renderSel(); 
+        renderTabs(); 
+        showToast("✏️ Đã đổi tên phiên!");
+      } 
+    };
+
+    // 3️⃣ NÚT CHUYỂN THƯ MỤC
+    $('btn-move-session').onclick = async () => {
+      const s = sessions.find(x => x.id === activeId);
+      if (!s) return;
+      const targetFolder = prompt(`Chuyển phiên sang Thư mục:\n(Các TM hiện có: ${folders.join(', ')})`, s.folder);
+      if (targetFolder && targetFolder.trim()) {
+        const tf = targetFolder.trim();
+        if (!folders.includes(tf)) {
+          folders.push(tf);
+          ls.setItem('huanmu_folders', JSON.stringify(folders));
+          renderFolders();
+        }
+        s.folder = tf;
+        await saveToDB(s);
+        renderSel();
+        showToast(`📂 Đã chuyển phiên sang "${tf}"!`);
+      }
+    };
+
+    // 4️⃣ NÚT XÓA PHIÊN
+    $('btn-delete-session').onclick = async () => { 
+      if (sessions.length <= 1) return showToast("Cần giữ lại ít nhất 1 phiên!", "warning"); 
+      const s = sessions.find(x => x.id === activeId);
+      if (confirm(`Bạn có chắc muốn xóa phiên "${s?.name || ''}"?`)) { 
+        await deleteFromDB(activeId); 
+        sessions = sessions.filter(x => x.id !== activeId); 
+        openTabs = openTabs.filter(x => x !== activeId); 
+        await switchSess(sessions[0].id); 
+        showToast("🗑️ Đã xóa phiên!");
+      } 
+    };
+
+    // 5️⃣ NÚT LÊN (DI CHUYỂN THỨ TỰ PHIÊN LÊN)
+    $('btn-move-up').onclick = async () => {
+      const idx = sessions.findIndex(x => x.id === activeId);
+      if (idx > 0) {
+        const temp = sessions[idx];
+        sessions[idx] = sessions[idx - 1];
+        sessions[idx - 1] = temp;
+        for (let i = 0; i < sessions.length; i++) {
+          sessions[i].orderIndex = i;
+          await saveToDB(sessions[i]);
+        }
+        renderSel();
+        showToast("⬆️ Đã di chuyển phiên lên trên!");
+      } else {
+        showToast("Phiên đã ở vị trí trên cùng!", "info");
+      }
+    };
+
+    // 6️⃣ NÚT XUỐNG (DI CHUYỂN THỨ TỰ PHIÊN XUỐNG)
+    $('btn-move-down').onclick = async () => {
+      const idx = sessions.findIndex(x => x.id === activeId);
+      if (idx >= 0 && idx < sessions.length - 1) {
+        const temp = sessions[idx];
+        sessions[idx] = sessions[idx + 1];
+        sessions[idx + 1] = temp;
+        for (let i = 0; i < sessions.length; i++) {
+          sessions[i].orderIndex = i;
+          await saveToDB(sessions[i]);
+        }
+        renderSel();
+        showToast("⬇️ Đã di chuyển phiên xuống dưới!");
+      } else {
+        showToast("Phiên đã ở vị trí dưới cùng!", "info");
+      }
+    };
+
+    // 7️⃣ NÚT QUẢN LÝ LỊCH SỬ TIN NHẮN (BULK EDIT)
+    $('btn-bulk-edit').onclick = () => {
+      const modal = $('bulk-edit-modal'), list = $('bulk-edit-list');
+      if (!chatHistory.length) return showToast("Phiên này chưa có tin nhắn nào!", "warning");
+      list.innerHTML = chatHistory.map((m, i) => `
+        <label class="bulk-edit-item" style="cursor:pointer;">
+          <input type="checkbox" class="bulk-check" value="${i}" style="margin-top:3px;">
+          <div style="flex:1;overflow:hidden;">
+            <strong style="color:var(--primary);font-size:0.75rem;">${m.role==='user'?'👤 Bạn':'✨ Huân MU'} [${m.time||''}]</strong>
+            <p style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.8rem;color:var(--text-muted);">${m.text.replace(/<[^>]+>/g,'').substring(0,60)}</p>
+          </div>
+        </label>
+      `).join('');
+      modal.style.display = 'flex';
+      oLay.style.display = 'block';
+    };
+
+    let allChecked = false;
+    $('btn-select-all-bulk').onclick = () => {
+      allChecked = !allChecked;
+      document.querySelectorAll('.bulk-check').forEach(ck => ck.checked = allChecked);
+      $('btn-select-all-bulk').innerText = allChecked ? "✖️ Bỏ chọn hết" : "☑️ Chọn tất cả";
+    };
+
+    $('btn-delete-selected-bulk').onclick = async () => {
+      const selected = Array.from(document.querySelectorAll('.bulk-check:checked')).map(ck => parseInt(ck.value)).sort((a,b) => b - a);
+      if (!selected.length) return showToast("Chưa chọn tin nhắn nào!", "warning");
+      if (confirm(`Xóa ${selected.length} tin nhắn đã chọn?`)) {
+        selected.forEach(idx => chatHistory.splice(idx, 1));
+        const s = sessions.find(x => x.id === activeId);
+        if (s) { s.lastInteractionId = null; await saveToDB(s); }
+        await reRenderHistory();
+        closeModals();
+        showToast(`🗑️ Đã xóa ${selected.length} tin nhắn!`);
+      }
+    };
 
     async function updateConfig() {
       const s = sessions.find(x => x.id === activeId);
@@ -865,7 +1011,6 @@
     }
     window.copy = b => { const c = b.closest('.message-container').querySelector('.user-message, .bot-message'); if (c) copyRawText(c.getAttribute('data-raw') || c.innerText || ''); };
     
-    // Khi xóa, sửa hoặc retry: Tự động ngắt nối Interaction ID cũ để không gây lỗi phân nhánh
     window.deleteMsg = async i => { 
       if (confirm("Xóa tin này?")) { 
         chatHistory.splice(i, 1); 
@@ -903,7 +1048,7 @@
       } 
     };
 
-    // --- GỬI TIN NHẮN (CHUẨN HÓA DUAL-ENGINE: GENERATECONTENTSTREAM & INTERACTIONS API) ---
+    // --- GỬI TIN NHẮN (DUAL-ENGINE STREAM / INTERACTIONS) ---
     DOM.sendBtn.onclick = async () => {
       if (isProcessing) return abortController?.abort();
       const am = DOM.model.value || 'gemini-3.5-flash-lite';
@@ -912,7 +1057,6 @@
       const cs = sessions.find(x => x.id === activeId);
       const currentEngine = cs?.engine || DOM.engineSel?.value || 'stream';
 
-      // 🔒 XỬ LÝ KHÓA KEY (PIN KEY) RÕ RÀNG CHO INTERACTIONS API
       let gKey = "";
       let keyIndexNum = 1;
 
@@ -1008,13 +1152,11 @@
         const thk = DOM.thinking.value;
         let pS = false, lastErr = null;
 
-        // === ĐỘNG CƠ 1: INTERACTIONS API (CHUẨN SPEC @GOOGLE/GENAI CHÍNH HÃNG) ===
+        // === ĐỘNG CƠ 1: INTERACTIONS API ===
         if (currentEngine === 'interactions') {
           if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText = `⚡ Kết nối Interactions API...`;
           try {
             const ai = new GoogleGenAI({ apiKey: gKey });
-            
-            // Cú pháp chuẩn của Interactions API trong SDK @google/genai
             const interactionParams = {
               model: am,
               input: imgs.length ? currentParts : fnP,
@@ -1040,7 +1182,6 @@
             try {
               streamObj = await ai.interactions.create(interactionParams);
             } catch (ixErr) {
-              // Tự động phục hồi: Nếu previous_interaction_id bị hết hạn hoặc không tìm thấy, xóa và tạo chuỗi mới
               if (interactionParams.previous_interaction_id && (ixErr.message.includes('not found') || ixErr.message.includes('404') || ixErr.message.includes('invalid'))) {
                 delete interactionParams.previous_interaction_id;
                 if (cs) cs.lastInteractionId = null;
@@ -1052,20 +1193,13 @@
             }
 
             for await (const event of streamObj) {
-              // Thu thập Interaction ID từ các sự kiện của Google
               const foundId = event.interaction?.id || event.id || event.interaction_id;
-              if (foundId) {
-                recordedIxId = foundId;
-              }
+              if (foundId) recordedIxId = foundId;
 
               let chunkText = "";
-              if (event.event_type === "step.delta" && event.delta?.type === "text") {
-                chunkText = event.delta.text;
-              } else if (event.delta?.text) {
-                chunkText = event.delta.text;
-              } else if (event.text) {
-                chunkText = event.text;
-              }
+              if (event.event_type === "step.delta" && event.delta?.type === "text") chunkText = event.delta.text;
+              else if (event.delta?.text) chunkText = event.delta.text;
+              else if (event.text) chunkText = event.text;
 
               if (chunkText) {
                 bD.querySelector('.streaming-indicator')?.remove();
@@ -1078,16 +1212,15 @@
             pS = true;
 
             if (recordedIxId) {
-              showToast(`✅ Đã lưu tương tác ID: ${recordedIxId.slice(0, 8)}... [Khóa Key ${keyIndexNum}]`, 'success');
+              showToast(`✅ Đã lưu ID: ${recordedIxId.slice(0, 8)}... [Khóa Key ${keyIndexNum}]`, 'success');
             }
           } catch(err) {
             lastErr = err;
-            console.error("Interactions Error:", err);
             showToast(`Lỗi Interactions: ${err.message}`, "danger");
           }
         }
 
-        // === ĐỘNG CƠ 2: GENERATECONTENTSTREAM (MẶC ĐỊNH & SLIDING WINDOW 16 TIN) ===
+        // === ĐỘNG CƠ 2: GENERATECONTENTSTREAM ===
         if (!pS && currentEngine === 'stream') {
           for (const mod of getFallbackModelsFor(am)) {
             finalResp = "";
