@@ -84,11 +84,13 @@
     .bulk-edit-item{display:flex;align-items:flex-start;gap:8px;border:1px solid var(--border);border-left:none}
     .api-keys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px}
     .info-badge{font-size:.75rem;color:var(--text-muted)}.streaming-indicator{color:var(--primary);font-style:italic;font-size:.75rem;margin-left:6px}
+    
+    /* 📞 MODAL LIVE VOICE THEO CHUẨN MỚI */
     #live-call-modal{display:none;position:fixed;top:0;left:0;width:100vw;height:100dvh;background:rgba(10,15,29,0.96);backdrop-filter:blur(14px);z-index:9999;flex-direction:column;align-items:center;justify-content:space-between;padding:20px 16px;color:#fff}
     .live-orb-container{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;width:100%;max-width:480px}
-    .live-orb{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,#38bdf8 20%,#6366f1 70%,#ec4899 100%);box-shadow:0 0 30px rgba(99,102,241,0.6);transition:all 0.15s ease}
-    .live-orb.speaking{transform:scale(1.2);box-shadow:0 0 50px rgba(236,72,153,0.8)}.live-orb.listening{transform:scale(1.06);box-shadow:0 0 40px rgba(56,189,248,0.7)}
-    .live-transcript-box{width:100%;max-height:140px;overflow-y:auto;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;font-size:.85rem;line-height:1.4;text-align:center;color:#e2e8f0}
+    .live-orb{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,#38bdf8 20%,#6366f1 70%,#ec4899 100%);box-shadow:0 0 30px rgba(99,102,241,0.6);transition:transform 0.08s ease,box-shadow 0.08s ease}
+    .live-orb.speaking{transform:scale(1.22);box-shadow:0 0 50px rgba(236,72,153,0.85)}.live-orb.listening{box-shadow:0 0 35px rgba(56,189,248,0.7)}
+    .live-transcript-box{width:100%;max-height:160px;overflow-y:auto;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:12px;font-size:.9rem;line-height:1.45;text-align:center;color:#e2e8f0}
     .live-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
     .live-control-btn{width:50px;height:50px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.2rem;background:rgba(255,255,255,0.15);color:#fff}
     .live-control-btn.active{background:#10b981}.live-control-btn.end-call{background:#ef4444;width:58px;height:58px;font-size:1.4rem}
@@ -182,6 +184,7 @@
       </div>
     </main>
 
+    <!-- MODAL LIVE CALL -->
     <div id="live-call-modal">
       <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
         <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">📞</span><div><h3 style="font-size:1rem;font-weight:700;">Huân MU Live Voice</h3><span id="live-call-status" style="font-size:0.75rem;color:#94a3b8;">Đang kết nối...</span></div></div>
@@ -262,7 +265,6 @@
     <div id="file-library-modal" class="modal-box"><div class="modal-header"><h3>🗄️ Thư viện Tài liệu</h3><button class="close-btn">&times;</button></div><div style="padding:16px;"><label class="btn primary" style="cursor:pointer;display:inline-block;margin-bottom:10px;">➕ Tải lên<input type="file" id="library-upload-input" multiple style="display:none;"></label><div id="library-files-container" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;"></div></div></div>
     <div id="camera-modal" class="modal-box"><div class="modal-header"><h3>📷 Camera</h3><button class="close-btn">&times;</button></div><div style="padding:10px;display:flex;flex-direction:column;gap:8px;"><video id="camera-preview" autoplay playsinline style="width:100%;max-height:300px;border-radius:8px;background:#000;"></video><button id="btn-take-photo" class="btn primary" style="padding:10px;">📸 Bấm để Chụp</button></div></div>
     
-    <!-- MODAL QUẢN LÝ LỊCH SỬ TIN NHẮN HÀNG LOẠT -->
     <div id="bulk-edit-modal" class="modal-box">
       <div class="modal-header"><h3>🛠️ Quản lý Lịch sử Tin nhắn</h3><button class="close-btn">&times;</button></div>
       <div style="padding:16px;flex:1;display:flex;flex-direction:column;overflow:hidden;">
@@ -287,7 +289,6 @@
     let apiKeys = [], globalKeyIndex = 0, liveKeyIndex = 0, liveRetryCount = 0, abortController = null;
     const SAFETY = ['HARM_CATEGORY_HARASSMENT','HARM_CATEGORY_HATE_SPEECH','HARM_CATEGORY_SEXUALLY_EXPLICIT','HARM_CATEGORY_DANGEROUS_CONTENT','HARM_CATEGORY_CIVIC_INTEGRITY'].map(category => ({ category, threshold: 'BLOCK_NONE' }));
     
-    // 🕒 ĐỒNG HỒ GIỜ VIỆT NAM (GMT+7)
     const getNowTime24h = () => {
       const d = new Date();
       return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
@@ -297,7 +298,6 @@
     const formatGoogleApiError = e => { const m = e?.message || ""; return (m.includes("429") || m.includes("RESOURCE_EXHAUSTED")) ? "⚠️ Hết Quota (429)." : (m.includes("503") || m.includes("UNAVAILABLE")) ? "⚠️ Máy chủ quá tải (503)." : m ? `❌ Lỗi: ${m}` : "❌ Lỗi máy chủ Google."; };
     const extractQuotedKeywords = t => { const m = Array.from((t||'').matchAll(/["“«]([^"”»]+)["”»]/g)).map(x => x[1].trim()).filter(Boolean); return m.length ? m.join(' ') : null; };
 
-    // 🔤 CỠ CHỮ TIN NHẮN
     let currentFontSize = parseInt(ls.getItem('chat_font_size') || '16', 10);
     const applyFontSize = sz => {
       currentFontSize = Math.min(Math.max(sz, 12), 26);
@@ -310,7 +310,6 @@
     $('btn-font-reset').onclick = () => applyFontSize(16);
     applyFontSize(currentFontSize);
 
-    // 🚀 BỘ RENDER STREAM 60FPS CHỐNG GIẬT
     function createStreamRenderer(targetEl) {
       let pending = false, latest = "";
       return {
@@ -345,7 +344,7 @@
       (navigator.clipboard && window.isSecureContext) ? navigator.clipboard.writeText(t).then(() => showToast(msg)).catch(fb) : fb();
     };
 
-    // --- TÌM KIẾM & BÓC TÁCH WEB ---
+    // --- TÌM KIẾM WEB ---
     async function fetchJinaSearch(q) {
       const k = ls.getItem('jina_api_key') || '', r = await fetch(`https://s.jina.ai/${encodeURIComponent(q)}`, { headers: { Accept: "application/json", ...(k ? { Authorization: `Bearer ${k}` } : {}) } });
       if (!r.ok) throw new Error(`Jina HTTP ${r.status}`);
@@ -388,7 +387,7 @@
       throw new Error("Không thể bóc tách dữ liệu.");
     }
 
-    // --- GEMINI MULTIMODAL LIVE CALL (CHUẨN GEMINI 3.8 LIVE & MEDIANUNKS KHÔNG LỖI 1007) ---
+    // --- GEMINI MULTIMODAL LIVE CALL (BẢN TỐI ƯU DOWNSAMPLING VÀ SERVER VAD CHỐNG TREO) ---
     let liveWs = null, liveAudioCtx = null, liveMediaStream = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] }, liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
 
     function getLiveCallSI() {
@@ -406,10 +405,26 @@
       return apiKeys.length ? { key: apiKeys[liveKeyIndex % apiKeys.length], index: liveKeyIndex % apiKeys.length } : { key: '', index: -1 };
     }
 
-    function floatTo16BitPCM(f32) {
-      const b = new ArrayBuffer(f32.length * 2), v = new DataView(b); let o = 0;
-      for (let i = 0; i < f32.length; i++, o += 2) { let s = Math.max(-1, Math.min(1, f32[i])); v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true); }
-      return new Uint8Array(b);
+    // ⚡ BỘ NỘI SUY DOWNSAMPLING: CHUYỂN TẦN SỐ THỰC TẾ CỦA MÁY VỀ CHUẨN 16000Hz PCM
+    function downsampleTo16kPCM(inputData, inputSampleRate) {
+      if (inputSampleRate === 16000) {
+        const b = new ArrayBuffer(inputData.length * 2), v = new DataView(b);
+        for (let i = 0, o = 0; i < inputData.length; i++, o += 2) {
+          let s = Math.max(-1, Math.min(1, inputData[i]));
+          v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        }
+        return new Uint8Array(b);
+      }
+      const recordRate = inputSampleRate, outputRate = 16000;
+      const compression = recordRate / outputRate;
+      const length = Math.floor(inputData.length / compression);
+      const result = new Int16Array(length);
+      for (let i = 0; i < length; i++) {
+        const originalIndex = Math.floor(i * compression);
+        let s = Math.max(-1, Math.min(1, inputData[originalIndex]));
+        result[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+      return new Uint8Array(result.buffer);
     }
 
     function playPcm24k(b64, ctx, st) {
@@ -436,31 +451,34 @@
     async function startLiveVoiceCall() {
       const { key, index } = getLiveApiKey(); if (!key) return showToast("Cần Google API Key!", "danger");
       const m = $('live-call-modal'), st = $('live-call-status'), tr = $('live-transcript'), orb = $('live-orb');
-      m.style.display = 'flex'; st.innerText = `Đang kết nối [Key ${index+1}]...`; tr.innerHTML = '<i>Đang khởi tạo Gemini 3.8 Live...</i>'; orb.className = 'live-orb listening';
+      m.style.display = 'flex'; st.innerText = `Đang kết nối [Key ${index+1}]...`; tr.innerHTML = '<i>Đang mở micro & kết nối máy chủ Gemini...</i>'; orb.className = 'live-orb listening';
       livePlaybackState = { nextPlayTime: 0, activeSources: [] }; isLiveSetupComplete = false;
 
       try {
-        liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+        liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (liveAudioCtx.state === 'suspended') await liveAudioCtx.resume();
-        liveMediaStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+        const actualSampleRate = liveAudioCtx.sampleRate; // Lấy tần số thực tế của máy (44100 hoặc 48000)
+
+        liveMediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
         liveWs = new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`);
 
         liveWs.onopen = () => {
           const selectedLiveModel = $('live-model-select')?.value || 'models/gemini-3.8-live';
           const voice = $('live-voice-select')?.value || 'Charon', temp = parseFloat($('live-temperature')?.value || 0.7);
           
+          // ⚡ BẮT BUỘC CẤU HÌNH SERVER VAD ĐỂ MÁY TỰ ĐỘNG CHỐT LƯỢT THOẠI SAU KHI NÓI
           const setupMsg = { 
             setup: { 
               model: selectedLiveModel, 
               generationConfig: { 
-                responseModalities: ["AUDIO"], 
+                responseModalities: ["AUDIO", "TEXT"], 
                 temperature: temp, 
                 speechConfig: { 
                   voiceConfig: { 
                     prebuiltVoiceConfig: { voiceName: voice } 
                   } 
                 } 
-              }, 
+              },
               systemInstruction: { parts: [{ text: getLiveCallSI() }] } 
             } 
           };
@@ -469,12 +487,26 @@
 
           const src = liveAudioCtx.createMediaStreamSource(liveMediaStream);
           const proc = liveAudioCtx.createScriptProcessor(2048, 1, 1);
+          
           proc.onaudioprocess = e => {
             if (!isLiveSetupComplete || isLiveMicMuted || liveWs?.readyState !== WebSocket.OPEN) return;
-            const pcm = floatTo16BitPCM(e.inputBuffer.getChannelData(0));
-            let bin = ''; for (let i = 0; i < pcm.length; i++) bin += String.fromCharCode(pcm[i]);
+            const floatData = e.inputBuffer.getChannelData(0);
             
-            // ⚡ SỬA CHUẨN GIAO THỨC GOOGLE: mediaChunks (KHẮC PHỤC TRIỆT ĐỂ LỖI 1007)
+            // Tính toán âm lượng tức thời để tạo hiệu ứng nhấp nháy Orb khi bạn nói
+            let sum = 0;
+            for (let i = 0; i < floatData.length; i++) sum += floatData[i] * floatData[i];
+            const rms = Math.sqrt(sum / floatData.length);
+            if (rms > 0.02 && orb && !orb.classList.contains('speaking')) {
+              orb.style.transform = `scale(${1 + Math.min(rms * 2, 0.25)})`;
+            } else if (orb && !orb.classList.contains('speaking')) {
+              orb.style.transform = 'scale(1)';
+            }
+
+            // Downsample về đúng 16000Hz PCM
+            const pcm16k = downsampleTo16kPCM(floatData, actualSampleRate);
+            let bin = '';
+            for (let i = 0; i < pcm16k.length; i++) bin += String.fromCharCode(pcm16k[i]);
+            
             liveWs.send(JSON.stringify({ 
               realtimeInput: { 
                 mediaChunks: [{ 
@@ -494,8 +526,8 @@
             if (msg.setupComplete || msg.serverContent?.setupComplete) { 
               isLiveSetupComplete = true; 
               liveRetryCount = 0; 
-              st.innerText = `🟢 Đã kết nối Live 3.8!`; 
-              tr.innerHTML = '<i>Hãy nói tự nhiên vào micro...</i>'; 
+              st.innerText = `🟢 Đã kết nối Live 3.8 (${actualSampleRate}Hz)`; 
+              tr.innerHTML = '<i>Hãy nói chuyện bình thường vào micro...</i>'; 
               return; 
             }
             if (msg.serverContent?.interrupted) { 
@@ -511,7 +543,7 @@
         };
 
         liveWs.onclose = ev => {
-          cleanupLive(); if (orb) orb.className = 'live-orb';
+          cleanupLive(); if (orb) { orb.className = 'live-orb'; orb.style.transform = 'scale(1)'; }
           if ((ev.code === 1011 || ev.reason?.includes('quota')) && apiKeys.length > 1 && liveRetryCount < apiKeys.length) {
             liveRetryCount++; liveKeyIndex = (liveKeyIndex + 1) % apiKeys.length; st.innerText = `⚠️ Đổi Key ${liveKeyIndex+1}...`; setTimeout(startLiveVoiceCall, 600); return;
           }
@@ -537,7 +569,6 @@
           liveCamInterval = setInterval(() => {
             if (!isLiveCamOn || liveWs?.readyState !== WebSocket.OPEN || !isLiveSetupComplete) return;
             cv.width = v.videoWidth || 320; cv.height = v.videoHeight || 240; cx.drawImage(v, 0, 0, cv.width, cv.height);
-            // Sửa thành mediaChunks cho video frames
             liveWs.send(JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: "image/jpeg", data: cv.toDataURL('image/jpeg', 0.6).split(',')[1] }] } }));
           }, 1000);
         } catch(e) { showToast("Lỗi Cam: " + e.message, 'danger'); }
@@ -661,7 +692,6 @@
     const applyTheme = m => { const t = m === 'auto' ? ((new Date().getHours() >= 18 || new Date().getHours() < 6) ? 'dark' : 'light') : m; DOM.btnTheme.innerText = m === 'auto' ? "🌙 Tự động" : m === 'dark' ? "🌙 Tối" : "☀️ Sáng"; document.documentElement.setAttribute('data-theme', t); ls.setItem('theme', m); };
     applyTheme(ls.getItem('theme') || 'auto'); DOM.btnTheme.onclick = () => { const c = ls.getItem('theme') || 'auto'; applyTheme(c === 'auto' ? 'dark' : c === 'dark' ? 'light' : 'auto'); };
 
-    // ⌨️ PHÍM TẮT CTRL + ENTER ĐỂ GỬI TRÊN MÁY TÍNH
     if (DOM.input) { 
       DOM.input.value = ls.getItem('huanmu_draft') || ls.getItem('javiss_draft') || ''; 
       updateTokenCount(); 
@@ -693,7 +723,6 @@
       return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}\n\n[MỐC THỜI GIAN THỰC TẾ]: Hiện tại chính xác là ${timeStr} (${dateStr}, Múi giờ Việt Nam GMT+7).\nQUY TẮC BẮT BUỘC: Khi người dùng hỏi bây giờ là mấy giờ, thời gian hiện tại hoặc ngày tháng, bạn PHẢI trả lời chính xác theo mốc giờ ${timeStr} và ngày ${dateStr} này.`;
     };
 
-    // --- XỬ LÝ TỆP & XUẤT DỮ LIỆU ---
     window.exportCleanArticle = () => { const m = chatHistory.filter(x => x.role === 'model').map(x => x.text); m.length ? saveOrShareBlob(new Blob([`# Huân MU - Bài viết trích xuất\n\n` + m.join('\n\n---\n\n')], { type: 'text/markdown' }), `HuanMU_Export_${Date.now()}.md`) : showToast("Trống!", "warning"); };
     window.applySnippet = p => { if (DOM.input) { DOM.input.value = p + "\n" + DOM.input.value; DOM.input.dispatchEvent(new Event('input')); DOM.input.focus(); } DOM.snippetsContainer.style.display = 'none'; };
     DOM.btnToggleSnippets.onclick = () => DOM.snippetsContainer.style.display = DOM.snippetsContainer.style.display === 'flex' ? 'none' : 'flex';
@@ -739,7 +768,7 @@
     async function renderLibrary() { const c = $('library-files-container'), fs = await getAllFilesFromLib(); c.innerHTML = fs.length ? fs.map(f => `<div class="search-result-item" style="display:flex;justify-content:space-between;align-items:center;"><div><strong>${f.name}</strong><br><small>${(f.size/1024).toFixed(1)} KB</small></div><button class="btn primary" onclick="addFileFromLib('${f.id}')">➕ Đính</button></div>`).join('') : "<i>Thư viện trống.</i>"; }
     window.addFileFromLib = async id => { const f = (await getAllFilesFromLib()).find(x => x.id === id); if (f) { await processUploadFiles([new File([f.blob], f.name, { type: f.type })]); closeModals(); showToast(`Đã đính: ${f.name}`); } };
 
-    // --- TABS, THƯ MỤC & TOÀN BỘ 7 NÚT QUẢN LÝ PHIÊN ---
+    // --- SESSIONS & 7 NÚT QUẢN LÝ ---
     function renderTabs() {
       DOM.tabsContainer.innerHTML = openTabs.map(tId => { const s = sessions.find(x => x.id === tId); return s ? `<div class="tab-item ${tId===activeId?'active':''}"><span onclick="window.switchSess('${tId}')">${s.name.substring(0,14)}</span> <span class="tab-close" onclick="window.closeTab('${tId}',event)">×</span></div>` : ''; }).join('');
       ls.setItem('huanmu_tabs', JSON.stringify(openTabs));
@@ -835,10 +864,7 @@
       $('session-msg-count').innerText = `${chatHistory.length} tin${kInfo}`; 
     }
 
-    // 1️⃣ NÚT THÊM PHIÊN
     $('btn-new-session').onclick = () => newSess();
-
-    // 2️⃣ NÚT SỬA TÊN PHIÊN
     $('btn-rename-session').onclick = async () => { 
       const s = sessions.find(x => x.id === activeId); 
       if (!s) return;
@@ -851,8 +877,6 @@
         showToast("✏️ Đã đổi tên phiên!");
       } 
     };
-
-    // 3️⃣ NÚT CHUYỂN THƯ MỤC
     $('btn-move-session').onclick = async () => {
       const s = sessions.find(x => x.id === activeId);
       if (!s) return;
@@ -870,8 +894,6 @@
         showToast(`📂 Đã chuyển phiên sang "${tf}"!`);
       }
     };
-
-    // 4️⃣ NÚT XÓA PHIÊN
     $('btn-delete-session').onclick = async () => { 
       if (sessions.length <= 1) return showToast("Cần giữ lại ít nhất 1 phiên!", "warning"); 
       const s = sessions.find(x => x.id === activeId);
@@ -883,8 +905,6 @@
         showToast("🗑️ Đã xóa phiên!");
       } 
     };
-
-    // 5️⃣ NÚT LÊN (DI CHUYỂN THỨ TỰ PHIÊN LÊN)
     $('btn-move-up').onclick = async () => {
       const idx = sessions.findIndex(x => x.id === activeId);
       if (idx > 0) {
@@ -901,8 +921,6 @@
         showToast("Phiên đã ở vị trí trên cùng!", "info");
       }
     };
-
-    // 6️⃣ NÚT XUỐNG (DI CHUYỂN THỨ TỰ PHIÊN XUỐNG)
     $('btn-move-down').onclick = async () => {
       const idx = sessions.findIndex(x => x.id === activeId);
       if (idx >= 0 && idx < sessions.length - 1) {
@@ -920,7 +938,6 @@
       }
     };
 
-    // 7️⃣ NÚT QUẢN LÝ LỊCH SỬ TIN NHẮN (BULK EDIT)
     $('btn-bulk-edit').onclick = () => {
       const modal = $('bulk-edit-modal'), list = $('bulk-edit-list');
       if (!chatHistory.length) return showToast("Phiên này chưa có tin nhắn nào!", "warning");
@@ -1127,7 +1144,6 @@
         const renderer = createStreamRenderer(cD);
         let fnP = fP;
 
-        // 1. Tự động bóc tách link
         const uMatch = fnP.match(/https?:\/\/[^\s]+/)?.[0];
         if (uMatch && !uMatch.includes("youtube.com") && !uMatch.includes("youtu.be")) {
           if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText = `🌐 Đang bóc tách link...`;
@@ -1135,7 +1151,6 @@
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
-        // 2. Tìm kiếm web khi có từ khóa trong ngoặc kép "..."
         const quoted = extractQuotedKeywords(fnP);
         if (quoted && DOM.toggleSearch.checked) {
           const sel = DOM.searchEngineSel.value, tgt = sel === 'auto' ? (ls.getItem('auto_search_default_engine') || 'jina') : sel;
