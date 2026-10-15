@@ -113,25 +113,33 @@
             <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:var(--primary);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-search"> 🌐 Tìm kiếm Web</label>
             <div id="search-engine-box" style="margin-left:20px;display:none;">
               <select id="search-engine-select" class="modern-select" style="font-size:0.75rem;padding:3px 6px;">
-                <option value="auto" selected>🔄 Tự động (Smart Auto-Search)</option><option value="jina">🦎 Jina AI Search</option><option value="tavily">⚡ Tavily AI Search</option><option value="serper">🔎 Serper.dev Google</option><option value="brave">🦁 Brave Search</option><option value="google">🔍 Google Grounding (Gemini 2.5)</option>
+                <option value="auto" selected>🔄 Tự động (Smart Auto-Search)</option><option value="jina">🦎 Jina AI Search</option><option value="tavily">⚡ Tavily AI Search</option><option value="serper">🔎 Serper.dev Google</option><option value="brave">🦁 Brave Search</option>
               </select>
             </div>
             <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:green;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-memory" checked> 🧠 Bộ nhớ ngữ cảnh (16 tin)</label>
           </div>
-          <div style="margin-top:6px;"><span class="section-title">🤖 Mô hình chính:</span>
+          <div style="margin-top:6px;"><span class="section-title">🤖 Mô hình chính (Gemini 3):</span>
             <select id="model-select" class="modern-select">
-              <optgroup label="✨ Google Gemini">
-                <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash Lite (Mặc định)</option><option value="gemini-3.8-flash">Gemini 3.8 Flash (Mới nhất)</option><option value="gemini-3.6-flash">Gemini 3.6 Flash</option><option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option><option value="gemini-2.5-flash">Gemini 2.5 Flash (Web Grounding 1-Req)</option>
+              <optgroup label="✨ Google Gemini 3">
+                <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash Lite (Mặc định)</option>
+                <option value="gemini-3.8-flash">Gemini 3.8 Flash (Mới nhất)</option>
+                <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+                <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
               </optgroup>
               <optgroup label="🌐 Nền tảng Dify">
-                <option value="gemini-3.5-flash-dify">Gemini 3.5 Flash (Dify)</option><option value="gemini-3.1-flash-lite-dify">Gemini 3.1 Flash Lite (Dify)</option><option value="gemini-3.1-pro-dify">Gemini 3.1 Pro Preview (Dify)</option><option value="gpt-5.5-dify">GPT-5.5 (Dify)</option><option value="opus-4-dify">Claude 4 Opus (Dify)</option>
+                <option value="gemini-3.5-flash-dify">Gemini 3.5 Flash (Dify)</option>
+                <option value="gemini-3.1-flash-lite-dify">Gemini 3.1 Flash Lite (Dify)</option>
+                <option value="gemini-3.1-pro-dify">Gemini 3.1 Pro Preview (Dify)</option>
+                <option value="gpt-5.5-dify">GPT-5.5 (Dify)</option>
+                <option value="opus-4-dify">Claude 4 Opus (Dify)</option>
               </optgroup>
               <optgroup label="⚡ Groq Inference">
-                <option value="qwen/qwen3.6-27b">Compound (Groq)</option><option value="openai/gpt-oss-120b">GPT-OSS 120B (Groq Reasoning)</option>
+                <option value="qwen/qwen3.6-27b">Compound (Groq)</option>
+                <option value="openai/gpt-oss-120b">GPT-OSS 120B (Groq Reasoning)</option>
               </optgroup>
             </select>
           </div>
-          <div style="margin-top:6px;"><span class="section-title">🧠 Think Depth:</span><select id="thinking-level" class="modern-select"><option value="minimal" selected>Min (Tối thiểu)</option><option value="low">Low (Thấp)</option><option value="medium" selected>Med (Chuẩn)</option><option value="high">High (Sâu)</option></select></div>
+          <div style="margin-top:6px;"><span class="section-title">🧠 Think Depth:</span><select id="thinking-level" class="modern-select"><option value="minimal" selected>Min (Tối thiểu)</option><option value="low">Low (Thấp)</option><option value="medium">Med (Chuẩn)</option><option value="high">High (Sâu)</option></select></div>
           <div style="margin-top:6px;"><span class="section-title">🔑 Google API Key:</span><select id="api-key-select" class="modern-select"><option value="auto">🔄 Tự động xoay tua</option></select></div>
           <div class="side-btn-grid" style="margin-top:6px;"><button id="btn-new-session" class="btn primary">➕ Thêm</button><button id="btn-rename-session" class="btn">✏️ Sửa</button><button id="btn-move-session" class="btn">📂 Chuyển</button><button id="btn-delete-session" class="btn danger">🗑️ Xóa</button></div>
           <div class="side-btn-row" style="margin-top:6px;"><button id="btn-move-up" class="btn" style="flex:1;">⬆️ Lên</button><button id="btn-move-down" class="btn" style="flex:1;">⬇️ Xuống</button></div>
@@ -206,7 +214,7 @@
         </fieldset>
         <fieldset class="settings-group"><legend>⚙️ Ngữ cảnh Phiên Chat & Live (System Prompt)</legend>
           <div style="display:flex;flex-direction:column;gap:8px;">
-            <div><label class="field-label">System Instruction riêng phiên:</label><textarea id="system-instruction-input" rows="2" class="modern-textarea"></textarea></div>
+            <div><label class="field-label">System Instruction riêng phiên (Có thể gán link theo chủ đề):</label><textarea id="system-instruction-input" rows="2" class="modern-textarea"></textarea></div>
             <div><label class="field-label">🌍 Ngữ cảnh Toàn cục:</label><textarea id="global-context-input" rows="2" class="modern-textarea"></textarea></div>
           </div>
         </fieldset>
@@ -276,7 +284,7 @@
     const SAFETY = ['HARM_CATEGORY_HARASSMENT','HARM_CATEGORY_HATE_SPEECH','HARM_CATEGORY_SEXUALLY_EXPLICIT','HARM_CATEGORY_DANGEROUS_CONTENT','HARM_CATEGORY_CIVIC_INTEGRITY'].map(category => ({ category, threshold: 'BLOCK_NONE' }));
     const externalModels = ['qwen/qwen3.6-27b','openai/gpt-oss-120b'];
     const getNowTime24h = () => { const d = new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
-    const getFallbackModelsFor = m => [m, ...['gemini-3.5-flash-lite','gemini-3.8-flash','gemini-3.6-flash','gemini-3.1-flash-lite','gemini-2.5-flash'].filter(x => x !== m)];
+    const getFallbackModelsFor = m => [m, ...['gemini-3.5-flash-lite','gemini-3.8-flash','gemini-3.6-flash','gemini-3.1-flash-lite'].filter(x => x !== m)];
     const formatGoogleApiError = e => { const m = e?.message || ""; return (m.includes("429") || m.includes("RESOURCE_EXHAUSTED")) ? "⚠️ Hết Quota (429)." : (m.includes("503") || m.includes("UNAVAILABLE")) ? "⚠️ Máy chủ quá tải (503)." : m ? `❌ Lỗi: ${m}` : "❌ Lỗi máy chủ Google."; };
     const extractQuotedKeywords = t => { const m = Array.from((t||'').matchAll(/["“«]([^"”»]+)["”»]/g)).map(x => x[1].trim()).filter(Boolean); return m.length ? m.join(' ') : null; };
     const serializeHistoryForDify = (his, p) => his.length ? `[LỊCH SỬ]:\n${his.map(m => `${m.role==='model'?'AI':'Bạn'}: ${m.text}`).join('\n')}\n\n[YÊU CẦU]: ${p}` : p;
@@ -362,7 +370,7 @@
 
     async function extractWebPageContent(url) {
       const mode = ls.getItem('web_extract_engine') || 'auto', jk = ls.getItem('jina_api_key') || '', tk = ls.getItem('tavily_api_key') || '';
-      const isBlocked = t => !t || t.trim().length < 60 || /(just a moment|security verification|verify you are human|cloudflare|ddos protection|challenge-platform|enable javascript|access denied|403 forbidden)/i.test(txt => txt);
+      const isBlocked = t => !t || t.trim().length < 60 || /(just a moment|security verification|verify you are human|cloudflare|ddos protection|challenge-platform|enable javascript|access denied|403 forbidden)/i.test(t);
       const jina = async () => { const r = await fetch(`https://r.jina.ai/${url}`, { headers: { Accept: "text/plain", ...(jk ? { Authorization: `Bearer ${jk}` } : {}) } }); if (!r.ok) throw 0; const t = await r.text(); if (isBlocked(t)) throw 0; return { source: "Jina Reader", content: t.substring(0, 45000) }; };
       const tavily = async () => { if (!tk) throw 0; const r = await fetch("https://api.tavily.com/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ api_key: tk, urls: [url] }) }); const t = (await r.json()).results?.[0]?.raw_content; if (isBlocked(t)) throw 0; return { source: "Tavily Extract", content: t.substring(0, 45000) }; };
       const proxy = async () => { const d = await (await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`)).json(); const t = new DOMParser().parseFromString(d.contents, "text/html").body.innerText.replace(/\s+/g, ' ').trim(); if (isBlocked(t)) throw 0; return { source: "Web Proxy", content: t.substring(0, 30000) }; };
@@ -377,7 +385,7 @@
       throw new Error("Không thể bóc tách dữ liệu.");
     }
 
-    // --- GEMINI MULTIMODAL LIVE CALL (CHUẨN 3.1 LIVE FLASH PREVIEW) ---
+    // --- GEMINI MULTIMODAL LIVE CALL (GEMINI 3.1 LIVE FLASH PREVIEW) ---
     let liveWs = null, liveAudioCtx = null, liveMediaStream = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] }, liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
 
     function getLiveCallSI() {
@@ -437,7 +445,7 @@
           const voice = $('live-voice-select')?.value || 'Charon', temp = parseFloat($('live-temperature')?.value || 0.7);
           const setupMsg = { 
             setup: { 
-              model: "models/gemini-3.8-live", 
+              model: "models/gemini-3.1-flash-live-preview", 
               generationConfig: { responseModalities: ["AUDIO"], temperature: temp, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } }, 
               systemInstruction: { parts: [{ text: getLiveCallSI() }] } 
             } 
@@ -682,7 +690,7 @@
       try {
         if (u.includes("youtube.com") || u.includes("youtu.be")) {
           const k = getSessionApiKey(sessions.find(x => x.id === activeId)); if (!k) throw new Error("Cần Google Key!");
-          const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({ model: "gemini-2.5-flash", contents: `Tóm tắt video YT: ${u}`, config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY } });
+          const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({ model: "gemini-3.5-flash-lite", contents: `Tóm tắt video YT: ${u}`, config: { safetySettings: SAFETY } });
           txtContent += `\n[YouTube: ${u}]:\n${res.text}\n`; DOM.textFileList.innerHTML += `📺 YouTube<br>`;
         } else { const ext = await extractWebPageContent(u); txtContent += `\n[Nội dung ${u} qua ${ext.source}]:\n${ext.content}\n`; DOM.textFileList.innerHTML += `🌐 ${ext.source}<br>`; }
         DOM.previewBox.style.display = 'block'; DOM.fileCount.innerText = filesData.length + (txtContent ? 1 : 0); updateTokenCount(); showToast("Đã bóc tách!");
@@ -702,8 +710,7 @@
     document.querySelectorAll('.close-btn').forEach(b => b.onclick = closeModals); oLay.onclick = closeModals;
     $('btn-camera-snap').onclick = async () => { $('camera-modal').style.display = 'flex'; oLay.style.display = 'block'; try {$('camera-preview').srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); } catch(e) { showToast(e.message, 'danger'); } };
     $('btn-take-photo').onclick = () => { const v =$('camera-preview'); if (!v.srcObject) return; const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0); c.toBlob(b => { processUploadFiles([new File([b], `Cam_${Date.now()}.jpg`, { type: 'image/jpeg' })]); closeModals(); showToast("Đã chụp!"); }, 'image/jpeg', 0.85); };
-    DOM.btnFileLibrary.onclick = () => { $('file-library-modal').style.display = 'flex'; oLay.style.display = 'block'; renderLibrary(); };
-    $('library-upload-input').onchange = async e => { for (const f of e.target.files) if (f.size <= 50*1024*1024) await saveFileToLib({ id: Date.now() + Math.random().toString().slice(2,7), name: f.name, type: f.type, size: f.size, blob: f, added: new Date().toISOString() }); showToast("Đã tải lên thư viện!"); renderLibrary(); e.target.value = ''; };
+    DOM.btnFileLibrary.onclick = () => { $('file-library-modal').style.display = 'flex'; oLay.style.display = 'block'; renderLibrary(); };$('library-upload-input').onchange = async e => { for (const f of e.target.files) if (f.size <= 50*1024*1024) await saveFileToLib({ id: Date.now() + Math.random().toString().slice(2,7), name: f.name, type: f.type, size: f.size, blob: f, added: new Date().toISOString() }); showToast("Đã tải lên thư viện!"); renderLibrary(); e.target.value = ''; };
     async function renderLibrary() { const c = $('library-files-container'), fs = await getAllFilesFromLib(); c.innerHTML = fs.length ? fs.map(f => `<div class="search-result-item" style="display:flex;justify-content:space-between;align-items:center;"><div><strong>${f.name}</strong><br><small>${(f.size/1024).toFixed(1)} KB</small></div><button class="btn primary" onclick="addFileFromLib('${f.id}')">➕</button></div>`).join('') : "<i>Trống.</i>"; }
     window.addFileFromLib = async id => { const f = (await getAllFilesFromLib()).find(x => x.id === id); if (f) { await processUploadFiles([new File([f.blob], f.name, { type: f.type })]); closeModals(); showToast(`Đã đính: ${f.name}`); } };
 
@@ -793,7 +800,7 @@
     window.editMsg = async i => { DOM.input.value = chatHistory[i].text; DOM.input.dispatchEvent(new Event('input')); chatHistory = chatHistory.slice(0, i); await reRenderHistory(); };
     window.clearActiveSession = async () => { if (confirm("Xóa sạch phiên này?")) { chatHistory = []; await reRenderHistory(); showToast('Đã dọn sạch'); } };
 
-    // --- GỬI TIN NHẮN & STREAM + ABORT CONTROLLER ---
+    // --- GỬI TIN NHẮN (GEMINI 3.X GENERATECONTENTSTREAM + SLIDING WINDOW + THINKINGLEVEL) ---
     DOM.sendBtn.onclick = async () => {
       if (isProcessing) return abortController?.abort();
       const am = DOM.model.value || 'gemini-3.5-flash-lite', isExt = am.endsWith('-dify') || externalModels.includes(am);
@@ -828,6 +835,7 @@
         const renderer = createStreamRenderer(bD.querySelector('.msg-content')), ind = () => bD.querySelector('.streaming-indicator');
         let fnP = fP;
 
+        // 🚀 1. CHỈ BÓC TÁCH KHI BẠN GÕ LINK URL TRỰC TIẾP
         const uMatch = fnP.match(/https?:\/\/[^\s]+/)?.[0];
         if (uMatch && !uMatch.includes("youtube.com") && !uMatch.includes("youtu.be")) {
           if (ind()) ind().innerText = `🌐 Đang bóc tách link...`;
@@ -835,37 +843,72 @@
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
+        // 🔍 2. CHỈ TÌM KIẾM WEB KHI CÂU HỎI CỦA BẠN CHỨA DẤU NGOẶC KÉP "..."
         const quoted = extractQuotedKeywords(fnP);
         if (quoted && DOM.toggleSearch.checked) {
           const sel = DOM.searchEngineSel.value, tgt = sel === 'auto' ? (ls.getItem('auto_search_default_engine') || 'jina') : sel;
           if (ind()) ind().innerText = `🔍 Tìm "${quoted}"...`;
           try {
-            let sText = "";
-            if (tgt === 'google' && am !== 'gemini-2.5-flash') sText = (await new GoogleGenAI({ apiKey: gKey || apiKeys[0] }).models.generateContent({ model: "gemini-2.5-flash", contents: `Tìm thông tin: ${quoted}`, config: { tools: [{ googleSearch: {} }], safetySettings: SAFETY } })).text;
-            else if (tgt !== 'google') sText = await ({ jina: fetchJinaSearch, tavily: fetchTavilySearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[tgt])(quoted);
-            if (sText) fnP = `[DỮ LIỆU TÌM ĐƯỢC CHO "${quoted}"]:\n${sText}\n\n[YÊU CẦU]: ${fnP}`;
+            const sText = await ({ jina: fetchJinaSearch, tavily: fetchTavilySearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[tgt] || fetchJinaSearch)(quoted);
+            if (sText) fnP = `[DỮ LIỆU TÌM ĐƯỢC CHO "${quoted}"]: \n${sText}\n\n[YÊU CẦU]: ${fnP}`;
           } catch(e) { showToast(e.message, 'danger'); }
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
+        // 🤖 3. NẠP VÀO MÔ HÌNH XỬ LÝ (DIFY, GROQ, HOẶC GEMINI 3 DIRECT STREAM)
         if (isExt) {
           const onCk = c => { ind()?.remove(); finalResp += c; renderer.push(finalResp); }, onErr = e => { if (e.name !== 'AbortError') showToast("Lỗi: " + e.message, 'danger'); };
           am.endsWith('-dify') ? await callDifyStream(serializeHistoryForDify(DOM.toggleMemory.checked ? chatHistory.slice(-16) : [], fnP), onCk, onErr, abortController.signal) : await callGroqStream(fnP, onCk, onErr, abortController.signal);
           if (finalResp.trim()) await renderer.flush(finalResp);
         } else {
           let pS = false, lastErr = null;
-          const parts = [{ text: fnP }]; for (const f of imgs) parts.push(await fileToInteractionPart(f));
-          const contents = [...(DOM.toggleMemory.checked ? chatHistory.slice(-16).map(m => ({ role: m.role === 'model' ? 'model' : 'user', parts: [{ text: m.text }] })) : []), { role: 'user', parts }];
-          const thk = DOM.thinking.value, budgets = { minimal: 0, low: 1024, medium: 4096, high: 8192 };
+          
+          // 🧠 CỬA SỔ TRƯỢT SLIDING WINDOW: NẠP 16 TIN NHẮN GẦN NHẤT
+          const contents = [];
+          if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
+            chatHistory.slice(-16).forEach(m => contents.push({
+              role: m.role === 'model' ? 'model' : 'user',
+              parts: [{ text: m.text }]
+            }));
+          }
+
+          const currentParts = [{ text: fnP }];
+          for (const f of imgs) currentParts.push(await fileToInteractionPart(f));
+          contents.push({ role: 'user', parts: currentParts });
+
+          const thk = DOM.thinking.value;
+          const config = { 
+            systemInstruction: getDynamicSI(), 
+            safetySettings: SAFETY, 
+            temperature: +DOM.temp.value, 
+            topP: +DOM.topP.value, 
+            topK: +DOM.topK.value,
+            ...(thk && thk !== 'none' ? { thinkingConfig: { thinkingLevel: thk } } : {}) // ⚡ CHUẨN 100% GOOGLE GEMINI 3.X THINKING LEVEL
+          };
 
           for (const mod of getFallbackModelsFor(am)) {
             finalResp = "";
             try {
-              const config = { systemInstruction: getDynamicSI(), safetySettings: SAFETY, temperature: +DOM.temp.value, topP: +DOM.topP.value, topK: +DOM.topK.value, ...(thk in budgets ? { thinkingConfig: { thinkingBudget: budgets[thk] } } : {}), ...(mod === 'gemini-2.5-flash' && DOM.toggleSearch.checked && DOM.searchEngineSel.value === 'google' ? { tools: [{ googleSearch: {} }] } : {}) };
-              const resStream = await new GoogleGenAI({ apiKey: gKey }).models.generateContentStream({ model: mod, contents, config, abortSignal: abortController.signal });
-              for await (const ck of resStream) if (ck.text) { ind()?.remove(); finalResp += ck.text; renderer.push(finalResp); }
-              await renderer.flush(finalResp); pS = true; break;
-            } catch(e) { if (e.name === 'AbortError' || abortController.signal.aborted) throw e; lastErr = e; }
+              const resStream = await new GoogleGenAI({ apiKey: gKey }).models.generateContentStream({ 
+                model: mod, 
+                contents, 
+                config, 
+                abortSignal: abortController.signal 
+              });
+              for await (const ck of resStream) {
+                if (ck.text) { 
+                  ind()?.remove(); 
+                  finalResp += ck.text; 
+                  renderer.push(finalResp); 
+                }
+              }
+              await renderer.flush(finalResp); 
+              pS = true; 
+              break;
+            } catch(e) { 
+              if (e.name === 'AbortError' || abortController.signal.aborted) throw e; 
+              lastErr = e; 
+            }
           }
           if (!pS) { bD.remove(); return showToast(formatGoogleApiError(lastErr), 'danger'); }
         }
