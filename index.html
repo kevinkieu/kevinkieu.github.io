@@ -2,8 +2,8 @@
 <html lang="vi" data-theme="auto">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HK Workshop</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Huân MU</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -14,7 +14,7 @@
   <style>
     :root{--bg-main:#f0f4f9;--bg-sidebar:#e9eef6;--bg-card:#ffffff;--border:#c4c7c5;--text-main:#1f1f1f;--text-muted:#444746;--bg-msg-user:#d3e3fd;--bg-msg-bot:transparent;--primary:#0b57d0;--primary-container:#d3e3fd;--danger:#b3261e;--input-bg:#f0f4f9;--shadow:0 1px 3px rgba(0,0,0,0.1);--transition:all 0.2s ease;--chat-font-size:16px}
     [data-theme="dark"]{--bg-main:#131314;--bg-sidebar:#1e1f20;--bg-card:#282a2c;--border:#444746;--text-main:#e3e3e3;--text-muted:#c4c7c5;--bg-msg-user:#004a77;--bg-msg-bot:transparent;--primary:#a8c7fa;--primary-container:#004a77;--danger:#f2b8b5;--input-bg:#1e1f20;--shadow:0 1px 3px rgba(0,0,0,0.4)}
-    *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+    *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
     body{display:flex;width:100vw;height:100dvh;background:var(--bg-main);color:var(--text-main);overflow:hidden}
     .app-container{display:flex;width:100%;height:100%;position:relative}
     .sidebar{width:280px;min-width:280px;background:var(--bg-sidebar);height:100%;display:flex;flex-direction:column;border-right:1px solid var(--border);z-index:999;transition:var(--transition)}
@@ -26,7 +26,7 @@
     .main-content{flex:1;height:100%;display:flex;flex-direction:column;background:var(--bg-main);position:relative;overflow:hidden}
     .main-header{height:54px;min-height:54px;padding:0 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(0,0,0,0.05)}
     .header-left,.header-right{display:flex;align-items:center;gap:10px}
-    .logo-text{font-size:0.95rem;font-weight:600;text-transform:uppercase}
+    .logo-text{font-size:1.05rem;font-weight:700;letter-spacing:0.5px;color:var(--primary)}
     #tabs-container{display:flex;overflow-x:auto;background:var(--bg-sidebar);border-bottom:1px solid var(--border);min-height:36px;scrollbar-width:none}
     #tabs-container::-webkit-scrollbar,.input-tools-scroll::-webkit-scrollbar{display:none}
     .tab-item{padding:8px 12px;font-size:.85rem;color:var(--text-muted);cursor:pointer;border-right:1px solid var(--border);display:flex;align-items:center;gap:6px;white-space:nowrap}
@@ -34,13 +34,13 @@
     .tab-close{cursor:pointer;font-size:1rem;opacity:0.6}.tab-close:hover{opacity:1;color:var(--danger)}
     #chat-container{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:20px;max-width:820px;width:100%;margin:0 auto;scroll-behavior:smooth}
     .message-container{display:flex;flex-direction:column;position:relative;width:100%}
-    .user-message{background:var(--bg-msg-user);padding:12px 16px;border-radius:20px 20px 4px 20px;max-width:85%;margin-left:auto;box-shadow:var(--shadow);line-height:1.5;font-size:var(--chat-font-size,16px)}
+    .user-message{background:var(--bg-msg-user);padding:12px 16px;border-radius:20px 20px 4px 20px;max-width:88%;margin-left:auto;box-shadow:var(--shadow);line-height:1.5;font-size:var(--chat-font-size,16px)}
     .bot-message{background:var(--bg-msg-bot);padding:12px 4px;max-width:100%;line-height:1.6;font-size:var(--chat-font-size,16px)}
     .message-header{font-size:.8rem;font-weight:600;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
     .msg-actions{display:flex;gap:6px;margin-top:6px;opacity:.8;flex-wrap:wrap}
     .action-btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text-main);padding:3px 8px;font-size:.75rem;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
     .action-btn:hover{background:var(--primary-container)}
-    .bottom-input-panel{flex-shrink:0;max-width:820px;width:calc(100% - 32px);margin:0 auto 14px auto;background:var(--bg-card);border-radius:22px;padding:8px 14px;box-shadow:0 4px 16px rgba(0,0,0,0.06);border:1px solid var(--border);z-index:99}
+    .bottom-input-panel{flex-shrink:0;max-width:820px;width:calc(100% - 24px);margin:0 auto 12px auto;background:var(--bg-card);border-radius:22px;padding:8px 14px;box-shadow:0 4px 16px rgba(0,0,0,0.06);border:1px solid var(--border);z-index:99}
     .input-tools-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.04);scrollbar-width:none}
     .tool-chip{background:var(--input-bg);border:1px solid var(--border);color:var(--text-main);padding:5px 12px;border-radius:14px;font-size:.8rem;white-space:nowrap;cursor:pointer}
     .tool-chip.magic{color:var(--primary);font-weight:600}
@@ -79,7 +79,7 @@
     .toast.success{background:#2e7d32}.toast.danger{background:#c62828}.toast.info{background:#0b57d0}.toast.show{opacity:1;pointer-events:auto}
     #scroll-to-top{position:fixed;bottom:170px;right:20px;background:rgba(11,87,208,0.3);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.2);color:var(--text-main);border-radius:50%;width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:var(--transition);z-index:998}
     #scroll-to-top.visible{opacity:0.4;pointer-events:auto}#scroll-to-top:hover{opacity:1;background:var(--primary);color:#fff}
-    .interaction-id-badge{font-size:.7rem;color:var(--primary);background:var(--input-bg);border:1px solid var(--border);padding:2px 6px;border-radius:10px;cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:4px}
+    .interaction-id-badge{font-size:.68rem;color:var(--primary);background:var(--input-bg);border:1px solid var(--border);padding:2px 6px;border-radius:8px;display:inline-flex;align-items:center;margin-left:4px}
     .search-result-item,.bulk-edit-item{cursor:pointer;margin:4px 0;padding:6px;border-radius:6px;background:var(--input-bg);border-left:3px solid var(--primary);font-size:.8rem}
     .bulk-edit-item{display:flex;align-items:flex-start;gap:8px;border:1px solid var(--border);border-left:none}
     .api-keys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px}
@@ -99,7 +99,7 @@
   <div class="app-container">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">🤖</span><h2 style="font-size:1.05rem;font-weight:600;color:var(--primary);">Javiss Ultimate</h2></div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">🤖</span><h2 style="font-size:1.05rem;font-weight:700;color:var(--primary);">Huân MU</h2></div>
         <button id="close-sidebar-btn" class="icon-btn mobile-only">&times;</button>
       </div>
       <div class="sidebar-scroll-content">
@@ -117,27 +117,20 @@
                 <option value="auto" selected>🔄 Tự động (Smart Auto-Search)</option><option value="jina">🦎 Jina AI Search</option><option value="tavily">⚡ Tavily AI Search</option><option value="serper">🔎 Serper.dev Google</option><option value="brave">🦁 Brave Search</option>
               </select>
             </div>
-            <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:green;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-memory" checked> 🧠 Bộ nhớ ngữ cảnh (16 tin)</label>
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:green;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-memory" checked> 🧠 Bộ nhớ ngữ cảnh</label>
           </div>
-          <div style="margin-top:6px;"><span class="section-title">🤖 Mô hình chính (Gemini 3):</span>
+          <div style="margin-top:6px;"><span class="section-title">🤖 Mô hình Google Gemini:</span>
             <select id="model-select" class="modern-select">
-              <optgroup label="✨ Google Gemini 3">
-                <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash Lite (Mặc định)</option>
-                <option value="gemini-3.8-flash">Gemini 3.8 Flash (Mới nhất)</option>
-                <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
-                <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
-              </optgroup>
-              <optgroup label="🌐 Nền tảng Dify">
-                <option value="gemini-3.5-flash-dify">Gemini 3.5 Flash (Dify)</option>
-                <option value="gemini-3.1-flash-lite-dify">Gemini 3.1 Flash Lite (Dify)</option>
-                <option value="gemini-3.1-pro-dify">Gemini 3.1 Pro Preview (Dify)</option>
-                <option value="gpt-5.5-dify">GPT-5.5 (Dify)</option>
-                <option value="opus-4-dify">Claude 4 Opus (Dify)</option>
-              </optgroup>
-              <optgroup label="⚡ Groq Inference">
-                <option value="qwen/qwen3.6-27b">Compound (Groq)</option>
-                <option value="openai/gpt-oss-120b">GPT-OSS 120B (Groq Reasoning)</option>
-              </optgroup>
+              <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash Lite (Mặc định)</option>
+              <option value="gemini-3.8-flash">Gemini 3.8 Flash (Mới nhất)</option>
+              <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+              <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+            </select>
+          </div>
+          <div style="margin-top:6px;"><span class="section-title">⚡ Động cơ AI (API Engine):</span>
+            <select id="engine-select" class="modern-select">
+              <option value="stream" selected>🔄 generateContentStream (Xoay Key & Sửa)</option>
+              <option value="interactions">🌐 Interactions API (Google State)</option>
             </select>
           </div>
           <div style="margin-top:6px;"><span class="section-title">🧠 Think Depth:</span><select id="thinking-level" class="modern-select"><option value="minimal" selected>Min (Tối thiểu)</option><option value="low">Low (Thấp)</option><option value="medium">Med (Chuẩn)</option><option value="high">High (Sâu)</option></select></div>
@@ -152,7 +145,7 @@
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
     <main class="main-content">
       <header class="main-header">
-        <div class="header-left"><button id="toggle-sidebar-btn" class="icon-btn mobile-only">☰</button><h1 class="logo-text">HK Workshop</h1></div>
+        <div class="header-left"><button id="toggle-sidebar-btn" class="icon-btn mobile-only">☰</button><h1 class="logo-text">Huân MU</h1></div>
         <div class="header-right">
           <button id="btn-live-call-open" class="btn" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;border-radius:18px;padding:5px 12px;font-weight:600;">📞 Gọi Live AI</button>
           <div class="header-search-bar"><input type="text" id="search-chat-input" placeholder="Tìm kiếm phiên..."><button id="btn-global-search" class="icon-btn" style="width:30px;height:30px;font-size:.9rem;">🔍</button></div>
@@ -183,7 +176,7 @@
 
     <div id="live-call-modal">
       <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
-        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">📞</span><div><h3 style="font-size:1rem;font-weight:700;">Live AI Voice</h3><span id="live-call-status" style="font-size:0.75rem;color:#94a3b8;">Đang kết nối...</span></div></div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">📞</span><div><h3 style="font-size:1rem;font-weight:700;">Huân MU Live Voice</h3><span id="live-call-status" style="font-size:0.75rem;color:#94a3b8;">Đang kết nối...</span></div></div>
         <video id="live-camera-video" autoplay playsinline muted></video>
       </div>
       <div class="live-orb-container"><div id="live-orb" class="live-orb"></div><div id="live-transcript" class="live-transcript-box"><i>Hãy nói chuyện tự nhiên vào micro...</i></div></div>
@@ -206,10 +199,10 @@
           </div>
         </fieldset>
         <fieldset class="settings-group"><legend>📞 Cuộc gọi Live AI</legend>
-          <div style="font-size:0.75rem;color:var(--text-muted);background:var(--input-bg);padding:8px;border-radius:6px;margin-bottom:8px;">💡 <b>Đồng bộ thông minh:</b> Cuộc gọi Live tự động kế thừa <b>System Instruction riêng của phiên</b> & Ngữ cảnh toàn cục!</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);background:var(--input-bg);padding:8px;border-radius:6px;margin-bottom:8px;">💡 <b>Đồng bộ thông minh:</b> Cuộc gọi Live tự động kế thừa <b>System Instruction</b> & Ngữ cảnh toàn cục của Huân MU!</div>
           <div class="slider-row"><label>Sáng tạo thoại (Temp: <span id="live-temp-val">0.7</span>):</label><input type="range" id="live-temperature" min="0" max="2" step="0.1" value="0.7"></div>
           <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
-            <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="live-toggle-search" checked> 🌐 Tra cứu Web & Đọc link thời gian thực</label>
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="live-toggle-search" checked> 🌐 Tra cứu Web thời gian thực</label>
             <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="live-toggle-context" checked> 🧠 Kế thừa 10 tin nhắn gần nhất</label>
           </div>
         </fieldset>
@@ -219,7 +212,7 @@
             <div><label class="field-label">🌍 Ngữ cảnh Toàn cục:</label><textarea id="global-context-input" rows="2" class="modern-textarea"></textarea></div>
           </div>
         </fieldset>
-        <fieldset class="settings-group"><legend>🚀 Tham số AI</legend>
+        <fieldset class="settings-group"><legend>🚀 Tham số Google Gemini</legend>
           <div class="slider-row"><label>Temperature (<span id="temp-val">0.5</span>):</label><input type="range" id="temperature" min="0" max="2" step="0.1" value="0.5"></div>
           <div class="slider-row" style="margin-top:6px;"><label>TopP (<span id="topp-val">0.9</span>):</label><input type="range" id="top-p" min="0" max="1" step="0.1" value="0.9"></div>
           <div style="margin-top:6px;"><label style="font-size:.8rem;">TopK: <input type="number" id="top-k" min="1" max="100" value="40" class="modern-input" style="width:65px;display:inline-block;"></label></div>
@@ -230,39 +223,25 @@
               <select id="auto-search-engine-input" class="modern-select"><option value="jina" selected>🦎 Jina AI Search (Miễn phí)</option><option value="tavily">⚡ Tavily AI Search (1.000 lượt free)</option><option value="serper">🔎 Serper.dev Google (2.500 lượt free)</option><option value="brave">🦁 Brave Search (2.000 lượt free)</option></select>
             </div>
             <div><label class="field-label">📖 Công cụ Bóc tách Link Website:</label>
-              <select id="web-extract-engine-input" class="modern-select"><option value="auto" selected>🔄 Tự động (Jina ➔ Tavily nếu dính Cloudflare)</option><option value="tavily">⚡ Tavily Extract (Chuyên trị web truyện/chống bot)</option><option value="jina">🦎 Luôn dùng Jina Reader</option></select>
+              <select id="web-extract-engine-input" class="modern-select"><option value="auto" selected>🔄 Tự động (Jina ➔ Tavily nếu dính Cloudflare)</option><option value="tavily">⚡ Tavily Extract</option><option value="jina">🦎 Jina Reader</option></select>
             </div>
-            <div><label class="field-label">Jina API Key (Dùng cho Jina Search & Reader proxy):</label><input type="password" id="jina-key-input" placeholder="Nhập Key (jina_...)" class="modern-input"></div>
-            <div><label class="field-label">Tavily API Key (Search & Extract Cloudflare):</label><input type="password" id="tavily-key-input" placeholder="Nhập Key (tvly-...)" class="modern-input"></div>
+            <div><label class="field-label">Jina API Key:</label><input type="password" id="jina-key-input" placeholder="jina_..." class="modern-input"></div>
+            <div><label class="field-label">Tavily API Key:</label><input type="password" id="tavily-key-input" placeholder="tvly-..." class="modern-input"></div>
             <div><label class="field-label">Serper API Key:</label><input type="password" id="serper-key-input" class="modern-input"></div>
             <div><label class="field-label">Brave Search API Key:</label><input type="password" id="brave-key-input" class="modern-input"></div>
-            <div><label class="field-label">Brave Worker Proxy URL (Vượt CORS):</label><input type="text" id="brave-worker-url-input" class="modern-input"></div>
+            <div><label class="field-label">Brave Worker Proxy URL:</label><input type="text" id="brave-worker-url-input" class="modern-input"></div>
           </div>
         </fieldset>
         <fieldset class="settings-group"><legend>💾 Dữ liệu & Xuất tệp</legend>
           <div style="display:flex;flex-wrap:wrap;gap:6px;">
             <button class="btn" onclick="exportCleanArticle()">📝 Bài sạch (MD)</button><button class="btn" onclick="exportChatPDF()">📄 PDF</button><button class="btn" onclick="exportChatDoc()">📄 Word</button>
             <button class="btn primary" onclick="exportAllSessions()">📥 Sao lưu JSON</button><button class="btn warning" onclick="document.getElementById('import-all-input').click()">📤 Khôi phục JSON</button>
-            <button id="btn-compress-context" class="btn">🗜️ Nén lịch sử</button><button class="btn danger" onclick="clearActiveSession()">🗑️ Xóa phiên này</button><input type="file" id="import-all-input" accept=".json" style="display:none;">
+            <button class="btn danger" onclick="clearActiveSession()">🗑️ Xóa phiên này</button><input type="file" id="import-all-input" accept=".json" style="display:none;">
           </div>
         </fieldset>
         <fieldset class="settings-group"><legend>🔑 10 Google API Keys</legend>
           <div class="api-keys-grid" id="api-keys-container" style="margin-bottom:8px;"></div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><button id="btn-save-keys" class="btn primary">💾 Lưu Keys</button><button id="btn-check-keys" class="btn">🔍 Kiểm tra</button><button id="btn-check-duplicates" class="btn">👯 Trùng lặp</button><span id="key-status-msg" style="font-size:.75rem;font-weight:600;"></span></div>
-        </fieldset>
-        <fieldset class="settings-group"><legend>🔗 Nền tảng Dify & Groq</legend>
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            <div><label class="field-label">Dify Key - Gemini 3.5 Flash:</label><input type="password" id="dify-key-gemini" class="modern-input"></div>
-            <div><label class="field-label">Dify Key - Gemini 3.1 Flash Lite:</label><input type="password" id="dify-key-lite" class="modern-input"></div>
-            <div><label class="field-label">Dify Key - Gemini 3.1 Pro Preview:</label><input type="password" id="dify-key-pro" class="modern-input"></div>
-            <div><label class="field-label">Dify Key - GPT-5.5:</label><input type="password" id="dify-key-gpt" class="modern-input"></div>
-            <div><label class="field-label">Dify Key - Claude 4 Opus:</label><input type="password" id="dify-key-opus" class="modern-input"></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-              <div><label class="field-label">Dify Endpoint:</label><input type="text" id="dify-endpoint-input" value="https://api.dify.ai/v1" class="modern-input"></div>
-              <div><label class="field-label">Variable Key:</label><input type="text" id="dify-var-input" value="query" class="modern-input"></div>
-            </div>
-            <div style="margin-top:4px;"><label class="field-label">Groq API Key:</label><input type="password" id="groq-key-input" class="modern-input"></div>
-          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><button id="btn-save-keys" class="btn primary">💾 Lưu Cấu Hình</button><button id="btn-check-keys" class="btn">🔍 Kiểm tra</button><button id="btn-check-duplicates" class="btn">👯 Trùng lặp</button><span id="key-status-msg" style="font-size:.75rem;font-weight:600;"></span></div>
         </fieldset>
       </div>
     </div>
@@ -283,12 +262,10 @@
 
     let apiKeys = [], globalKeyIndex = 0, liveKeyIndex = 0, liveRetryCount = 0, abortController = null;
     const SAFETY = ['HARM_CATEGORY_HARASSMENT','HARM_CATEGORY_HATE_SPEECH','HARM_CATEGORY_SEXUALLY_EXPLICIT','HARM_CATEGORY_DANGEROUS_CONTENT','HARM_CATEGORY_CIVIC_INTEGRITY'].map(category => ({ category, threshold: 'BLOCK_NONE' }));
-    const externalModels = ['qwen/qwen3.6-27b','openai/gpt-oss-120b'];
     const getNowTime24h = () => { const d = new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
     const getFallbackModelsFor = m => [m, ...['gemini-3.5-flash-lite','gemini-3.8-flash','gemini-3.6-flash','gemini-3.1-flash-lite'].filter(x => x !== m)];
     const formatGoogleApiError = e => { const m = e?.message || ""; return (m.includes("429") || m.includes("RESOURCE_EXHAUSTED")) ? "⚠️ Hết Quota (429)." : (m.includes("503") || m.includes("UNAVAILABLE")) ? "⚠️ Máy chủ quá tải (503)." : m ? `❌ Lỗi: ${m}` : "❌ Lỗi máy chủ Google."; };
     const extractQuotedKeywords = t => { const m = Array.from((t||'').matchAll(/["“«]([^"”»]+)["”»]/g)).map(x => x[1].trim()).filter(Boolean); return m.length ? m.join(' ') : null; };
-    const serializeHistoryForDify = (his, p) => his.length ? `[LỊCH SỬ]:\n${his.map(m => `${m.role==='model'?'AI':'Bạn'}: ${m.text}`).join('\n')}\n\n[YÊU CẦU]: ${p}` : p;
 
     // 🔤 CỠ CHỮ TIN NHẮN
     let currentFontSize = parseInt(ls.getItem('chat_font_size') || '16', 10);
@@ -371,7 +348,7 @@
       const tavily = async () => { if (!tk) throw 0; const r = await fetch("https://api.tavily.com/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ api_key: tk, urls: [url] }) }); const t = (await r.json()).results?.[0]?.raw_content; if (isBlocked(t)) throw 0; return { source: "Tavily Extract", content: t.substring(0, 45000) }; };
       const proxy = async () => { const d = await (await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`)).json(); const t = new DOMParser().parseFromString(d.contents, "text/html").body.innerText.replace(/\s+/g, ' ').trim(); if (isBlocked(t)) throw 0; return { source: "Web Proxy", content: t.substring(0, 30000) }; };
       const assist = async () => {
-        let q = url; try { const p = new URL(url); q = `${p.pathname.split('/').filter(Boolean).pop()?.replace(/[-_.]/g,' ')||''} ${p.hostname.replace('www.','')} bảng giá mới nhất hôm nay`.trim(); } catch {}
+        let q = url; try { const p = new URL(url); q = `${p.pathname.split('/').filter(Boolean).pop()?.replace(/[-_.]/g,' ')||''} ${p.hostname.replace('www.','')} mới nhất`.trim(); } catch {}
         if (tk) { const r = await fetchTavilySearch(q); if (r) return { source: "Tavily Search Assist", content: r }; }
         const r = await fetchJinaSearch(q); if (r) return { source: "Jina Search Assist", content: r };
         throw new Error("Không thể bóc tách dữ liệu.");
@@ -387,14 +364,14 @@
     function getLiveCallSI() {
       const cs = sessions.find(x => x.id === activeId), sSI = DOM.sysInst?.value.trim() || cs?.sys || '', g = DOM.globContext?.value.trim() || '';
       const now = new Date(), days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
-      let si = `[VAI TRÒ & NGỮ CẢNH PHIÊN]:\n${(DOM.toggleGlob?.checked !== false && g) ? `--- TOÀN CỤC: ${g}\n\n` : ''}${sSI ? `--- RIÊNG: ${sSI}` : 'Bạn là Javiss thông minh, thân thiện.'}\n\n[QUY TẮC ĐÀM THOẠI & DUYỆT WEB]:\n- Bạn ĐƯỢC TRANG BỊ công cụ 'read_url' và 'search_web'. BẮT BUỘC gọi công cụ khi người dùng hỏi về link hoặc thông tin thực tế.\n- Trả lời Tiếng Việt tự nhiên, ngắn gọn 1-2 câu như điện thoại đời thực.\n[THỜI GIAN CHUẨN]: ${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}, lúc ${getNowTime24h()}.`;
+      let si = `[VAI TRÒ & NGỮ CẢNH PHIÊN]:\n${(DOM.toggleGlob?.checked !== false && g) ? `--- TOÀN CỤC: ${g}\n\n` : ''}${sSI ? `--- RIÊNG: ${sSI}` : 'Bạn là Huân MU AI thông minh, thân thiện.'}\n\n[QUY TẮC ĐÀM THOẠI & DUYỆT WEB]:\n- Bạn ĐƯỢC TRANG BỊ công cụ 'read_url' và 'search_web'. BẮT BUỘC gọi công cụ khi người dùng hỏi về link hoặc thông tin thực tế.\n- Trả lời Tiếng Việt tự nhiên, ngắn gọn 1-2 câu như điện thoại đời thực.\n[THỜI GIAN CHUẨN]: ${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}, lúc ${getNowTime24h()}.`;
       if ($('live-toggle-context')?.checked && chatHistory.length) si += `\n\n[LỊCH SỬ 10 TIN TRƯỚC]:\n` + chatHistory.slice(-10).map(m => `${m.role==='model'?'AI':'Bạn'}: ${m.text.replace(/<[^>]+>/g,'').replace(/```[\s\S]*?```/g,'[code]')}`).join('\n');
       return si;
     }
 
     function getLiveApiKey() {
       const sel = $('live-key-select')?.value || 'auto';
-      if (sel !== 'auto') { const idx = parseInt(sel), k = (ls.getItem(`javiss_api_${idx+1}`) || '').trim(); if (k) return { key: k, index: idx }; }
+      if (sel !== 'auto') { const idx = parseInt(sel), k = (ls.getItem(`huanmu_api_${idx+1}`) || ls.getItem(`javiss_api_${idx+1}`) || '').trim(); if (k) return { key: k, index: idx }; }
       return apiKeys.length ? { key: apiKeys[liveKeyIndex % apiKeys.length], index: liveKeyIndex % apiKeys.length } : { key: '', index: -1 };
     }
 
@@ -442,7 +419,7 @@
           const setupMsg = { 
             setup: { 
               model: "models/gemini-3.1-flash-live-preview", 
-              generationConfig: { responseModalities: ["AUDIO"], temperature: temp, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } }, 
+              generationConfig: { responseModalities: ["AUDIO"], temperature: temp, speechConfig: { voiceConfig: { voiceName: voice } } }, 
               systemInstruction: { parts: [{ text: getLiveCallSI() }] } 
             } 
           };
@@ -521,22 +498,24 @@
       } else { v.srcObject?.getTracks().forEach(t => t.stop()); v.style.display = 'none'; clearInterval(liveCamInterval); isLiveCamOn = false; b.className = 'live-control-btn'; }
     };
 
-    // --- QUẢN LÝ KEYS & CẤU HÌNH ---
-    $('api-keys-container').innerHTML = Array.from({ length: 10 }, (_, i) => `<input type="password" id="api-key-${i+1}" placeholder="Key ${i+1}" class="modern-input">`).join('');
+    // --- QUẢN LÝ KEYS & CẤU HÌNH (THUẦN GOOGLE) ---
+    $('api-keys-container').innerHTML = Array.from({ length: 10 }, (_, i) => `<input type="password" id="api-key-${i+1}" placeholder="Google Key ${i+1}" class="modern-input">`).join('');
     const cfgMap = [
-      ['dify-key-gemini','dify_key_gemini'],['dify-key-lite','dify_key_lite'],['dify-key-pro','dify_key_pro'],['dify-key-gpt','dify_key_gpt'],['dify-key-opus','dify_key_opus'],
-      ['dify-endpoint-input','dify_api_endpoint','https://api.dify.ai/v1'],['dify-var-input','dify_var_key','query'],['groq-key-input','groq_api_key'],['jina-key-input','jina_api_key'],
-      ['tavily-key-input','tavily_api_key'],['serper-key-input','serper_api_key'],['brave-key-input','brave_api_key'],['brave-worker-url-input','brave_worker_url'],
+      ['jina-key-input','jina_api_key'],['tavily-key-input','tavily_api_key'],['serper-key-input','serper_api_key'],['brave-key-input','brave_api_key'],['brave-worker-url-input','brave_worker_url'],
       ['auto-search-engine-input','auto_search_default_engine','jina'],['web-extract-engine-input','web_extract_engine','auto'],['live-temperature','live_temperature','0.7']
     ];
 
     function initAPIKeys() {
       apiKeys = [];
-      for (let i = 1; i <= 10; i++) { const k = ls.getItem(`javiss_api_${i}`) || ""; if ($(`api-key-${i}`)) $(`api-key-${i}`).value = k; if (k.trim()) apiKeys.push(k.trim()); }
-      const s = $('key-status-msg'); if (s) { s.innerText = apiKeys.length ? `✅ Có ${apiKeys.length} Key` : "⚠️ Chưa có Key"; s.style.color = apiKeys.length ? "green" : "red"; }
+      for (let i = 1; i <= 10; i++) {
+        const k = (ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
+        if ($(`api-key-${i}`)) $(`api-key-${i}`).value = k;
+        if (k) apiKeys.push(k);
+      }
+      const s = $('key-status-msg'); if (s) { s.innerText = apiKeys.length ? `✅ Có ${apiKeys.length} Google Key` : "⚠️ Chưa có Key"; s.style.color = apiKeys.length ? "green" : "red"; }
       [$('api-key-select'), $('live-key-select')].forEach(d => {
         if (!d) return; const cur = d.value; d.innerHTML = '<option value="auto">🔄 Tự động xoay Key</option>';
-        for (let i = 1; i <= 10; i++) { const k = (ls.getItem(`javiss_api_${i}`) || "").trim(); if (k) d.innerHTML += `<option value="${i-1}">🔑 Key ${i} (${k.substring(0,5)}...)</option>`; }
+        for (let i = 1; i <= 10; i++) { const k = (ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim(); if (k) d.innerHTML += `<option value="${i-1}">🔑 Key ${i} (${k.substring(0,5)}...)</option>`; }
         if ([...d.options].some(o => o.value === cur)) d.value = cur;
       });
     }
@@ -548,17 +527,20 @@
     }
     $('live-temperature').oninput = e => { if ($('live-temp-val')) $('live-temp-val').innerText = e.target.value; };
     $('btn-save-keys').onclick = () => {
-      for (let i = 1; i <= 10; i++) ls.setItem(`javiss_api_${i}`, $(`api-key-${i}`)?.value.trim() || '');
+      for (let i = 1; i <= 10; i++) {
+        const val = $(`api-key-${i}`)?.value.trim() || '';
+        ls.setItem(`huanmu_api_${i}`, val);
+      }
       cfgMap.forEach(([id, k]) => ls.setItem(k, $(id)?.value.trim() || ''));
       ls.setItem('live_search_enabled', $('live-toggle-search')?.checked ? 'true' : 'false');
       ls.setItem('live_context_enabled', $('live-toggle-context')?.checked ? 'true' : 'false');
-      initAPIKeys(); initExternalConfigs(); showToast("Đã lưu cấu hình!");
+      initAPIKeys(); initExternalConfigs(); showToast("Đã lưu cấu hình Google & Hệ thống!");
     };
     $('btn-check-keys').onclick = async () => {
       const b = $('btn-check-keys'); b.innerText = "⏳..."; let ok = 0, tot = 0;
       for (let i = 1; i <= 10; i++) {
         const el = $(`api-key-${i}`), k = el?.value.trim(); if (!k) continue; tot++;
-        try { await new GoogleGenAI({ apiKey: k }).models.generateContent({ model: "gemini-3.1-flash-lite", contents: "p", config: { maxOutputTokens: 1 } }); el.style.border = "2px solid green"; ok++; } catch { el.style.border = "2px solid red"; }
+        try { await new GoogleGenAI({ apiKey: k }).models.generateContent({ model: "gemini-3.1-flash-lite", contents: "hi", config: { maxOutputTokens: 1 } }); el.style.border = "2px solid green"; ok++; } catch { el.style.border = "2px solid red"; }
       }
       b.innerText = "🔍 Kiểm tra"; showToast(`Hoạt động: ${ok}/${tot} Keys`);
     };
@@ -569,11 +551,11 @@
     initAPIKeys(); initExternalConfigs();
 
     // --- INDEXED DB NGUYÊN BẢN (KHÔNG PHỤ THUỘC THƯ VIỆN NGOÀI) ---
-    const DB_NAME = "JavissUltimateOS_DB", STORE_NAME = "chat_sessions", FILE_STORE = "file_library";
+    const DB_NAME = "HuanMU_DB", STORE_NAME = "chat_sessions", FILE_STORE = "file_library";
     let db;
     function initDB() {
       return new Promise((res, rej) => {
-        const rq = indexedDB.open(DB_NAME, 5);
+        const rq = indexedDB.open(DB_NAME, 6);
         rq.onupgradeneeded = e => {
           let d = e.target.result;
           if (!d.objectStoreNames.contains(STORE_NAME)) d.createObjectStore(STORE_NAME, { keyPath: "id" });
@@ -590,13 +572,32 @@
     const saveFileToLib = f => new Promise(r => { const t = db.transaction(FILE_STORE, "readwrite"); t.objectStore(FILE_STORE).put(f); t.oncomplete = () => r(); });
     const getAllFilesFromLib = () => new Promise(r => { const rq = db.transaction(FILE_STORE, "readonly").objectStore(FILE_STORE).getAll(); rq.onsuccess = () => r(rq.result); });
 
-    const DOM = { chat: $('chat-container'), input: $('user-input'), sendBtn: $('send-button'), fileUpload: $('file-upload'), previewBox: $('image-preview-container'), previewGrid: $('image-preview-grid'), textFileList: $('text-files-list'), clearFilesBtn: $('clear-all-images'), fileCount: $('file-count'), toast: $('toast'), folderSelect: $('folder-select'), btnNewFolder: $('btn-new-folder'), btnDeleteFolder: $('btn-delete-folder'), selSession: $('session-select'), sysInst: $('system-instruction-input'), globContext: $('global-context-input'), model: $('model-select'), apiKeySel: $('api-key-select'), toggleGlob: $('toggle-global-context'), toggleSearch: $('toggle-search'), searchEngineBox: $('search-engine-box'), searchEngineSel: $('search-engine-select'), toggleMemory: $('toggle-memory'), temp: $('temperature'), tempVal: $('temp-val'), topP: $('top-p'), toppVal: $('topp-val'), topK: $('top-k'), thinking: $('thinking-level'), searchInput: $('search-chat-input'), scrollTopBtn: $('scroll-to-top'), snippetsContainer: $('snippets-container'), btnToggleSnippets: $('btn-toggle-snippets'), btnFileLibrary: $('btn-file-library'), btnAddUrl: $('btn-add-url'), btnTheme: $('btn-theme'), tabsContainer: $('tabs-container') };
-    let sessions = [], activeId = null, chatHistory = [], filesData = [], txtContent = "", isProcessing = false, folders = JSON.parse(ls.getItem('javiss_folders') || '["Mặc định"]'), activeFolder = ls.getItem('javiss_active_folder') || "All", openTabs = JSON.parse(ls.getItem('javiss_tabs') || '[]');
+    const DOM = { 
+      chat: $('chat-container'), input: $('user-input'), sendBtn: $('send-button'), fileUpload: $('file-upload'), previewBox: $('image-preview-container'), 
+      previewGrid: $('image-preview-grid'), textFileList: $('text-files-list'), clearFilesBtn: $('clear-all-images'), fileCount: $('file-count'), toast: $('toast'), 
+      folderSelect: $('folder-select'), btnNewFolder: $('btn-new-folder'), btnDeleteFolder: $('btn-delete-folder'), selSession: $('session-select'), 
+      sysInst: $('system-instruction-input'), globContext: $('global-context-input'), model: $('model-select'), engineSel: $('engine-select'),
+      apiKeySel: $('api-key-select'), toggleGlob: $('toggle-global-context'), toggleSearch: $('toggle-search'), searchEngineBox: $('search-engine-box'), 
+      searchEngineSel: $('search-engine-select'), toggleMemory: $('toggle-memory'), temp: $('temperature'), tempVal: $('temp-val'), topP: $('top-p'), 
+      toppVal: $('topp-val'), topK: $('top-k'), thinking: $('thinking-level'), searchInput: $('search-chat-input'), scrollTopBtn: $('scroll-to-top'), 
+      snippetsContainer: $('snippets-container'), btnToggleSnippets: $('btn-toggle-snippets'), btnFileLibrary: $('btn-file-library'), btnAddUrl: $('btn-add-url'), 
+      btnTheme: $('btn-theme'), tabsContainer: $('tabs-container') 
+    };
+
+    let sessions = [], activeId = null, chatHistory = [], filesData = [], txtContent = "", isProcessing = false;
+    let folders = JSON.parse(ls.getItem('huanmu_folders') || ls.getItem('javiss_folders') || '["Mặc định"]');
+    let activeFolder = ls.getItem('huanmu_active_folder') || ls.getItem('javiss_active_folder') || "All";
+    let openTabs = JSON.parse(ls.getItem('huanmu_tabs') || ls.getItem('javiss_tabs') || '[]');
 
     const getSessionApiKey = cs => {
-      const sel = DOM.apiKeySel?.value || 'auto'; if (sel !== 'auto') return ls.getItem(`javiss_api_${parseInt(sel)+1}`) || "";
+      const sel = DOM.apiKeySel?.value || 'auto'; 
+      if (sel !== 'auto') return ls.getItem(`huanmu_api_${parseInt(sel)+1}`) || ls.getItem(`javiss_api_${parseInt(sel)+1}`) || "";
       if (cs?.assignedApiKey) return cs.assignedApiKey;
-      if (apiKeys.length) { const k = apiKeys[globalKeyIndex++ % apiKeys.length]; if (cs) cs.assignedApiKey = k; return k; }
+      if (apiKeys.length) { 
+        const k = apiKeys[globalKeyIndex++ % apiKeys.length]; 
+        if (cs) cs.assignedApiKey = k; 
+        return k; 
+      }
       return "";
     };
 
@@ -605,7 +606,7 @@
 
     function updateThinkingVisibility() {
       const m = DOM.model?.value || '', t = DOM.thinking; if (!t) return; const prev = t.value;
-      const opts = (m === 'gemini-3.8-flash' || m === 'openai/gpt-oss-120b') ? [['low','Low (Thấp)'],['medium','Med (Chuẩn)'],['high','High (Sâu)']] : ['gemini-3.5-flash-lite','gemini-3.6-flash','gemini-3.1-flash-lite'].includes(m) ? [['minimal','Min (Tối thiểu)'],['low','Low (Thấp)'],['medium','Med (Chuẩn)'],['high','High (Sâu)']] : [['none','Không áp dụng']];
+      const opts = (m === 'gemini-3.8-flash') ? [['low','Low (Thấp)'],['medium','Med (Chuẩn)'],['high','High (Sâu)']] : [['minimal','Min (Tối thiểu)'],['low','Low (Thấp)'],['medium','Med (Chuẩn)'],['high','High (Sâu)']];
       t.innerHTML = opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
       t.value = opts.some(([v]) => v === prev) ? prev : (m === 'gemini-3.5-flash-lite' ? 'minimal' : opts[0][0]);
     }
@@ -613,60 +614,27 @@
     const applyTheme = m => { const t = m === 'auto' ? ((new Date().getHours() >= 18 || new Date().getHours() < 6) ? 'dark' : 'light') : m; DOM.btnTheme.innerText = m === 'auto' ? "🌙 Tự động" : m === 'dark' ? "🌙 Tối" : "☀️ Sáng"; document.documentElement.setAttribute('data-theme', t); ls.setItem('theme', m); };
     applyTheme(ls.getItem('theme') || 'auto'); DOM.btnTheme.onclick = () => { const c = ls.getItem('theme') || 'auto'; applyTheme(c === 'auto' ? 'dark' : c === 'dark' ? 'light' : 'auto'); };
 
-    if (DOM.input) { DOM.input.value = ls.getItem('javiss_draft') || ''; updateTokenCount(); DOM.input.oninput = () => { ls.setItem('javiss_draft', DOM.input.value); DOM.input.style.height = 'auto'; DOM.input.style.height = Math.min(DOM.input.scrollHeight, 140) + 'px'; updateTokenCount(); }; }
+    if (DOM.input) { 
+      DOM.input.value = ls.getItem('huanmu_draft') || ls.getItem('javiss_draft') || ''; 
+      updateTokenCount(); 
+      DOM.input.oninput = () => { 
+        ls.setItem('huanmu_draft', DOM.input.value); 
+        DOM.input.style.height = 'auto'; 
+        DOM.input.style.height = Math.min(DOM.input.scrollHeight, 140) + 'px'; 
+        updateTokenCount(); 
+      }; 
+    }
     $('toggle-sidebar-btn').onclick = () => { $('sidebar').classList.add('active'); $('sidebar-overlay').classList.add('active'); };
     $('close-sidebar-btn').onclick = $('sidebar-overlay').onclick = () => { $('sidebar').classList.remove('active'); $('sidebar-overlay').classList.remove('active'); };
     $('btn-open-settings').onclick = () => { $('settings-modal').style.display = 'flex'; $('modal-overlay').style.display = 'block'; };
 
     const getDynamicSI = () => {
-      const b = DOM.sysInst?.value || "Bạn là Javiss AI.", g = DOM.globContext?.value || '', now = new Date(), days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
+      const b = DOM.sysInst?.value || "Bạn là Huân MU AI - trợ lý thông minh và chuẩn xác.", g = DOM.globContext?.value || '', now = new Date(), days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
       return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}\n[THỜI GIAN HIỆN TẠI]: Hôm nay là ${days[now.getDay()]}, ngày ${now.getDate()} tháng ${now.getMonth()+1} năm ${now.getFullYear()}.`;
     };
 
-    // --- STREAM SSE CHO DIFY & GROQ ---
-    async function readSSE(res, onLine) {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const r = res.body.getReader(), dec = new TextDecoder(); let buf = "";
-      while (true) {
-        const { done, value } = await r.read(); if (done) break;
-        buf += dec.decode(value, { stream: true }); const lns = buf.split("\n"); buf = lns.pop();
-        for (const l of lns) { const t = l.trim(); if (t.startsWith("data:") && t !== "data: [DONE]") { try { onLine(JSON.parse(t.slice(5).trim())); } catch {} } }
-      }
-    }
-    async function callDifyStream(p, onCk, onErr, signal) {
-      const kMap = { 'gemini-3.5-flash-dify':'dify_key_gemini', 'gemini-3.1-flash-lite-dify':'dify_key_lite', 'gemini-3.1-pro-dify':'dify_key_pro', 'gpt-5.5-dify':'dify_key_gpt', 'opus-4-dify':'dify_key_opus' };
-      const key = ls.getItem(kMap[DOM.model?.value] || '') || ''; if (!key) return onErr(new Error("Chưa nhập Key Dify!"));
-      const ep = (ls.getItem('dify_api_endpoint') || 'https://api.dify.ai/v1').replace(/\/+$/, ''), vk = ls.getItem('dify_var_key') || 'query';
-      try { 
-        await readSSE(await fetch(`${ep}/completion-messages`, { 
-          method: 'POST', 
-          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, 
-          body: JSON.stringify({ inputs: { [vk]: p }, response_mode: "streaming", user: "u_" + Date.now() }), 
-          signal 
-        }), js => { if (js.answer) onCk(js.answer); }); 
-      } catch(e) { onErr(e); }
-    }
-    async function callGroqStream(p, onCk, onErr, signal) {
-      const k = ls.getItem('groq_api_key') || ''; if (!k) return onErr(new Error("Chưa có Groq Key!"));
-      const isOss = DOM.model?.value === 'openai/gpt-oss-120b', msgs = [{ role: "system", content: getDynamicSI() }, ...(DOM.toggleMemory?.checked ? chatHistory.slice(-16).map(m => ({ role: m.role === 'model' ? 'assistant' : 'user', content: m.text })) : []), { role: "user", content: p }];
-      const payload = { model: isOss ? "openai/gpt-oss-120b" : "groq/compound", messages: msgs, stream: true, max_tokens: 4096, ...(isOss ? { reasoning_effort: DOM.thinking?.value || 'medium' } : {}) };
-      let inThk = false;
-      try {
-        await readSSE(await fetch("https://api.groq.com/openai/v1/chat/completions", { 
-          method: 'POST', 
-          headers: { Authorization: `Bearer ${k}`, 'Content-Type': 'application/json' }, 
-          body: JSON.stringify(payload), 
-          signal 
-        }), js => {
-          const d = js.choices?.[0]?.delta;
-          if (d?.reasoning_content || d?.reasoning) { if (!inThk) { onCk("<think>Đang suy nghĩ...</think>\n\n"); inThk = true; } }
-          else if (d?.content) { inThk = false; onCk(d.content); }
-        });
-      } catch(e) { onErr(e); }
-    }
-
     // --- XỬ LÝ TỆP, THƯ VIỆN & MODALS ---
-    window.exportCleanArticle = () => { const m = chatHistory.filter(x => x.role === 'model').map(x => x.text); m.length ? saveOrShareBlob(new Blob([`# Trích xuất\n\n` + m.join('\n\n---\n\n')], { type: 'text/markdown' }), `BaiViet_${Date.now()}.md`) : showToast("Trống!", "warning"); };
+    window.exportCleanArticle = () => { const m = chatHistory.filter(x => x.role === 'model').map(x => x.text); m.length ? saveOrShareBlob(new Blob([`# Huân MU - Bài viết trích xuất\n\n` + m.join('\n\n---\n\n')], { type: 'text/markdown' }), `HuanMU_Export_${Date.now()}.md`) : showToast("Trống!", "warning"); };
     window.applySnippet = p => { if (DOM.input) { DOM.input.value = p + "\n" + DOM.input.value; DOM.input.dispatchEvent(new Event('input')); DOM.input.focus(); } DOM.snippetsContainer.style.display = 'none'; };
     DOM.btnToggleSnippets.onclick = () => DOM.snippetsContainer.style.display = DOM.snippetsContainer.style.display === 'flex' ? 'none' : 'flex';
 
@@ -686,10 +654,10 @@
       try {
         if (u.includes("youtube.com") || u.includes("youtu.be")) {
           const k = getSessionApiKey(sessions.find(x => x.id === activeId)); if (!k) throw new Error("Cần Google Key!");
-          const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({ model: "gemini-3.5-flash-lite", contents: `Tóm tắt video YT: ${u}`, config: { safetySettings: SAFETY } });
+          const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({ model: "gemini-3.5-flash-lite", contents: `Tóm tắt video YouTube: ${u}`, config: { safetySettings: SAFETY } });
           txtContent += `\n[YouTube: ${u}]:\n${res.text}\n`; DOM.textFileList.innerHTML += `📺 YouTube<br>`;
         } else { const ext = await extractWebPageContent(u); txtContent += `\n[Nội dung ${u} qua ${ext.source}]:\n${ext.content}\n`; DOM.textFileList.innerHTML += `🌐 ${ext.source}<br>`; }
-        DOM.previewBox.style.display = 'block'; DOM.fileCount.innerText = filesData.length + (txtContent ? 1 : 0); updateTokenCount(); showToast("Đã bóc tách!");
+        DOM.previewBox.style.display = 'block'; DOM.fileCount.innerText = filesData.length + (txtContent ? 1 : 0); updateTokenCount(); showToast("Đã bóc tách link!");
       } catch(e) { showToast(`Lỗi: ${e.message}`, 'danger'); }
       DOM.btnAddUrl.innerHTML = "🌐 Đọc Link/YT";
     };
@@ -699,27 +667,28 @@
         for (const i of is) if (i.types.some(t => t.startsWith('image/'))) { const b = await i.getType('image/png'); filesData.push(new File([b], 'paste.png', { type: b.type })); renderFiles(); h = true; }
         if (!h) { const t = await navigator.clipboard.readText(); if (t && DOM.input) { DOM.input.value += (DOM.input.value ? '\n' : '') + t; h = true; } }
         if (h) { DOM.input?.dispatchEvent(new Event('input')); showToast('Đã dán!'); }
-      } catch { showToast("Lỗi dán", 'danger'); }
+      } catch { showToast("Lỗi clipboard", 'danger'); }
     };
 
     const oLay = $('modal-overlay'), closeModals = () => { document.querySelectorAll('.modal-box').forEach(m => m.style.display = 'none'); oLay.style.display = 'none'; };
     document.querySelectorAll('.close-btn').forEach(b => b.onclick = closeModals); oLay.onclick = closeModals;
     $('btn-camera-snap').onclick = async () => { $('camera-modal').style.display = 'flex'; oLay.style.display = 'block'; try {$('camera-preview').srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); } catch(e) { showToast(e.message, 'danger'); } };
     $('btn-take-photo').onclick = () => { const v =$('camera-preview'); if (!v.srcObject) return; const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0); c.toBlob(b => { processUploadFiles([new File([b], `Cam_${Date.now()}.jpg`, { type: 'image/jpeg' })]); closeModals(); showToast("Đã chụp!"); }, 'image/jpeg', 0.85); };
-    DOM.btnFileLibrary.onclick = () => { $('file-library-modal').style.display = 'flex'; oLay.style.display = 'block'; renderLibrary(); };$('library-upload-input').onchange = async e => { for (const f of e.target.files) if (f.size <= 50*1024*1024) await saveFileToLib({ id: Date.now() + Math.random().toString().slice(2,7), name: f.name, type: f.type, size: f.size, blob: f, added: new Date().toISOString() }); showToast("Đã tải lên thư viện!"); renderLibrary(); e.target.value = ''; };
-    async function renderLibrary() { const c = $('library-files-container'), fs = await getAllFilesFromLib(); c.innerHTML = fs.length ? fs.map(f => `<div class="search-result-item" style="display:flex;justify-content:space-between;align-items:center;"><div><strong>${f.name}</strong><br><small>${(f.size/1024).toFixed(1)} KB</small></div><button class="btn primary" onclick="addFileFromLib('${f.id}')">➕</button></div>`).join('') : "<i>Trống.</i>"; }
+    DOM.btnFileLibrary.onclick = () => { $('file-library-modal').style.display = 'flex'; oLay.style.display = 'block'; renderLibrary(); };
+    $('library-upload-input').onchange = async e => { for (const f of e.target.files) if (f.size <= 50*1024*1024) await saveFileToLib({ id: Date.now() + Math.random().toString().slice(2,7), name: f.name, type: f.type, size: f.size, blob: f, added: new Date().toISOString() }); showToast("Đã thêm vào thư viện!"); renderLibrary(); e.target.value = ''; };
+    async function renderLibrary() { const c = $('library-files-container'), fs = await getAllFilesFromLib(); c.innerHTML = fs.length ? fs.map(f => `<div class="search-result-item" style="display:flex;justify-content:space-between;align-items:center;"><div><strong>${f.name}</strong><br><small>${(f.size/1024).toFixed(1)} KB</small></div><button class="btn primary" onclick="addFileFromLib('${f.id}')">➕ Đính</button></div>`).join('') : "<i>Thư viện trống.</i>"; }
     window.addFileFromLib = async id => { const f = (await getAllFilesFromLib()).find(x => x.id === id); if (f) { await processUploadFiles([new File([f.blob], f.name, { type: f.type })]); closeModals(); showToast(`Đã đính: ${f.name}`); } };
 
     // --- TABS, THƯ MỤC & SESSIONS ---
     function renderTabs() {
       DOM.tabsContainer.innerHTML = openTabs.map(tId => { const s = sessions.find(x => x.id === tId); return s ? `<div class="tab-item ${tId===activeId?'active':''}"><span onclick="window.switchSess('${tId}')">${s.name.substring(0,14)}</span> <span class="tab-close" onclick="window.closeTab('${tId}',event)">×</span></div>` : ''; }).join('');
-      ls.setItem('javiss_tabs', JSON.stringify(openTabs));
+      ls.setItem('huanmu_tabs', JSON.stringify(openTabs));
     }
     window.switchSess = switchSess; window.closeTab = (id, e) => { e.stopPropagation(); openTabs = openTabs.filter(x => x !== id); id === activeId ? (openTabs.length ? switchSess(openTabs[0]) : newSess()) : renderTabs(); };
     function renderFolders() { DOM.folderSelect.innerHTML = `<option value="All">📁 Tất cả</option>` + folders.map(f => `<option value="${f}">📁 ${f}</option>`).join(''); DOM.folderSelect.value = activeFolder; }
-    DOM.folderSelect.onchange = e => { activeFolder = e.target.value; ls.setItem('javiss_active_folder', activeFolder); renderSel(); const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder); if (v.length && !v.find(s => s.id === activeId)) switchSess(v[0].id); };
-    DOM.btnNewFolder.onclick = () => { const n = prompt("Tên Thư mục:"); if (n && !folders.includes(n)) { folders.push(n); ls.setItem('javiss_folders', JSON.stringify(folders)); activeFolder = n; renderFolders(); renderSel(); } };
-    DOM.btnDeleteFolder.onclick = async () => { if (activeFolder === "All" || activeFolder === "Mặc định") return showToast("Không xóa được TM này!"); if (confirm(`Xóa "${activeFolder}"?`)) { folders = folders.filter(f => f !== activeFolder); ls.setItem('javiss_folders', JSON.stringify(folders)); for (const s of sessions) if (s.folder === activeFolder) { s.folder = "Mặc định"; await saveToDB(s); } activeFolder = "All"; renderFolders(); renderSel(); } };
+    DOM.folderSelect.onchange = e => { activeFolder = e.target.value; ls.setItem('huanmu_active_folder', activeFolder); renderSel(); const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder); if (v.length && !v.find(s => s.id === activeId)) switchSess(v[0].id); };
+    DOM.btnNewFolder.onclick = () => { const n = prompt("Tên Thư mục:"); if (n && !folders.includes(n)) { folders.push(n); ls.setItem('huanmu_folders', JSON.stringify(folders)); activeFolder = n; renderFolders(); renderSel(); } };
+    DOM.btnDeleteFolder.onclick = async () => { if (activeFolder === "All" || activeFolder === "Mặc định") return showToast("Không thể xóa TM này!"); if (confirm(`Xóa "${activeFolder}"?`)) { folders = folders.filter(f => f !== activeFolder); ls.setItem('huanmu_folders', JSON.stringify(folders)); for (const s of sessions) if (s.folder === activeFolder) { s.folder = "Mặc định"; await saveToDB(s); } activeFolder = "All"; renderFolders(); renderSel(); } };
 
     async function loadSess() { 
       try { 
@@ -728,7 +697,7 @@
         if (d?.length) { 
           sessions = d.sort((a,b) => (a.orderIndex||0) - (b.orderIndex||0)); 
           renderFolders(); 
-          activeId = ls.getItem('javiss_active_id') || sessions[0].id; 
+          activeId = ls.getItem('huanmu_active_id') || ls.getItem('javiss_active_id') || sessions[0].id; 
           if (!sessions.find(s => s.id === activeId)) activeId = sessions[0].id; 
           await switchSess(activeId); 
         } else { 
@@ -739,32 +708,86 @@
         await newSess(); 
       } 
     }
-    async function newSess(n) { const id = 's_' + Date.now(), s = { id, name: n || `Hội thoại ${sessions.length+1}`, folder: activeFolder === "All" ? "Mặc định" : activeFolder, his: [], sys: '', mod: 'gemini-3.5-flash-lite', keySel: 'auto', tmp: 0.5, tpp: 0.9, top: 40, thk: 'minimal', sch: false, schEngine: 'jina', mem: true, useGlob: true, orderIndex: 0 }; sessions.unshift(s); await saveToDB(s); await switchSess(id); }
+    async function newSess(n) { 
+      const id = 's_' + Date.now(), s = { 
+        id, 
+        name: n || `Hội thoại ${sessions.length+1}`, 
+        folder: activeFolder === "All" ? "Mặc định" : activeFolder, 
+        his: [], 
+        sys: '', 
+        mod: 'gemini-3.5-flash-lite', 
+        engine: 'stream', // 'stream' hoặc 'interactions'
+        lastInteractionId: null,
+        keySel: 'auto', 
+        tmp: 0.5, 
+        tpp: 0.9, 
+        top: 40, 
+        thk: 'minimal', 
+        sch: false, 
+        schEngine: 'jina', 
+        mem: true, 
+        useGlob: true, 
+        orderIndex: 0 
+      }; 
+      sessions.unshift(s); 
+      await saveToDB(s); 
+      await switchSess(id); 
+    }
     $('btn-new-session').onclick = () => newSess();
 
     async function switchSess(id) {
-      activeId = id; ls.setItem('javiss_active_id', id); const s = sessions.find(x => x.id === id); chatHistory = s ? [...s.his] : [];
+      activeId = id; ls.setItem('huanmu_active_id', id); const s = sessions.find(x => x.id === id); chatHistory = s ? [...s.his] : [];
       if (s) {
-        DOM.sysInst.value = s.sys || ''; DOM.model.value = s.mod || 'gemini-3.5-flash-lite'; DOM.apiKeySel.value = s.keySel || 'auto';
-        DOM.temp.value = s.tmp || 0.5; DOM.tempVal.innerText = DOM.temp.value; DOM.topP.value = s.tpp || 0.9; DOM.toppVal.innerText = DOM.topP.value;
-        DOM.topK.value = s.top || 40; updateThinkingVisibility(); DOM.thinking.value = s.thk || 'minimal';
-        DOM.toggleGlob.checked = s.useGlob !== false; DOM.toggleSearch.checked = s.sch || false; DOM.searchEngineBox.style.display = s.sch ? 'block' : 'none';
-        DOM.searchEngineSel.value = s.schEngine || 'jina'; DOM.toggleMemory.checked = s.mem !== false;
+        DOM.sysInst.value = s.sys || ''; 
+        DOM.model.value = s.mod || 'gemini-3.5-flash-lite'; 
+        DOM.engineSel.value = s.engine || 'stream';
+        DOM.apiKeySel.value = s.keySel || 'auto';
+        DOM.temp.value = s.tmp || 0.5; DOM.tempVal.innerText = DOM.temp.value; 
+        DOM.topP.value = s.tpp || 0.9; DOM.toppVal.innerText = DOM.topP.value;
+        DOM.topK.value = s.top || 40; 
+        updateThinkingVisibility(); 
+        DOM.thinking.value = s.thk || 'minimal';
+        DOM.toggleGlob.checked = s.useGlob !== false; 
+        DOM.toggleSearch.checked = s.sch || false; 
+        DOM.searchEngineBox.style.display = s.sch ? 'block' : 'none';
+        DOM.searchEngineSel.value = s.schEngine || 'jina'; 
+        DOM.toggleMemory.checked = s.mem !== false;
       }
-      DOM.chat.innerHTML = ''; for (let j = 0; j < chatHistory.length; j++) await appendMsg(chatHistory[j].role === 'model' ? 'bot' : 'user', chatHistory[j].text, j, true);
-      DOM.chat.scrollTop = DOM.chat.scrollHeight; renderSel(); if (!openTabs.includes(id)) openTabs.push(id); renderTabs();
+      DOM.chat.innerHTML = ''; 
+      for (let j = 0; j < chatHistory.length; j++) await appendMsg(chatHistory[j].role === 'model' ? 'bot' : 'user', chatHistory[j].text, j, true);
+      DOM.chat.scrollTop = DOM.chat.scrollHeight; 
+      renderSel(); 
+      if (!openTabs.includes(id)) openTabs.push(id); 
+      renderTabs();
     }
     DOM.selSession.onchange = e => switchSess(e.target.value);
     function renderSel() { const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder); DOM.selSession.innerHTML = v.map(s => `<option value="${s.id}" ${s.id===activeId?'selected':''}>${activeFolder==="All"?`[${s.folder}] `:''}${s.name}</option>`).join(''); $('session-msg-count').innerText = `${chatHistory.length} tin`; }
     $('btn-rename-session').onclick = async () => { const n = prompt("Tên mới:"); if (n) { const s = sessions.find(x => x.id === activeId); s.name = n; await saveToDB(s); renderSel(); renderTabs(); } };
-    $('btn-delete-session').onclick = async () => { if (sessions.length <= 1) return showToast("Giữ lại 1 phiên!"); if (confirm("Xóa phiên này?")) { await deleteFromDB(activeId); sessions = sessions.filter(s => s.id !== activeId); openTabs = openTabs.filter(x => x !== activeId); await switchSess(sessions[0].id); } };
+    $('btn-delete-session').onclick = async () => { if (sessions.length <= 1) return showToast("Cần giữ lại ít nhất 1 phiên!"); if (confirm("Xóa phiên này?")) { await deleteFromDB(activeId); sessions = sessions.filter(s => s.id !== activeId); openTabs = openTabs.filter(x => x !== activeId); await switchSess(sessions[0].id); } };
 
     async function updateConfig() {
       const s = sessions.find(x => x.id === activeId);
-      if (s) { Object.assign(s, { sys: DOM.sysInst.value, mod: DOM.model.value, keySel: DOM.apiKeySel.value, tmp: DOM.temp.value, tpp: DOM.topP.value, top: DOM.topK.value, thk: DOM.thinking.value, useGlob: DOM.toggleGlob.checked, sch: DOM.toggleSearch.checked, schEngine: DOM.searchEngineSel.value, mem: DOM.toggleMemory.checked }); await saveToDB(s); }
+      if (s) { 
+        Object.assign(s, { 
+          sys: DOM.sysInst.value, 
+          mod: DOM.model.value, 
+          engine: DOM.engineSel.value,
+          keySel: DOM.apiKeySel.value, 
+          tmp: DOM.temp.value, 
+          tpp: DOM.topP.value, 
+          top: DOM.topK.value, 
+          thk: DOM.thinking.value, 
+          useGlob: DOM.toggleGlob.checked, 
+          sch: DOM.toggleSearch.checked, 
+          schEngine: DOM.searchEngineSel.value, 
+          mem: DOM.toggleMemory.checked 
+        }); 
+        await saveToDB(s); 
+      }
       DOM.searchEngineBox.style.display = DOM.toggleSearch.checked ? 'block' : 'none';
     }
     DOM.model.addEventListener('change', () => { updateThinkingVisibility(); updateConfig(); });
+    DOM.engineSel.addEventListener('change', updateConfig);
     [DOM.sysInst, DOM.apiKeySel, DOM.toggleGlob, DOM.toggleSearch, DOM.searchEngineSel, DOM.toggleMemory, DOM.topK, DOM.thinking].forEach(el => el?.addEventListener('change', updateConfig));
     DOM.temp.addEventListener('input', () => { DOM.tempVal.innerText = DOM.temp.value; updateConfig(); });
     DOM.topP.addEventListener('input', () => { DOM.toppVal.innerText = DOM.topP.value; updateConfig(); });
@@ -779,7 +802,8 @@
     async function appendMsg(sd, t, i, iHL = false) {
       const c = document.createElement('div'); c.className = 'message-container';
       const m = document.createElement('div'); m.className = sd === 'user' ? 'user-message' : 'bot-message'; m.setAttribute('data-raw', t);
-      m.innerHTML = `<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Chatbot'}</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${chatHistory[i]?.time||getNowTime24h()}</span></div><div class="msg-content"></div>`;
+      const ixBadge = (sd === 'model' && chatHistory[i]?.interactionId) ? `<span class="interaction-id-badge" title="Google Interaction ID">⚡ IX</span>` : '';
+      m.innerHTML = `<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Huân MU'}</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${chatHistory[i]?.time||getNowTime24h()}</span>${ixBadge}</div><div class="msg-content"></div>`;
       const a = document.createElement('div'); a.className = 'msg-actions';
       a.innerHTML = `<button class="action-btn" onclick="copy(this)">📋</button>${sd==='user'?`<button class="action-btn" onclick="editMsg(${i})">✏️</button>`:`<button class="action-btn" onclick="retryMsg(${i})">🔄</button>`}<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})">🗑️</button>`;
       c.append(m, a); DOM.chat.appendChild(c); if (!iHL && sd === 'user') DOM.chat.scrollTop = DOM.chat.scrollHeight;
@@ -791,30 +815,76 @@
       DOM.chat.innerHTML = ''; for (let j = 0; j < chatHistory.length; j++) await appendMsg(chatHistory[j].role === 'model' ? 'bot' : 'user', chatHistory[j].text, j, true);
     }
     window.copy = b => { const c = b.closest('.message-container').querySelector('.user-message, .bot-message'); if (c) copyRawText(c.getAttribute('data-raw') || c.innerText || ''); };
-    window.deleteMsg = async i => { if (confirm("Xóa tin này?")) { chatHistory.splice(i, 1); await reRenderHistory(); } };
-    window.retryMsg = async i => { if (isProcessing || i <= 0 || chatHistory[i-1].role !== 'user') return; const up = chatHistory[i-1].text; chatHistory.splice(i, 1); await reRenderHistory(); DOM.input.value = up; DOM.input.dispatchEvent(new Event('input')); DOM.sendBtn.click(); };
-    window.editMsg = async i => { DOM.input.value = chatHistory[i].text; DOM.input.dispatchEvent(new Event('input')); chatHistory = chatHistory.slice(0, i); await reRenderHistory(); };
-    window.clearActiveSession = async () => { if (confirm("Xóa sạch phiên này?")) { chatHistory = []; await reRenderHistory(); showToast('Đã dọn sạch'); } };
+    
+    // Khi xóa, sửa hoặc retry: Tự động ngắt nối Interaction ID cũ để không gây lỗi cây phân nhánh Google
+    window.deleteMsg = async i => { 
+      if (confirm("Xóa tin này?")) { 
+        chatHistory.splice(i, 1); 
+        const s = sessions.find(x => x.id === activeId); 
+        if (s) { s.lastInteractionId = null; await saveToDB(s); }
+        await reRenderHistory(); 
+      } 
+    };
+    window.retryMsg = async i => { 
+      if (isProcessing || i <= 0 || chatHistory[i-1].role !== 'user') return; 
+      const up = chatHistory[i-1].text; 
+      chatHistory.splice(i, 1); 
+      const s = sessions.find(x => x.id === activeId); 
+      if (s) { s.lastInteractionId = null; await saveToDB(s); }
+      await reRenderHistory(); 
+      DOM.input.value = up; 
+      DOM.input.dispatchEvent(new Event('input')); 
+      DOM.sendBtn.click(); 
+    };
+    window.editMsg = async i => { 
+      DOM.input.value = chatHistory[i].text; 
+      DOM.input.dispatchEvent(new Event('input')); 
+      chatHistory = chatHistory.slice(0, i); 
+      const s = sessions.find(x => x.id === activeId); 
+      if (s) { s.lastInteractionId = null; await saveToDB(s); }
+      await reRenderHistory(); 
+    };
+    window.clearActiveSession = async () => { 
+      if (confirm("Xóa sạch toàn bộ phiên này?")) { 
+        chatHistory = []; 
+        const s = sessions.find(x => x.id === activeId); 
+        if (s) { s.lastInteractionId = null; await saveToDB(s); }
+        await reRenderHistory(); 
+        showToast('Đã dọn sạch hội thoại!'); 
+      } 
+    };
 
-    // --- GỬI TIN NHẮN (GEMINI 3.X GENERATECONTENTSTREAM + SLIDING WINDOW + THINKINGLEVEL) ---
+    // --- GỬI TIN NHẮN (HỖ TRỢ SONG SONG GENERATECONTENTSTREAM & INTERACTIONS API) ---
     DOM.sendBtn.onclick = async () => {
       if (isProcessing) return abortController?.abort();
-      const am = DOM.model.value || 'gemini-3.5-flash-lite', isExt = am.endsWith('-dify') || externalModels.includes(am);
+      const am = DOM.model.value || 'gemini-3.5-flash-lite';
       const msg = DOM.input.value.trim(); if (!msg && !filesData.length && !txtContent) return;
-      const cs = sessions.find(x => x.id === activeId), gKey = !isExt ? getSessionApiKey(cs) : '';
-      if (!isExt && !gKey) return showToast("Cần Google API Key!", "danger");
+      
+      const cs = sessions.find(x => x.id === activeId);
+      const currentEngine = cs?.engine || DOM.engineSel?.value || 'stream';
 
-      ls.removeItem('javiss_draft'); isProcessing = true; abortController = new AbortController();
+      // Khóa Key đối với Interactions API để chuỗi ID không bị đứt
+      const gKey = (currentEngine === 'interactions' && cs?.assignedApiKey) ? cs.assignedApiKey : getSessionApiKey(cs);
+      if (!gKey) return showToast("Cần ít nhất 1 Google API Key!", "danger");
+
+      ls.removeItem('huanmu_draft'); isProcessing = true; abortController = new AbortController();
       DOM.sendBtn.innerHTML = 'Dừng 🛑'; DOM.sendBtn.style.background = 'var(--danger)';
-      let finalResp = "", botTime = getNowTime24h(), dispText = msg || "📎 [Gửi tệp]", fP = (txtContent ? (msg ? msg + "\n\n" + txtContent : txtContent) : msg).trim() || "Hãy đọc và phân tích tài liệu này.", bD;
+      let finalResp = "", botTime = getNowTime24h(), dispText = msg || "📎 [Gửi tệp]", fP = (txtContent ? (msg ? msg + "\n\n" + txtContent : txtContent) : msg).trim() || "Hãy phân tích nội dung này.", bD;
+      let recordedIxId = null;
 
       const saveTurn = async (suffix = '') => {
         if (!finalResp.trim()) return bD?.remove();
-        chatHistory.push({ role: 'user', text: fP }, { role: 'model', text: finalResp, time: botTime });
-        if (cs) { cs.his = chatHistory; await saveToDB(cs); $('session-msg-count').innerText = `${chatHistory.length} tin`; }
+        chatHistory.push({ role: 'user', text: fP }, { role: 'model', text: finalResp, time: botTime, interactionId: recordedIxId });
+        if (cs) { 
+          cs.his = chatHistory; 
+          if (recordedIxId) cs.lastInteractionId = recordedIxId;
+          await saveToDB(cs); 
+          $('session-msg-count').innerText = `${chatHistory.length} tin`; 
+        }
         if (bD?.querySelector('.bot-message')) {
           bD.querySelector('.bot-message').setAttribute('data-raw', finalResp);
-          bD.querySelector('.message-header').innerHTML = `<span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}</span>`;
+          const ixBadge = recordedIxId ? `<span class="interaction-id-badge" title="ID: ${recordedIxId}">⚡ IX</span>` : '';
+          bD.querySelector('.message-header').innerHTML = `<span>✨ Huân MU</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}</span>${ixBadge}`;
           const botIdx = chatHistory.length - 1, aDiv = document.createElement('div'); aDiv.className = 'msg-actions';
           aDiv.innerHTML = `<button class="action-btn" onclick="copy(this)">📋</button><button class="action-btn" onclick="retryMsg(${botIdx})">🔄</button><button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${botIdx})">🗑️</button>`;
           bD.appendChild(aDiv);
@@ -826,18 +896,15 @@
         DOM.input.value = ''; DOM.input.style.height = '38px'; updateTokenCount(); const imgs = [...filesData]; DOM.clearFilesBtn.click();
 
         bD = document.createElement('div'); bD.className = 'message-container';
-        bD.innerHTML = `<div class="bot-message"><div class="message-header"><span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span><span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`;
+        bD.innerHTML = `<div class="bot-message"><div class="message-header"><span>✨ Huân MU</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span><span class="streaming-indicator">Đang khởi tạo...</span></div><div class="msg-content"></div></div>`;
         DOM.chat.appendChild(bD); 
         
-        // 🎯 GHIM VÀO ĐẦU TIN NHẮN CỦA BOT ĐỂ BẠN ĐỌC TỪ DÒNG ĐẦU TIÊN
         bD.scrollIntoView({ behavior: 'smooth', block: 'start' }); 
         const cD = bD.querySelector('.msg-content');
-
-        // 🚀 BỘ RENDER STREAM (ĐỨNG YÊN VỊ TRÍ ĐỌC BAN ĐẦU - TUYỆT ĐỐI KHÔNG ÉP CUỘN ĐÁY)
         const renderer = createStreamRenderer(cD);
         let fnP = fP;
 
-        // 🚀 1. CHỈ BÓC TÁCH KHI BẠN GÕ LINK URL TRỰC TIẾP
+        // 1. Tự động bóc tách link nếu người dùng dán URL
         const uMatch = fnP.match(/https?:\/\/[^\s]+/)?.[0];
         if (uMatch && !uMatch.includes("youtube.com") && !uMatch.includes("youtu.be")) {
           if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText = `🌐 Đang bóc tách link...`;
@@ -845,11 +912,11 @@
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
-        // 🔍 2. CHỈ TÌM KIẾM WEB KHI CÂU HỎI CỦA BẠN CHỨA DẤU NGOẶC KÉP "..."
+        // 2. Tìm kiếm web khi có từ khóa trong ngoặc kép "..."
         const quoted = extractQuotedKeywords(fnP);
         if (quoted && DOM.toggleSearch.checked) {
           const sel = DOM.searchEngineSel.value, tgt = sel === 'auto' ? (ls.getItem('auto_search_default_engine') || 'jina') : sel;
-          if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText = `🔍 Tìm "${quoted}"...`;
+          if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText = `🔍 Tìm kiếm "${quoted}"...`;
           try {
             const sText = await ({ jina: fetchJinaSearch, tavily: fetchTavilySearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[tgt] || fetchJinaSearch)(quoted);
             if (sText) fnP = `[DỮ LIỆU TÌM ĐƯỢC CHO "${quoted}"]: \n${sText}\n\n[YÊU CẦU]: ${fnP}`;
@@ -857,46 +924,94 @@
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
-        // 🤖 3. NẠP VÀO MÔ HÌNH XỬ LÝ (DIFY, GROQ, HOẶC GEMINI 3 DIRECT STREAM)
-        if (isExt) {
-          const onCk = c => { bD.querySelector('.streaming-indicator')?.remove(); finalResp += c; renderer.push(finalResp); }, onErr = e => { if (e.name !== 'AbortError') showToast("Lỗi: " + e.message, 'danger'); };
-          am.endsWith('-dify') ? await callDifyStream(serializeHistoryForDify(DOM.toggleMemory.checked ? chatHistory.slice(-16) : [], fnP), onCk, onErr, abortController.signal) : await callGroqStream(fnP, onCk, onErr, abortController.signal);
-          if (finalResp.trim()) await renderer.flush(finalResp);
-        } else {
-          let pS = false, lastErr = null;
-          
-          // 🧠 CỬA SỔ TRƯỢT SLIDING WINDOW: NẠP 16 TIN NHẮN GẦN NHẤT
-          const contents = [];
-          if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
-            chatHistory.slice(-16).forEach(m => contents.push({
-              role: m.role === 'model' ? 'model' : 'user',
-              parts: [{ text: m.text }]
-            }));
+        // 3. Chuẩn bị Parts & Cấu hình AI
+        const currentParts = [{ text: fnP }];
+        for (const f of imgs) currentParts.push(await fileToInteractionPart(f));
+        const thk = DOM.thinking.value;
+        const baseConfig = { 
+          systemInstruction: getDynamicSI(), 
+          safetySettings: SAFETY, 
+          temperature: +DOM.temp.value, 
+          topP: +DOM.topP.value, 
+          topK: +DOM.topK.value,
+          ...(thk && thk !== 'none' ? { thinkingConfig: { thinkingLevel: thk } } : {})
+        };
+
+        let pS = false, lastErr = null;
+
+        // === ĐỘNG CƠ A: INTERACTIONS API (GOOGLE SERVER-SIDE STATE) ===
+        if (currentEngine === 'interactions') {
+          if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText = `⚡ Kết nối Interactions API...`;
+          try {
+            const ai = new GoogleGenAI({ apiKey: gKey });
+            const params = {
+              model: am,
+              input: imgs.length ? currentParts : fnP,
+              stream: true,
+              config: baseConfig
+            };
+            if (DOM.toggleMemory?.checked && cs?.lastInteractionId) {
+              params.previous_interaction_id = cs.lastInteractionId;
+            }
+
+            let streamObj;
+            try {
+              streamObj = await ai.interactions.create(params);
+            } catch (ixInitErr) {
+              // Tự phục hồi: Nếu previous_interaction_id hết hạn hoặc lỗi, thử lại ngay lập tức từ đầu
+              if (params.previous_interaction_id && (ixInitErr.message.includes('not found') || ixInitErr.message.includes('404') || ixInitErr.message.includes('invalid'))) {
+                delete params.previous_interaction_id;
+                if (cs) cs.lastInteractionId = null;
+                streamObj = await ai.interactions.create(params);
+              } else {
+                throw ixInitErr;
+              }
+            }
+
+            for await (const chunk of streamObj) {
+              let chunkText = "";
+              if (chunk.text) chunkText = chunk.text;
+              else if (chunk.delta?.type === 'text' && chunk.delta?.text) chunkText = chunk.delta.text;
+              else if (chunk.event_type === 'step.delta' && chunk.delta?.text) chunkText = chunk.delta.text;
+
+              if (chunkText) {
+                bD.querySelector('.streaming-indicator')?.remove();
+                finalResp += chunkText;
+                renderer.push(finalResp);
+              }
+              if (chunk.interaction?.id) {
+                recordedIxId = chunk.interaction.id;
+              }
+            }
+            await renderer.flush(finalResp);
+            pS = true;
+          } catch(err) {
+            lastErr = err;
           }
+        }
 
-          const currentParts = [{ text: fnP }];
-          for (const f of imgs) currentParts.push(await fileToInteractionPart(f));
-          contents.push({ role: 'user', parts: currentParts });
-
-          const thk = DOM.thinking.value;
-          const config = { 
-            systemInstruction: getDynamicSI(), 
-            safetySettings: SAFETY, 
-            temperature: +DOM.temp.value, 
-            topP: +DOM.topP.value, 
-            topK: +DOM.topK.value,
-            ...(thk && thk !== 'none' ? { thinkingConfig: { thinkingLevel: thk } } : {}) // ⚡ CHUẨN 100% GOOGLE GEMINI 3.X THINKING LEVEL
-          };
-
+        // === ĐỘNG CƠ B: GENERATECONTENTSTREAM (CLIENT-SIDE SLIDING WINDOW) ===
+        if (!pS) {
+          // Fallback hoặc chế độ mặc định generateContentStream
           for (const mod of getFallbackModelsFor(am)) {
             finalResp = "";
             try {
+              const contents = [];
+              if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
+                chatHistory.slice(-16).forEach(m => contents.push({
+                  role: m.role === 'model' ? 'model' : 'user',
+                  parts: [{ text: m.text }]
+                }));
+              }
+              contents.push({ role: 'user', parts: currentParts });
+
               const resStream = await new GoogleGenAI({ apiKey: gKey }).models.generateContentStream({ 
                 model: mod, 
                 contents, 
-                config, 
+                config: baseConfig, 
                 abortSignal: abortController.signal 
               });
+
               for await (const ck of resStream) {
                 if (ck.text) { 
                   bD.querySelector('.streaming-indicator')?.remove(); 
@@ -912,24 +1027,41 @@
               lastErr = e; 
             }
           }
-          if (!pS) { bD.remove(); return showToast(formatGoogleApiError(lastErr), 'danger'); }
         }
+
+        if (!pS) { bD.remove(); return showToast(formatGoogleApiError(lastErr), 'danger'); }
         await saveTurn();
       } catch(err) {
         if (err.name === 'AbortError' || abortController?.signal.aborted) { showToast("Đã dừng!", "warning"); await saveTurn(' (Đã dừng)'); }
         else { showToast("Lỗi: " + err.message, 'danger'); bD?.remove(); }
-      } finally { isProcessing = false; abortController = null; DOM.sendBtn.innerText = 'Gửi 📤'; DOM.sendBtn.style.background = 'var(--primary)'; }
+      } finally { 
+        isProcessing = false; abortController = null; 
+        DOM.sendBtn.innerText = 'Gửi 📤'; DOM.sendBtn.style.background = 'var(--primary)'; 
+      }
     };
 
     window.exportAllSessions = async () => {
       const cfgs = { chat_font_size: ls.getItem('chat_font_size') || "16" };
-      for (let i = 1; i <= 10; i++) cfgs[`javiss_api_${i}`] = ls.getItem(`javiss_api_${i}`) || "";
+      for (let i = 1; i <= 10; i++) cfgs[`huanmu_api_${i}`] = ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "";
       cfgMap.forEach(([, k]) => cfgs[k] = ls.getItem(k) || "");
-      saveOrShareBlob(new Blob([JSON.stringify({ sessions: await getAllFromDB(), configs: cfgs }, null, 2)], { type: 'application/json' }), `Backup_${Date.now()}.json`);
+      saveOrShareBlob(new Blob([JSON.stringify({ brand: "Huân MU", sessions: await getAllFromDB(), configs: cfgs }, null, 2)], { type: 'application/json' }), `HuanMU_Backup_${Date.now()}.json`);
     };
     $('import-all-input').onchange = e => {
       const f = e.target.files[0]; if (!f) return; const rd = new FileReader();
-      rd.onload = async ev => { try { const d = JSON.parse(ev.target.result); if (d.sessions) { await clearAllDB(); for (const s of d.sessions) await saveToDB(s); if (d.configs) Object.entries(d.configs).forEach(([k, v]) => ls.setItem(k, v)); initAPIKeys(); initExternalConfigs(); applyFontSize(parseInt(ls.getItem('chat_font_size') || '16', 10)); await loadSess(); showToast('🎉 Đã khôi phục!'); } } catch { showToast('Lỗi tệp JSON', 'danger'); } };
+      rd.onload = async ev => { 
+        try { 
+          const d = JSON.parse(ev.target.result); 
+          if (d.sessions) { 
+            await clearAllDB(); 
+            for (const s of d.sessions) await saveToDB(s); 
+            if (d.configs) Object.entries(d.configs).forEach(([k, v]) => ls.setItem(k, v)); 
+            initAPIKeys(); initExternalConfigs(); 
+            applyFontSize(parseInt(ls.getItem('chat_font_size') || '16', 10)); 
+            await loadSess(); 
+            showToast('🎉 Đã khôi phục dữ liệu Huân MU thành công!'); 
+          } 
+        } catch { showToast('Lỗi tệp JSON không hợp lệ', 'danger'); } 
+      };
       rd.readAsText(f);
     };
 
@@ -941,8 +1073,8 @@
     DOM.clearFilesBtn.onclick = () => { filesData = []; txtContent = ""; DOM.textFileList.innerHTML = ""; renderFiles(); updateTokenCount(); };
     const fileToInteractionPart = f => new Promise(r => { const rd = new FileReader(); rd.onloadend = () => r({ inlineData: { mimeType: f.type, data: rd.result.split(',')[1] } }); rd.readAsDataURL(f); });
 
-    window.exportChatDoc = () => { const h = `<html><body><h2>${sessions.find(s => s.id === activeId)?.name || 'Chat'}</h2>` + chatHistory.map(m => `<p><b>${m.role==='user'?'Bạn':'Javiss'}:</b><br>${m.role==='model'?marked.parse(m.text):m.text}</p><hr>`).join('') + "</body></html>"; saveOrShareBlob(new Blob(['\ufeff', h], { type: 'application/msword' }), `Chat_${Date.now()}.doc`); };
-    window.exportChatPDF = () => { const e = document.createElement('div'); e.innerHTML = chatHistory.map(m => `<div style="margin:10px 0;"><strong>${m.role==='user'?'Bạn':'Javiss'}:</strong><br>${m.role==='model'?marked.parse(m.text):m.text}</div><hr>`).join(''); html2pdf().from(e).outputPdf('blob').then(b => saveOrShareBlob(b, `Chat_${Date.now()}.pdf`)); };
+    window.exportChatDoc = () => { const h = `<html><body><h2>${sessions.find(s => s.id === activeId)?.name || 'Chat Huân MU'}</h2>` + chatHistory.map(m => `<p><b>${m.role==='user'?'Bạn':'Huân MU'}:</b><br>${m.role==='model'?marked.parse(m.text):m.text}</p><hr>`).join('') + "</body></html>"; saveOrShareBlob(new Blob(['\ufeff', h], { type: 'application/msword' }), `HuanMU_Chat_${Date.now()}.doc`); };
+    window.exportChatPDF = () => { const e = document.createElement('div'); e.innerHTML = chatHistory.map(m => `<div style="margin:10px 0;"><strong>${m.role==='user'?'Bạn':'Huân MU'}:</strong><br>${m.role==='model'?marked.parse(m.text):m.text}</div><hr>`).join(''); html2pdf().from(e).outputPdf('blob').then(b => saveOrShareBlob(b, `HuanMU_Chat_${Date.now()}.pdf`)); };
 
     let tTO; function showToast(m, t = 'success') { clearTimeout(tTO); DOM.toast.innerText = m; DOM.toast.className = `toast ${t} show`; tTO = setTimeout(() => DOM.toast.classList.remove('show'), 3000); }
     const sBar = document.querySelector('.header-search-bar');
