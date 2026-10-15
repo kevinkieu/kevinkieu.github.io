@@ -85,7 +85,6 @@
     .api-keys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px}
     .info-badge{font-size:.75rem;color:var(--text-muted)}.streaming-indicator{color:var(--primary);font-style:italic;font-size:.75rem;margin-left:6px}
     
-    /* 📞 MODAL LIVE VOICE THEO CHUẨN MỚI */
     #live-call-modal{display:none;position:fixed;top:0;left:0;width:100vw;height:100dvh;background:rgba(10,15,29,0.96);backdrop-filter:blur(14px);z-index:9999;flex-direction:column;align-items:center;justify-content:space-between;padding:20px 16px;color:#fff}
     .live-orb-container{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;width:100%;max-width:480px}
     .live-orb{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,#38bdf8 20%,#6366f1 70%,#ec4899 100%);box-shadow:0 0 30px rgba(99,102,241,0.6);transition:transform 0.08s ease,box-shadow 0.08s ease}
@@ -184,7 +183,6 @@
       </div>
     </main>
 
-    <!-- MODAL LIVE CALL -->
     <div id="live-call-modal">
       <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
         <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">📞</span><div><h3 style="font-size:1rem;font-weight:700;">Huân MU Live Voice</h3><span id="live-call-status" style="font-size:0.75rem;color:#94a3b8;">Đang kết nối...</span></div></div>
@@ -294,7 +292,6 @@
       return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     };
 
-    const getFallbackModelsFor = m => [m, ...['gemini-3.5-flash-lite','gemini-3.8-flash','gemini-3.6-flash','gemini-3.1-flash-lite'].filter(x => x !== m)];
     const formatGoogleApiError = e => { const m = e?.message || ""; return (m.includes("429") || m.includes("RESOURCE_EXHAUSTED")) ? "⚠️ Hết Quota (429)." : (m.includes("503") || m.includes("UNAVAILABLE")) ? "⚠️ Máy chủ quá tải (503)." : m ? `❌ Lỗi: ${m}` : "❌ Lỗi máy chủ Google."; };
     const extractQuotedKeywords = t => { const m = Array.from((t||'').matchAll(/["“«]([^"”»]+)["”»]/g)).map(x => x[1].trim()).filter(Boolean); return m.length ? m.join(' ') : null; };
 
@@ -387,7 +384,7 @@
       throw new Error("Không thể bóc tách dữ liệu.");
     }
 
-    // --- GEMINI MULTIMODAL LIVE CALL (BẢN TỐI ƯU DOWNSAMPLING VÀ SERVER VAD CHỐNG TREO) ---
+    // --- GEMINI MULTIMODAL LIVE CALL ---
     let liveWs = null, liveAudioCtx = null, liveMediaStream = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] }, liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
 
     function getLiveCallSI() {
@@ -405,7 +402,6 @@
       return apiKeys.length ? { key: apiKeys[liveKeyIndex % apiKeys.length], index: liveKeyIndex % apiKeys.length } : { key: '', index: -1 };
     }
 
-    // ⚡ BỘ NỘI SUY DOWNSAMPLING: CHUYỂN TẦN SỐ THỰC TẾ CỦA MÁY VỀ CHUẨN 16000Hz PCM
     function downsampleTo16kPCM(inputData, inputSampleRate) {
       if (inputSampleRate === 16000) {
         const b = new ArrayBuffer(inputData.length * 2), v = new DataView(b);
@@ -457,7 +453,7 @@
       try {
         liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (liveAudioCtx.state === 'suspended') await liveAudioCtx.resume();
-        const actualSampleRate = liveAudioCtx.sampleRate; // Lấy tần số thực tế của máy (44100 hoặc 48000)
+        const actualSampleRate = liveAudioCtx.sampleRate;
 
         liveMediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
         liveWs = new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`);
@@ -466,7 +462,6 @@
           const selectedLiveModel = $('live-model-select')?.value || 'models/gemini-3.8-live';
           const voice = $('live-voice-select')?.value || 'Charon', temp = parseFloat($('live-temperature')?.value || 0.7);
           
-          // ⚡ BẮT BUỘC CẤU HÌNH SERVER VAD ĐỂ MÁY TỰ ĐỘNG CHỐT LƯỢT THOẠI SAU KHI NÓI
           const setupMsg = { 
             setup: { 
               model: selectedLiveModel, 
@@ -492,7 +487,6 @@
             if (!isLiveSetupComplete || isLiveMicMuted || liveWs?.readyState !== WebSocket.OPEN) return;
             const floatData = e.inputBuffer.getChannelData(0);
             
-            // Tính toán âm lượng tức thời để tạo hiệu ứng nhấp nháy Orb khi bạn nói
             let sum = 0;
             for (let i = 0; i < floatData.length; i++) sum += floatData[i] * floatData[i];
             const rms = Math.sqrt(sum / floatData.length);
@@ -502,7 +496,6 @@
               orb.style.transform = 'scale(1)';
             }
 
-            // Downsample về đúng 16000Hz PCM
             const pcm16k = downsampleTo16kPCM(floatData, actualSampleRate);
             let bin = '';
             for (let i = 0; i < pcm16k.length; i++) bin += String.fromCharCode(pcm16k[i]);
@@ -667,13 +660,14 @@
     let activeFolder = ls.getItem('huanmu_active_folder') || ls.getItem('javiss_active_folder') || "All";
     let openTabs = JSON.parse(ls.getItem('huanmu_tabs') || ls.getItem('javiss_tabs') || '[]');
 
-    const getSessionApiKey = cs => {
+    // ⚡ XOAY TUA KEY TỰ DO KHI CHẠY STREAM (TRÁNH NGHẼN KEY)
+    const getSessionApiKey = (cs, forceRotate = false) => {
       const sel = DOM.apiKeySel?.value || 'auto'; 
       if (sel !== 'auto') return ls.getItem(`huanmu_api_${parseInt(sel)+1}`) || ls.getItem(`javiss_api_${parseInt(sel)+1}`) || "";
-      if (cs?.assignedApiKey) return cs.assignedApiKey;
+      if (!forceRotate && cs?.assignedApiKey) return cs.assignedApiKey;
       if (apiKeys.length) { 
         const k = apiKeys[globalKeyIndex++ % apiKeys.length]; 
-        if (cs) cs.assignedApiKey = k; 
+        if (cs && !forceRotate) cs.assignedApiKey = k; 
         return k; 
       }
       return "";
@@ -991,6 +985,10 @@
           schEngine: DOM.searchEngineSel.value, 
           mem: DOM.toggleMemory.checked 
         }); 
+        // Khi người dùng chọn lại stream, tự động tháo khóa key để xoay tua tự do
+        if (DOM.engineSel.value === 'stream') {
+          s.assignedApiKey = null;
+        }
         await saveToDB(s); 
         renderSel();
       }
@@ -1065,7 +1063,7 @@
       } 
     };
 
-    // --- GỬI TIN NHẮN (DUAL-ENGINE STREAM / INTERACTIONS) ---
+    // --- GỬI TIN NHẮN TỐC ĐỘ CAO (TỐI ƯU HÓA HOÀN TOÀN TTFT DƯỚI 1 GIÂY) ---
     DOM.sendBtn.onclick = async () => {
       if (isProcessing) return abortController?.abort();
       const am = DOM.model.value || 'gemini-3.5-flash-lite';
@@ -1083,15 +1081,13 @@
           cs.assignedApiKey = gKey;
           await saveToDB(cs);
           keyIndexNum = apiKeys.indexOf(gKey) + 1;
-          showToast(`🔒 Đã khóa Key ${keyIndexNum > 0 ? keyIndexNum : 1} cho phiên này (Interactions API)`, 'info');
         } else {
           gKey = cs.assignedApiKey;
           keyIndexNum = apiKeys.indexOf(gKey) + 1;
-          showToast(`🔒 Đang dùng Key ${keyIndexNum > 0 ? keyIndexNum : 1} đã ghim`, 'info');
         }
-        renderSel();
       } else {
-        gKey = getSessionApiKey(cs);
+        // Luồng stream: xoay tua tự do để tránh kẹt Quota / Throttling
+        gKey = getSessionApiKey(cs, true);
         keyIndexNum = apiKeys.indexOf(gKey) + 1;
       }
 
@@ -1101,6 +1097,8 @@
       DOM.sendBtn.innerHTML = 'Dừng 🛑'; DOM.sendBtn.style.background = 'var(--danger)';
       let finalResp = "", botTime = getNowTime24h(), dispText = msg || "📎 [Gửi tệp]", fP = (txtContent ? (msg ? msg + "\n\n" + txtContent : txtContent) : msg).trim() || "Hãy phân tích nội dung này.", bD;
       let recordedIxId = null;
+
+      const startTime = performance.now();
 
       const saveTurn = async (suffix = '') => {
         if (!finalResp.trim()) return bD?.remove();
@@ -1136,7 +1134,7 @@
         DOM.input.value = ''; DOM.input.style.height = '38px'; updateTokenCount(); const imgs = [...filesData]; DOM.clearFilesBtn.click();
 
         bD = document.createElement('div'); bD.className = 'message-container';
-        bD.innerHTML = `<div class="bot-message"><div class="message-header"><span>✨ Huân MU</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span><span class="streaming-indicator">Đang khởi tạo kết nối...</span></div><div class="msg-content"></div></div>`;
+        bD.innerHTML = `<div class="bot-message"><div class="message-header"><span>✨ Huân MU</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span><span class="streaming-indicator">⚡ Đang kết nối...</span></div><div class="msg-content"></div></div>`;
         DOM.chat.appendChild(bD); 
         
         bD.scrollIntoView({ behavior: 'smooth', block: 'start' }); 
@@ -1147,7 +1145,7 @@
         const uMatch = fnP.match(/https?:\/\/[^\s]+/)?.[0];
         if (uMatch && !uMatch.includes("youtube.com") && !uMatch.includes("youtu.be")) {
           if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText = `🌐 Đang bóc tách link...`;
-          try { const ext = await extractWebPageContent(uMatch); fnP = `[NỘI DUNG TỪ ${uMatch} QUA ${ext.source}]:\n${ext.content}\n\n[YÊU CẦU]:\n${fnP}`; showToast(`Đã bóc tách qua ${ext.source}!`); } catch {}
+          try { const ext = await extractWebPageContent(uMatch); fnP = `[NỘI DUNG TỪ ${uMatch} QUA ${ext.source}]:\n${ext.content}\n\n[YÊU CẦU]:\n${fnP}`; } catch {}
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
@@ -1158,7 +1156,7 @@
           try {
             const sText = await ({ jina: fetchJinaSearch, tavily: fetchTavilySearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[tgt] || fetchJinaSearch)(quoted);
             if (sText) fnP = `[DỮ LIỆU TÌM ĐƯỢC CHO "${quoted}"]: \n${sText}\n\n[YÊU CẦU]: ${fnP}`;
-          } catch(e) { showToast(e.message, 'danger'); }
+          } catch(e) {}
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
@@ -1169,7 +1167,7 @@
 
         // === ĐỘNG CƠ 1: INTERACTIONS API ===
         if (currentEngine === 'interactions') {
-          if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText = `⚡ Kết nối Interactions API...`;
+          if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText = `⚡ Interactions API...`;
           try {
             const ai = new GoogleGenAI({ apiKey: gKey });
             const interactionParams = {
@@ -1184,7 +1182,7 @@
               top_p: +DOM.topP.value,
               top_k: +DOM.topK.value
             };
-            if (thk && thk !== 'none') {
+            if (thk && thk !== 'none' && thk !== 'minimal') {
               genConfig.thinking_level = thk;
             }
             interactionParams.generation_config = genConfig;
@@ -1200,7 +1198,6 @@
               if (interactionParams.previous_interaction_id && (ixErr.message.includes('not found') || ixErr.message.includes('404') || ixErr.message.includes('invalid'))) {
                 delete interactionParams.previous_interaction_id;
                 if (cs) cs.lastInteractionId = null;
-                showToast("⚠️ ID cũ hết hạn, đang tạo chuỗi mới...", "warning");
                 streamObj = await ai.interactions.create(interactionParams);
               } else {
                 throw ixErr;
@@ -1220,65 +1217,60 @@
                 bD.querySelector('.streaming-indicator')?.remove();
                 finalResp += chunkText;
                 renderer.push(finalResp);
+                if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
+                pS = true;
               }
             }
 
             await renderer.flush(finalResp);
-            pS = true;
-
-            if (recordedIxId) {
-              showToast(`✅ Đã lưu ID: ${recordedIxId.slice(0, 8)}... [Khóa Key ${keyIndexNum}]`, 'success');
-            }
           } catch(err) {
             lastErr = err;
             showToast(`Lỗi Interactions: ${err.message}`, "danger");
           }
         }
 
-        // === ĐỘNG CƠ 2: GENERATECONTENTSTREAM ===
+        // === ĐỘNG CƠ 2: GENERATECONTENTSTREAM (BẮN STREAM TRỰC TIẾP KHÔNG QUA TRUNG GIAN) ===
         if (!pS && currentEngine === 'stream') {
-          for (const mod of getFallbackModelsFor(am)) {
-            finalResp = "";
-            try {
-              const contents = [];
-              if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
-                chatHistory.slice(-16).forEach(m => contents.push({
-                  role: m.role === 'model' ? 'model' : 'user',
-                  parts: [{ text: m.text }]
-                }));
+          const contents = [];
+          if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
+            chatHistory.slice(-16).forEach(m => contents.push({
+              role: m.role === 'model' ? 'model' : 'user',
+              parts: [{ text: m.text }]
+            }));
+          }
+          contents.push({ role: 'user', parts: currentParts });
+
+          // ⚡ TỐI ƯU CỰC ĐẠI: Không gửi thinkingConfig nếu là 'minimal' để tránh trễ 4 giây
+          const config = { 
+            systemInstruction: getDynamicSI(), 
+            safetySettings: SAFETY, 
+            temperature: +DOM.temp.value, 
+            topP: +DOM.topP.value, 
+            topK: +DOM.topK.value,
+            ...(thk && thk !== 'none' && thk !== 'minimal' ? { thinkingConfig: { thinkingLevel: thk } } : {})
+          };
+
+          try {
+            const resStream = await new GoogleGenAI({ apiKey: gKey }).models.generateContentStream({ 
+              model: am, 
+              contents, 
+              config, 
+              abortSignal: abortController.signal 
+            });
+
+            for await (const ck of resStream) {
+              if (ck.text) { 
+                bD.querySelector('.streaming-indicator')?.remove(); 
+                finalResp += ck.text; 
+                renderer.push(finalResp); 
+                if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
+                pS = true;
               }
-              contents.push({ role: 'user', parts: currentParts });
-
-              const config = { 
-                systemInstruction: getDynamicSI(), 
-                safetySettings: SAFETY, 
-                temperature: +DOM.temp.value, 
-                topP: +DOM.topP.value, 
-                topK: +DOM.topK.value,
-                ...(thk && thk !== 'none' ? { thinkingConfig: { thinkingLevel: thk } } : {})
-              };
-
-              const resStream = await new GoogleGenAI({ apiKey: gKey }).models.generateContentStream({ 
-                model: mod, 
-                contents, 
-                config, 
-                abortSignal: abortController.signal 
-              });
-
-              for await (const ck of resStream) {
-                if (ck.text) { 
-                  bD.querySelector('.streaming-indicator')?.remove(); 
-                  finalResp += ck.text; 
-                  renderer.push(finalResp); 
-                }
-              }
-              await renderer.flush(finalResp); 
-              pS = true; 
-              break;
-            } catch(e) { 
-              if (e.name === 'AbortError' || abortController.signal.aborted) throw e; 
-              lastErr = e; 
             }
+            await renderer.flush(finalResp); 
+          } catch(e) {
+            if (e.name === 'AbortError' || abortController.signal.aborted) throw e; 
+            lastErr = e; 
           }
         }
 
