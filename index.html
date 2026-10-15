@@ -79,6 +79,7 @@
     .toast.success{background:#2e7d32}.toast.danger{background:#c62828}.toast.info{background:#0b57d0}.toast.show{opacity:1;pointer-events:auto}
     #scroll-to-top{position:fixed;bottom:170px;right:20px;background:rgba(11,87,208,0.3);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.2);color:var(--text-main);border-radius:50%;width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:var(--transition);z-index:998}
     #scroll-to-top.visible{opacity:0.4;pointer-events:auto}#scroll-to-top:hover{opacity:1;background:var(--primary);color:#fff}
+    .interaction-id-badge{font-size:.7rem;color:var(--primary);background:var(--input-bg);border:1px solid var(--border);padding:2px 6px;border-radius:10px;cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:4px}
     .search-result-item,.bulk-edit-item{cursor:pointer;margin:4px 0;padding:6px;border-radius:6px;background:var(--input-bg);border-left:3px solid var(--primary);font-size:.8rem}
     .bulk-edit-item{display:flex;align-items:flex-start;gap:8px;border:1px solid var(--border);border-left:none}
     .api-keys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px}
@@ -214,7 +215,7 @@
         </fieldset>
         <fieldset class="settings-group"><legend>⚙️ Ngữ cảnh Phiên Chat & Live (System Prompt)</legend>
           <div style="display:flex;flex-direction:column;gap:8px;">
-            <div><label class="field-label">System Instruction riêng phiên (Có thể gán link theo chủ đề):</label><textarea id="system-instruction-input" rows="2" class="modern-textarea"></textarea></div>
+            <div><label class="field-label">System Instruction riêng phiên:</label><textarea id="system-instruction-input" rows="2" class="modern-textarea"></textarea></div>
             <div><label class="field-label">🌍 Ngữ cảnh Toàn cục:</label><textarea id="global-context-input" rows="2" class="modern-textarea"></textarea></div>
           </div>
         </fieldset>
@@ -302,28 +303,23 @@
     $('btn-font-reset').onclick = () => applyFontSize(16);
     applyFontSize(currentFontSize);
 
-    // 🚀 BỘ RENDER STREAM 60FPS CHỐNG GIẬT (GIỮ VỊ TRÍ ĐỌC TỪ ĐẦU)
+    // 🚀 BỘ RENDER STREAM 60FPS CHỐNG GIẬT (GHIM YÊN VỊ TRÍ ĐỌC TỪ ĐẦU - TUYỆT ĐỐI KHÔNG ÉP CUỘN ĐÁY)
     function createStreamRenderer(targetEl) {
       let pending = false, latest = "";
-      const isBot = () => (DOM.chat.scrollHeight - DOM.chat.scrollTop - DOM.chat.clientHeight) < 60;
       return {
         push: text => {
           latest = text;
           if (!pending) {
             pending = true;
             requestAnimationFrame(() => { 
-              const b = isBot(); 
               targetEl.innerHTML = marked.parse(latest); 
-              if (b) DOM.chat.scrollTop = DOM.chat.scrollHeight; 
               pending = false; 
             });
           }
         },
         flush: async finalText => { 
           pending = false; 
-          const b = isBot(); 
           await renderMsgContent(targetEl, finalText); 
-          if (b) DOM.chat.scrollTop = DOM.chat.scrollHeight; 
         }
       };
     }
@@ -831,14 +827,20 @@
 
         bD = document.createElement('div'); bD.className = 'message-container';
         bD.innerHTML = `<div class="bot-message"><div class="message-header"><span>✨ Chatbot</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span><span class="streaming-indicator">Đang xử lý...</span></div><div class="msg-content"></div></div>`;
-        DOM.chat.appendChild(bD); bD.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        const renderer = createStreamRenderer(bD.querySelector('.msg-content')), ind = () => bD.querySelector('.streaming-indicator');
+        DOM.chat.appendChild(bD); 
+        
+        // 🎯 GHIM VÀO ĐẦU TIN NHẮN CỦA BOT ĐỂ BẠN ĐỌC TỪ DÒNG ĐẦU TIÊN
+        bD.scrollIntoView({ behavior: 'smooth', block: 'start' }); 
+        const cD = bD.querySelector('.msg-content');
+
+        // 🚀 BỘ RENDER STREAM (ĐỨNG YÊN VỊ TRÍ ĐỌC BAN ĐẦU - TUYỆT ĐỐI KHÔNG ÉP CUỘN ĐÁY)
+        const renderer = createStreamRenderer(cD);
         let fnP = fP;
 
         // 🚀 1. CHỈ BÓC TÁCH KHI BẠN GÕ LINK URL TRỰC TIẾP
         const uMatch = fnP.match(/https?:\/\/[^\s]+/)?.[0];
         if (uMatch && !uMatch.includes("youtube.com") && !uMatch.includes("youtu.be")) {
-          if (ind()) ind().innerText = `🌐 Đang bóc tách link...`;
+          if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText = `🌐 Đang bóc tách link...`;
           try { const ext = await extractWebPageContent(uMatch); fnP = `[NỘI DUNG TỪ ${uMatch} QUA ${ext.source}]:\n${ext.content}\n\n[YÊU CẦU]:\n${fnP}`; showToast(`Đã bóc tách qua ${ext.source}!`); } catch {}
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
@@ -847,7 +849,7 @@
         const quoted = extractQuotedKeywords(fnP);
         if (quoted && DOM.toggleSearch.checked) {
           const sel = DOM.searchEngineSel.value, tgt = sel === 'auto' ? (ls.getItem('auto_search_default_engine') || 'jina') : sel;
-          if (ind()) ind().innerText = `🔍 Tìm "${quoted}"...`;
+          if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText = `🔍 Tìm "${quoted}"...`;
           try {
             const sText = await ({ jina: fetchJinaSearch, tavily: fetchTavilySearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[tgt] || fetchJinaSearch)(quoted);
             if (sText) fnP = `[DỮ LIỆU TÌM ĐƯỢC CHO "${quoted}"]: \n${sText}\n\n[YÊU CẦU]: ${fnP}`;
@@ -857,7 +859,7 @@
 
         // 🤖 3. NẠP VÀO MÔ HÌNH XỬ LÝ (DIFY, GROQ, HOẶC GEMINI 3 DIRECT STREAM)
         if (isExt) {
-          const onCk = c => { ind()?.remove(); finalResp += c; renderer.push(finalResp); }, onErr = e => { if (e.name !== 'AbortError') showToast("Lỗi: " + e.message, 'danger'); };
+          const onCk = c => { bD.querySelector('.streaming-indicator')?.remove(); finalResp += c; renderer.push(finalResp); }, onErr = e => { if (e.name !== 'AbortError') showToast("Lỗi: " + e.message, 'danger'); };
           am.endsWith('-dify') ? await callDifyStream(serializeHistoryForDify(DOM.toggleMemory.checked ? chatHistory.slice(-16) : [], fnP), onCk, onErr, abortController.signal) : await callGroqStream(fnP, onCk, onErr, abortController.signal);
           if (finalResp.trim()) await renderer.flush(finalResp);
         } else {
@@ -897,7 +899,7 @@
               });
               for await (const ck of resStream) {
                 if (ck.text) { 
-                  ind()?.remove(); 
+                  bD.querySelector('.streaming-indicator')?.remove(); 
                   finalResp += ck.text; 
                   renderer.push(finalResp); 
                 }
