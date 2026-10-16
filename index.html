@@ -85,7 +85,6 @@
     .api-keys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px}
     .info-badge{font-size:.75rem;color:var(--text-muted)}.streaming-indicator{color:var(--primary);font-style:italic;font-size:.75rem;margin-left:6px}
     
-    /* 📞 MODAL LIVE VOICE THEO CHUẨN MỚI */
     #live-call-modal{display:none;position:fixed;top:0;left:0;width:100vw;height:100dvh;background:rgba(10,15,29,0.96);backdrop-filter:blur(14px);z-index:9999;flex-direction:column;align-items:center;justify-content:space-between;padding:20px 16px;color:#fff}
     .live-orb-container{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;width:100%;max-width:480px}
     .live-orb{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,#38bdf8 20%,#6366f1 70%,#ec4899 100%);box-shadow:0 0 30px rgba(99,102,241,0.6);transition:transform 0.08s ease,box-shadow 0.08s ease}
@@ -184,7 +183,6 @@
       </div>
     </main>
 
-    <!-- MODAL LIVE CALL -->
     <div id="live-call-modal">
       <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
         <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">📞</span><div><h3 style="font-size:1rem;font-weight:700;">Huân MU Live Voice</h3><span id="live-call-status" style="font-size:0.75rem;color:#94a3b8;">Đang kết nối...</span></div></div>
@@ -224,7 +222,7 @@
         <fieldset class="settings-group"><legend>⚙️ Ngữ cảnh Phiên Chat & Live (System Prompt)</legend>
           <div style="display:flex;flex-direction:column;gap:8px;">
             <div><label class="field-label">System Instruction riêng phiên:</label><textarea id="system-instruction-input" rows="2" class="modern-textarea"></textarea></div>
-            <div><label class="field-label">🌍 Ngữ cảnh Toàn cục:</label><textarea id="global-context-input" rows="2" class="modern-textarea"></textarea></div>
+            <div><label class="field-label">🌍 Ngữ cảnh Toàn cục (Lưu vĩnh viễn):</label><textarea id="global-context-input" rows="2" class="modern-textarea" placeholder="Nhập ngữ cảnh dùng chung cho tất cả các phiên..."></textarea></div>
           </div>
         </fieldset>
         <fieldset class="settings-group"><legend>🚀 Tham số Google Gemini</legend>
@@ -386,9 +384,9 @@
       throw new Error("Không thể bóc tách dữ liệu.");
     }
 
-    // --- GEMINI MULTIMODAL LIVE CALL (CHUẨN 100% GOOGLE BI-DIRECTIONAL VAD & AUDIO RECOGNITION) ---
+    // --- GEMINI MULTIMODAL LIVE CALL ---
     let liveWs = null, liveAudioCtx = null, liveMediaStream = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] };
-    let liveMicSource = null, liveScriptProcessor = null, liveSilentGain = null; // Cố định biến tránh bị GC trên Android
+    let liveMicSource = null, liveScriptProcessor = null, liveSilentGain = null;
     let liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
 
     function getLiveCallSI() {
@@ -454,15 +452,12 @@
         const actualSampleRate = liveAudioCtx.sampleRate;
 
         liveMediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
-        
-        // Dùng endpoint Live API chính thức
         liveWs = new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`);
 
         liveWs.onopen = () => {
           const selectedLiveModel = $('live-model-select')?.value || 'models/gemini-3.8-live';
           const voice = $('live-voice-select')?.value || 'Charon', temp = parseFloat($('live-temperature')?.value || 0.7);
           
-          // ⚡ CẤU HÌNH THUẦN AUDIO VÀ BẬT PHIÊN ÂM VAD HAI CHIỀU
           const setupMsg = { 
             setup: { 
               model: selectedLiveModel, 
@@ -483,11 +478,8 @@
           
           liveWs.send(JSON.stringify(setupMsg));
 
-          // Cố định node trên biến outer-scope để chống V8 Garbage Collector trên Android
           liveMicSource = liveAudioCtx.createMediaStreamSource(liveMediaStream);
           liveScriptProcessor = liveAudioCtx.createScriptProcessor(4096, 1, 1);
-          
-          // Nối qua GainNode giá trị 0 để chống dội âm trực tiếp vào loa ngoài của điện thoại
           liveSilentGain = liveAudioCtx.createGain();
           liveSilentGain.gain.value = 0;
           
@@ -495,7 +487,6 @@
             if (!isLiveSetupComplete || isLiveMicMuted || liveWs?.readyState !== WebSocket.OPEN) return;
             const floatData = e.inputBuffer.getChannelData(0);
             
-            // Tính toán âm lượng tức thời tạo hiệu ứng nhịp thở cho Orb
             let sum = 0;
             for (let i = 0; i < floatData.length; i++) sum += floatData[i] * floatData[i];
             const rms = Math.sqrt(sum / floatData.length);
@@ -505,12 +496,10 @@
               orb.style.transform = 'scale(1)';
             }
 
-            // Downsample về đúng 16000Hz PCM
             const pcm16k = downsampleTo16kPCM(floatData, actualSampleRate);
             let bin = '';
             for (let i = 0; i < pcm16k.length; i++) bin += String.fromCharCode(pcm16k[i]);
             
-            // ⚡ CHUẨN XÁC: Gửi qua realtimeInput.audio để VAD Google nhận dạng tiếng nói
             liveWs.send(JSON.stringify({ 
               realtimeInput: { 
                 audio: { 
@@ -544,19 +533,16 @@
               orb.className = 'live-orb listening'; 
             }
 
-            // 1. Phản hồi tức thì những gì bạn vừa nói qua VAD Transcription
             if (msg.serverContent?.interimTranscript || msg.serverContent?.inputAudioTranscription?.text) {
               const userTxt = msg.serverContent.interimTranscript || msg.serverContent.inputAudioTranscription.text;
               tr.innerHTML = `<span style="color:#94a3b8;">🗣️ <b>Bạn:</b> "${userTxt}"</span>`;
             }
 
-            // 2. Phát âm thanh của AI
             for (const p of (msg.serverContent?.modelTurn?.parts || [])) {
               if (p.inlineData?.data) playPcm24k(p.inlineData.data, liveAudioCtx, livePlaybackState);
               if (p.text) tr.innerHTML = `<strong>Huân MU:</strong> ${p.text}`;
             }
 
-            // 3. Phụ đề câu trả lời của AI
             if (msg.serverContent?.outputAudioTranscription?.text) {
               tr.innerHTML = `<strong>Huân MU:</strong> ${msg.serverContent.outputAudioTranscription.text}`;
             }
@@ -596,9 +582,12 @@
       } else { v.srcObject?.getTracks().forEach(t => t.stop()); v.style.display = 'none'; clearInterval(liveCamInterval); isLiveCamOn = false; b.className = 'live-control-btn'; }
     };
 
-    // --- QUẢN LÝ 10 GOOGLE API KEYS ---
+    // --- QUẢN LÝ 10 GOOGLE API KEYS & CẤU HÌNH HỆ THỐNG ---
     $('api-keys-container').innerHTML = Array.from({ length: 10 }, (_, i) => `<input type="password" id="api-key-${i+1}" placeholder="Google Key ${i+1}" class="modern-input">`).join('');
+    
+    // ⚡ BỔ SUNG global-context-input VÀO BẢNG CẤU HÌNH LƯU TRỮ
     const cfgMap = [
+      ['global-context-input','huanmu_global_context'],
       ['jina-key-input','jina_api_key'],['tavily-key-input','tavily_api_key'],['serper-key-input','serper_api_key'],['brave-key-input','brave_api_key'],['brave-worker-url-input','brave_worker_url'],
       ['auto-search-engine-input','auto_search_default_engine','jina'],['web-extract-engine-input','web_extract_engine','auto'],['live-temperature','live_temperature','0.7']
     ];
@@ -617,13 +606,28 @@
         if ([...d.options].some(o => o.value === cur)) d.value = cur;
       });
     }
+
     function initExternalConfigs() {
-      cfgMap.forEach(([id, k, def = '']) => { if ($(id)) $(id).value = ls.getItem(k) || def; });
+      cfgMap.forEach(([id, k, def = '']) => { 
+        if ($(id)) {
+          $(id).value = ls.getItem(k) || (k === 'huanmu_global_context' ? (ls.getItem('javiss_global_context') || '') : '') || def; 
+        }
+      });
       if ($('live-temp-val')) $('live-temp-val').innerText = ls.getItem('live_temperature') || '0.7';
       if ($('live-toggle-search')) $('live-toggle-search').checked = ls.getItem('live_search_enabled') !== 'false';
       if ($('live-toggle-context')) $('live-toggle-context').checked = ls.getItem('live_context_enabled') !== 'false';
     }
+
     $('live-temperature').oninput = e => { if ($('live-temp-val')) $('live-temp-val').innerText = e.target.value; };
+    
+    // ⚡ LẮNG NGHE TỰ ĐỘNG LƯU NGAY KHI GÕ VÀO Ô NGỮ CẢNH TOÀN CỤC
+    if ($('global-context-input')) {
+      $('global-context-input').oninput = e => {
+        ls.setItem('huanmu_global_context', e.target.value);
+        ls.setItem('javiss_global_context', e.target.value);
+      };
+    }
+
     $('btn-save-keys').onclick = () => {
       for (let i = 1; i <= 10; i++) {
         const val = $(`api-key-${i}`)?.value.trim() || '';
@@ -633,7 +637,7 @@
       cfgMap.forEach(([id, k]) => ls.setItem(k, $(id)?.value.trim() || ''));
       ls.setItem('live_search_enabled', $('live-toggle-search')?.checked ? 'true' : 'false');
       ls.setItem('live_context_enabled', $('live-toggle-context')?.checked ? 'true' : 'false');
-      initAPIKeys(); initExternalConfigs(); showToast("Đã lưu cấu hình Google & Hệ thống!");
+      initAPIKeys(); initExternalConfigs(); showToast("Đã lưu cấu hình Google & Ngữ cảnh Toàn cục!");
     };
     $('btn-check-keys').onclick = async () => {
       const b = $('btn-check-keys'); b.innerText = "⏳..."; let ok = 0, tot = 0;
@@ -736,7 +740,7 @@
 
     const getDynamicSI = () => {
       const b = DOM.sysInst?.value || "Bạn là Huân MU AI - trợ lý thông minh và chuẩn xác.", 
-            g = DOM.globContext?.value || '', 
+            g = DOM.globContext?.value || ls.getItem('huanmu_global_context') || ls.getItem('javiss_global_context') || '', 
             now = new Date(), 
             days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
       const hh = String(now.getHours()).padStart(2, '0'), mm = String(now.getMinutes()).padStart(2, '0'), ss = String(now.getSeconds()).padStart(2, '0');
@@ -1089,7 +1093,7 @@
       } 
     };
 
-    // --- GỬI TIN NHẮN TỐC ĐỘ CAO (GIỮ NGUYÊN STREAM TỨC THÌ) ---
+    // --- GỬI TIN NHẮN TỐC ĐỘ CAO (TỨC THÌ ZERO-LATENCY) ---
     DOM.sendBtn.onclick = async () => {
       if (isProcessing) return abortController?.abort();
       const am = DOM.model.value || 'gemini-3.5-flash-lite';
