@@ -85,6 +85,7 @@
     .api-keys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px}
     .info-badge{font-size:.75rem;color:var(--text-muted)}.streaming-indicator{color:var(--primary);font-style:italic;font-size:.75rem;margin-left:6px}
     
+    /* 📞 MODAL LIVE VOICE THEO CHUẨN MỚI */
     #live-call-modal{display:none;position:fixed;top:0;left:0;width:100vw;height:100dvh;background:rgba(10,15,29,0.96);backdrop-filter:blur(14px);z-index:9999;flex-direction:column;align-items:center;justify-content:space-between;padding:20px 16px;color:#fff}
     .live-orb-container{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;width:100%;max-width:480px}
     .live-orb{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,#38bdf8 20%,#6366f1 70%,#ec4899 100%);box-shadow:0 0 30px rgba(99,102,241,0.6);transition:transform 0.08s ease,box-shadow 0.08s ease}
@@ -183,12 +184,13 @@
       </div>
     </main>
 
+    <!-- MODAL LIVE CALL -->
     <div id="live-call-modal">
       <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
         <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">📞</span><div><h3 style="font-size:1rem;font-weight:700;">Huân MU Live Voice</h3><span id="live-call-status" style="font-size:0.75rem;color:#94a3b8;">Đang kết nối...</span></div></div>
         <video id="live-camera-video" autoplay playsinline muted></video>
       </div>
-      <div class="live-orb-container"><div id="live-orb" class="live-orb"></div><div id="live-transcript" class="live-transcript-box"><i>Hãy nói chuyện tự nhiên vào micro...</i></div></div>
+      <div class="live-orb-container"><div id="live-orb" class="live-orb"></div><div id="live-transcript" class="live-transcript-box"><i>Hãy nói chuyện bình thường vào micro...</i></div></div>
       <div class="live-controls">
         <select id="live-model-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2);height:40px;border-radius:20px;font-size:0.75rem;">
           <option value="models/gemini-3.8-live" selected>⚡ Gemini 3.8 Live</option>
@@ -384,8 +386,10 @@
       throw new Error("Không thể bóc tách dữ liệu.");
     }
 
-    // --- GEMINI MULTIMODAL LIVE CALL ---
-    let liveWs = null, liveAudioCtx = null, liveMediaStream = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] }, liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
+    // --- GEMINI MULTIMODAL LIVE CALL (CHUẨN 100% GOOGLE BI-DIRECTIONAL VAD & AUDIO RECOGNITION) ---
+    let liveWs = null, liveAudioCtx = null, liveMediaStream = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] };
+    let liveMicSource = null, liveScriptProcessor = null, liveSilentGain = null; // Cố định biến tránh bị GC trên Android
+    let liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
 
     function getLiveCallSI() {
       const cs = sessions.find(x => x.id === activeId), sSI = DOM.sysInst?.value.trim() || cs?.sys || '', g = DOM.globContext?.value.trim() || '';
@@ -403,20 +407,11 @@
     }
 
     function downsampleTo16kPCM(inputData, inputSampleRate) {
-      if (inputSampleRate === 16000) {
-        const b = new ArrayBuffer(inputData.length * 2), v = new DataView(b);
-        for (let i = 0, o = 0; i < inputData.length; i++, o += 2) {
-          let s = Math.max(-1, Math.min(1, inputData[i]));
-          v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-        }
-        return new Uint8Array(b);
-      }
-      const recordRate = inputSampleRate, outputRate = 16000;
-      const compression = recordRate / outputRate;
-      const length = Math.floor(inputData.length / compression);
+      const ratio = inputSampleRate / 16000;
+      const length = Math.floor(inputData.length / ratio);
       const result = new Int16Array(length);
       for (let i = 0; i < length; i++) {
-        const originalIndex = Math.floor(i * compression);
+        const originalIndex = Math.floor(i * ratio);
         let s = Math.max(-1, Math.min(1, inputData[originalIndex]));
         result[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
       }
@@ -435,6 +430,9 @@
 
     function cleanupLive() {
       isLiveSetupComplete = false;
+      try { liveScriptProcessor?.disconnect(); liveScriptProcessor = null; } catch {}
+      try { liveMicSource?.disconnect(); liveMicSource = null; } catch {}
+      try { liveSilentGain?.disconnect(); liveSilentGain = null; } catch {}
       liveMediaStream?.getTracks().forEach(t => t.stop()); liveMediaStream = null;
       try { liveAudioCtx?.close(); } catch {} liveAudioCtx = null;
       clearInterval(liveCamInterval); liveCamInterval = null;
@@ -455,18 +453,21 @@
         if (liveAudioCtx.state === 'suspended') await liveAudioCtx.resume();
         const actualSampleRate = liveAudioCtx.sampleRate;
 
-        liveMediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+        liveMediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+        
+        // Dùng endpoint Live API chính thức
         liveWs = new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`);
 
         liveWs.onopen = () => {
           const selectedLiveModel = $('live-model-select')?.value || 'models/gemini-3.8-live';
           const voice = $('live-voice-select')?.value || 'Charon', temp = parseFloat($('live-temperature')?.value || 0.7);
           
+          // ⚡ CẤU HÌNH THUẦN AUDIO VÀ BẬT PHIÊN ÂM VAD HAI CHIỀU
           const setupMsg = { 
             setup: { 
               model: selectedLiveModel, 
               generationConfig: { 
-                responseModalities: ["AUDIO", "TEXT"], 
+                responseModalities: ["AUDIO"], 
                 temperature: temp, 
                 speechConfig: { 
                   voiceConfig: { 
@@ -474,48 +475,61 @@
                   } 
                 } 
               },
+              inputAudioTranscription: {},
+              outputAudioTranscription: {},
               systemInstruction: { parts: [{ text: getLiveCallSI() }] } 
             } 
           };
           
           liveWs.send(JSON.stringify(setupMsg));
 
-          const src = liveAudioCtx.createMediaStreamSource(liveMediaStream);
-          const proc = liveAudioCtx.createScriptProcessor(2048, 1, 1);
+          // Cố định node trên biến outer-scope để chống V8 Garbage Collector trên Android
+          liveMicSource = liveAudioCtx.createMediaStreamSource(liveMediaStream);
+          liveScriptProcessor = liveAudioCtx.createScriptProcessor(4096, 1, 1);
           
-          proc.onaudioprocess = e => {
+          // Nối qua GainNode giá trị 0 để chống dội âm trực tiếp vào loa ngoài của điện thoại
+          liveSilentGain = liveAudioCtx.createGain();
+          liveSilentGain.gain.value = 0;
+          
+          liveScriptProcessor.onaudioprocess = e => {
             if (!isLiveSetupComplete || isLiveMicMuted || liveWs?.readyState !== WebSocket.OPEN) return;
             const floatData = e.inputBuffer.getChannelData(0);
             
+            // Tính toán âm lượng tức thời tạo hiệu ứng nhịp thở cho Orb
             let sum = 0;
             for (let i = 0; i < floatData.length; i++) sum += floatData[i] * floatData[i];
             const rms = Math.sqrt(sum / floatData.length);
-            if (rms > 0.02 && orb && !orb.classList.contains('speaking')) {
-              orb.style.transform = `scale(${1 + Math.min(rms * 2, 0.25)})`;
+            if (rms > 0.015 && orb && !orb.classList.contains('speaking')) {
+              orb.style.transform = `scale(${1 + Math.min(rms * 2.5, 0.25)})`;
             } else if (orb && !orb.classList.contains('speaking')) {
               orb.style.transform = 'scale(1)';
             }
 
+            // Downsample về đúng 16000Hz PCM
             const pcm16k = downsampleTo16kPCM(floatData, actualSampleRate);
             let bin = '';
             for (let i = 0; i < pcm16k.length; i++) bin += String.fromCharCode(pcm16k[i]);
             
+            // ⚡ CHUẨN XÁC: Gửi qua realtimeInput.audio để VAD Google nhận dạng tiếng nói
             liveWs.send(JSON.stringify({ 
               realtimeInput: { 
-                mediaChunks: [{ 
+                audio: { 
                   mimeType: "audio/pcm;rate=16000", 
                   data: btoa(bin) 
-                }] 
+                } 
               } 
             }));
           };
-          src.connect(proc);
-          proc.connect(liveAudioCtx.destination);
+
+          liveMicSource.connect(liveScriptProcessor);
+          liveScriptProcessor.connect(liveSilentGain);
+          liveSilentGain.connect(liveAudioCtx.destination);
         };
 
         liveWs.onmessage = async e => {
           try {
             const msg = JSON.parse(e.data instanceof Blob ? await e.data.text() : e.data);
+            
             if (msg.setupComplete || msg.serverContent?.setupComplete) { 
               isLiveSetupComplete = true; 
               liveRetryCount = 0; 
@@ -523,14 +537,28 @@
               tr.innerHTML = '<i>Hãy nói chuyện bình thường vào micro...</i>'; 
               return; 
             }
+
             if (msg.serverContent?.interrupted) { 
               livePlaybackState.activeSources.forEach(s => { try { s.stop(); } catch {} }); 
               livePlaybackState = { nextPlayTime: liveAudioCtx?.currentTime || 0, activeSources: [] }; 
               orb.className = 'live-orb listening'; 
             }
+
+            // 1. Phản hồi tức thì những gì bạn vừa nói qua VAD Transcription
+            if (msg.serverContent?.interimTranscript || msg.serverContent?.inputAudioTranscription?.text) {
+              const userTxt = msg.serverContent.interimTranscript || msg.serverContent.inputAudioTranscription.text;
+              tr.innerHTML = `<span style="color:#94a3b8;">🗣️ <b>Bạn:</b> "${userTxt}"</span>`;
+            }
+
+            // 2. Phát âm thanh của AI
             for (const p of (msg.serverContent?.modelTurn?.parts || [])) {
               if (p.inlineData?.data) playPcm24k(p.inlineData.data, liveAudioCtx, livePlaybackState);
               if (p.text) tr.innerHTML = `<strong>Huân MU:</strong> ${p.text}`;
+            }
+
+            // 3. Phụ đề câu trả lời của AI
+            if (msg.serverContent?.outputAudioTranscription?.text) {
+              tr.innerHTML = `<strong>Huân MU:</strong> ${msg.serverContent.outputAudioTranscription.text}`;
             }
           } catch {}
         };
@@ -660,7 +688,6 @@
     let activeFolder = ls.getItem('huanmu_active_folder') || ls.getItem('javiss_active_folder') || "All";
     let openTabs = JSON.parse(ls.getItem('huanmu_tabs') || ls.getItem('javiss_tabs') || '[]');
 
-    // ⚡ XOAY TUA KEY TỰ DO KHI CHẠY STREAM (TRÁNH NGHẼN KEY)
     const getSessionApiKey = (cs, forceRotate = false) => {
       const sel = DOM.apiKeySel?.value || 'auto'; 
       if (sel !== 'auto') return ls.getItem(`huanmu_api_${parseInt(sel)+1}`) || ls.getItem(`javiss_api_${parseInt(sel)+1}`) || "";
@@ -985,7 +1012,6 @@
           schEngine: DOM.searchEngineSel.value, 
           mem: DOM.toggleMemory.checked 
         }); 
-        // Khi người dùng chọn lại stream, tự động tháo khóa key để xoay tua tự do
         if (DOM.engineSel.value === 'stream') {
           s.assignedApiKey = null;
         }
@@ -1063,7 +1089,7 @@
       } 
     };
 
-    // --- GỬI TIN NHẮN TỐC ĐỘ CAO (TỐI ƯU HÓA HOÀN TOÀN TTFT DƯỚI 1 GIÂY) ---
+    // --- GỬI TIN NHẮN TỐC ĐỘ CAO (GIỮ NGUYÊN STREAM TỨC THÌ) ---
     DOM.sendBtn.onclick = async () => {
       if (isProcessing) return abortController?.abort();
       const am = DOM.model.value || 'gemini-3.5-flash-lite';
@@ -1086,7 +1112,6 @@
           keyIndexNum = apiKeys.indexOf(gKey) + 1;
         }
       } else {
-        // Luồng stream: xoay tua tự do để tránh kẹt Quota / Throttling
         gKey = getSessionApiKey(cs, true);
         keyIndexNum = apiKeys.indexOf(gKey) + 1;
       }
@@ -1229,7 +1254,7 @@
           }
         }
 
-        // === ĐỘNG CƠ 2: GENERATECONTENTSTREAM (BẮN STREAM TRỰC TIẾP KHÔNG QUA TRUNG GIAN) ===
+        // === ĐỘNG CƠ 2: GENERATECONTENTSTREAM ===
         if (!pS && currentEngine === 'stream') {
           const contents = [];
           if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
@@ -1240,7 +1265,6 @@
           }
           contents.push({ role: 'user', parts: currentParts });
 
-          // ⚡ TỐI ƯU CỰC ĐẠI: Không gửi thinkingConfig nếu là 'minimal' để tránh trễ 4 giây
           const config = { 
             systemInstruction: getDynamicSI(), 
             safetySettings: SAFETY, 
