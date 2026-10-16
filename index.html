@@ -4,13 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Jarviss</title>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <!-- Các thư viện tải song song chuẩn, không làm treo Main Thread -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10.8.0/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.8.0/dist/mermaid.min.js"></script>
+
+  <!-- Importmap dùng CDN phân giải trực tiếp +esm để TWA không bị treo mạng lúc Cold Start -->
+  <script type="importmap">
+  { 
+    "imports": { 
+      "@google/genai": "https://cdn.jsdelivr.net/npm/@google/genai/+esm" 
+    } 
+  }
+  </script>
+
   <style>
     :root{--bg-main:#f0f4f9;--bg-sidebar:#e9eef6;--bg-card:#ffffff;--border:#c4c7c5;--text-main:#1f1f1f;--text-muted:#444746;--bg-msg-user:#d3e3fd;--bg-msg-bot:transparent;--primary:#0b57d0;--primary-container:#d3e3fd;--danger:#b3261e;--input-bg:#f0f4f9;--shadow:0 1px 3px rgba(0,0,0,0.1);--transition:all 0.2s ease;--chat-font-size:16px}
     [data-theme="dark"]{--bg-main:#131314;--bg-sidebar:#1e1f20;--bg-card:#282a2c;--border:#444746;--text-main:#e3e3e3;--text-muted:#c4c7c5;--bg-msg-user:#004a77;--bg-msg-bot:transparent;--primary:#a8c7fa;--primary-container:#004a77;--danger:#f2b8b5;--input-bg:#1e1f20;--shadow:0 1px 3px rgba(0,0,0,0.4)}
@@ -222,7 +234,7 @@
         <fieldset class="settings-group"><legend>⚙️ Ngữ cảnh Phiên Chat & Live (System Prompt)</legend>
           <div style="display:flex;flex-direction:column;gap:8px;">
             <div><label class="field-label">System Instruction riêng phiên:</label><textarea id="system-instruction-input" rows="2" class="modern-textarea"></textarea></div>
-            <div><label class="field-label">🌍 Ngữ cảnh Toàn cục (Lưu vĩnh viễn):</label><textarea id="global-context-input" rows="2" class="modern-textarea" placeholder="Nhập ngữ cảnh dùng chung cho tất cả các phiên..."></textarea></div>
+            <div><label class="field-label">🌍 Ngữ cảnh Toàn cục (Tự động lưu vĩnh viễn):</label><textarea id="global-context-input" rows="2" class="modern-textarea" placeholder="Nhập ngữ cảnh dùng chung cho tất cả các phiên..."></textarea></div>
           </div>
         </fieldset>
         <fieldset class="settings-group"><legend>🚀 Tham số Google Gemini</legend>
@@ -278,7 +290,6 @@
   </div>
   <div id="toast" class="toast"></div><button id="scroll-to-top" title="Lên đầu">▲</button>
 
-  <script type="importmap">{ "imports": { "@google/genai": "https://esm.run/@google/genai" } }</script>
   <script type="module">
     import { GoogleGenAI } from "@google/genai";
     const $ = id => document.getElementById(id), ls = localStorage;
@@ -390,10 +401,10 @@
     let liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
 
     function getLiveCallSI() {
-      const cs = sessions.find(x => x.id === activeId), sSI = DOM.sysInst?.value.trim() || cs?.sys || '', g = DOM.globContext?.value.trim() || '';
+      const cs = sessions.find(x => x.id === activeId), sSI = DOM.sysInst?.value.trim() || cs?.sys || '', g = DOM.globContext?.value.trim() || ls.getItem('huanmu_global_context') || '';
       const now = new Date(), days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
       const hh = String(now.getHours()).padStart(2, '0'), mm = String(now.getMinutes()).padStart(2, '0'), ss = String(now.getSeconds()).padStart(2, '0');
-      let si = `[VAI TRÒ & NGỮ CẢNH PHIÊN]:\n${(DOM.toggleGlob?.checked !== false && g) ? `--- TOÀN CỤC: ${g}\n\n` : ''}${sSI ? `--- RIÊNG: ${sSI}` : 'Bạn là Jarvis AI thông minh, thân thiện.'}\n\n[QUY TẮC ĐÀM THOẠI]:\n- Trả lời Tiếng Việt tự nhiên, ngắn gọn 1-2 câu như điện thoại đời thực.\n[THỜI GIAN CHUẨN]: ${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}, lúc ${hh}:${mm}:${ss} (Giờ Việt Nam GMT+7).`;
+      let si = `[VAI TRÒ & NGỮ CẢNH PHIÊN]:\n${(DOM.toggleGlob?.checked !== false && g) ? `--- TOÀN CỤC: ${g}\n\n` : ''}${sSI ? `--- RIÊNG: ${sSI}` : 'Bạn là Jarviss AI thông minh, thân thiện.'}\n\n[QUY TẮC ĐÀM THOẠI]:\n- Trả lời Tiếng Việt tự nhiên, ngắn gọn 1-2 câu như điện thoại đời thực.\n[THỜI GIAN CHUẨN]: ${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}, lúc ${hh}:${mm}:${ss} (Giờ Việt Nam GMT+7).`;
       if ($('live-toggle-context')?.checked && chatHistory.length) si += `\n\n[LỊCH SỬ 10 TIN TRƯỚC]:\n` + chatHistory.slice(-10).map(m => `${m.role==='model'?'AI':'Bạn'}: ${m.text.replace(/<[^>]+>/g,'').replace(/```[\s\S]*?```/g,'[code]')}`).join('\n');
       return si;
     }
@@ -585,7 +596,6 @@
     // --- QUẢN LÝ 10 GOOGLE API KEYS & CẤU HÌNH HỆ THỐNG ---
     $('api-keys-container').innerHTML = Array.from({ length: 10 }, (_, i) => `<input type="password" id="api-key-${i+1}" placeholder="Google Key ${i+1}" class="modern-input">`).join('');
     
-    // ⚡ BỔ SUNG global-context-input VÀO BẢNG CẤU HÌNH LƯU TRỮ
     const cfgMap = [
       ['global-context-input','huanmu_global_context'],
       ['jina-key-input','jina_api_key'],['tavily-key-input','tavily_api_key'],['serper-key-input','serper_api_key'],['brave-key-input','brave_api_key'],['brave-worker-url-input','brave_worker_url'],
@@ -620,7 +630,6 @@
 
     $('live-temperature').oninput = e => { if ($('live-temp-val')) $('live-temp-val').innerText = e.target.value; };
     
-    // ⚡ LẮNG NGHE TỰ ĐỘNG LƯU NGAY KHI GÕ VÀO Ô NGỮ CẢNH TOÀN CỤC
     if ($('global-context-input')) {
       $('global-context-input').oninput = e => {
         ls.setItem('huanmu_global_context', e.target.value);
@@ -1045,7 +1054,7 @@
       const ixBadge = (sd === 'model' && ixId) ? `<span class="interaction-id-badge" title="Interaction ID: ${ixId}">⚡ ID: ${ixId.slice(0,8)}...${kNum ? ` [🔒 Key ${kNum}]` : ''}</span>` : '';
       m.innerHTML = `<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Jarviss'}</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${chatHistory[i]?.time||getNowTime24h()}</span>${ixBadge}</div><div class="msg-content"></div>`;
       const a = document.createElement('div'); a.className = 'msg-actions';
-      a.innerHTML = `<button class="action-btn" onclick="copy(this)">📋</button>${sd==='user'?`<button class="action-btn" onclick="editMsg(${i})">✏️</button>`:`<button class="action-btn" onclick="retryMsg(${i})">🔄</button>`}<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})">🗑️</button>`;
+      a.innerHTML = `<button class="action-btn" onclick="copy(this)">📋</button>${sd==='user'?`<button class="action-btn" onclick="editMsg(${i})">✏️</button>`:`<button class="action-btn" onclick="retryMsg(${botIdx})">🔄</button>`}<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})">🗑️</button>`;
       c.append(m, a); DOM.chat.appendChild(c); if (!iHL && sd === 'user') DOM.chat.scrollTop = DOM.chat.scrollHeight;
       await renderMsgContent(m.querySelector('.msg-content'), sd === 'user' ? t.replace(/\n/g, '<br>') : t);
     }
@@ -1093,7 +1102,7 @@
       } 
     };
 
-    // --- GỬI TIN NHẮN TỐC ĐỘ CAO (TỨC THÌ ZERO-LATENCY) ---
+    // --- GỬI TIN NHẮN TỐC ĐỘ CAO ---
     DOM.sendBtn.onclick = async () => {
       if (isProcessing) return abortController?.abort();
       const am = DOM.model.value || 'gemini-3.5-flash-lite';
@@ -1357,16 +1366,8 @@
     $('btn-global-search').onclick = e => { e.stopPropagation(); if (!sBar.classList.contains('active')) { sBar.classList.add('active'); DOM.searchInput.focus(); } else {$('search-modal').style.display = 'flex'; oLay.style.display = 'block'; } };
     document.addEventListener('click', e => { if (!sBar.contains(e.target)) sBar.classList.remove('active'); });
 
-    window.addEventListener('DOMContentLoaded', () => {
-    // Render nhanh giao diện cục bộ trước để tắt màn hình Splash của Bubblewrap ngay
-      loadSess();
-    });
+    // Khởi động nạp phiên
+    loadSess();
   </script>
-  
-  <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js');
-  }
-</script>
 </body>
 </html>
