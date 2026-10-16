@@ -125,7 +125,7 @@
             <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:var(--primary);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-search"> 🌐 Tìm kiếm Web</label>
             <div id="search-engine-box" style="margin-left:20px;display:none;">
               <select id="search-engine-select" class="modern-select" style="font-size:0.75rem;padding:3px 6px;">
-                <option value="auto" selected>🔄 Tự động (Smart Auto-Search)</option><option value="jina">🦎 Jina AI Search</option><option value="tavily">⚡ Tavily AI Search</option><option value="serper">🔎 Serper.dev Google</option><option value="brave">🦁 Brave Search</option>
+                <option value="tavily" selected>⚡ Tavily AI Search (Tối ưu nhất)</option><option value="auto">🔄 Tự động (Smart Auto-Search)</option><option value="jina">🦎 Jina AI Search</option><option value="serper">🔎 Serper.dev Google</option><option value="brave">🦁 Brave Search</option>
               </select>
             </div>
             <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:green;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="toggle-memory" checked> 🧠 Bộ nhớ ngữ cảnh</label>
@@ -193,6 +193,7 @@
       </div>
     </main>
 
+    <!-- MODAL LIVE CALL -->
     <div id="live-call-modal">
       <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
         <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">📞</span><div><h3 style="font-size:1rem;font-weight:700;">Jarvis AI Live Voice</h3><span id="live-call-status" style="font-size:0.75rem;color:#94a3b8;">Đang kết nối...</span></div></div>
@@ -222,10 +223,10 @@
           </div>
         </fieldset>
         <fieldset class="settings-group"><legend>📞 Cuộc gọi Live AI</legend>
-          <div style="font-size:0.75rem;color:var(--text-muted);background:var(--input-bg);padding:8px;border-radius:6px;margin-bottom:8px;">💡 <b>Live 3.8 Engine:</b> Hoạt động trên giao thức giọng nói hai chiều trực tiếp của Google.</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);background:var(--input-bg);padding:8px;border-radius:6px;margin-bottom:8px;">💡 <b>Live 3.8 + Tavily:</b> Tự động gọi Tavily Search để tra cứu thông tin Internet ngay trong khi nói chuyện.</div>
           <div class="slider-row"><label>Sáng tạo thoại (Temp: <span id="live-temp-val">0.7</span>):</label><input type="range" id="live-temperature" min="0" max="2" step="0.1" value="0.7"></div>
           <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
-            <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="live-toggle-search" checked> 🌐 Tra cứu Web thời gian thực</label>
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="live-toggle-search" checked> 🌐 Tự động tra cứu Tavily & Đọc Link trong cuộc gọi</label>
             <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="live-toggle-context" checked> 🧠 Kế thừa 10 tin nhắn gần nhất</label>
           </div>
         </fieldset>
@@ -243,13 +244,13 @@
         <fieldset class="settings-group"><legend>🌐 Công cụ Tìm kiếm & Đọc Link Web</legend>
           <div style="display:flex;flex-direction:column;gap:8px;">
             <div><label class="field-label">Công cụ mặc định cho Tự Động (Auto-Search):</label>
-              <select id="auto-search-engine-input" class="modern-select"><option value="jina" selected>🦎 Jina AI Search (Miễn phí)</option><option value="tavily">⚡ Tavily AI Search (1.000 lượt free)</option><option value="serper">🔎 Serper.dev Google (2.500 lượt free)</option><option value="brave">🦁 Brave Search (2.000 lượt free)</option></select>
+              <select id="auto-search-engine-input" class="modern-select"><option value="tavily" selected>⚡ Tavily AI Search (Khuyên dùng cho Live)</option><option value="jina">🦎 Jina AI Search (Miễn phí)</option><option value="serper">🔎 Serper.dev Google (2.500 lượt free)</option><option value="brave">🦁 Brave Search (2.000 lượt free)</option></select>
             </div>
             <div><label class="field-label">📖 Công cụ Bóc tách Link Website:</label>
               <select id="web-extract-engine-input" class="modern-select"><option value="auto" selected>🔄 Tự động (Jina ➔ Tavily nếu dính Cloudflare)</option><option value="tavily">⚡ Tavily Extract</option><option value="jina">🦎 Jina Reader</option></select>
             </div>
+            <div><label class="field-label">Tavily API Key (Dùng cho Live Search & Trích xuất):</label><input type="password" id="tavily-key-input" placeholder="tvly-..." class="modern-input"></div>
             <div><label class="field-label">Jina API Key:</label><input type="password" id="jina-key-input" placeholder="jina_..." class="modern-input"></div>
-            <div><label class="field-label">Tavily API Key:</label><input type="password" id="tavily-key-input" placeholder="tvly-..." class="modern-input"></div>
             <div><label class="field-label">Serper API Key:</label><input type="password" id="serper-key-input" class="modern-input"></div>
             <div><label class="field-label">Brave Search API Key:</label><input type="password" id="brave-key-input" class="modern-input"></div>
             <div><label class="field-label">Brave Worker Proxy URL:</label><input type="text" id="brave-worker-url-input" class="modern-input"></div>
@@ -350,17 +351,23 @@
       (navigator.clipboard && window.isSecureContext) ? navigator.clipboard.writeText(t).then(() => showToast(msg)).catch(fb) : fb();
     };
 
-    // --- TÌM KIẾM WEB ---
+    // --- TÌM KIẾM WEB (ƯU TIÊN TAVILY) ---
+    async function fetchTavilySearch(q) {
+      const k = ls.getItem('tavily_api_key') || ''; 
+      if (!k) throw new Error("Chưa nhập Tavily API Key trong cài đặt!");
+      const r = await fetch("https://api.tavily.com/search", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ api_key: k, query: q, max_results: 5, include_answer: true }) 
+      });
+      if (!r.ok) throw new Error(`Tavily HTTP ${r.status}`);
+      const d = await r.json(); 
+      return [...(d.answer ? [`💡 **Tóm tắt Tavily**: ${d.answer}`] : []), ...(d.results || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.content}\n  *Nguồn*: ${x.url}`)].join('\n\n');
+    }
     async function fetchJinaSearch(q) {
       const k = ls.getItem('jina_api_key') || '', r = await fetch(`https://s.jina.ai/${encodeURIComponent(q)}`, { headers: { Accept: "application/json", ...(k ? { Authorization: `Bearer ${k}` } : {}) } });
       if (!r.ok) throw new Error(`Jina HTTP ${r.status}`);
       return ((await r.json()).data || []).slice(0, 5).map(x => `- **${x.title||'Tin'}**\n  *Nội dung*: ${(x.content||x.description||'').substring(0,800)}\n  *Nguồn*: ${x.url}`).join('\n\n');
-    }
-    async function fetchTavilySearch(q) {
-      const k = ls.getItem('tavily_api_key') || ''; if (!k) throw new Error("Chưa có Tavily Key!");
-      const r = await fetch("https://api.tavily.com/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ api_key: k, query: q, max_results: 5, include_answer: true }) });
-      if (!r.ok) throw new Error(`Tavily HTTP ${r.status}`);
-      const d = await r.json(); return [...(d.answer ? [`💡 **Tóm tắt**: ${d.answer}`] : []), ...(d.results || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.content}\n  *Nguồn*: ${x.url}`)].join('\n\n');
     }
     async function fetchSerperSearch(q) {
       const k = ls.getItem('serper_api_key') || ''; if (!k) throw new Error("Chưa có Serper Key!");
@@ -376,11 +383,26 @@
       return ((await r.json()).web?.results || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.description}\n  *Nguồn*: ${x.url}`).join('\n\n');
     }
 
+    // Hàm tìm kiếm tổng hợp: Luôn ưu tiên Tavily, tự động dự phòng nếu Tavily hết quota
+    async function executeLiveSearch(query) {
+      try {
+        return await fetchTavilySearch(query);
+      } catch (tavErr) {
+        console.warn("Tavily search gặp lỗi, đang thử dự phòng:", tavErr);
+        try {
+          const eng = ls.getItem('auto_search_default_engine') || 'jina';
+          return await ({ jina: fetchJinaSearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[eng] || fetchJinaSearch)(query);
+        } catch (fbErr) {
+          return `Không thể lấy dữ liệu: ${tavErr.message}`;
+        }
+      }
+    }
+
     async function extractWebPageContent(url) {
       const mode = ls.getItem('web_extract_engine') || 'auto', jk = ls.getItem('jina_api_key') || '', tk = ls.getItem('tavily_api_key') || '';
       const isBlocked = t => !t || t.trim().length < 60 || /(just a moment|security verification|verify you are human|cloudflare|ddos protection|challenge-platform|enable javascript|access denied|403 forbidden)/i.test(t);
-      const jina = async () => { const r = await fetch(`https://r.jina.ai/${url}`, { headers: { Accept: "text/plain", ...(jk ? { Authorization: `Bearer ${jk}` } : {}) } }); if (!r.ok) throw 0; const t = await r.text(); if (isBlocked(t)) throw 0; return { source: "Jina Reader", content: t.substring(0, 45000) }; };
       const tavily = async () => { if (!tk) throw 0; const r = await fetch("https://api.tavily.com/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ api_key: tk, urls: [url] }) }); const t = (await r.json()).results?.[0]?.raw_content; if (isBlocked(t)) throw 0; return { source: "Tavily Extract", content: t.substring(0, 45000) }; };
+      const jina = async () => { const r = await fetch(`https://r.jina.ai/${url}`, { headers: { Accept: "text/plain", ...(jk ? { Authorization: `Bearer ${jk}` } : {}) } }); if (!r.ok) throw 0; const t = await r.text(); if (isBlocked(t)) throw 0; return { source: "Jina Reader", content: t.substring(0, 45000) }; };
       const proxy = async () => { const d = await (await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`)).json(); const t = new DOMParser().parseFromString(d.contents, "text/html").body.innerText.replace(/\s+/g, ' ').trim(); if (isBlocked(t)) throw 0; return { source: "Web Proxy", content: t.substring(0, 30000) }; };
       const assist = async () => {
         let q = url; try { const p = new URL(url); q = `${p.pathname.split('/').filter(Boolean).pop()?.replace(/[-_.]/g,' ')||''} ${p.hostname.replace('www.','')} mới nhất`.trim(); } catch {}
@@ -388,28 +410,28 @@
         const r = await fetchJinaSearch(q); if (r) return { source: "Jina Search Assist", content: r };
         throw new Error("Không thể bóc tách dữ liệu.");
       };
-      const chain = mode === 'tavily' ? [tavily, jina, proxy, assist] : mode === 'jina' ? [jina, assist] : [jina, tavily, proxy, assist];
+      const chain = mode === 'tavily' ? [tavily, jina, proxy, assist] : [tavily, jina, proxy, assist];
       for (const fn of chain) { try { return await fn(); } catch {} }
       throw new Error("Không thể bóc tách dữ liệu.");
     }
 
-    // --- GEMINI MULTIMODAL LIVE CALL ---
+    // --- GEMINI MULTIMODAL LIVE CALL (TÍCH HỢP TỰ ĐỘNG TÌM KIẾM TAVILY THỜI GIAN THỰC) ---
     let liveWs = null, liveAudioCtx = null, liveMediaStream = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] };
     let liveMicSource = null, liveScriptProcessor = null, liveSilentGain = null;
     let liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
 
     function getLiveCallSI() {
-      const cs = sessions.find(x => x.id === activeId), sSI = DOM.sysInst?.value.trim() || cs?.sys || '', g = DOM.globContext?.value.trim() || ls.getItem('huanmu_global_context') || '';
+      const cs = sessions.find(x => x.id === activeId), sSI = DOM.sysInst?.value.trim() || cs?.sys || '', g = DOM.globContext?.value.trim() || ls.getItem('jarvis_global_context') || ls.getItem('huanmu_global_context') || '';
       const now = new Date(), days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
       const hh = String(now.getHours()).padStart(2, '0'), mm = String(now.getMinutes()).padStart(2, '0'), ss = String(now.getSeconds()).padStart(2, '0');
-      let si = `[VAI TRÒ & NGỮ CẢNH PHIÊN]:\n${(DOM.toggleGlob?.checked !== false && g) ? `--- TOÀN CỤC: ${g}\n\n` : ''}${sSI ? `--- RIÊNG: ${sSI}` : 'Bạn là Jarvis AI AI thông minh, thân thiện.'}\n\n[QUY TẮC ĐÀM THOẠI]:\n- Trả lời Tiếng Việt tự nhiên, ngắn gọn 1-2 câu như điện thoại đời thực.\n[THỜI GIAN CHUẨN]: ${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}, lúc ${hh}:${mm}:${ss} (Giờ Việt Nam GMT+7).`;
+      let si = `[VAI TRÒ & NGỮ CẢNH PHIÊN]:\n${(DOM.toggleGlob?.checked !== false && g) ? `--- TOÀN CỤC: ${g}\n\n` : ''}${sSI ? `--- RIÊNG: ${sSI}` : 'Bạn là Jarvis AI thông minh, thân thiện và nhạy bén.'}\n\n[QUY TẮC ĐÀM THOẠI & TRA CỨU TAVILY]:\n- BẠN ĐƯỢC TRANG BỊ CÔNG CỤ 'search_web' (chạy bằng Tavily AI) VÀ 'read_url'.\n- BẮT BUỘC: Khi người dùng yêu cầu tìm kiếm, tra cứu bất kỳ thông tin nào về tin tức mới, sự kiện, giá cả, thời tiết, kết quả bóng đá, hoặc dữ liệu thực tế, bạn PHẢI GỌI CÔNG CỤ 'search_web' ngay lập tức mà không được từ chối.\n- Sau khi công cụ trả về kết quả, hãy tổng hợp ngắn gọn, súc tích 1-2 câu tự nhiên bằng tiếng Việt như người thật đang đàm thoại.\n[THỜI GIAN CHUẨN]: ${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}, lúc ${hh}:${mm}:${ss} (Giờ Việt Nam GMT+7).`;
       if ($('live-toggle-context')?.checked && chatHistory.length) si += `\n\n[LỊCH SỬ 10 TIN TRƯỚC]:\n` + chatHistory.slice(-10).map(m => `${m.role==='model'?'AI':'Bạn'}: ${m.text.replace(/<[^>]+>/g,'').replace(/```[\s\S]*?```/g,'[code]')}`).join('\n');
       return si;
     }
 
     function getLiveApiKey() {
       const sel = $('live-key-select')?.value || 'auto';
-      if (sel !== 'auto') { const idx = parseInt(sel), k = (ls.getItem(`huanmu_api_${idx+1}`) || ls.getItem(`javiss_api_${idx+1}`) || '').trim(); if (k) return { key: k, index: idx }; }
+      if (sel !== 'auto') { const idx = parseInt(sel), k = (ls.getItem(`jarvis_api_${idx+1}`) || ls.getItem(`huanmu_api_${idx+1}`) || ls.getItem(`javiss_api_${idx+1}`) || '').trim(); if (k) return { key: k, index: idx }; }
       return apiKeys.length ? { key: apiKeys[liveKeyIndex % apiKeys.length], index: liveKeyIndex % apiKeys.length } : { key: '', index: -1 };
     }
 
@@ -452,7 +474,7 @@
     async function startLiveVoiceCall() {
       const { key, index } = getLiveApiKey(); if (!key) return showToast("Cần Google API Key!", "danger");
       const m = $('live-call-modal'), st = $('live-call-status'), tr = $('live-transcript'), orb = $('live-orb');
-      m.style.display = 'flex'; st.innerText = `Đang kết nối [Key ${index+1}]...`; tr.innerHTML = '<i>Đang mở micro & kết nối máy chủ Gemini...</i>'; orb.className = 'live-orb listening';
+      m.style.display = 'flex'; st.innerText = `Đang kết nối [Key ${index+1}]...`; tr.innerHTML = '<i>Đang mở micro & kết nối máy chủ Jarvis Live...</i>'; orb.className = 'live-orb listening';
       livePlaybackState = { nextPlayTime: 0, activeSources: [] }; isLiveSetupComplete = false;
 
       try {
@@ -467,6 +489,7 @@
           const selectedLiveModel = $('live-model-select')?.value || 'models/gemini-3.8-live';
           const voice = $('live-voice-select')?.value || 'Charon', temp = parseFloat($('live-temperature')?.value || 0.7);
           
+          // ⚡ KHAI BÁO CÔNG CỤ TÌM KIẾM TAVILY CHUẨN XÁC TRONG SETUP
           const setupMsg = { 
             setup: { 
               model: selectedLiveModel, 
@@ -479,6 +502,40 @@
                   } 
                 } 
               },
+              tools: [
+                {
+                  functionDeclarations: [
+                    {
+                      name: "search_web",
+                      description: "Tìm kiếm dữ liệu thời gian thực trên Internet bằng Tavily AI khi người dùng yêu cầu tìm kiếm, tra cứu tin tức, sự kiện hoặc câu hỏi thực tế.",
+                      parameters: {
+                        type: "OBJECT",
+                        properties: {
+                          query: {
+                            type: "STRING",
+                            description: "Từ khóa hoặc câu truy vấn cần tìm kiếm trên Internet"
+                          }
+                        },
+                        required: ["query"]
+                      }
+                    },
+                    {
+                      name: "read_url",
+                      description: "Đọc và bóc tách nội dung chi tiết từ một đường link URL cụ thể.",
+                      parameters: {
+                        type: "OBJECT",
+                        properties: {
+                          url: {
+                            type: "STRING",
+                            description: "Địa chỉ liên kết URL"
+                          }
+                        },
+                        required: ["url"]
+                      }
+                    }
+                  ]
+                }
+              ],
               inputAudioTranscription: {},
               outputAudioTranscription: {},
               systemInstruction: { parts: [{ text: getLiveCallSI() }] } 
@@ -531,9 +588,41 @@
             if (msg.setupComplete || msg.serverContent?.setupComplete) { 
               isLiveSetupComplete = true; 
               liveRetryCount = 0; 
-              st.innerText = `🟢 Đã kết nối Live 3.8 (${actualSampleRate}Hz)`; 
-              tr.innerHTML = '<i>Hãy nói chuyện bình thường vào micro...</i>'; 
+              st.innerText = `🟢 Đã kết nối Jarvis Live 3.8`; 
+              tr.innerHTML = '<i>Hãy nói chuyện bình thường hoặc yêu cầu tìm kiếm...</i>'; 
               return; 
+            }
+
+            // ⚡ XỬ LÝ LỆNH GỌI TÌM KIẾM TAVILY TỰ ĐỘNG TỪ GOOGLE
+            if (msg.toolCall?.functionCalls?.length) {
+              for (const call of msg.toolCall.functionCalls) {
+                let searchOutput = "";
+                if (call.name === "search_web") {
+                  const q = call.args?.query || "";
+                  tr.innerHTML = `<span style="color:#38bdf8;">⚡ <b>Jarvis AI:</b> Đang dùng Tavily tìm: "<em>${q}</em>"...</span>`;
+                  searchOutput = await executeLiveSearch(q);
+                } else if (call.name === "read_url") {
+                  const u = call.args?.url || "";
+                  tr.innerHTML = `<span style="color:#38bdf8;">🌐 <b>Jarvis AI:</b> Đang đọc link: "<em>${u.substring(0,25)}...</em>"</span>`;
+                  try { const ext = await extractWebPageContent(u); searchOutput = ext.content.substring(0, 10000); } catch { searchOutput = await executeLiveSearch(u); }
+                }
+
+                // Gửi kết quả tìm kiếm Tavily về lại cho Jarvis qua WebSocket để đọc câu trả lời
+                liveWs?.send(JSON.stringify({
+                  toolResponse: {
+                    functionResponses: [
+                      {
+                        response: {
+                          output: {
+                            results: searchOutput || "Không tìm thấy dữ liệu liên quan."
+                          }
+                        },
+                        id: call.id
+                      }
+                    ]
+                  }
+                }));
+              }
             }
 
             if (msg.serverContent?.interrupted) { 
@@ -595,22 +684,22 @@
     $('api-keys-container').innerHTML = Array.from({ length: 10 }, (_, i) => `<input type="password" id="api-key-${i+1}" placeholder="Google Key ${i+1}" class="modern-input">`).join('');
     
     const cfgMap = [
-      ['global-context-input','huanmu_global_context'],
-      ['jina-key-input','jina_api_key'],['tavily-key-input','tavily_api_key'],['serper-key-input','serper_api_key'],['brave-key-input','brave_api_key'],['brave-worker-url-input','brave_worker_url'],
-      ['auto-search-engine-input','auto_search_default_engine','jina'],['web-extract-engine-input','web_extract_engine','auto'],['live-temperature','live_temperature','0.7']
+      ['global-context-input','jarvis_global_context'],
+      ['tavily-key-input','tavily_api_key'],['jina-key-input','jina_api_key'],['serper-key-input','serper_api_key'],['brave-key-input','brave_api_key'],['brave-worker-url-input','brave_worker_url'],
+      ['auto-search-engine-input','auto_search_default_engine','tavily'],['web-extract-engine-input','web_extract_engine','auto'],['live-temperature','live_temperature','0.7']
     ];
 
     function initAPIKeys() {
       apiKeys = [];
       for (let i = 1; i <= 10; i++) {
-        const k = (ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
+        const k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
         if ($(`api-key-${i}`)) $(`api-key-${i}`).value = k;
         if (k) apiKeys.push(k);
       }
       const s = $('key-status-msg'); if (s) { s.innerText = apiKeys.length ? `✅ Có ${apiKeys.length} Google Key` : "⚠️ Chưa có Key"; s.style.color = apiKeys.length ? "green" : "red"; }
       [$('api-key-select'), $('live-key-select')].forEach(d => {
         if (!d) return; const cur = d.value; d.innerHTML = '<option value="auto">🔄 Tự động xoay Key</option>';
-        for (let i = 1; i <= 10; i++) { const k = (ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim(); if (k) d.innerHTML += `<option value="${i-1}">🔑 Key ${i} (${k.substring(0,5)}...)</option>`; }
+        for (let i = 1; i <= 10; i++) { const k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim(); if (k) d.innerHTML += `<option value="${i-1}">🔑 Key ${i} (${k.substring(0,5)}...)</option>`; }
         if ([...d.options].some(o => o.value === cur)) d.value = cur;
       });
     }
@@ -618,7 +707,7 @@
     function initExternalConfigs() {
       cfgMap.forEach(([id, k, def = '']) => { 
         if ($(id)) {
-          $(id).value = ls.getItem(k) || (k === 'huanmu_global_context' ? (ls.getItem('javiss_global_context') || '') : '') || def; 
+          $(id).value = ls.getItem(k) || (k === 'jarvis_global_context' ? (ls.getItem('huanmu_global_context') || ls.getItem('javiss_global_context') || '') : '') || def; 
         }
       });
       if ($('live-temp-val')) $('live-temp-val').innerText = ls.getItem('live_temperature') || '0.7';
@@ -630,21 +719,21 @@
     
     if ($('global-context-input')) {
       $('global-context-input').oninput = e => {
+        ls.setItem('jarvis_global_context', e.target.value);
         ls.setItem('huanmu_global_context', e.target.value);
-        ls.setItem('javiss_global_context', e.target.value);
       };
     }
 
     $('btn-save-keys').onclick = () => {
       for (let i = 1; i <= 10; i++) {
         const val = $(`api-key-${i}`)?.value.trim() || '';
+        ls.setItem(`jarvis_api_${i}`, val);
         ls.setItem(`huanmu_api_${i}`, val);
-        ls.setItem(`javiss_api_${i}`, val);
       }
       cfgMap.forEach(([id, k]) => ls.setItem(k, $(id)?.value.trim() || ''));
       ls.setItem('live_search_enabled', $('live-toggle-search')?.checked ? 'true' : 'false');
       ls.setItem('live_context_enabled', $('live-toggle-context')?.checked ? 'true' : 'false');
-      initAPIKeys(); initExternalConfigs(); showToast("Đã lưu cấu hình Google & Ngữ cảnh Toàn cục!");
+      initAPIKeys(); initExternalConfigs(); showToast("Đã lưu cấu hình Google & Hệ thống!");
     };
     $('btn-check-keys').onclick = async () => {
       const b = $('btn-check-keys'); b.innerText = "⏳..."; let ok = 0, tot = 0;
@@ -673,7 +762,6 @@
         };
         rq.onsuccess = async e => {
           db = e.target.result;
-          // Tự động kiểm tra và nhập gộp dữ liệu từ HuanMU_DB nếu có phiên cũ nằm ở đó
           try {
             const checkHuan = indexedDB.open("HuanMU_DB", 6);
             checkHuan.onsuccess = () => {
@@ -685,9 +773,7 @@
                   if (hSessions.length) {
                     const wrTrans = db.transaction(STORE_NAME, "readwrite");
                     hSessions.forEach(hs => {
-                      if (hs.his && hs.his.length > 0) {
-                        wrTrans.objectStore(STORE_NAME).put(hs);
-                      }
+                      if (hs.his && hs.his.length > 0) wrTrans.objectStore(STORE_NAME).put(hs);
                     });
                   }
                 };
@@ -719,13 +805,13 @@
     };
 
     let sessions = [], activeId = null, chatHistory = [], filesData = [], txtContent = "", isProcessing = false;
-    let folders = JSON.parse(ls.getItem('huanmu_folders') || ls.getItem('javiss_folders') || '["Mặc định"]');
-    let activeFolder = ls.getItem('huanmu_active_folder') || ls.getItem('javiss_active_folder') || "All";
-    let openTabs = JSON.parse(ls.getItem('huanmu_tabs') || ls.getItem('javiss_tabs') || '[]');
+    let folders = JSON.parse(ls.getItem('jarvis_folders') || ls.getItem('huanmu_folders') || ls.getItem('javiss_folders') || '["Mặc định"]');
+    let activeFolder = ls.getItem('jarvis_active_folder') || ls.getItem('huanmu_active_folder') || "All";
+    let openTabs = JSON.parse(ls.getItem('jarvis_tabs') || ls.getItem('huanmu_tabs') || '[]');
 
     const getSessionApiKey = (cs, forceRotate = false) => {
       const sel = DOM.apiKeySel?.value || 'auto'; 
-      if (sel !== 'auto') return ls.getItem(`huanmu_api_${parseInt(sel)+1}`) || ls.getItem(`javiss_api_${parseInt(sel)+1}`) || "";
+      if (sel !== 'auto') return ls.getItem(`jarvis_api_${parseInt(sel)+1}`) || ls.getItem(`huanmu_api_${parseInt(sel)+1}`) || "";
       if (!forceRotate && cs?.assignedApiKey) return cs.assignedApiKey;
       if (apiKeys.length) { 
         const k = apiKeys[globalKeyIndex++ % apiKeys.length]; 
@@ -749,10 +835,10 @@
     applyTheme(ls.getItem('theme') || 'auto'); DOM.btnTheme.onclick = () => { const c = ls.getItem('theme') || 'auto'; applyTheme(c === 'auto' ? 'dark' : c === 'dark' ? 'light' : 'auto'); };
 
     if (DOM.input) { 
-      DOM.input.value = ls.getItem('huanmu_draft') || ls.getItem('javiss_draft') || ''; 
+      DOM.input.value = ls.getItem('jarvis_draft') || ''; 
       updateTokenCount(); 
       DOM.input.oninput = () => { 
-        ls.setItem('huanmu_draft', DOM.input.value); 
+        ls.setItem('jarvis_draft', DOM.input.value); 
         DOM.input.style.height = 'auto'; 
         DOM.input.style.height = Math.min(DOM.input.scrollHeight, 140) + 'px'; 
         updateTokenCount(); 
@@ -770,8 +856,8 @@
     $('btn-open-settings').onclick = () => { $('settings-modal').style.display = 'flex'; $('modal-overlay').style.display = 'block'; };
 
     const getDynamicSI = () => {
-      const b = DOM.sysInst?.value || "Bạn là Jarvis AI AI - trợ lý thông minh và chuẩn xác.", 
-            g = DOM.globContext?.value || ls.getItem('huanmu_global_context') || ls.getItem('javiss_global_context') || '', 
+      const b = DOM.sysInst?.value || "Bạn là Jarvis AI - trợ lý thông minh và chuẩn xác.", 
+            g = DOM.globContext?.value || ls.getItem('jarvis_global_context') || ls.getItem('huanmu_global_context') || '', 
             now = new Date(), 
             days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
       const hh = String(now.getHours()).padStart(2, '0'), mm = String(now.getMinutes()).padStart(2, '0'), ss = String(now.getSeconds()).padStart(2, '0');
@@ -779,7 +865,7 @@
       return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}\n\n[MỐC THỜI GIAN THỰC TẾ]: Hiện tại chính xác là ${timeStr} (${dateStr}, Múi giờ Việt Nam GMT+7).\nQUY TẮC BẮT BUỘC: Khi người dùng hỏi bây giờ là mấy giờ, thời gian hiện tại hoặc ngày tháng, bạn PHẢI trả lời chính xác theo mốc giờ ${timeStr} và ngày ${dateStr} này.`;
     };
 
-    window.exportCleanArticle = () => { const m = chatHistory.filter(x => x.role === 'model').map(x => x.text); m.length ? saveOrShareBlob(new Blob([`# Jarvis AI - Bài viết trích xuất\n\n` + m.join('\n\n---\n\n')], { type: 'text/markdown' }), `HuanMU_Export_${Date.now()}.md`) : showToast("Trống!", "warning"); };
+    window.exportCleanArticle = () => { const m = chatHistory.filter(x => x.role === 'model').map(x => x.text); m.length ? saveOrShareBlob(new Blob([`# Jarvis AI - Bài viết trích xuất\n\n` + m.join('\n\n---\n\n')], { type: 'text/markdown' }), `JarvisAI_Export_${Date.now()}.md`) : showToast("Trống!", "warning"); };
     window.applySnippet = p => { if (DOM.input) { DOM.input.value = p + "\n" + DOM.input.value; DOM.input.dispatchEvent(new Event('input')); DOM.input.focus(); } DOM.snippetsContainer.style.display = 'none'; };
     DOM.btnToggleSnippets.onclick = () => DOM.snippetsContainer.style.display = DOM.snippetsContainer.style.display === 'flex' ? 'none' : 'flex';
 
@@ -827,13 +913,13 @@
     // --- SESSIONS & 7 NÚT QUẢN LÝ ---
     function renderTabs() {
       DOM.tabsContainer.innerHTML = openTabs.map(tId => { const s = sessions.find(x => x.id === tId); return s ? `<div class="tab-item ${tId===activeId?'active':''}"><span onclick="window.switchSess('${tId}')">${s.name.substring(0,14)}</span> <span class="tab-close" onclick="window.closeTab('${tId}',event)">×</span></div>` : ''; }).join('');
-      ls.setItem('huanmu_tabs', JSON.stringify(openTabs));
+      ls.setItem('jarvis_tabs', JSON.stringify(openTabs));
     }
     window.switchSess = switchSess; window.closeTab = (id, e) => { e.stopPropagation(); openTabs = openTabs.filter(x => x !== id); id === activeId ? (openTabs.length ? switchSess(openTabs[0]) : newSess()) : renderTabs(); };
     function renderFolders() { DOM.folderSelect.innerHTML = `<option value="All">📁 Tất cả</option>` + folders.map(f => `<option value="${f}">📁 ${f}</option>`).join(''); DOM.folderSelect.value = activeFolder; }
-    DOM.folderSelect.onchange = e => { activeFolder = e.target.value; ls.setItem('huanmu_active_folder', activeFolder); renderSel(); const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder); if (v.length && !v.find(s => s.id === activeId)) switchSess(v[0].id); };
-    DOM.btnNewFolder.onclick = () => { const n = prompt("Tên Thư mục:"); if (n && !folders.includes(n)) { folders.push(n); ls.setItem('huanmu_folders', JSON.stringify(folders)); activeFolder = n; renderFolders(); renderSel(); showToast("Đã tạo thư mục!"); } };
-    DOM.btnDeleteFolder.onclick = async () => { if (activeFolder === "All" || activeFolder === "Mặc định") return showToast("Không thể xóa TM này!"); if (confirm(`Xóa "${activeFolder}"?`)) { folders = folders.filter(f => f !== activeFolder); ls.setItem('huanmu_folders', JSON.stringify(folders)); for (const s of sessions) if (s.folder === activeFolder) { s.folder = "Mặc định"; await saveToDB(s); } activeFolder = "All"; renderFolders(); renderSel(); showToast("Đã xóa thư mục!"); } };
+    DOM.folderSelect.onchange = e => { activeFolder = e.target.value; ls.setItem('jarvis_active_folder', activeFolder); renderSel(); const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder); if (v.length && !v.find(s => s.id === activeId)) switchSess(v[0].id); };
+    DOM.btnNewFolder.onclick = () => { const n = prompt("Tên Thư mục:"); if (n && !folders.includes(n)) { folders.push(n); ls.setItem('jarvis_folders', JSON.stringify(folders)); activeFolder = n; renderFolders(); renderSel(); showToast("Đã tạo thư mục!"); } };
+    DOM.btnDeleteFolder.onclick = async () => { if (activeFolder === "All" || activeFolder === "Mặc định") return showToast("Không thể xóa TM này!"); if (confirm(`Xóa "${activeFolder}"?`)) { folders = folders.filter(f => f !== activeFolder); ls.setItem('jarvis_folders', JSON.stringify(folders)); for (const s of sessions) if (s.folder === activeFolder) { s.folder = "Mặc định"; await saveToDB(s); } activeFolder = "All"; renderFolders(); renderSel(); showToast("Đã xóa thư mục!"); } };
 
     async function loadSess() { 
       try { 
@@ -842,7 +928,7 @@
         if (d && d.length > 0) { 
           sessions = d.sort((a,b) => (a.orderIndex||0) - (b.orderIndex||0)); 
           renderFolders(); 
-          activeId = ls.getItem('huanmu_active_id') || ls.getItem('javiss_active_id') || sessions[0].id; 
+          activeId = ls.getItem('jarvis_active_id') || ls.getItem('huanmu_active_id') || ls.getItem('javiss_active_id') || sessions[0].id; 
           if (!sessions.find(s => s.id === activeId)) activeId = sessions[0].id; 
           await switchSess(activeId); 
         } else { 
@@ -872,7 +958,7 @@
         top: 40, 
         thk: 'minimal', 
         sch: false, 
-        schEngine: 'jina', 
+        schEngine: 'tavily', 
         mem: true, 
         useGlob: true, 
         orderIndex: Date.now() 
@@ -888,7 +974,7 @@
     }
 
     async function switchSess(id) {
-      activeId = id; ls.setItem('huanmu_active_id', id); ls.setItem('javiss_active_id', id);
+      activeId = id; ls.setItem('jarvis_active_id', id); ls.setItem('huanmu_active_id', id);
       const s = sessions.find(x => x.id === id); 
       chatHistory = (s && Array.isArray(s.his)) ? [...s.his] : [];
       if (s) {
@@ -904,7 +990,7 @@
         DOM.toggleGlob.checked = s.useGlob !== false; 
         DOM.toggleSearch.checked = s.sch || false; 
         DOM.searchEngineBox.style.display = s.sch ? 'block' : 'none';
-        DOM.searchEngineSel.value = s.schEngine || 'jina'; 
+        DOM.searchEngineSel.value = s.schEngine || 'tavily'; 
         DOM.toggleMemory.checked = s.mem !== false;
       }
       DOM.chat.innerHTML = ''; 
@@ -950,7 +1036,7 @@
         const tf = targetFolder.trim();
         if (!folders.includes(tf)) {
           folders.push(tf);
-          ls.setItem('huanmu_folders', JSON.stringify(folders));
+          ls.setItem('jarvis_folders', JSON.stringify(folders));
           renderFolders();
         }
         s.folder = tf;
@@ -1078,7 +1164,6 @@
       for (let i = 0; i < mds.length; i++) { try { const { svg } = await mermaid.render('m_' + Date.now() + '_' + i, mds[i].textContent), d = document.createElement('div'); d.innerHTML = svg; mds[i].parentElement.replaceWith(d); } catch {} }
     }
 
-    // ⚡ ĐÃ THAY ĐÚNG CHUẨN: ${i} (KHÔNG CÒN BẤT KỲ DẤU VẾT NÀO CỦA BIẾN LỖI botIdx)
     async function appendMsg(sd, t, i, iHL = false) {
       t = t || "";
       const c = document.createElement('div'); c.className = 'message-container';
@@ -1089,7 +1174,6 @@
       m.innerHTML = `<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Jarvis AI'}</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${chatHistory[i]?.time||getNowTime24h()}</span>${ixBadge}</div><div class="msg-content"></div>`;
       const a = document.createElement('div'); a.className = 'msg-actions';
       
-      // SỬ DỤNG CHÍNH XÁC ${i} CHO CẢ EDIT, RETRY VÀ DELETE:
       a.innerHTML = `<button class="action-btn" onclick="copy(this)">📋</button>${sd==='user'?`<button class="action-btn" onclick="editMsg(${i})">✏️</button>`:`<button class="action-btn" onclick="retryMsg(${i})">🔄</button>`}<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})">🗑️</button>`;
       
       c.append(m, a); DOM.chat.appendChild(c); if (!iHL && sd === 'user') DOM.chat.scrollTop = DOM.chat.scrollHeight;
@@ -1168,7 +1252,7 @@
 
       if (!gKey) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
 
-      ls.removeItem('huanmu_draft'); isProcessing = true; abortController = new AbortController();
+      ls.removeItem('jarvis_draft'); isProcessing = true; abortController = new AbortController();
       DOM.sendBtn.innerHTML = 'Dừng 🛑'; DOM.sendBtn.style.background = 'var(--danger)';
       let finalResp = "", botTime = getNowTime24h(), dispText = msg || "📎 [Gửi tệp]", fP = (txtContent ? (msg ? msg + "\n\n" + txtContent : txtContent) : msg).trim() || "Hãy phân tích nội dung này.", bD;
       let recordedIxId = null;
@@ -1226,10 +1310,10 @@
 
         const quoted = extractQuotedKeywords(fnP);
         if (quoted && DOM.toggleSearch.checked) {
-          const sel = DOM.searchEngineSel.value, tgt = sel === 'auto' ? (ls.getItem('auto_search_default_engine') || 'jina') : sel;
+          const sel = DOM.searchEngineSel.value, tgt = sel === 'auto' ? (ls.getItem('auto_search_default_engine') || 'tavily') : sel;
           if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerText = `🔍 Tìm kiếm "${quoted}"...`;
           try {
-            const sText = await ({ jina: fetchJinaSearch, tavily: fetchTavilySearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[tgt] || fetchJinaSearch)(quoted);
+            const sText = await ({ tavily: fetchTavilySearch, jina: fetchJinaSearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[tgt] || fetchTavilySearch)(quoted);
             if (sText) fnP = `[DỮ LIỆU TÌM ĐƯỢC CHO "${quoted}"]: \n${sText}\n\n[YÊU CẦU]: ${fnP}`;
           } catch(e) {}
         }
@@ -1364,9 +1448,9 @@
 
     window.exportAllSessions = async () => {
       const cfgs = { chat_font_size: ls.getItem('chat_font_size') || "16" };
-      for (let i = 1; i <= 10; i++) cfgs[`huanmu_api_${i}`] = ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "";
+      for (let i = 1; i <= 10; i++) cfgs[`jarvis_api_${i}`] = ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || "";
       cfgMap.forEach(([, k]) => cfgs[k] = ls.getItem(k) || "");
-      saveOrShareBlob(new Blob([JSON.stringify({ brand: "Jarvis AI", sessions: await getAllFromDB(), configs: cfgs }, null, 2)], { type: 'application/json' }), `HuanMU_Backup_${Date.now()}.json`);
+      saveOrShareBlob(new Blob([JSON.stringify({ brand: "Jarvis AI", sessions: await getAllFromDB(), configs: cfgs }, null, 2)], { type: 'application/json' }), `JarvisAI_Backup_${Date.now()}.json`);
     };
     $('import-all-input').onchange = e => {
       const f = e.target.files[0]; if (!f) return; const rd = new FileReader();
@@ -1395,15 +1479,14 @@
     DOM.clearFilesBtn.onclick = () => { filesData = []; txtContent = ""; DOM.textFileList.innerHTML = ""; renderFiles(); updateTokenCount(); };
     const fileToInteractionPart = f => new Promise(r => { const rd = new FileReader(); rd.onloadend = () => r({ inlineData: { mimeType: f.type, data: rd.result.split(',')[1] } }); rd.readAsDataURL(f); });
 
-    window.exportChatDoc = () => { const h = `<html><body><h2>${sessions.find(s => s.id === activeId)?.name || 'Chat Jarvis AI'}</h2>` + chatHistory.map(m => `<p><b>${m.role==='user'?'Bạn':'Jarvis AI'}:</b><br>${m.role==='model'?marked.parse(m.text):m.text}</p><hr>`).join('') + "</body></html>"; saveOrShareBlob(new Blob(['\ufeff', h], { type: 'application/msword' }), `HuanMU_Chat_${Date.now()}.doc`); };
-    window.exportChatPDF = () => { const e = document.createElement('div'); e.innerHTML = chatHistory.map(m => `<div style="margin:10px 0;"><strong>${m.role==='user'?'Bạn':'Jarvis AI'}:</strong><br>${m.role==='model'?marked.parse(m.text):m.text}</div><hr>`).join(''); html2pdf().from(e).outputPdf('blob').then(b => saveOrShareBlob(b, `HuanMU_Chat_${Date.now()}.pdf`)); };
+    window.exportChatDoc = () => { const h = `<html><body><h2>Chat Jarvis AI</h2>` + chatHistory.map(m => `<p><b>${m.role==='user'?'Bạn':'Jarvis AI'}:</b><br>${m.role==='model'?marked.parse(m.text):m.text}</p><hr>`).join('') + "</body></html>"; saveOrShareBlob(new Blob(['\ufeff', h], { type: 'application/msword' }), `JarvisAI_Chat_${Date.now()}.doc`); };
+    window.exportChatPDF = () => { const e = document.createElement('div'); e.innerHTML = chatHistory.map(m => `<div style="margin:10px 0;"><strong>${m.role==='user'?'Bạn':'Jarvis AI'}:</strong><br>${m.role==='model'?marked.parse(m.text):m.text}</div><hr>`).join(''); html2pdf().from(e).outputPdf('blob').then(b => saveOrShareBlob(b, `JarvisAI_Chat_${Date.now()}.pdf`)); };
 
     let tTO; function showToast(m, t = 'success') { clearTimeout(tTO); DOM.toast.innerText = m; DOM.toast.className = `toast ${t} show`; tTO = setTimeout(() => DOM.toast.classList.remove('show'), 3000); }
     const sBar = document.querySelector('.header-search-bar');
     $('btn-global-search').onclick = e => { e.stopPropagation(); if (!sBar.classList.contains('active')) { sBar.classList.add('active'); DOM.searchInput.focus(); } else {$('search-modal').style.display = 'flex'; oLay.style.display = 'block'; } };
     document.addEventListener('click', e => { if (!sBar.contains(e.target)) sBar.classList.remove('active'); });
 
-    // Nạp phiên chuẩn xác
     loadSess();
   </script>
 </body>
