@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Jarviss</title>
+  <title>Jarvis AI</title>
   
-  <!-- Các thư viện tải song song chuẩn, không làm treo Main Thread -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -14,11 +13,10 @@
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10.8.0/dist/mermaid.min.js"></script>
 
-  <!-- Importmap dùng CDN phân giải trực tiếp +esm để TWA không bị treo mạng lúc Cold Start -->
   <script type="importmap">
   { 
     "imports": { 
-      "@google/genai": "https://cdn.jsdelivr.net/npm/@google/genai/+esm" 
+      "@google/genai": "https://esm.run/@google/genai" 
     } 
   }
   </script>
@@ -112,7 +110,7 @@
   <div class="app-container">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">🤖</span><h2 style="font-size:1.05rem;font-weight:700;color:var(--primary);">Jarviss</h2></div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">🤖</span><h2 style="font-size:1.05rem;font-weight:700;color:var(--primary);">Jarvis AI</h2></div>
         <button id="close-sidebar-btn" class="icon-btn mobile-only">&times;</button>
       </div>
       <div class="sidebar-scroll-content">
@@ -166,7 +164,7 @@
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
     <main class="main-content">
       <header class="main-header">
-        <div class="header-left"><button id="toggle-sidebar-btn" class="icon-btn mobile-only">☰</button><h1 class="logo-text">Jarviss</h1></div>
+        <div class="header-left"><button id="toggle-sidebar-btn" class="icon-btn mobile-only">☰</button><h1 class="logo-text">Jarvis AI</h1></div>
         <div class="header-right">
           <button id="btn-live-call-open" class="btn" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;border-radius:18px;padding:5px 12px;font-weight:600;">📞 Gọi Live AI</button>
           <div class="header-search-bar"><input type="text" id="search-chat-input" placeholder="Tìm kiếm phiên..."><button id="btn-global-search" class="icon-btn" style="width:30px;height:30px;font-size:.9rem;">🔍</button></div>
@@ -197,7 +195,7 @@
 
     <div id="live-call-modal">
       <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
-        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">📞</span><div><h3 style="font-size:1rem;font-weight:700;">Jarviss Live Voice</h3><span id="live-call-status" style="font-size:0.75rem;color:#94a3b8;">Đang kết nối...</span></div></div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.3rem;">📞</span><div><h3 style="font-size:1rem;font-weight:700;">Jarvis AI Live Voice</h3><span id="live-call-status" style="font-size:0.75rem;color:#94a3b8;">Đang kết nối...</span></div></div>
         <video id="live-camera-video" autoplay playsinline muted></video>
       </div>
       <div class="live-orb-container"><div id="live-orb" class="live-orb"></div><div id="live-transcript" class="live-transcript-box"><i>Hãy nói chuyện bình thường vào micro...</i></div></div>
@@ -404,7 +402,7 @@
       const cs = sessions.find(x => x.id === activeId), sSI = DOM.sysInst?.value.trim() || cs?.sys || '', g = DOM.globContext?.value.trim() || ls.getItem('huanmu_global_context') || '';
       const now = new Date(), days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
       const hh = String(now.getHours()).padStart(2, '0'), mm = String(now.getMinutes()).padStart(2, '0'), ss = String(now.getSeconds()).padStart(2, '0');
-      let si = `[VAI TRÒ & NGỮ CẢNH PHIÊN]:\n${(DOM.toggleGlob?.checked !== false && g) ? `--- TOÀN CỤC: ${g}\n\n` : ''}${sSI ? `--- RIÊNG: ${sSI}` : 'Bạn là Jarviss AI thông minh, thân thiện.'}\n\n[QUY TẮC ĐÀM THOẠI]:\n- Trả lời Tiếng Việt tự nhiên, ngắn gọn 1-2 câu như điện thoại đời thực.\n[THỜI GIAN CHUẨN]: ${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}, lúc ${hh}:${mm}:${ss} (Giờ Việt Nam GMT+7).`;
+      let si = `[VAI TRÒ & NGỮ CẢNH PHIÊN]:\n${(DOM.toggleGlob?.checked !== false && g) ? `--- TOÀN CỤC: ${g}\n\n` : ''}${sSI ? `--- RIÊNG: ${sSI}` : 'Bạn là Jarvis AI AI thông minh, thân thiện.'}\n\n[QUY TẮC ĐÀM THOẠI]:\n- Trả lời Tiếng Việt tự nhiên, ngắn gọn 1-2 câu như điện thoại đời thực.\n[THỜI GIAN CHUẨN]: ${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}, lúc ${hh}:${mm}:${ss} (Giờ Việt Nam GMT+7).`;
       if ($('live-toggle-context')?.checked && chatHistory.length) si += `\n\n[LỊCH SỬ 10 TIN TRƯỚC]:\n` + chatHistory.slice(-10).map(m => `${m.role==='model'?'AI':'Bạn'}: ${m.text.replace(/<[^>]+>/g,'').replace(/```[\s\S]*?```/g,'[code]')}`).join('\n');
       return si;
     }
@@ -551,11 +549,11 @@
 
             for (const p of (msg.serverContent?.modelTurn?.parts || [])) {
               if (p.inlineData?.data) playPcm24k(p.inlineData.data, liveAudioCtx, livePlaybackState);
-              if (p.text) tr.innerHTML = `<strong>Jarviss:</strong> ${p.text}`;
+              if (p.text) tr.innerHTML = `<strong>Jarvis AI:</strong> ${p.text}`;
             }
 
             if (msg.serverContent?.outputAudioTranscription?.text) {
-              tr.innerHTML = `<strong>Jarviss:</strong> ${msg.serverContent.outputAudioTranscription.text}`;
+              tr.innerHTML = `<strong>Jarvis AI:</strong> ${msg.serverContent.outputAudioTranscription.text}`;
             }
           } catch {}
         };
@@ -748,7 +746,7 @@
     $('btn-open-settings').onclick = () => { $('settings-modal').style.display = 'flex'; $('modal-overlay').style.display = 'block'; };
 
     const getDynamicSI = () => {
-      const b = DOM.sysInst?.value || "Bạn là Jarviss AI - trợ lý thông minh và chuẩn xác.", 
+      const b = DOM.sysInst?.value || "Bạn là Jarvis AI AI - trợ lý thông minh và chuẩn xác.", 
             g = DOM.globContext?.value || ls.getItem('huanmu_global_context') || ls.getItem('javiss_global_context') || '', 
             now = new Date(), 
             days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
@@ -757,7 +755,7 @@
       return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}\n\n[MỐC THỜI GIAN THỰC TẾ]: Hiện tại chính xác là ${timeStr} (${dateStr}, Múi giờ Việt Nam GMT+7).\nQUY TẮC BẮT BUỘC: Khi người dùng hỏi bây giờ là mấy giờ, thời gian hiện tại hoặc ngày tháng, bạn PHẢI trả lời chính xác theo mốc giờ ${timeStr} và ngày ${dateStr} này.`;
     };
 
-    window.exportCleanArticle = () => { const m = chatHistory.filter(x => x.role === 'model').map(x => x.text); m.length ? saveOrShareBlob(new Blob([`# Jarviss - Bài viết trích xuất\n\n` + m.join('\n\n---\n\n')], { type: 'text/markdown' }), `HuanMU_Export_${Date.now()}.md`) : showToast("Trống!", "warning"); };
+    window.exportCleanArticle = () => { const m = chatHistory.filter(x => x.role === 'model').map(x => x.text); m.length ? saveOrShareBlob(new Blob([`# Jarvis AI - Bài viết trích xuất\n\n` + m.join('\n\n---\n\n')], { type: 'text/markdown' }), `HuanMU_Export_${Date.now()}.md`) : showToast("Trống!", "warning"); };
     window.applySnippet = p => { if (DOM.input) { DOM.input.value = p + "\n" + DOM.input.value; DOM.input.dispatchEvent(new Event('input')); DOM.input.focus(); } DOM.snippetsContainer.style.display = 'none'; };
     DOM.btnToggleSnippets.onclick = () => DOM.snippetsContainer.style.display = DOM.snippetsContainer.style.display === 'flex' ? 'none' : 'flex';
 
@@ -883,7 +881,9 @@
         DOM.toggleMemory.checked = s.mem !== false;
       }
       DOM.chat.innerHTML = ''; 
-      for (let j = 0; j < chatHistory.length; j++) await appendMsg(chatHistory[j].role === 'model' ? 'bot' : 'user', chatHistory[j].text, j, true);
+      for (let j = 0; j < chatHistory.length; j++) {
+        await appendMsg(chatHistory[j].role === 'model' ? 'bot' : 'user', chatHistory[j].text, j, true);
+      }
       DOM.chat.scrollTop = DOM.chat.scrollHeight; 
       renderSel(); 
       if (!openTabs.includes(id)) openTabs.push(id); 
@@ -979,7 +979,7 @@
         <label class="bulk-edit-item" style="cursor:pointer;">
           <input type="checkbox" class="bulk-check" value="${i}" style="margin-top:3px;">
           <div style="flex:1;overflow:hidden;">
-            <strong style="color:var(--primary);font-size:0.75rem;">${m.role==='user'?'👤 Bạn':'✨ Jarviss'} [${m.time||''}]</strong>
+            <strong style="color:var(--primary);font-size:0.75rem;">${m.role==='user'?'👤 Bạn':'✨ Jarvis AI'} [${m.time||''}]</strong>
             <p style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.8rem;color:var(--text-muted);">${m.text.replace(/<[^>]+>/g,'').substring(0,60)}</p>
           </div>
         </label>
@@ -1046,15 +1046,17 @@
       for (let i = 0; i < mds.length; i++) { try { const { svg } = await mermaid.render('m_' + Date.now() + '_' + i, mds[i].textContent), d = document.createElement('div'); d.innerHTML = svg; mds[i].parentElement.replaceWith(d); } catch {} }
     }
 
+    // ⚡ ĐÃ SỬA DỨT ĐIỂM: Thay thế ${botIdx} bị lỗi thành ${i}
     async function appendMsg(sd, t, i, iHL = false) {
       const c = document.createElement('div'); c.className = 'message-container';
       const m = document.createElement('div'); m.className = sd === 'user' ? 'user-message' : 'bot-message'; m.setAttribute('data-raw', t);
       const ixId = chatHistory[i]?.interactionId;
       const kNum = chatHistory[i]?.pinnedKey;
       const ixBadge = (sd === 'model' && ixId) ? `<span class="interaction-id-badge" title="Interaction ID: ${ixId}">⚡ ID: ${ixId.slice(0,8)}...${kNum ? ` [🔒 Key ${kNum}]` : ''}</span>` : '';
-      m.innerHTML = `<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Jarviss'}</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${chatHistory[i]?.time||getNowTime24h()}</span>${ixBadge}</div><div class="msg-content"></div>`;
+      m.innerHTML = `<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Jarvis AI'}</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${chatHistory[i]?.time||getNowTime24h()}</span>${ixBadge}</div><div class="msg-content"></div>`;
       const a = document.createElement('div'); a.className = 'msg-actions';
-      a.innerHTML = `<button class="action-btn" onclick="copy(this)">📋</button>${sd==='user'?`<button class="action-btn" onclick="editMsg(${i})">✏️</button>`:`<button class="action-btn" onclick="retryMsg(${botIdx})">🔄</button>`}<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})">🗑️</button>`;
+      // Thay thế ${botIdx} thành ${i} tại đây:
+      a.innerHTML = `<button class="action-btn" onclick="copy(this)">📋</button>${sd==='user'?`<button class="action-btn" onclick="editMsg(${i})">✏️</button>`:`<button class="action-btn" onclick="retryMsg(${i})">🔄</button>`}<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})">🗑️</button>`;
       c.append(m, a); DOM.chat.appendChild(c); if (!iHL && sd === 'user') DOM.chat.scrollTop = DOM.chat.scrollHeight;
       await renderMsgContent(m.querySelector('.msg-content'), sd === 'user' ? t.replace(/\n/g, '<br>') : t);
     }
@@ -1102,7 +1104,7 @@
       } 
     };
 
-    // --- GỬI TIN NHẮN TỐC ĐỘ CAO ---
+    // --- GỬI TIN NHẮN TỐC ĐỘ CAO (TỨC THÌ ZERO-LATENCY) ---
     DOM.sendBtn.onclick = async () => {
       if (isProcessing) return abortController?.abort();
       const am = DOM.model.value || 'gemini-3.5-flash-lite';
@@ -1160,7 +1162,7 @@
         if (bD?.querySelector('.bot-message')) {
           bD.querySelector('.bot-message').setAttribute('data-raw', finalResp);
           const ixBadge = recordedIxId ? `<span class="interaction-id-badge" title="ID: ${recordedIxId}">⚡ ID: ${recordedIxId.slice(0,8)}... [🔒 Key ${keyIndexNum}]</span>` : '';
-          bD.querySelector('.message-header').innerHTML = `<span>✨ Jarviss</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}</span>${ixBadge}`;
+          bD.querySelector('.message-header').innerHTML = `<span>✨ Jarvis AI</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}</span>${ixBadge}`;
           const botIdx = chatHistory.length - 1, aDiv = document.createElement('div'); aDiv.className = 'msg-actions';
           aDiv.innerHTML = `<button class="action-btn" onclick="copy(this)">📋</button><button class="action-btn" onclick="retryMsg(${botIdx})">🔄</button><button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${botIdx})">🗑️</button>`;
           bD.appendChild(aDiv);
@@ -1172,7 +1174,7 @@
         DOM.input.value = ''; DOM.input.style.height = '38px'; updateTokenCount(); const imgs = [...filesData]; DOM.clearFilesBtn.click();
 
         bD = document.createElement('div'); bD.className = 'message-container';
-        bD.innerHTML = `<div class="bot-message"><div class="message-header"><span>✨ Jarviss</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span><span class="streaming-indicator">⚡ Đang kết nối...</span></div><div class="msg-content"></div></div>`;
+        bD.innerHTML = `<div class="bot-message"><div class="message-header"><span>✨ Jarvis AI</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span><span class="streaming-indicator">⚡ Đang kết nối...</span></div><div class="msg-content"></div></div>`;
         DOM.chat.appendChild(bD); 
         
         bD.scrollIntoView({ behavior: 'smooth', block: 'start' }); 
@@ -1329,7 +1331,7 @@
       const cfgs = { chat_font_size: ls.getItem('chat_font_size') || "16" };
       for (let i = 1; i <= 10; i++) cfgs[`huanmu_api_${i}`] = ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "";
       cfgMap.forEach(([, k]) => cfgs[k] = ls.getItem(k) || "");
-      saveOrShareBlob(new Blob([JSON.stringify({ brand: "Jarviss", sessions: await getAllFromDB(), configs: cfgs }, null, 2)], { type: 'application/json' }), `HuanMU_Backup_${Date.now()}.json`);
+      saveOrShareBlob(new Blob([JSON.stringify({ brand: "Jarvis AI", sessions: await getAllFromDB(), configs: cfgs }, null, 2)], { type: 'application/json' }), `HuanMU_Backup_${Date.now()}.json`);
     };
     $('import-all-input').onchange = e => {
       const f = e.target.files[0]; if (!f) return; const rd = new FileReader();
@@ -1343,7 +1345,7 @@
             initAPIKeys(); initExternalConfigs(); 
             applyFontSize(parseInt(ls.getItem('chat_font_size') || '16', 10)); 
             await loadSess(); 
-            showToast('🎉 Đã khôi phục dữ liệu Jarviss thành công!'); 
+            showToast('🎉 Đã khôi phục dữ liệu Jarvis AI thành công!'); 
           } 
         } catch { showToast('Lỗi tệp JSON không hợp lệ', 'danger'); } 
       };
@@ -1358,15 +1360,15 @@
     DOM.clearFilesBtn.onclick = () => { filesData = []; txtContent = ""; DOM.textFileList.innerHTML = ""; renderFiles(); updateTokenCount(); };
     const fileToInteractionPart = f => new Promise(r => { const rd = new FileReader(); rd.onloadend = () => r({ inlineData: { mimeType: f.type, data: rd.result.split(',')[1] } }); rd.readAsDataURL(f); });
 
-    window.exportChatDoc = () => { const h = `<html><body><h2>${sessions.find(s => s.id === activeId)?.name || 'Chat Jarviss'}</h2>` + chatHistory.map(m => `<p><b>${m.role==='user'?'Bạn':'Jarviss'}:</b><br>${m.role==='model'?marked.parse(m.text):m.text}</p><hr>`).join('') + "</body></html>"; saveOrShareBlob(new Blob(['\ufeff', h], { type: 'application/msword' }), `HuanMU_Chat_${Date.now()}.doc`); };
-    window.exportChatPDF = () => { const e = document.createElement('div'); e.innerHTML = chatHistory.map(m => `<div style="margin:10px 0;"><strong>${m.role==='user'?'Bạn':'Jarviss'}:</strong><br>${m.role==='model'?marked.parse(m.text):m.text}</div><hr>`).join(''); html2pdf().from(e).outputPdf('blob').then(b => saveOrShareBlob(b, `HuanMU_Chat_${Date.now()}.pdf`)); };
+    window.exportChatDoc = () => { const h = `<html><body><h2>${sessions.find(s => s.id === activeId)?.name || 'Chat Jarvis AI'}</h2>` + chatHistory.map(m => `<p><b>${m.role==='user'?'Bạn':'Jarvis AI'}:</b><br>${m.role==='model'?marked.parse(m.text):m.text}</p><hr>`).join('') + "</body></html>"; saveOrShareBlob(new Blob(['\ufeff', h], { type: 'application/msword' }), `HuanMU_Chat_${Date.now()}.doc`); };
+    window.exportChatPDF = () => { const e = document.createElement('div'); e.innerHTML = chatHistory.map(m => `<div style="margin:10px 0;"><strong>${m.role==='user'?'Bạn':'Jarvis AI'}:</strong><br>${m.role==='model'?marked.parse(m.text):m.text}</div><hr>`).join(''); html2pdf().from(e).outputPdf('blob').then(b => saveOrShareBlob(b, `HuanMU_Chat_${Date.now()}.pdf`)); };
 
     let tTO; function showToast(m, t = 'success') { clearTimeout(tTO); DOM.toast.innerText = m; DOM.toast.className = `toast ${t} show`; tTO = setTimeout(() => DOM.toast.classList.remove('show'), 3000); }
     const sBar = document.querySelector('.header-search-bar');
     $('btn-global-search').onclick = e => { e.stopPropagation(); if (!sBar.classList.contains('active')) { sBar.classList.add('active'); DOM.searchInput.focus(); } else {$('search-modal').style.display = 'flex'; oLay.style.display = 'block'; } };
     document.addEventListener('click', e => { if (!sBar.contains(e.target)) sBar.classList.remove('active'); });
 
-    // Khởi động nạp phiên
+    // Khởi động nạp phiên an toàn
     loadSess();
   </script>
 </body>
