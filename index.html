@@ -671,7 +671,31 @@
           if (!d.objectStoreNames.contains(STORE_NAME)) d.createObjectStore(STORE_NAME, { keyPath: "id" });
           if (!d.objectStoreNames.contains(FILE_STORE)) d.createObjectStore(FILE_STORE, { keyPath: "id" });
         };
-        rq.onsuccess = async e => { db = e.target.result; res(); };
+        rq.onsuccess = async e => {
+          db = e.target.result;
+          // Tự động kiểm tra và nhập gộp dữ liệu từ HuanMU_DB nếu có phiên cũ nằm ở đó
+          try {
+            const checkHuan = indexedDB.open("HuanMU_DB", 6);
+            checkHuan.onsuccess = () => {
+              const hDb = checkHuan.result;
+              if (hDb.objectStoreNames.contains(STORE_NAME)) {
+                const getItems = hDb.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll();
+                getItems.onsuccess = () => {
+                  const hSessions = getItems.result || [];
+                  if (hSessions.length) {
+                    const wrTrans = db.transaction(STORE_NAME, "readwrite");
+                    hSessions.forEach(hs => {
+                      if (hs.his && hs.his.length > 0) {
+                        wrTrans.objectStore(STORE_NAME).put(hs);
+                      }
+                    });
+                  }
+                };
+              }
+            };
+          } catch {}
+          res();
+        };
         rq.onerror = e => rej(e);
       });
     }
@@ -815,7 +839,7 @@
       try { 
         await initDB(); 
         const d = await getAllFromDB(); 
-        if (d?.length) { 
+        if (d && d.length > 0) { 
           sessions = d.sort((a,b) => (a.orderIndex||0) - (b.orderIndex||0)); 
           renderFolders(); 
           activeId = ls.getItem('huanmu_active_id') || ls.getItem('javiss_active_id') || sessions[0].id; 
@@ -826,9 +850,11 @@
           await newSess(); 
         } 
       } catch (e) { 
-        await newSess(); 
+        console.error("Lỗi khởi động loadSess:", e);
+        renderFolders();
       } 
     }
+    
     async function newSess(n) { 
       const id = 's_' + Date.now(), s = { 
         id, 
@@ -863,7 +889,8 @@
 
     async function switchSess(id) {
       activeId = id; ls.setItem('huanmu_active_id', id); ls.setItem('javiss_active_id', id);
-      const s = sessions.find(x => x.id === id); chatHistory = s ? [...s.his] : [];
+      const s = sessions.find(x => x.id === id); 
+      chatHistory = (s && Array.isArray(s.his)) ? [...s.his] : [];
       if (s) {
         DOM.sysInst.value = s.sys || ''; 
         DOM.model.value = s.mod || 'gemini-3.5-flash-lite'; 
@@ -882,7 +909,11 @@
       }
       DOM.chat.innerHTML = ''; 
       for (let j = 0; j < chatHistory.length; j++) {
-        await appendMsg(chatHistory[j].role === 'model' ? 'bot' : 'user', chatHistory[j].text, j, true);
+        try {
+          await appendMsg(chatHistory[j].role === 'model' ? 'bot' : 'user', chatHistory[j].text || '', j, true);
+        } catch(err) {
+          console.error("Lỗi vẽ tin nhắn " + j, err);
+        }
       }
       DOM.chat.scrollTop = DOM.chat.scrollHeight; 
       renderSel(); 
@@ -980,7 +1011,7 @@
           <input type="checkbox" class="bulk-check" value="${i}" style="margin-top:3px;">
           <div style="flex:1;overflow:hidden;">
             <strong style="color:var(--primary);font-size:0.75rem;">${m.role==='user'?'👤 Bạn':'✨ Jarvis AI'} [${m.time||''}]</strong>
-            <p style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.8rem;color:var(--text-muted);">${m.text.replace(/<[^>]+>/g,'').substring(0,60)}</p>
+            <p style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.8rem;color:var(--text-muted);">${(m.text||'').replace(/<[^>]+>/g,'').substring(0,60)}</p>
           </div>
         </label>
       `).join('');
@@ -1040,14 +1071,16 @@
     DOM.topP.addEventListener('input', () => { DOM.toppVal.innerText = DOM.topP.value; updateConfig(); });
 
     async function renderMsgContent(el, t) {
+      t = t || "";
       el.innerHTML = marked.parse(t.replace(/\[URL:\s*(https?:\/\/[^\s]+)\]/g, '<a href="$1" target="_blank" style="color:var(--primary)">$1</a>'));
       window.renderMathInElement?.(el, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }], throwOnError: false });
       const mds = el.querySelectorAll('code.language-mermaid');
       for (let i = 0; i < mds.length; i++) { try { const { svg } = await mermaid.render('m_' + Date.now() + '_' + i, mds[i].textContent), d = document.createElement('div'); d.innerHTML = svg; mds[i].parentElement.replaceWith(d); } catch {} }
     }
 
-    // ⚡ ĐÃ SỬA DỨT ĐIỂM: Thay thế ${botIdx} bị lỗi thành ${i}
+    // ⚡ ĐÃ THAY ĐÚNG CHUẨN: ${i} (KHÔNG CÒN BẤT KỲ DẤU VẾT NÀO CỦA BIẾN LỖI botIdx)
     async function appendMsg(sd, t, i, iHL = false) {
+      t = t || "";
       const c = document.createElement('div'); c.className = 'message-container';
       const m = document.createElement('div'); m.className = sd === 'user' ? 'user-message' : 'bot-message'; m.setAttribute('data-raw', t);
       const ixId = chatHistory[i]?.interactionId;
@@ -1055,8 +1088,10 @@
       const ixBadge = (sd === 'model' && ixId) ? `<span class="interaction-id-badge" title="Interaction ID: ${ixId}">⚡ ID: ${ixId.slice(0,8)}...${kNum ? ` [🔒 Key ${kNum}]` : ''}</span>` : '';
       m.innerHTML = `<div class="message-header"><span>${sd==='user'?'👤 Bạn':'✨ Jarvis AI'}</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${chatHistory[i]?.time||getNowTime24h()}</span>${ixBadge}</div><div class="msg-content"></div>`;
       const a = document.createElement('div'); a.className = 'msg-actions';
-      // Thay thế ${botIdx} thành ${i} tại đây:
+      
+      // SỬ DỤNG CHÍNH XÁC ${i} CHO CẢ EDIT, RETRY VÀ DELETE:
       a.innerHTML = `<button class="action-btn" onclick="copy(this)">📋</button>${sd==='user'?`<button class="action-btn" onclick="editMsg(${i})">✏️</button>`:`<button class="action-btn" onclick="retryMsg(${i})">🔄</button>`}<button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})">🗑️</button>`;
+      
       c.append(m, a); DOM.chat.appendChild(c); if (!iHL && sd === 'user') DOM.chat.scrollTop = DOM.chat.scrollHeight;
       await renderMsgContent(m.querySelector('.msg-content'), sd === 'user' ? t.replace(/\n/g, '<br>') : t);
     }
@@ -1104,7 +1139,7 @@
       } 
     };
 
-    // --- GỬI TIN NHẮN TỐC ĐỘ CAO (TỨC THÌ ZERO-LATENCY) ---
+    // --- GỬI TIN NHẮN TỐC ĐỘ CAO (TỨC THÌ) ---
     DOM.sendBtn.onclick = async () => {
       if (isProcessing) return abortController?.abort();
       const am = DOM.model.value || 'gemini-3.5-flash-lite';
@@ -1163,8 +1198,8 @@
           bD.querySelector('.bot-message').setAttribute('data-raw', finalResp);
           const ixBadge = recordedIxId ? `<span class="interaction-id-badge" title="ID: ${recordedIxId}">⚡ ID: ${recordedIxId.slice(0,8)}... [🔒 Key ${keyIndexNum}]</span>` : '';
           bD.querySelector('.message-header').innerHTML = `<span>✨ Jarvis AI</span><span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}</span>${ixBadge}`;
-          const botIdx = chatHistory.length - 1, aDiv = document.createElement('div'); aDiv.className = 'msg-actions';
-          aDiv.innerHTML = `<button class="action-btn" onclick="copy(this)">📋</button><button class="action-btn" onclick="retryMsg(${botIdx})">🔄</button><button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${botIdx})">🗑️</button>`;
+          const currentBotIdx = chatHistory.length - 1, aDiv = document.createElement('div'); aDiv.className = 'msg-actions';
+          aDiv.innerHTML = `<button class="action-btn" onclick="copy(this)">📋</button><button class="action-btn" onclick="retryMsg(${currentBotIdx})">🔄</button><button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${currentBotIdx})">🗑️</button>`;
           bD.appendChild(aDiv);
         }
       };
@@ -1368,7 +1403,7 @@
     $('btn-global-search').onclick = e => { e.stopPropagation(); if (!sBar.classList.contains('active')) { sBar.classList.add('active'); DOM.searchInput.focus(); } else {$('search-modal').style.display = 'flex'; oLay.style.display = 'block'; } };
     document.addEventListener('click', e => { if (!sBar.contains(e.target)) sBar.classList.remove('active'); });
 
-    // Khởi động nạp phiên an toàn
+    // Nạp phiên chuẩn xác
     loadSess();
   </script>
 </body>
