@@ -1313,6 +1313,230 @@
         gap: 16px;
       }
     }
+  
+    /* --- NÂNG CẤP 7 TÍNH NĂNG CAO CẤP --- */
+    /* 1. PINNED MESSAGES */
+    .message-container.pinned-msg .user-message,
+    .message-container.pinned-msg .bot-message {
+      border: 2px solid #eab308 !important;
+      box-shadow: 0 0 15px rgba(234, 179, 8, 0.25) !important;
+      background: var(--bg-card);
+    }
+    .pinned-tag {
+      background: #fef08a;
+      color: #854d0e;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      letter-spacing: 0.02em;
+    }
+    [data-theme="dark"] .pinned-tag {
+      background: #854d0e;
+      color: #fef08a;
+    }
+    .action-btn.pinned-active {
+      color: #eab308;
+      border-color: #eab308;
+      background: rgba(234, 179, 8, 0.1);
+      font-weight: 600;
+    }
+
+    /* 2. DEEP RESEARCH & THINKING ACCORDION */
+    .deep-research-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 4px solid #8b5cf6;
+      border-radius: var(--radius-md);
+      margin: 10px 0 14px 0;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition);
+    }
+    .dr-header {
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      background: var(--input-bg);
+      user-select: none;
+    }
+    .dr-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      background: linear-gradient(135deg, #8b5cf6, #ec4899);
+      color: white;
+      letter-spacing: 0.03em;
+    }
+    .dr-status-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-main);
+      flex: 1;
+      margin-left: 10px;
+    }
+    .dr-arrow {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      transition: transform 0.2s ease;
+    }
+    .deep-research-card.collapsed .dr-arrow {
+      transform: rotate(-90deg);
+    }
+    .deep-research-card.collapsed .dr-content {
+      display: none;
+    }
+    .dr-content {
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      background: var(--bg-card);
+    }
+    .dr-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.4;
+    }
+    .dr-step.done {
+      color: var(--text-main);
+    }
+    .dr-step.active {
+      color: #8b5cf6;
+      font-weight: 600;
+    }
+    .dr-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .dr-sources-preview {
+      margin-top: 6px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .dr-source-item {
+      font-size: 0.78rem;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .dr-source-item:hover {
+      text-decoration: underline;
+    }
+
+    /* 3. SMART FOLLOW-UP CHIPS */
+    .follow-up-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border);
+      animation: fadeIn 0.3s ease;
+    }
+    .follow-up-title {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 2px;
+      font-weight: 600;
+    }
+    .follow-up-chip {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-align: left;
+      line-height: 1.3;
+    }
+    .follow-up-chip:hover {
+      background: var(--primary-container);
+      color: var(--primary);
+      border-color: var(--primary);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* 4. FLOATING SELECTION TOOLBAR */
+    .selection-toolbar {
+      position: absolute;
+      z-index: 2500;
+      display: flex;
+      gap: 4px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      padding: 4px;
+      border-radius: var(--radius-md);
+      animation: fadeIn 0.15s ease;
+      backdrop-filter: blur(10px);
+    }
+    .sel-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      padding: 5px 9px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+    .sel-btn:hover {
+      background: var(--primary-container);
+      color: var(--primary);
+    }
+
+    /* 5. READ ALOUD BUTTON ACTIVE STATE */
+    .action-btn.speaking-active {
+      background: #ef4444 !important;
+      color: white !important;
+      border-color: #ef4444 !important;
+      animation: pulseBtn 1.5s infinite;
+    }
+    @keyframes pulseBtn {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(0.98); }
+    }
+
   </style>
 </head>
 <body>
@@ -1451,6 +1675,10 @@
 
       <div class="sidebar-footer">
         <div id="session-msg-count" style="font-size:0.75rem;color:var(--text-muted);font-weight:500;">0 tin nhắn</div>
+                <button id="btn-open-cloud-sync" class="btn" style="width:100%;padding:9px;background:linear-gradient(135deg, #0284c7, #2563eb);color:white;border:none;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:var(--radius-md);box-shadow:0 2px 6px rgba(2,132,199,0.35);">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+          ☁️ Đồng bộ Cloud (Gist)
+        </button>
         <button id="btn-open-settings" class="btn primary" style="width:100%;padding:10px;">
           <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           Hệ thống & Cấu hình
@@ -1541,8 +1769,13 @@
             <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
             Đính kèm (<span id="file-count">0</span>)
           </label>
+                    <input type="file" id="camera-file-input" accept="image/*" capture="environment" style="display:none;">
           <input type="file" id="file-upload" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;">
 
+                    <button id="btn-toggle-deep-research" class="tool-chip" title="Bật/Tắt chế độ Nghiên cứu Sâu đa tầng (Deep Research)">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            🔬 Deep Research: <strong id="dr-chip-state" style="color:var(--text-muted);">TẮT</strong>
+          </button>
           <button id="btn-enhance-prompt" class="tool-chip magic" title="Tối ưu câu lệnh Prompt bằng AI">
             <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
             Enhance
@@ -1908,7 +2141,75 @@
       </div>
     </div>
 
+    
+    <!-- MODAL CLOUD SYNC (GITHUB GIST) -->
+    <div id="cloud-sync-modal" class="modal-box" style="max-width:580px;">
+      <div class="modal-header">
+        <h3 style="display:flex;align-items:center;gap:8px;">☁️ Đồng bộ Cloud qua GitHub Gist</h3>
+        <button class="close-btn icon-btn">&times;</button>
+      </div>
+      <div class="modal-scroll-body">
+        <div style="font-size:0.83rem;color:var(--text-muted);line-height:1.5;">
+          Đồng bộ toàn bộ lịch sử trò chuyện, cài đặt API Keys và kho Prompt mẫu giữa Máy tính và Điện thoại hoàn toàn miễn phí qua <strong>Secret Gist</strong> cá nhân của bạn.
+        </div>
+
+        <div class="settings-group">
+          <legend>🔑 Thông tin xác thực GitHub</legend>
+          <label class="field-label">GitHub Personal Access Token (PAT):</label>
+          <div style="display:flex;gap:6px;">
+            <input type="password" id="gist-pat-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" class="modern-input" style="flex:1;">
+            <button id="btn-toggle-pat-eye" class="btn" title="Hiện/Ẩn Token">👁️</button>
+          </div>
+          <small style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;display:block;">
+            Token chỉ cần cấp quyền duy nhất: <code>gist</code>. 
+            <a href="https://github.com/settings/tokens/new?scopes=gist&description=JarvisAI_Sync" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:underline;font-weight:600;">Bấm vào đây để tạo nhanh trên GitHub ↗</a>
+          </small>
+
+          <label class="field-label" style="margin-top:12px;">Gist ID (Để trống nếu lần đầu đẩy lên):</label>
+          <div style="display:flex;gap:6px;">
+            <input type="text" id="gist-id-input" placeholder="Tự sinh sau lần sao lưu đầu tiên..." class="modern-input" style="flex:1;">
+            <button id="btn-copy-gist-id" class="btn" title="Sao chép Gist ID">📋 Chép</button>
+          </div>
+        </div>
+
+        <div id="gist-status-card" style="padding:10px 14px;border-radius:var(--radius-md);background:var(--input-bg);border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:0.75rem;color:var(--text-muted);">Trạng thái đồng bộ:</div>
+            <strong id="gist-status-text" style="font-size:0.85rem;color:var(--primary);">Chưa kết nối</strong>
+          </div>
+          <span id="gist-last-time" style="font-size:0.75rem;color:var(--text-muted);">--:--</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button id="btn-gist-push" class="btn primary" style="padding:10px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;">
+            ☁️ Đẩy lên Cloud (Backup)
+          </button>
+          <button id="btn-gist-pull" class="btn" style="padding:10px;font-weight:600;border:1px solid var(--primary);color:var(--primary);display:flex;align-items:center;justify-content:center;gap:6px;">
+            📥 Tải về từ Cloud (Restore)
+          </button>
+        </div>
+
+        <details style="font-size:0.82rem;color:var(--text-muted);margin-top:6px;cursor:pointer;">
+          <summary style="font-weight:600;color:var(--primary);">📖 Hướng dẫn chi tiết 3 bước đồng bộ</summary>
+          <ol style="margin-left:18px;margin-top:8px;line-height:1.6;">
+            <li><strong>Bước 1 (Lấy Token):</strong> Bấm vào link tạo token ở trên, đặt tên bất kỳ, tích chọn ô <code>gist</code>, kéo xuống cuối bấm <strong>Generate token</strong> rồi sao chép dán vào ô PAT bên trên.</li>
+            <li><strong>Bước 2 (Máy đang có dữ liệu - Đẩy lên):</strong> Bấm <strong>"☁️ Đẩy lên Cloud (Backup)"</strong>. Hệ thống sẽ tự tạo 1 Secret Gist riêng tư, điền Gist ID và báo thành công. Bấm nút <strong>📋 Chép</strong> để sao chép Gist ID.</li>
+            <li><strong>Bước 3 (Máy còn lại - Tải về):</strong> Mở app trên điện thoại/máy tính khác, dán cùng Token và Gist ID đó vào, bấm <strong>"📥 Tải về từ Cloud (Restore)"</strong>. Toàn bộ lịch sử trò chuyện và thiết lập sẽ xuất hiện ngay!</li>
+          </ol>
+        </details>
+      </div>
+    </div>
+
     <div id="modal-overlay" class="modal-overlay-bg"></div>
+  </div>
+
+  
+  <!-- FLOATING SELECTION TOOLBAR -->
+  <div id="selection-toolbar" class="selection-toolbar" style="display:none;">
+    <button class="sel-btn" id="sel-btn-explain">🔍 Giải thích</button>
+    <button class="sel-btn" id="sel-btn-translate">🌐 Dịch</button>
+    <button class="sel-btn" id="sel-btn-summarize">📝 Tóm tắt</button>
+    <button class="sel-btn" id="sel-btn-copy">📋 Copy</button>
   </div>
 
   <div id="toast" class="toast"></div>
@@ -2768,6 +3069,8 @@
     const cmdList = $('cmd-palette-list');
 
     const COMMANDS = [
+      { id: 'cloud', title: 'Đồng bộ Cloud đa thiết bị (GitHub Gist)', shortcut: '/cloud', icon: '☁️', run: () => $('btn-open-cloud-sync').click() },
+      { id: 'deep', title: 'Bật/Tắt Chế độ Nghiên cứu Sâu (Deep Research)', shortcut: '/deep', icon: '🔬', run: () => $('btn-toggle-deep-research').click() },
       { id: 'new', title: 'Tạo phiên hội thoại mới', shortcut: '/new', icon: '➕', run: () => newSess() },
       { id: 'compare', title: 'So sánh Hai Mô hình (A/B Compare)', shortcut: '/compare', icon: '⚖️', run: () => openAbCompare() },
       { id: 'live', title: 'Bắt đầu gọi Live AI Voice', shortcut: '/live', icon: '📞', run: () => startLiveVoiceCall() },
@@ -3143,7 +3446,13 @@
         ? `\n\n[BỐI CẢNH DÀI HẠN ĐÃ TÓM TẮT TỪ CÁC TIN CŨ]:\n${cs.summaryMemory}\n` 
         : '';
 
-      return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}\n\n[MỐC THỜI GIAN THỰC TẾ]: Hiện tại chính xác là ${timeStr} (${dateStr}, Múi giờ Việt Nam GMT+7).\nQUY TẮC BẮT BUỘC: Khi người dùng hỏi bây giờ là mấy giờ, thời gian hiện tại hoặc ngày tháng, bạn PHẢI trả lời chính xác theo mốc giờ ${timeStr} và ngày ${dateStr} này.`;
+      const pinnedMsgs = chatHistory.filter(x => x.pinned);
+      const pinnedSnippet = pinnedMsgs.length 
+        ? `\n\n[CÁC CHỈ THỊ VÀ DỮ LIỆU CỐT LÕI ĐÃ ĐƯỢC NGƯỜI DÙNG GHIM - BẮT BUỘC LUÔN GHI NHỚ VÀ TUÂN THỦ]:\n` +
+          pinnedMsgs.map((m, idx) => `--- [Mục ghim #${idx + 1} (${m.role === 'user' ? 'Người dùng' : 'Jarvis AI'})]:\n${m.text}`).join('\n\n') + '\n'
+        : '';
+
+      return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}\n\n[MỐC THỜI GIAN THỰC TẾ]: Hiện tại chính xác là ${timeStr} (${dateStr}, Múi giờ Việt Nam GMT+7).\nQUY TẮC BẮT BUỘC: Khi người dùng hỏi bây giờ là mấy giờ, thời gian hiện tại hoặc ngày tháng, bạn PHẢI trả lời chính xác theo mốc giờ ${timeStr} và ngày ${dateStr} này.`;
     };
 
     window.exportCleanArticle = () => {
@@ -3170,10 +3479,52 @@
       return t;
     }
 
+    async function compressImageIfNeeded(f) {
+      if (!f.type.startsWith('image/') || f.type === 'image/gif' || f.type === 'image/svg+xml') return f;
+      return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(f);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const MAX_DIM = 1600;
+          let { width, height } = img;
+          if (width <= MAX_DIM && height <= MAX_DIM && f.size < 800 * 1024) return resolve(f);
+          if (width > height) {
+            if (width > MAX_DIM) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            }
+          } else {
+            if (height > MAX_DIM) {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(blob => {
+            if (blob && blob.size < f.size) {
+              resolve(new File([blob], f.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }));
+            } else {
+              resolve(f);
+            }
+          }, 'image/jpeg', 0.82);
+        };
+        img.onerror = () => resolve(f);
+        img.src = url;
+      });
+    }
+
     async function processUploadFiles(fs) {
       DOM.fileCount.innerText = "⏳";
-      for (const f of fs) {
-        if (f.type.startsWith('image/') || f.type === 'video/mp4') {
+      for (let f of fs) {
+        if (f.type.startsWith('image/')) {
+          f = await compressImageIfNeeded(f);
+          if (filesData.length < 20) filesData.push(f);
+        } else if (f.type === 'video/mp4') {
           if (filesData.length < 20) filesData.push(f);
         } else if (f.type === 'application/pdf') {
           txtContent += `\n[PDF: ${f.name}]:\n${(await readPDF(f)).substring(0, 50000)}\n`;
@@ -3257,15 +3608,48 @@
     document.querySelectorAll('.close-btn').forEach(b => b.onclick = closeModals);
     oLay.onclick = closeModals;
 
+    // CLIPBOARD PASTE (SCREENSHOTS & IMAGES)
+    window.addEventListener('paste', async e => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imgs = [];
+      for (const it of items) {
+        if (it.type.startsWith('image/')) {
+          const fl = it.getAsFile();
+          if (fl) imgs.push(fl);
+        }
+      }
+      if (imgs.length) {
+        await processUploadFiles(imgs);
+        showToast(`Đã dán ${imgs.length} ảnh từ Clipboard!`, 'info');
+      }
+    });
+
+    // CAMERA SNAP: TOUCH OPENS NATIVE CAMERA, PC OPENS MODAL
     $('btn-camera-snap').onclick = async () => {
-      $('camera-modal').style.display = 'flex';
-      oLay.style.display = 'block';
-      try {
-        $('camera-preview').srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      } catch (e) {
-        showToast(e.message, 'danger');
+      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      if (isTouch && $('camera-file-input')) {
+        $('camera-file-input').click();
+      } else {
+        $('camera-modal').style.display = 'flex';
+        oLay.style.display = 'block';
+        try {
+          $('camera-preview').srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        } catch (e) {
+          showToast(e.message, 'danger');
+        }
       }
     };
+
+    if ($('camera-file-input')) {
+      $('camera-file-input').onchange = async e => {
+        if (e.target.files.length) {
+          await processUploadFiles(Array.from(e.target.files));
+          e.target.value = '';
+          showToast("Đã chụp và đính kèm ảnh!");
+        }
+      };
+    }
 
     $('btn-take-photo').onclick = () => {
       const v = $('camera-preview');
@@ -3703,10 +4087,84 @@
       });
     }
 
+    let currentSpeakingBtn = null;
+    let currentSpeechUtterance = null;
+
+    window.toggleSpeakMsg = (btn, i) => {
+      if (!('speechSynthesis' in window)) {
+        return showToast("Trình duyệt không hỗ trợ đọc giọng nói!", "warning");
+      }
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        if (currentSpeakingBtn) {
+          currentSpeakingBtn.innerHTML = "🔊 Nghe";
+          currentSpeakingBtn.classList.remove('speaking-active');
+        }
+        if (currentSpeakingBtn === btn) {
+          currentSpeakingBtn = null;
+          return;
+        }
+      }
+
+      const raw = chatHistory[i]?.text || "";
+      const clean = raw
+        .replace(/\`\`\`[\s\S]*?\`\`\`/g, ' [Đoạn mã] ')
+        .replace(/\`.*?\`/g, '')
+        .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+        .replace(/[#*_~>]/g, '')
+        .replace(/https?:\/\/\S+/g, '')
+        .trim();
+
+      if (!clean) return showToast("Không có nội dung văn bản để đọc!", "warning");
+
+      const utter = new SpeechSynthesisUtterance(clean);
+      const isVietnamese = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(clean);
+      const voices = window.speechSynthesis.getVoices();
+
+      if (isVietnamese) {
+        utter.lang = 'vi-VN';
+        const viVoice = voices.find(v => v.lang.includes('vi') || v.name.toLowerCase().includes('vietnam') || v.name.toLowerCase().includes('vietnamese'));
+        if (viVoice) utter.voice = viVoice;
+      } else {
+        utter.lang = 'en-US';
+        const enVoice = voices.find(v => v.lang.startsWith('en'));
+        if (enVoice) utter.voice = enVoice;
+      }
+
+      utter.rate = 1.0;
+      utter.pitch = 1.0;
+
+      btn.innerHTML = "⏹️ Dừng";
+      btn.classList.add('speaking-active');
+      currentSpeakingBtn = btn;
+      currentSpeechUtterance = utter;
+
+      utter.onend = utter.onerror = () => {
+        btn.innerHTML = "🔊 Nghe";
+        btn.classList.remove('speaking-active');
+        currentSpeakingBtn = null;
+        currentSpeechUtterance = null;
+      };
+
+      window.speechSynthesis.speak(utter);
+    };
+
+    window.togglePinMsg = async i => {
+      if (!chatHistory[i]) return;
+      chatHistory[i].pinned = !chatHistory[i].pinned;
+      const s = sessions.find(x => x.id === activeId);
+      if (s) { s.his = chatHistory; await saveToDB(s); }
+      await reRenderHistory();
+      showToast(chatHistory[i].pinned ? "Đã ghim tin nhắn! AI sẽ luôn ghi nhớ nội dung này." : "Đã bỏ ghim tin nhắn.", "info");
+    };
+
     async function appendMsg(sd, t, i, iHL = false) {
       t = t || "";
       const c = document.createElement('div');
       c.className = 'message-container';
+      const isPinned = !!chatHistory[i]?.pinned;
+      if (isPinned) c.classList.add('pinned-msg');
+
       const m = document.createElement('div');
       m.className = sd === 'user' ? 'user-message' : 'bot-message';
       m.setAttribute('data-raw', t);
@@ -3714,11 +4172,13 @@
       const ixId = chatHistory[i]?.interactionId;
       const kNum = chatHistory[i]?.pinnedKey;
       const ixBadge = (sd === 'model' && ixId) ? `<span class="interaction-id-badge" title="Interaction ID: ${ixId}">⚡ ID: ${ixId.slice(0, 8)}...${kNum ? ` [🔒 Key ${kNum}]` : ''}</span>` : '';
+      const pinnedBadge = isPinned ? `<span class="pinned-tag">📌 ĐÃ GHIM</span>` : '';
 
       m.innerHTML = `
         <div class="message-header">
           <span>${sd === 'user' ? '👤 Bạn' : '✨ Jarvis AI'}</span>
           <span style="font-size:0.72rem;opacity:0.75;margin-left:4px;">🕒 ${chatHistory[i]?.time || getNowTime24h()}</span>
+          ${pinnedBadge}
           ${ixBadge}
         </div>
         <div class="msg-content"></div>
@@ -3728,7 +4188,9 @@
       a.className = 'msg-actions';
       a.innerHTML = `
         <button class="action-btn" onclick="copy(this)" title="Sao chép toàn bộ">📋 Copy</button>
+        <button class="action-btn ${isPinned ? 'pinned-active' : ''}" onclick="togglePinMsg(${i})" title="${isPinned ? 'Bỏ ghim tin nhắn' : 'Ghim tin nhắn này để AI luôn nhớ'}">${isPinned ? '📌 Bỏ ghim' : '📌 Ghim'}</button>
         <button class="action-btn" onclick="forkSessionAt(${i})" title="Rẽ nhánh tạo phiên mới từ điểm này">🌿 Rẽ nhánh</button>
+        ${sd === 'model' ? `<button class="action-btn tts-btn" onclick="toggleSpeakMsg(this, ${i})" title="Đọc to bằng giọng nói">🔊 Nghe</button>` : ''}
         ${sd === 'user' 
           ? `<button class="action-btn" onclick="editMsg(${i})" title="Chỉnh sửa câu hỏi này">✏️ Sửa</button>` 
           : `<button class="action-btn" onclick="retryMsg(${i})" title="Tạo lại câu trả lời này">🔄 Thử lại</button>`}
@@ -3863,11 +4325,16 @@
           aDiv.className = 'msg-actions';
           aDiv.innerHTML = `
             <button class="action-btn" onclick="copy(this)">📋 Copy</button>
+            <button class="action-btn" onclick="togglePinMsg(${currentBotIdx})" title="Ghim tin nhắn">📌 Ghim</button>
             <button class="action-btn" onclick="forkSessionAt(${currentBotIdx})">🌿 Rẽ nhánh</button>
+            <button class="action-btn tts-btn" onclick="toggleSpeakMsg(this, ${currentBotIdx})" title="Đọc to bằng giọng nói">🔊 Nghe</button>
             <button class="action-btn" onclick="retryMsg(${currentBotIdx})">🔄 Thử lại</button>
             <button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${currentBotIdx})">🗑️ Xóa</button>
           `;
           bD.appendChild(aDiv);
+
+          // SMART FOLLOW-UP CHIPS
+          setTimeout(() => generateFollowUpSuggestions(fP, finalResp, bD), 500);
         }
 
         // AUTO-NAME SESSION TRÊN LƯỢT CHAT ĐẦU TIÊN
@@ -3922,8 +4389,81 @@
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
+        // DEEP RESEARCH & THINKING PROTOCOL
+        if (isDeepResearch && msg) {
+          const drCard = document.createElement('div');
+          drCard.className = 'deep-research-card';
+          drCard.innerHTML = `
+            <div class="dr-header">
+              <span class="dr-badge">🔬 DEEP RESEARCH</span>
+              <span class="dr-status-title">Đang nghiên cứu chuyên sâu đa bước...</span>
+              <span class="dr-arrow">▼</span>
+            </div>
+            <div class="dr-content">
+              <div class="dr-step active" id="dr-s1"><span class="dr-dot">⏳</span> 1. Bẻ nhỏ bài toán thành 3 truy vấn ngách...</div>
+              <div class="dr-step" id="dr-s2"><span class="dr-dot">⭕</span> 2. Quét tìm kiếm đa nguồn song song...</div>
+              <div class="dr-step" id="dr-s3"><span class="dr-dot">⭕</span> 3. Kiểm chứng và trích lọc dữ liệu...</div>
+              <div class="dr-step" id="dr-s4"><span class="dr-dot">⭕</span> 4. Viết báo cáo toàn diện kèm trích dẫn nguồn...</div>
+            </div>
+          `;
+          drCard.querySelector('.dr-header').onclick = () => drCard.classList.toggle('collapsed');
+          bD.querySelector('.msg-content').appendChild(drCard);
+
+          try {
+            const sAi = new GoogleGenAI({ apiKey: gKey });
+            const sRes = await sAi.models.generateContent({
+              model: 'gemini-3.5-flash-lite',
+              contents: `Dựa vào câu hỏi sau của người dùng: "${msg}"\nHãy tạo đúng 3 câu truy vấn tìm kiếm ngách ngắn gọn bằng tiếng Việt hoặc tiếng Anh (mỗi câu tối đa 8 từ, mỗi câu trên 1 dòng, không đánh số, không gạch đầu dòng) để quét thông tin từ nhiều khía cạnh:\n`,
+              config: { safetySettings: SAFETY, maxOutputTokens: 120, temperature: 0.5 }
+            });
+
+            const queries = (sRes.text || '').split('\n').map(l => l.replace(/^[-*0-9.)\s]+/, '').trim()).filter(l => l.length > 2).slice(0, 3);
+            const subQueries = queries.length ? queries : [msg];
+
+            const s1 = drCard.querySelector('#dr-s1');
+            if (s1) {
+              s1.className = 'dr-step done';
+              s1.innerHTML = `<span class="dr-dot" style="color:#10b981;">✓</span> 1. Đã tạo ${subQueries.length} truy vấn: ${subQueries.map(q => `<em>"${escapeHtml(q)}"</em>`).join(', ')}`;
+            }
+
+            const s2 = drCard.querySelector('#dr-s2');
+            if (s2) s2.className = 'dr-step active';
+
+            const selEng = DOM.searchEngineSel.value;
+            const tgtEng = selEng === 'auto' ? (ls.getItem('auto_search_default_engine') || 'tavily') : selEng;
+            const searchFn = { tavily: fetchTavilySearch, jina: fetchJinaSearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[tgtEng] || fetchTavilySearch;
+
+            const searchPromises = subQueries.map(q => searchFn(q).catch(() => ''));
+            const searchResults = await Promise.all(searchPromises);
+
+            if (s2) {
+              s2.className = 'dr-step done';
+              s2.innerHTML = `<span class="dr-dot" style="color:#10b981;">✓</span> 2. Đã quét xong ${subQueries.length} truy vấn tìm kiếm đa nguồn.`;
+            }
+
+            const s3 = drCard.querySelector('#dr-s3');
+            if (s3) {
+              s3.className = 'dr-step done';
+              s3.innerHTML = `<span class="dr-dot" style="color:#10b981;">✓</span> 3. Đã thu thập và trích lọc dữ liệu nghiên cứu.`;
+            }
+
+            const s4 = drCard.querySelector('#dr-s4');
+            if (s4) {
+              s4.className = 'dr-step active';
+              s4.innerHTML = `<span class="dr-dot">⚡</span> 4. Đang tổng hợp báo cáo chi tiết kèm trích dẫn nguồn...`;
+            }
+
+            const gatheredText = searchResults.filter(Boolean).join('\n\n---\n\n');
+            if (gatheredText) {
+              fnP = `[DỮ LIỆU NGHIÊN CỨU SÂU ĐÃ THU THẬP TỪ CÁC NGUỒN]:\n${gatheredText}\n\n[CÂU HỎI GỐC CỦA NGƯỜI DÙNG]:\n${msg}\n\n[CHỈ THỊ BÁO CÁO NGHIÊN CỨU SÂU]:\nHãy viết báo cáo phân tích toàn diện, có cấu trúc rõ ràng với các tiêu đề mục.\nHãy gắn chú thích nguồn [1], [2] khi đưa ra số liệu hoặc luận điểm.\nỞ cuối bài, bắt buộc phải có mục "### 📚 Nguồn tham khảo" liệt kê các liên kết hoặc tài liệu đã dùng.`;
+            }
+          } catch (drErr) {
+            console.log("Deep Research Error:", drErr);
+          }
+        }
+
         const quoted = extractQuotedKeywords(fnP);
-        if (quoted && DOM.toggleSearch.checked) {
+        if (quoted && DOM.toggleSearch.checked && !isDeepResearch) {
           const sel = DOM.searchEngineSel.value,
                 tgt = sel === 'auto' ? (ls.getItem('auto_search_default_engine') || 'tavily') : sel;
           try {
@@ -4187,6 +4727,340 @@
 
     // BOOTSTRAP APP
     loadSess();
+  
+    // --- FLOATING SELECTION TOOLBAR CONTROLLER ---
+    const selToolbar = $('selection-toolbar');
+    let currentSelectedText = "";
+
+    function hideSelectionToolbar() {
+      if (selToolbar) selToolbar.style.display = 'none';
+    }
+
+    const checkSelection = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) {
+        hideSelectionToolbar();
+        return;
+      }
+      const txt = sel.toString().trim();
+      if (txt.length < 2) {
+        hideSelectionToolbar();
+        return;
+      }
+
+      const anchor = sel.anchorNode;
+      if (!DOM.chat || !DOM.chat.contains(anchor)) {
+        hideSelectionToolbar();
+        return;
+      }
+
+      currentSelectedText = txt;
+      try {
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) return;
+
+        let top = rect.top - 44;
+        let left = rect.left + (rect.width / 2) - 140;
+
+        if (top < 10) top = rect.bottom + 8;
+        if (left < 10) left = 10;
+        if (left + 290 > window.innerWidth) left = window.innerWidth - 300;
+
+        selToolbar.style.top = `${top}px`;
+        selToolbar.style.left = `${left}px`;
+        selToolbar.style.display = 'flex';
+      } catch (e) {}
+    };
+
+    document.addEventListener('selectionchange', checkSelection);
+    document.addEventListener('mouseup', checkSelection);
+    document.addEventListener('touchend', checkSelection);
+
+    const runQuickActionOnText = instruction => {
+      if (!currentSelectedText) return;
+      hideSelectionToolbar();
+      DOM.input.value = `${instruction}\n> "${currentSelectedText}"`;
+      DOM.input.dispatchEvent(new Event('input'));
+      DOM.sendBtn.click();
+    };
+
+    $('sel-btn-explain').onclick = () => runQuickActionOnText("Hãy giải thích chi tiết, dễ hiểu đoạn văn bản sau:");
+    $('sel-btn-translate').onclick = () => runQuickActionOnText("Hãy dịch đoạn văn bản sau sang tiếng Việt chuẩn xác (hoặc tiếng Anh nếu gốc đã là tiếng Việt):");
+    $('sel-btn-summarize').onclick = () => runQuickActionOnText("Hãy tóm tắt ngắn gọn các ý cốt lõi của đoạn văn bản sau thành các gạch đầu dòng:");
+    $('sel-btn-copy').onclick = () => {
+      copyRawText(currentSelectedText);
+      hideSelectionToolbar();
+      showToast("Đã sao chép đoạn chọn!", "success");
+    };
+
+    // --- SMART FOLLOW-UP QUESTIONS GENERATOR ---
+    async function generateFollowUpSuggestions(userPrompt, botReply, botContainer) {
+      if (!botContainer || !botReply || botReply.length < 30) return;
+      try {
+        const cs = sessions.find(x => x.id === activeId);
+        const k = getSessionApiKey(cs);
+        if (!k) return;
+        const ai = new GoogleGenAI({ apiKey: k });
+        const res = await ai.models.generateContent({
+          model: 'gemini-3.5-flash-lite',
+          contents: `Dựa vào trao đổi gần nhất:\nNgười dùng: "${userPrompt.slice(0, 200)}"\nAI: "${botReply.slice(0, 400)}"\nHãy tạo đúng 3 câu hỏi gợi ý tiếp theo ngắn gọn (mỗi câu tối đa 8 từ, không gạch đầu dòng, không đánh số thứ tự, mỗi câu 1 dòng) mà người dùng có thể muốn bấm để hỏi tiếp:`,
+          config: { safetySettings: SAFETY, maxOutputTokens: 100, temperature: 0.6 }
+        });
+
+        const lines = (res.text || '').split('\n')
+          .map(l => l.replace(/^[-*0-9.)\s]+/, '').trim())
+          .filter(l => l.length >= 3 && l.length <= 45)
+          .slice(0, 3);
+
+        if (lines.length > 0 && botContainer && botContainer.querySelector('.msg-content')) {
+          const fBox = document.createElement('div');
+          fBox.className = 'follow-up-container';
+          fBox.innerHTML = `
+            <span class="follow-up-title">💡 Gợi ý câu hỏi tiếp theo:</span>
+            ${lines.map(q => `<button class="follow-up-chip"><span>👉</span> ${escapeHtml(q)}</button>`).join('')}
+          `;
+          fBox.querySelectorAll('.follow-up-chip').forEach(btn => {
+            btn.onclick = () => {
+              const query = btn.innerText.replace(/^👉\s*/, '').trim();
+              DOM.input.value = query;
+              DOM.input.dispatchEvent(new Event('input'));
+              DOM.sendBtn.click();
+            };
+          });
+          botContainer.querySelector('.msg-content').appendChild(fBox);
+        }
+      } catch (err) {}
+    }
+
+    // --- DEEP RESEARCH & THINKING CONTROLLER ---
+    let isDeepResearch = ls.getItem('jarvis_deep_research') === '1';
+    const drBtn = $('btn-toggle-deep-research');
+    const drState = $('dr-chip-state');
+
+    function updateDrBtnUI() {
+      if (isDeepResearch) {
+        drBtn.classList.add('magic');
+        drBtn.style.borderColor = '#8b5cf6';
+        drState.innerHTML = `<span style="color:#8b5cf6;font-weight:700;">BẬT</span>`;
+      } else {
+        drBtn.classList.remove('magic');
+        drBtn.style.borderColor = 'var(--border)';
+        drState.innerHTML = `<span style="color:var(--text-muted);">TẮT</span>`;
+      }
+    }
+
+    drBtn.onclick = () => {
+      isDeepResearch = !isDeepResearch;
+      ls.setItem('jarvis_deep_research', isDeepResearch ? '1' : '0');
+      updateDrBtnUI();
+      showToast(isDeepResearch ? "Đã bật Chế độ Nghiên cứu Sâu (Deep Research)!" : "Đã tắt Nghiên cứu Sâu.");
+    };
+    updateDrBtnUI();
+
+    // --- GITHUB GIST CLOUD SYNC CONTROLLER ---
+    const cloudSyncModal = $('cloud-sync-modal');
+    const gistPatInput = $('gist-pat-input');
+    const gistIdInput = $('gist-id-input');
+    const gistStatusText = $('gist-status-text');
+    const gistLastTime = $('gist-last-time');
+
+    $('btn-open-cloud-sync').onclick = () => {
+      cloudSyncModal.style.display = 'flex';
+      oLay.style.display = 'block';
+      gistPatInput.value = ls.getItem('jarvis_gist_pat') || '';
+      gistIdInput.value = ls.getItem('jarvis_gist_id') || '';
+      const last = ls.getItem('jarvis_gist_last_sync');
+      if (last) {
+        gistStatusText.innerText = 'Đã kết nối Gist';
+        gistStatusText.style.color = '#10b981';
+        gistLastTime.innerText = `Lần cuối: ${last}`;
+      } else {
+        gistStatusText.innerText = 'Chưa đồng bộ';
+        gistStatusText.style.color = 'var(--text-muted)';
+        gistLastTime.innerText = '--:--';
+      }
+    };
+
+    $('btn-toggle-pat-eye').onclick = () => {
+      gistPatInput.type = gistPatInput.type === 'password' ? 'text' : 'password';
+    };
+
+    $('btn-copy-gist-id').onclick = () => {
+      const id = gistIdInput.value.trim();
+      if (!id) return showToast("Chưa có Gist ID!", "warning");
+      navigator.clipboard.writeText(id);
+      showToast("Đã sao chép Gist ID!");
+    };
+
+    // PUSH TO GIST (BACKUP)
+    $('btn-gist-push').onclick = async () => {
+      const pat = gistPatInput.value.trim();
+      if (!pat) return showToast("Vui lòng nhập GitHub Personal Access Token (PAT)!", "warning");
+      let gistId = gistIdInput.value.trim();
+
+      const btn = $('btn-gist-push');
+      btn.innerHTML = `<span>Đang đẩy lên...</span> ⏳`;
+      btn.disabled = true;
+
+      try {
+        const allSessions = await getAllFromDB();
+        const backupData = {
+          version: 2,
+          app: "Jarvis AI",
+          timestamp: new Date().toISOString(),
+          timeReadable: new Date().toLocaleString('vi-VN'),
+          device: ('ontouchstart' in window) ? 'Mobile' : 'Desktop',
+          sessions: allSessions,
+          activeId,
+          customPrompts: JSON.parse(ls.getItem('jarvis_custom_prompts') || '[]'),
+          folders: JSON.parse(ls.getItem('jarvis_folders') || '["Mặc định"]'),
+          settings: {
+            keys: getGoogleKeysList(),
+            model: DOM.model.value,
+            temperature: DOM.temp.value,
+            searchEngine: DOM.searchEngineSel.value,
+            globalContext: DOM.globContext.value,
+            systemInstruction: DOM.sysInst.value,
+            theme: ls.getItem('jarvis_theme') || 'auto'
+          }
+        };
+
+        const payload = {
+          description: "Jarvis AI - Cloud Sync Personal Backup",
+          public: false,
+          files: {
+            "jarvis_sync_data.json": {
+              content: JSON.stringify(backupData, null, 2)
+            }
+          }
+        };
+
+        const url = gistId ? `https://api.github.com/gists/${gistId}` : `https://api.github.com/gists`;
+        const method = gistId ? 'PATCH' : 'POST';
+
+        const res = await fetch(url, {
+          method,
+          headers: {
+            'Authorization': `Bearer ${pat}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || `Lỗi HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        gistId = data.id;
+        gistIdInput.value = gistId;
+
+        const timeStr = new Date().toLocaleString('vi-VN');
+        ls.setItem('jarvis_gist_pat', pat);
+        ls.setItem('jarvis_gist_id', gistId);
+        ls.setItem('jarvis_gist_last_sync', timeStr);
+
+        gistStatusText.innerText = `Đã sao lưu (${allSessions.length} phiên)`;
+        gistStatusText.style.color = '#10b981';
+        gistLastTime.innerText = `Lần cuối: ${timeStr}`;
+
+        showToast(`Đã đồng bộ lên Cloud thành công! Gist ID: ${gistId}`, "success");
+      } catch (err) {
+        showToast(`Lỗi đẩy lên Cloud: ${err.message}`, "danger");
+      } finally {
+        btn.innerHTML = `☁️ Đẩy lên Cloud (Backup)`;
+        btn.disabled = false;
+      }
+    };
+
+    // PULL FROM GIST (RESTORE)
+    $('btn-gist-pull').onclick = async () => {
+      const pat = gistPatInput.value.trim();
+      const gistId = gistIdInput.value.trim();
+      if (!pat) return showToast("Vui lòng nhập GitHub PAT!", "warning");
+      if (!gistId) return showToast("Vui lòng nhập Gist ID cần tải về!", "warning");
+
+      if (!confirm("Tải về từ Cloud sẽ cập nhật toàn bộ lịch sử trò chuyện và cài đặt trên máy này. Bạn có muốn tiếp tục?")) return;
+
+      const btn = $('btn-gist-pull');
+      btn.innerHTML = `<span>Đang tải về...</span> ⏳`;
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+          headers: {
+            'Authorization': `Bearer ${pat}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || `Lỗi HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        const fileObj = data.files?.["jarvis_sync_data.json"] || Object.values(data.files || {})[0];
+        if (!fileObj || !fileObj.content) throw new Error("Không tìm thấy tệp dữ liệu sao lưu hợp lệ trong Gist này!");
+
+        const parsed = JSON.parse(fileObj.content);
+        if (!parsed.sessions || !Array.isArray(parsed.sessions)) throw new Error("Cấu trúc dữ liệu không hợp lệ!");
+
+        for (const s of parsed.sessions) {
+          await saveToDB(s);
+        }
+
+        sessions = await getAllFromDB();
+        if (parsed.activeId && sessions.some(s => s.id === parsed.activeId)) {
+          activeId = parsed.activeId;
+        } else if (sessions.length > 0) {
+          activeId = sessions[0].id;
+        }
+
+        if (parsed.customPrompts && Array.isArray(parsed.customPrompts)) {
+          ls.setItem('jarvis_custom_prompts', JSON.stringify(parsed.customPrompts));
+        }
+
+        if (parsed.settings) {
+          if (parsed.settings.keys) setGoogleKeysList(parsed.settings.keys);
+          if (parsed.settings.model && DOM.model) DOM.model.value = parsed.settings.model;
+          if (parsed.settings.temperature && DOM.temp) {
+            DOM.temp.value = parsed.settings.temperature;
+            if (DOM.tempVal) DOM.tempVal.innerText = parsed.settings.temperature;
+          }
+          if (parsed.settings.searchEngine && DOM.searchEngineSel) DOM.searchEngineSel.value = parsed.settings.searchEngine;
+          if (parsed.settings.globalContext && DOM.globContext) DOM.globContext.value = parsed.settings.globalContext;
+          if (parsed.settings.systemInstruction && DOM.sysInst) DOM.sysInst.value = parsed.settings.systemInstruction;
+        }
+
+        const timeStr = new Date().toLocaleString('vi-VN');
+        ls.setItem('jarvis_gist_pat', pat);
+        ls.setItem('jarvis_gist_id', gistId);
+        ls.setItem('jarvis_gist_last_sync', timeStr);
+
+        gistStatusText.innerText = `Đã đồng bộ (${sessions.length} phiên)`;
+        gistStatusText.style.color = '#10b981';
+        gistLastTime.innerText = `Lần cuối: ${timeStr}`;
+
+        const curSess = sessions.find(s => s.id === activeId);
+        chatHistory = curSess?.his || [];
+        renderFolders();
+        renderSel();
+        renderTabs();
+        await reRenderHistory();
+
+        showToast(`Đã đồng bộ thành công ${sessions.length} phiên từ Cloud!`, "success");
+      } catch (err) {
+        showToast(`Lỗi tải về từ Cloud: ${err.message}`, "danger");
+      } finally {
+        btn.innerHTML = `📥 Tải về từ Cloud (Restore)`;
+        btn.disabled = false;
+      }
+    };
+
   </script>
 </body>
 </html>
