@@ -1698,7 +1698,7 @@
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:1.1rem;font-weight:700;color:var(--primary);">Jarvis AI</span>
             <span class="pulse-dot" title="Hệ thống trực tuyến"></span>
-            <span style="font-size:0.68rem;background:linear-gradient(135deg,#0284c7,#2563eb);color:white;padding:2px 7px;border-radius:10px;font-weight:700;letter-spacing:0.02em;">v3.0 Cloud</span>
+            <span style="font-size:0.68rem;background:linear-gradient(135deg,#0284c7,#2563eb);color:white;padding:2px 7px;border-radius:10px;font-weight:700;letter-spacing:0.02em;">v3.1 Cloud</span>
           </div>
         </div>
 
@@ -4877,6 +4877,43 @@
       showToast(isDeepResearch ? "Đã bật Chế độ Nghiên cứu Sâu (Deep Research)!" : "Đã tắt Nghiên cứu Sâu.");
     };
     updateDrBtnUI();
+
+    // --- KEY & CONFIG SYNC HELPERS ---
+    function getGoogleKeysList() {
+      const list = [];
+      for (let i = 1; i <= 10; i++) {
+        const val = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
+        list.push(val);
+      }
+      return list;
+    }
+
+    function setGoogleKeysList(keys) {
+      if (!Array.isArray(keys)) return;
+      for (let i = 1; i <= 10; i++) {
+        const val = (keys[i - 1] || "").trim();
+        ls.setItem(`jarvis_api_${i}`, val);
+        ls.setItem(`huanmu_api_${i}`, val);
+        if ($(`api-key-${i}`)) $(`api-key-${i}`).value = val;
+      }
+      initAPIKeys();
+    }
+
+    function getExternalConfigsObj() {
+      const obj = {};
+      cfgMap.forEach(([_, k]) => {
+        obj[k] = ls.getItem(k) || '';
+      });
+      return obj;
+    }
+
+    function setExternalConfigsObj(obj) {
+      if (!obj || typeof obj !== 'object') return;
+      Object.entries(obj).forEach(([k, val]) => {
+        ls.setItem(k, val);
+      });
+      initExternalConfigs();
+    }
 
     // --- GITHUB GIST CLOUD SYNC CONTROLLER ---
     const cloudSyncModal = $('cloud-sync-modal');
