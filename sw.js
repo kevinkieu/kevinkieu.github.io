@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v4 with PNG Icon Cache)
-const CACHE_NAME = 'jarvis-ai-pwa-v10';
+// Jarvis AI Service Worker for PWA (v11 with Gemini TTS Studio & MP3 Export)
+const CACHE_NAME = 'jarvis-ai-pwa-v11';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
