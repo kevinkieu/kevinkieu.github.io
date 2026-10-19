@@ -1,0 +1,3507 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
+  <title>Jarvis AI - Ultimate Intelligence Assistant</title>
+  
+  <!-- CDN LIBRARIES -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.8.0/dist/mermaid.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <!-- GOOGLE GENAI IMPORTMAP -->
+  <script type="importmap">
+  { 
+    "imports": { 
+      "@google/genai": "https://esm.run/@google/genai" 
+    } 
+  }
+  </script>
+
+  <!-- ==========================================
+       KHỐI 1: THEME CSS & DESIGN SYSTEM TOKENS
+       ========================================== -->
+  <style>
+    :root {
+      --bg-main: #f8fafc;
+      --bg-sidebar: #f1f5f9;
+      --bg-card: #ffffff;
+      --bg-glass: rgba(255, 255, 255, 0.85);
+      --border: #e2e8f0;
+      --border-focus: #3b82f6;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --bg-msg-user: #2563eb;
+      --text-msg-user: #ffffff;
+      --bg-msg-bot: #ffffff;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-container: #eff6ff;
+      --primary-glow: rgba(37, 99, 235, 0.2);
+      --accent: #06b6d4;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --danger-bg: #fef2f2;
+      --warning: #f59e0b;
+      --warning-bg: #fffbeb;
+      --success: #10b981;
+      --success-bg: #ecfdf5;
+      --input-bg: #f8fafc;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      --chat-font-size: 15.5px;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --radius-full: 9999px;
+    }
+
+    [data-theme="dark"] {
+      --bg-main: #090d16;
+      --bg-sidebar: #0f172a;
+      --bg-card: #1e293b;
+      --bg-glass: rgba(30, 41, 59, 0.88);
+      --border: #334155;
+      --border-focus: #60a5fa;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --bg-msg-user: #2563eb;
+      --text-msg-user: #ffffff;
+      --bg-msg-bot: #1e293b;
+      --primary: #3b82f6;
+      --primary-hover: #60a5fa;
+      --primary-container: rgba(59, 130, 246, 0.15);
+      --primary-glow: rgba(59, 130, 246, 0.3);
+      --accent: #38bdf8;
+      --danger: #f87171;
+      --danger-hover: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.15);
+      --warning: #fbbf24;
+      --warning-bg: rgba(245, 158, 11, 0.15);
+      --success: #34d399;
+      --success-bg: rgba(16, 185, 129, 0.15);
+      --input-bg: #0f172a;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+    }
+
+    /* GLOBAL RESET & BASE */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      display: flex;
+      width: 100vw;
+      height: 100dvh;
+      background: var(--bg-main);
+      color: var(--text-main);
+      overflow: hidden;
+      padding-bottom: env(safe-area-inset-bottom);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* SCROLLBAR CUSTOMIZATION */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(150, 150, 150, 0.25);
+      border-radius: var(--radius-full);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(150, 150, 150, 0.45);
+    }
+
+    /* SVG ICONS BASE */
+    .icon {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      display: inline-block;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+    .icon-sm { width: 15px; height: 15px; }
+    .icon-lg { width: 22px; height: 22px; }
+
+    /* BUTTONS & CONTROLS */
+    .btn {
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-main);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      user-select: none;
+      transition: var(--transition);
+      min-height: 38px;
+    }
+    .btn:hover {
+      background: var(--bg-sidebar);
+      border-color: var(--border-focus);
+    }
+    .btn:active {
+      transform: scale(0.97);
+    }
+    .btn.primary {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      box-shadow: 0 2px 8px var(--primary-glow);
+    }
+    .btn.primary:hover {
+      background: var(--primary-hover);
+    }
+    .btn.danger {
+      color: var(--danger);
+      background: var(--danger-bg);
+      border-color: transparent;
+    }
+    .btn.danger:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+    .btn.warning {
+      color: var(--warning);
+      background: var(--warning-bg);
+      border-color: transparent;
+    }
+    .btn.success {
+      color: #fff;
+      background: var(--success);
+      border: none;
+    }
+    .icon-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+    .icon-btn:hover {
+      background: var(--primary-container);
+      color: var(--primary);
+    }
+    .icon-btn:active {
+      transform: scale(0.92);
+    }
+
+    /* FORM INPUTS */
+    .modern-select, .modern-input, .modern-textarea {
+      width: 100%;
+      background: var(--input-bg);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 8px 12px;
+      outline: none;
+      font-size: 0.85rem;
+      transition: var(--transition);
+    }
+    .modern-select:focus, .modern-input:focus, .modern-textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+    .field-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 5px;
+    }
+  </style>
+
+  <!-- ==========================================
+       KHỐI 2: COMPONENT CSS (LAYOUT, CHAT, LIVE)
+       ========================================== -->
+  <style>
+    /* APP LAYOUT */
+    .app-container {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 300px;
+      min-width: 300px;
+      background: var(--bg-sidebar);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      z-index: 1000;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .sidebar-header {
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .brand-logo-badge {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #2563eb, #06b6d4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      box-shadow: 0 4px 12px var(--primary-glow);
+    }
+    .brand-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+    .sidebar-scroll-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .sidebar-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      padding-left: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sidebar-footer {
+      padding: 14px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--bg-card);
+    }
+    .side-btn-row {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+    }
+    .side-btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      width: 100%;
+    }
+
+    /* MAIN CONTENT */
+    .main-content {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-main);
+      position: relative;
+      overflow: hidden;
+    }
+    .main-header {
+      height: 58px;
+      min-height: 58px;
+      padding: 0 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+    .header-left, .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* MULTI TABS */
+    #tabs-container {
+      display: flex;
+      overflow-x: auto;
+      background: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border);
+      min-height: 40px;
+      scrollbar-width: none;
+    }
+    #tabs-container::-webkit-scrollbar {
+      display: none;
+    }
+    .tab-item {
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-right: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      transition: var(--transition);
+    }
+    .tab-item:hover {
+      background: var(--bg-main);
+      color: var(--text-main);
+    }
+    .tab-item.active {
+      background: var(--bg-main);
+      color: var(--primary);
+      font-weight: 600;
+      border-bottom: 2px solid var(--primary);
+    }
+    .tab-close {
+      cursor: pointer;
+      font-size: 1rem;
+      opacity: 0.5;
+      padding: 2px;
+      border-radius: var(--radius-sm);
+      transition: var(--transition);
+    }
+    .tab-close:hover {
+      opacity: 1;
+      color: var(--danger);
+      background: var(--danger-bg);
+    }
+
+    /* CHAT CONTAINER */
+    #chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      max-width: 860px;
+      width: 100%;
+      margin: 0 auto;
+      scroll-behavior: smooth;
+    }
+    .message-container {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      width: 100%;
+      animation: fadeIn 0.25s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* USER & BOT MESSAGES */
+    .user-message {
+      background: var(--bg-msg-user);
+      color: var(--text-msg-user);
+      padding: 13px 18px;
+      border-radius: 20px 20px 4px 20px;
+      max-width: 86%;
+      margin-left: auto;
+      box-shadow: var(--shadow-sm);
+      line-height: 1.55;
+      font-size: var(--chat-font-size, 15.5px);
+      word-break: break-word;
+    }
+    .bot-message {
+      background: var(--bg-msg-bot);
+      border: 1px solid var(--border);
+      padding: 16px 20px;
+      border-radius: 4px 20px 20px 20px;
+      max-width: 100%;
+      line-height: 1.65;
+      font-size: var(--chat-font-size, 15.5px);
+      box-shadow: var(--shadow-sm);
+      word-break: break-word;
+    }
+    .message-header {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .user-message .message-header {
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: 4px;
+    }
+
+    /* MESSAGE ACTIONS TOOLBAR */
+    .msg-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+      transition: var(--transition);
+    }
+    /* Hover effect for desktop, always visible on touch */
+    @media (hover: hover) and (pointer: fine) {
+      .message-container:not(:hover) .msg-actions {
+        opacity: 0;
+        pointer-events: none;
+      }
+    }
+    .action-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 4px 9px;
+      font-size: 0.75rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: var(--transition);
+    }
+    .action-btn:hover {
+      background: var(--primary-container);
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    /* MARKDOWN STYLING */
+    .bot-message h1, .bot-message h2, .bot-message h3 {
+      margin: 14px 0 8px 0;
+      color: var(--text-main);
+    }
+    .bot-message p { margin-bottom: 10px; }
+    .bot-message ul, .bot-message ol {
+      margin: 8px 0 12px 22px;
+    }
+    .bot-message li { margin-bottom: 4px; }
+    .bot-message table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 0.88em;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .bot-message table th {
+      background: var(--bg-sidebar);
+      font-weight: 600;
+      text-align: left;
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+    }
+    .bot-message table td {
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+    }
+    .bot-message blockquote {
+      border-left: 3px solid var(--primary);
+      background: var(--primary-container);
+      padding: 8px 14px;
+      margin: 10px 0;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-style: italic;
+    }
+    .bot-message code:not([class*="language-"]) {
+      background: rgba(150, 150, 150, 0.15);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    /* CODE BLOCKS WITH HEADER & COPY BUTTON */
+    .code-block-wrapper {
+      position: relative;
+      margin: 14px 0;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #282c34;
+    }
+    .code-block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1e2227;
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      color: #abb2bf;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+    .code-copy-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #d1d5db;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.72rem;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: var(--transition);
+    }
+    .code-copy-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+      color: #fff;
+    }
+    .bot-message pre {
+      margin: 0 !important;
+      padding: 12px !important;
+      overflow-x: auto;
+      font-size: 0.88em;
+      background: transparent !important;
+    }
+
+    /* THINKING TAG */
+    think {
+      display: block;
+      background: var(--bg-sidebar);
+      border-left: 3px dashed var(--accent);
+      padding: 10px 14px;
+      margin: 10px 0;
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      font-style: italic;
+      color: var(--text-muted);
+      font-size: 0.88em;
+    }
+
+    /* STREAMING PULSE */
+    .streaming-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--primary);
+      font-size: 0.78rem;
+      font-style: normal;
+    }
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse {
+      from { transform: scale(0.7); opacity: 0.4; }
+      to { transform: scale(1.3); opacity: 1; }
+    }
+
+    /* BOTTOM INPUT PANEL */
+    .bottom-input-panel {
+      flex-shrink: 0;
+      max-width: 860px;
+      width: calc(100% - 24px);
+      margin: 0 auto 12px auto;
+      background: var(--bg-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: var(--radius-lg);
+      padding: 8px 14px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      z-index: 99;
+      transition: var(--transition);
+    }
+    .input-tools-scroll {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+      scrollbar-width: none;
+    }
+    .tool-chip {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 5px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.78rem;
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: var(--transition);
+    }
+    .tool-chip:hover {
+      background: var(--primary-container);
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+    .tool-chip.magic {
+      color: var(--primary);
+      font-weight: 600;
+      background: var(--primary-container);
+      border-color: var(--primary);
+    }
+    .input-container-box {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+    }
+    #user-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 0.98rem;
+      outline: none;
+      resize: none;
+      max-height: 160px;
+      min-height: 38px;
+      line-height: 1.5;
+      padding: 6px 0;
+    }
+    #send-button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: var(--radius-full);
+      font-weight: 600;
+      cursor: pointer;
+      height: 38px;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition);
+      box-shadow: 0 2px 8px var(--primary-glow);
+    }
+    #send-button:hover {
+      background: var(--primary-hover);
+    }
+
+    /* PREVIEWS & TOKENS */
+    #image-preview-container {
+      display: none;
+      max-width: 860px;
+      width: calc(100% - 24px);
+      margin: 4px auto;
+      padding: 10px 14px;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-card);
+      box-shadow: var(--shadow-sm);
+    }
+    #image-preview-grid {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+    }
+    .token-counter-bar {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-align: right;
+      max-width: 860px;
+      width: 100%;
+      margin: 2px auto;
+      padding: 0 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 14px;
+    }
+    #snippets-container {
+      display: none;
+      max-width: 860px;
+      width: 100%;
+      margin: 6px auto;
+      padding: 0 12px;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .snippet-chip {
+      background: var(--primary-container);
+      color: var(--primary);
+      padding: 5px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .snippet-chip:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    /* MODALS */
+    .modal-overlay-bg {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 2000;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    .modal-box {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 92%;
+      max-width: 580px;
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      z-index: 2005;
+      flex-direction: column;
+      max-height: 85vh;
+      animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes modalPop {
+      from { transform: translate(-50%, -46%) scale(0.96); opacity: 0; }
+      to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .modal-scroll-body {
+      padding: 18px 20px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .settings-group {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      background: var(--bg-main);
+    }
+    .settings-group legend {
+      font-weight: 700;
+      padding: 0 8px;
+      color: var(--primary);
+      font-size: 0.85rem;
+    }
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 0.8rem;
+    }
+    .slider-row input[type="range"] {
+      width: 100%;
+      accent-color: var(--primary);
+    }
+    .api-keys-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    .interaction-id-badge {
+      font-size: 0.7rem;
+      color: var(--primary);
+      background: var(--primary-container);
+      border: 1px solid var(--primary);
+      padding: 2px 7px;
+      border-radius: var(--radius-full);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      user-select: none;
+    }
+
+    /* DRAG & DROP OVERLAY (DESKTOP) */
+    #drop-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100dvh;
+      background: rgba(37, 99, 235, 0.15);
+      border: 3px dashed var(--primary);
+      z-index: 99999;
+      pointer-events: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      color: var(--primary);
+      font-size: 1.2rem;
+      font-weight: 700;
+      backdrop-filter: blur(4px);
+    }
+
+    /* LIVE VOICE CALL FULLSCREEN */
+    #live-call-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100dvh;
+      background: radial-gradient(circle at center, #0f172a 0%, #030712 100%);
+      z-index: 9999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 18px;
+      color: #fff;
+    }
+    .live-orb-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 22px;
+      width: 100%;
+      max-width: 500px;
+    }
+    .live-orb {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #38bdf8 15%, #6366f1 65%, #ec4899 100%);
+      box-shadow: 0 0 35px rgba(99, 102, 241, 0.5);
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+    .live-orb.speaking {
+      transform: scale(1.24);
+      box-shadow: 0 0 55px rgba(236, 72, 153, 0.85);
+    }
+    .live-orb.listening {
+      box-shadow: 0 0 40px rgba(56, 189, 248, 0.7);
+    }
+    .live-transcript-box {
+      width: 100%;
+      max-height: 180px;
+      overflow-y: auto;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      font-size: 0.92rem;
+      line-height: 1.5;
+      text-align: center;
+      color: #e2e8f0;
+      backdrop-filter: blur(8px);
+    }
+    .live-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .live-control-btn {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      transition: var(--transition);
+    }
+    .live-control-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+    .live-control-btn.active {
+      background: #10b981;
+    }
+    .live-control-btn.end-call {
+      background: #ef4444;
+      width: 60px;
+      height: 60px;
+      font-size: 1.45rem;
+    }
+    #live-camera-video {
+      width: 110px;
+      height: 80px;
+      border-radius: var(--radius-md);
+      object-fit: cover;
+      display: none;
+      border: 2px solid #38bdf8;
+    }
+
+    /* TOAST & FLOATING BUTTONS */
+    .toast {
+      position: fixed;
+      bottom: 110px;
+      right: 20px;
+      background: #1e293b;
+      color: white;
+      padding: 10px 18px;
+      border-radius: var(--radius-full);
+      box-shadow: var(--shadow-lg);
+      z-index: 3000;
+      opacity: 0;
+      pointer-events: none;
+      transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toast.success { background: #059669; }
+    .toast.danger { background: #dc2626; }
+    .toast.info { background: #2563eb; }
+    .toast.warning { background: #d97706; }
+    .toast.show { opacity: 1; pointer-events: auto; transform: translateY(-5px); }
+
+    #scroll-to-top {
+      position: fixed;
+      bottom: 160px;
+      right: 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-md);
+      opacity: 0;
+      pointer-events: none;
+      transition: var(--transition);
+      z-index: 998;
+    }
+    #scroll-to-top.visible { opacity: 0.85; pointer-events: auto; }
+    #scroll-to-top:hover { opacity: 1; background: var(--primary); color: #fff; }
+
+    /* SEARCH HEADER BAR */
+    .header-search-bar {
+      display: flex;
+      align-items: center;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      padding: 2px 8px;
+      transition: var(--transition);
+    }
+    .header-search-bar input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      width: 0;
+      opacity: 0;
+      transition: var(--transition);
+    }
+    .header-search-bar.active input {
+      width: 170px;
+      opacity: 1;
+      padding: 0 6px;
+    }
+
+    /* RESPONSIVE FOR MOBILE PHONES */
+    .sidebar-overlay, .mobile-only { display: none; }
+    .sidebar-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 990;
+      backdrop-filter: blur(2px);
+    }
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        transform: translateX(-100%);
+      }
+      .sidebar.active {
+        transform: translateX(0);
+      }
+      .sidebar-overlay.active, .mobile-only {
+        display: block;
+      }
+      .user-message {
+        max-width: 90%;
+      }
+      .bottom-input-panel {
+        width: calc(100% - 16px);
+        margin-bottom: 8px;
+        padding: 6px 12px;
+      }
+      .header-search-bar.active input {
+        width: 110px;
+      }
+      #chat-container {
+        padding: 12px 10px;
+        gap: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- DRAG & DROP OVERLAY (DESKTOP) -->
+  <div id="drop-overlay">
+    <svg class="icon icon-lg" style="width:48px;height:48px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <span>Thả tệp vào đây để đính kèm</span>
+  </div>
+
+  <div class="app-container">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-box">
+          <div class="brand-logo-badge">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <span class="brand-name">Jarvis AI</span>
+        </div>
+        <button id="close-sidebar-btn" class="icon-btn mobile-only" title="Đóng Menu">
+          <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="sidebar-scroll-content">
+        <!-- FOLDERS -->
+        <div class="sidebar-section">
+          <div class="section-title">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Thư Mục
+          </div>
+          <select id="folder-select" class="modern-select"></select>
+          <div class="side-btn-row">
+            <button id="btn-new-folder" class="btn" style="flex:1;">📁 Thêm TM</button>
+            <button id="btn-delete-folder" class="btn danger" style="flex:1;">🗑️ Xóa TM</button>
+          </div>
+        </div>
+
+        <!-- SESSIONS & PARAMETERS -->
+        <div class="sidebar-section" style="flex:1;">
+          <div class="section-title">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Phiên Hội Thoại
+          </div>
+          <select id="session-select" class="modern-select"></select>
+
+          <!-- CONTEXT & SEARCH TOGGLES -->
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;padding:10px;background:var(--bg-card);border-radius:var(--radius-md);border:1px solid var(--border);">
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="toggle-global-context" checked> 🌍 Ngữ cảnh Toàn cục
+            </label>
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:var(--primary);display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="toggle-search"> 🌐 Tìm kiếm Web
+            </label>
+            <div id="search-engine-box" style="margin-left:22px;display:none;">
+              <select id="search-engine-select" class="modern-select" style="font-size:0.75rem;padding:4px 8px;">
+                <option value="tavily" selected>⚡ Tavily AI Search (Tối ưu nhất)</option>
+                <option value="auto">🔄 Tự động (Smart Auto-Search)</option>
+                <option value="jina">🦎 Jina AI Search</option>
+                <option value="serper">🔎 Serper.dev Google</option>
+                <option value="brave">🦁 Brave Search</option>
+              </select>
+            </div>
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:var(--success);display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="toggle-memory" checked> 🧠 Bộ nhớ ngữ cảnh
+            </label>
+          </div>
+
+          <!-- GEMINI MODEL SELECT -->
+          <div style="margin-top:6px;">
+            <span class="field-label">🤖 Mô hình Google Gemini:</span>
+            <select id="model-select" class="modern-select">
+              <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash Lite (Mặc định)</option>
+              <option value="gemini-3.8-flash">Gemini 3.8 Flash (Mới nhất)</option>
+              <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+              <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+            </select>
+          </div>
+
+          <!-- ENGINE & THINKING -->
+          <div style="margin-top:6px;">
+            <span class="field-label">⚡ Động cơ AI (Engine):</span>
+            <select id="engine-select" class="modern-select">
+              <option value="stream" selected>🔄 generateContentStream (Xoay 10 Key & Sửa)</option>
+              <option value="interactions">🌐 Interactions API (Google State & Khóa Key)</option>
+            </select>
+          </div>
+
+          <div style="margin-top:6px;">
+            <span class="field-label">🧠 Think Depth:</span>
+            <select id="thinking-level" class="modern-select">
+              <option value="minimal" selected>Min (Tối thiểu)</option>
+              <option value="low">Low (Thấp)</option>
+              <option value="medium">Med (Chuẩn)</option>
+              <option value="high">High (Sâu)</option>
+            </select>
+          </div>
+
+          <div style="margin-top:6px;">
+            <span class="field-label">🔑 Google API Key:</span>
+            <select id="api-key-select" class="modern-select">
+              <option value="auto">🔄 Tự động xoay tua</option>
+            </select>
+          </div>
+
+          <!-- SESSION ACTIONS (GRID & ROWS) -->
+          <div class="side-btn-grid" style="margin-top:10px;">
+            <button id="btn-new-session" class="btn primary">➕ Thêm</button>
+            <button id="btn-rename-session" class="btn">✏️ Sửa</button>
+            <button id="btn-move-session" class="btn">📂 Chuyển</button>
+            <button id="btn-delete-session" class="btn danger">🗑️ Xóa</button>
+          </div>
+          <div class="side-btn-row" style="margin-top:6px;">
+            <button id="btn-move-up" class="btn" style="flex:1;">⬆️ Lên</button>
+            <button id="btn-move-down" class="btn" style="flex:1;">⬇️ Xuống</button>
+          </div>
+          <button id="btn-bulk-edit" class="btn warning" style="margin-top:6px;width:100%;">🛠️ Quản lý Lịch sử</button>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div id="session-msg-count" style="font-size:0.75rem;color:var(--text-muted);font-weight:500;">0 tin nhắn</div>
+        <button id="btn-open-settings" class="btn primary" style="width:100%;padding:10px;">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Hệ thống & Cấu hình
+        </button>
+      </div>
+    </aside>
+
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <!-- MAIN CHAT VIEW -->
+    <main class="main-content">
+      <header class="main-header">
+        <div class="header-left">
+          <button id="toggle-sidebar-btn" class="icon-btn mobile-only" title="Mở Sidebar">
+            <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.1rem;font-weight:700;color:var(--primary);">Jarvis AI</span>
+            <span class="pulse-dot" title="Hệ thống trực tuyến"></span>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <!-- LIVE CALL OPEN BUTTON -->
+          <button id="btn-live-call-open" class="btn" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;border-radius:var(--radius-full);padding:6px 14px;font-weight:600;box-shadow:0 2px 8px rgba(16,185,129,0.3);">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Gọi Live AI
+          </button>
+
+          <!-- GLOBAL SEARCH INPUT -->
+          <div class="header-search-bar">
+            <input type="text" id="search-chat-input" placeholder="Tìm kiếm phiên...">
+            <button id="btn-global-search" class="icon-btn" style="width:30px;height:30px;" title="Tìm kiếm">
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+          </div>
+
+          <!-- THEME BUTTON -->
+          <button id="btn-theme" class="btn" style="padding:6px 10px;font-size:0.8rem;" title="Chuyển chế độ Sáng / Tối">
+            🌙 Tự động
+          </button>
+        </div>
+      </header>
+
+      <!-- MULTI TABS CONTAINER -->
+      <div id="tabs-container"></div>
+
+      <!-- CHAT MESSAGE LIST -->
+      <div id="chat-container"></div>
+
+      <!-- ATTACHMENT PREVIEW DRAWER -->
+      <div id="image-preview-container">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <strong style="font-size:0.82rem;color:var(--primary);">📎 Tài liệu đính kèm:</strong>
+          <button id="clear-all-images" class="btn danger" style="padding:3px 10px;font-size:0.75rem;">Xóa hết</button>
+        </div>
+        <div id="image-preview-grid"></div>
+        <div id="text-files-list" style="font-size:0.82rem;margin-top:6px;color:var(--primary);"></div>
+      </div>
+
+      <!-- LATENCY & TOKEN COUNTER BAR -->
+      <div class="token-counter-bar">
+        <span>⏱️ Latency: <strong id="latency-val">0</strong>ms</span>
+        <span>~ <strong id="token-count">0</strong> tokens</span>
+      </div>
+
+      <!-- QUICK SNIPPETS CONTAINER -->
+      <div id="snippets-container">
+        <div class="snippet-chip" onclick="applySnippet('Hãy tóm tắt ngắn gọn thành BẢNG đối chiếu và GẠCH ĐẦU DÒNG:')">📝 Tóm tắt bảng</div>
+        <div class="snippet-chip" onclick="applySnippet('Vẽ sơ đồ tư duy bằng code Mermaid trong ```mermaid:')">📊 Sơ đồ Mermaid</div>
+        <div class="snippet-chip" onclick="applySnippet('Giải thích chi tiết từng bước kèm ví dụ minh họa:')">📖 Giải thích chi tiết</div>
+        <div class="snippet-chip" onclick="applySnippet('Viết mã nguồn sạch, tối ưu, chú thích rõ ràng trong markdown:')">💻 Viết Code tối ưu</div>
+      </div>
+
+      <!-- BOTTOM INPUT PANEL -->
+      <div class="bottom-input-panel">
+        <div class="input-tools-scroll">
+          <label class="tool-chip" for="file-upload" style="cursor:pointer;" title="Đính kèm ảnh, video, PDF, txt, code">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            Đính kèm (<span id="file-count">0</span>)
+          </label>
+          <input type="file" id="file-upload" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;">
+
+          <button id="btn-enhance-prompt" class="tool-chip magic" title="Tối ưu câu lệnh Prompt bằng AI">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            Enhance
+          </button>
+          <button id="btn-camera-snap" class="tool-chip" title="Chụp ảnh trực tiếp">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            Chụp
+          </button>
+          <button id="btn-toggle-snippets" class="tool-chip" title="Lệnh gợi ý nhanh">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Lệnh nhanh
+          </button>
+          <button id="btn-file-library" class="tool-chip" title="Thư viện tệp đã lưu">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+            Thư viện
+          </button>
+          <button id="btn-add-url" class="tool-chip" title="Bóc tách nội dung website hoặc video YouTube">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            Đọc Link/YT
+          </button>
+          <button id="btn-paste-clipboard" class="tool-chip" title="Dán ảnh hoặc chữ từ bộ nhớ tạm">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+            Dán
+          </button>
+        </div>
+
+        <div class="input-container-box">
+          <textarea id="user-input" rows="1" placeholder="Nhập tin nhắn (Ctrl+Enter để gửi, dùng &quot;từ khóa&quot; để tìm web)..."></textarea>
+          <button id="send-button">
+            <span>Gửi</span>
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- ==========================================
+         KHỐI 3: CÁC MODAL HỆ THỐNG
+         ========================================== -->
+
+    <!-- MODAL LIVE CALL (REALTIME VOICE & CAM) -->
+    <div id="live-call-modal">
+      <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:#10b981;display:flex;align-items:center;justify-content:center;">
+            <svg class="icon" style="color:#fff;" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          </div>
+          <div>
+            <h3 style="font-size:1.05rem;font-weight:700;">Jarvis Live AI</h3>
+            <span id="live-call-status" style="font-size:0.75rem;color:#94a3b8;">Đang kết nối...</span>
+          </div>
+        </div>
+        <video id="live-camera-video" autoplay playsinline muted></video>
+      </div>
+
+      <div class="live-orb-container">
+        <div id="live-orb" class="live-orb"></div>
+        <div id="live-transcript" class="live-transcript-box">
+          <i>Hãy nói chuyện bình thường vào micro...</i>
+        </div>
+      </div>
+
+      <div class="live-controls">
+        <select id="live-model-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;font-size:0.78rem;">
+          <option value="models/gemini-3.8-live" selected>⚡ Gemini 3.8 Live</option>
+          <option value="models/gemini-3.8-live-extended-thinking">🧠 Gemini 3.8 Extended</option>
+        </select>
+        <select id="live-key-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;font-size:0.78rem;">
+          <option value="auto">🔄 Tự động Key</option>
+        </select>
+        <select id="live-voice-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;font-size:0.78rem;">
+          <option value="Aoede">👩 Aoede</option>
+          <option value="Charon" selected>👨 Charon</option>
+          <option value="Puck">👨 Puck</option>
+          <option value="Kore">👩 Kore</option>
+          <option value="Fenrir">👨 Fenrir</option>
+        </select>
+        <button id="btn-live-mic-toggle" class="live-control-btn active" title="Bật/Tắt Micro">🎙️</button>
+        <button id="btn-live-cam-toggle" class="live-control-btn" title="Bật/Tắt Camera">📹</button>
+        <button id="btn-live-end-call" class="live-control-btn end-call" title="Ngắt cuộc gọi">🛑</button>
+      </div>
+    </div>
+
+    <!-- MODAL SETTINGS -->
+    <div id="settings-modal" class="modal-box">
+      <div class="modal-header">
+        <h3>
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Cài đặt Hệ thống
+        </h3>
+        <button class="close-btn icon-btn" title="Đóng">&times;</button>
+      </div>
+      <div class="modal-scroll-body">
+        <!-- FONT SIZE -->
+        <fieldset class="settings-group">
+          <legend>🔤 Kích thước chữ tin nhắn</legend>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button id="btn-font-dec" class="btn" style="padding:6px 12px;font-weight:700;">➖ A-</button>
+              <span id="font-size-label" style="font-weight:700;font-size:0.95rem;min-width:48px;text-align:center;color:var(--primary);">16px</span>
+              <button id="btn-font-inc" class="btn" style="padding:6px 12px;font-weight:700;">➕ A+</button>
+            </div>
+            <button id="btn-font-reset" class="btn" style="padding:6px 12px;">🔄 Mặc định (16px)</button>
+          </div>
+        </fieldset>
+
+        <!-- LIVE CALL SETTINGS -->
+        <fieldset class="settings-group">
+          <legend>📞 Cấu hình Cuộc gọi Live AI</legend>
+          <div style="font-size:0.75rem;color:var(--text-muted);background:var(--bg-card);padding:10px;border-radius:var(--radius-sm);margin-bottom:10px;border:1px solid var(--border);">
+            💡 <b>Live 3.8 + Tavily:</b> Tự động gọi Tavily Search để tra cứu thông tin Internet ngay trong khi nói chuyện.
+          </div>
+          <div class="slider-row">
+            <label>Sáng tạo thoại (Temp: <strong id="live-temp-val">0.7</strong>):</label>
+            <input type="range" id="live-temperature" min="0" max="2" step="0.1" value="0.7">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="live-toggle-search" checked> 🌐 Tự động tra cứu Tavily & Đọc Link trong cuộc gọi
+            </label>
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="live-toggle-context" checked> 🧠 Kế thừa 10 tin nhắn gần nhất
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- SYSTEM INSTRUCTIONS -->
+        <fieldset class="settings-group">
+          <legend>⚙️ Ngữ cảnh Phiên Chat & Live (System Prompt)</legend>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label class="field-label">System Instruction riêng phiên:</label>
+              <textarea id="system-instruction-input" rows="2" class="modern-textarea" placeholder="Nhập chỉ thị riêng cho phiên hiện tại..."></textarea>
+            </div>
+            <div>
+              <label class="field-label">🌍 Ngữ cảnh Toàn cục (Tự động lưu vĩnh viễn):</label>
+              <textarea id="global-context-input" rows="2" class="modern-textarea" placeholder="Nhập ngữ cảnh dùng chung cho tất cả các phiên..."></textarea>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- GEMINI PARAMETERS -->
+        <fieldset class="settings-group">
+          <legend>🚀 Tham số Google Gemini</legend>
+          <div class="slider-row">
+            <label>Temperature (<strong id="temp-val">0.5</strong>):</label>
+            <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.5">
+          </div>
+          <div class="slider-row" style="margin-top:8px;">
+            <label>TopP (<strong id="topp-val">0.9</strong>):</label>
+            <input type="range" id="top-p" min="0" max="1" step="0.1" value="0.9">
+          </div>
+          <div style="margin-top:8px;">
+            <label style="font-size:.8rem;font-weight:600;">TopK: 
+              <input type="number" id="top-k" min="1" max="100" value="40" class="modern-input" style="width:75px;display:inline-block;margin-left:6px;">
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- EXTERNAL SEARCH ENGINES -->
+        <fieldset class="settings-group">
+          <legend>🌐 Công cụ Tìm kiếm & Đọc Link Web</legend>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label class="field-label">Công cụ mặc định cho Tự Động (Auto-Search):</label>
+              <select id="auto-search-engine-input" class="modern-select">
+                <option value="tavily" selected>⚡ Tavily AI Search (Khuyên dùng cho Live)</option>
+                <option value="jina">🦎 Jina AI Search (Miễn phí)</option>
+                <option value="serper">🔎 Serper.dev Google (2.500 lượt free)</option>
+                <option value="brave">🦁 Brave Search (2.000 lượt free)</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">📖 Công cụ Bóc tách Link Website:</label>
+              <select id="web-extract-engine-input" class="modern-select">
+                <option value="auto" selected>🔄 Tự động (Jina ➔ Tavily nếu dính Cloudflare)</option>
+                <option value="tavily">⚡ Tavily Extract</option>
+                <option value="jina">🦎 Jina Reader</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Tavily API Key (Dùng cho Live Search & Trích xuất):</label>
+              <input type="password" id="tavily-key-input" placeholder="tvly-..." class="modern-input">
+            </div>
+            <div>
+              <label class="field-label">Jina API Key:</label>
+              <input type="password" id="jina-key-input" placeholder="jina_..." class="modern-input">
+            </div>
+            <div>
+              <label class="field-label">Serper API Key:</label>
+              <input type="password" id="serper-key-input" class="modern-input">
+            </div>
+            <div>
+              <label class="field-label">Brave Search API Key:</label>
+              <input type="password" id="brave-key-input" class="modern-input">
+            </div>
+            <div>
+              <label class="field-label">Brave Worker Proxy URL:</label>
+              <input type="text" id="brave-worker-url-input" class="modern-input">
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- DATA EXPORT & BACKUP -->
+        <fieldset class="settings-group">
+          <legend>💾 Dữ liệu & Xuất tệp</legend>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <button class="btn" onclick="exportCleanArticle()">📝 Bài sạch (MD)</button>
+            <button class="btn" onclick="exportChatPDF()">📄 Xuất PDF</button>
+            <button class="btn" onclick="exportChatDoc()">📄 Xuất Word</button>
+            <button class="btn primary" onclick="exportAllSessions()">📥 Sao lưu JSON</button>
+            <button class="btn warning" onclick="document.getElementById('import-all-input').click()">📤 Khôi phục JSON</button>
+            <button class="btn danger" onclick="clearActiveSession()">🗑️ Xóa phiên này</button>
+            <input type="file" id="import-all-input" accept=".json" style="display:none;">
+          </div>
+        </fieldset>
+
+        <!-- 10 GOOGLE API KEYS -->
+        <fieldset class="settings-group">
+          <legend>🔑 10 Google API Keys</legend>
+          <div class="api-keys-grid" id="api-keys-container" style="margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button id="btn-save-keys" class="btn primary">💾 Lưu Cấu Hình</button>
+            <button id="btn-check-keys" class="btn">🔍 Kiểm tra Keys</button>
+            <button id="btn-check-duplicates" class="btn">👯 Kiểm tra Trùng</button>
+            <span id="key-status-msg" style="font-size:.78rem;font-weight:600;"></span>
+          </div>
+        </fieldset>
+      </div>
+    </div>
+
+    <!-- MODAL GLOBAL SEARCH -->
+    <div id="search-modal" class="modal-box">
+      <div class="modal-header">
+        <h3>🔍 Tìm kiếm nâng cao</h3>
+        <button class="close-btn icon-btn">&times;</button>
+      </div>
+      <div style="padding:16px;">
+        <input type="text" id="global-search-input" placeholder="Nhập từ khóa tìm kiếm nội dung phiên..." class="modern-input">
+        <div id="search-results" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-top:12px;"></div>
+      </div>
+    </div>
+
+    <!-- MODAL FILE LIBRARY -->
+    <div id="file-library-modal" class="modal-box">
+      <div class="modal-header">
+        <h3>🗄️ Thư viện Tài liệu</h3>
+        <button class="close-btn icon-btn">&times;</button>
+      </div>
+      <div style="padding:16px;">
+        <label class="btn primary" style="cursor:pointer;display:inline-block;margin-bottom:12px;">
+          ➕ Tải tệp lên thư viện
+          <input type="file" id="library-upload-input" multiple style="display:none;">
+        </label>
+        <div id="library-files-container" style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto;"></div>
+      </div>
+    </div>
+
+    <!-- MODAL CAMERA -->
+    <div id="camera-modal" class="modal-box">
+      <div class="modal-header">
+        <h3>📷 Chụp ảnh từ Camera</h3>
+        <button class="close-btn icon-btn">&times;</button>
+      </div>
+      <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">
+        <video id="camera-preview" autoplay playsinline style="width:100%;max-height:300px;border-radius:var(--radius-md);background:#000;object-fit:cover;"></video>
+        <button id="btn-take-photo" class="btn primary" style="padding:10px;">📸 Bấm để Chụp</button>
+      </div>
+    </div>
+
+    <!-- MODAL BULK EDIT MESSAGES -->
+    <div id="bulk-edit-modal" class="modal-box">
+      <div class="modal-header">
+        <h3>🛠️ Quản lý Lịch sử Tin nhắn</h3>
+        <button class="close-btn icon-btn">&times;</button>
+      </div>
+      <div style="padding:16px;flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="margin-bottom:10px;display:flex;justify-content:space-between;gap:8px;">
+          <button id="btn-select-all-bulk" class="btn">☑️ Chọn tất cả</button>
+          <button id="btn-delete-selected-bulk" class="btn danger">🗑️ Xóa đã chọn</button>
+        </div>
+        <div id="bulk-edit-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;max-height:50vh;padding:4px;"></div>
+      </div>
+    </div>
+
+    <div id="modal-overlay" class="modal-overlay-bg"></div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <button id="scroll-to-top" title="Cuộn lên đầu trang">▲</button>
+
+  <!-- ==========================================
+       KHỐI 4: JAVASCRIPT APP LOGIC (ESM MODULE)
+       ========================================== -->
+  <script type="module">
+    import { GoogleGenAI } from "@google/genai";
+    const $ = id => document.getElementById(id), ls = localStorage;
+    
+    // Init libraries
+    marked.use({ breaks: true });
+    mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
+    let apiKeys = [], globalKeyIndex = 0, liveKeyIndex = 0, liveRetryCount = 0, abortController = null;
+    const SAFETY = [
+      'HARM_CATEGORY_HARASSMENT',
+      'HARM_CATEGORY_HATE_SPEECH',
+      'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+      'HARM_CATEGORY_DANGEROUS_CONTENT',
+      'HARM_CATEGORY_CIVIC_INTEGRITY'
+    ].map(category => ({ category, threshold: 'BLOCK_NONE' }));
+
+    const getNowTime24h = () => {
+      const d = new Date();
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    };
+
+    const formatGoogleApiError = e => {
+      const m = e?.message || "";
+      return (m.includes("429") || m.includes("RESOURCE_EXHAUSTED")) ? "⚠️ Hết Quota (429)." 
+           : (m.includes("503") || m.includes("UNAVAILABLE")) ? "⚠️ Máy chủ quá tải (503)." 
+           : m ? `❌ Lỗi: ${m}` : "❌ Lỗi máy chủ Google.";
+    };
+
+    const extractQuotedKeywords = t => {
+      const m = Array.from((t || '').matchAll(/["“«]([^"”»]+)["”»]/g)).map(x => x[1].trim()).filter(Boolean);
+      return m.length ? m.join(' ') : null;
+    };
+
+    // --- FONT SIZE CONTROLLER ---
+    let currentFontSize = parseInt(ls.getItem('chat_font_size') || '16', 10);
+    const applyFontSize = sz => {
+      currentFontSize = Math.min(Math.max(sz, 12), 26);
+      document.documentElement.style.setProperty('--chat-font-size', currentFontSize + 'px');
+      ls.setItem('chat_font_size', currentFontSize);
+      if ($('font-size-label')) $('font-size-label').innerText = currentFontSize + 'px';
+    };
+    $('btn-font-dec').onclick = () => applyFontSize(currentFontSize - 1);
+    $('btn-font-inc').onclick = () => applyFontSize(currentFontSize + 1);
+    $('btn-font-reset').onclick = () => applyFontSize(16);
+    applyFontSize(currentFontSize);
+
+    // --- STREAM RENDERER WITH REQUEST ANIMATION FRAME ---
+    function createStreamRenderer(targetEl) {
+      let pending = false, latest = "";
+      return {
+        push: text => {
+          latest = text;
+          if (!pending) {
+            pending = true;
+            requestAnimationFrame(() => {
+              targetEl.innerHTML = marked.parse(latest);
+              pending = false;
+            });
+          }
+        },
+        flush: async finalText => {
+          pending = false;
+          await renderMsgContent(targetEl, finalText);
+        }
+      };
+    }
+
+    // --- EXPORT & COPY HELPERS ---
+    window.saveOrShareBlob = (b, fn) => {
+      try {
+        const u = URL.createObjectURL(b), a = document.createElement('a');
+        a.href = u;
+        a.download = fn;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { a.remove(); URL.revokeObjectURL(u); }, 1000);
+        showToast(`📥 Đã tải: ${fn}`);
+      } catch (e) {
+        showToast(`❌ Lỗi: ${e.message}`, 'danger');
+      }
+    };
+
+    window.copyRawText = (t, msg = '📋 Đã copy vào bộ nhớ!') => {
+      if (!t) return showToast('Nội dung trống!', 'warning');
+      const fb = () => {
+        const ta = document.createElement('textarea');
+        ta.value = t;
+        ta.style.cssText = 'position:fixed;left:-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); showToast(msg); } catch { showToast('Lỗi copy', 'danger'); }
+        ta.remove();
+      };
+      (navigator.clipboard && window.isSecureContext) ? navigator.clipboard.writeText(t).then(() => showToast(msg)).catch(fb) : fb();
+    };
+
+    // --- TÌM KIẾM WEB (TAVILY, JINA, SERPER, BRAVE) ---
+    async function fetchTavilySearch(q) {
+      const k = ls.getItem('tavily_api_key') || '';
+      if (!k) throw new Error("Chưa nhập Tavily API Key trong cài đặt!");
+      const r = await fetch("https://api.tavily.com/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ api_key: k, query: q, max_results: 5, include_answer: true })
+      });
+      if (!r.ok) throw new Error(`Tavily HTTP ${r.status}`);
+      const d = await r.json();
+      return [
+        ...(d.answer ? [`💡 **Tóm tắt Tavily**: ${d.answer}`] : []),
+        ...(d.results || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.content}\n  *Nguồn*: ${x.url}`)
+      ].join('\n\n');
+    }
+
+    async function fetchJinaSearch(q) {
+      const k = ls.getItem('jina_api_key') || '',
+            r = await fetch(`https://s.jina.ai/${encodeURIComponent(q)}`, {
+              headers: { Accept: "application/json", ...(k ? { Authorization: `Bearer ${k}` } : {}) }
+            });
+      if (!r.ok) throw new Error(`Jina HTTP ${r.status}`);
+      return ((await r.json()).data || []).slice(0, 5).map(x => `- **${x.title || 'Tin'}**\n  *Nội dung*: ${(x.content || x.description || '').substring(0, 800)}\n  *Nguồn*: ${x.url}`).join('\n\n');
+    }
+
+    async function fetchSerperSearch(q) {
+      const k = ls.getItem('serper_api_key') || '';
+      if (!k) throw new Error("Chưa có Serper Key!");
+      const r = await fetch("https://google.serper.dev/search", {
+        method: "POST",
+        headers: { "X-API-KEY": k, "Content-Type": "application/json" },
+        body: JSON.stringify({ q, gl: "vn", hl: "vi", num: 5 })
+      });
+      if (!r.ok) throw new Error(`Serper HTTP ${r.status}`);
+      const d = await r.json();
+      return [
+        ...(d.answerBox?.snippet ? [`💡 **Google**: ${d.answerBox.snippet}`] : []),
+        ...(d.organic || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.snippet}\n  *Nguồn*: ${x.link}`)
+      ].join('\n\n');
+    }
+
+    async function fetchBraveSearch(q) {
+      const k = ls.getItem('brave_api_key') || '';
+      if (!k) throw new Error("Chưa có Brave Key!");
+      const w = (ls.getItem('brave_worker_url') || '').replace(/\/+$/, ''),
+            ep = `${w || 'https://api.search.brave.com/res/v1/web/search'}?q=${encodeURIComponent(q)}&count=5`;
+      const r = await fetch(ep, { headers: { Accept: "application/json", "X-Subscription-Token": k } });
+      if (!r.ok) throw new Error(`Brave HTTP ${r.status}`);
+      return ((await r.json()).web?.results || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.description}\n  *Nguồn*: ${x.url}`).join('\n\n');
+    }
+
+    async function executeLiveSearch(query) {
+      try {
+        return await fetchTavilySearch(query);
+      } catch (tavErr) {
+        console.warn("Tavily search lỗi, chạy fallback:", tavErr);
+        try {
+          const eng = ls.getItem('auto_search_default_engine') || 'jina';
+          return await ({ jina: fetchJinaSearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[eng] || fetchJinaSearch)(query);
+        } catch (fbErr) {
+          return `Không thể lấy dữ liệu: ${tavErr.message}`;
+        }
+      }
+    }
+
+    async function extractWebPageContent(url) {
+      const mode = ls.getItem('web_extract_engine') || 'auto',
+            jk = ls.getItem('jina_api_key') || '',
+            tk = ls.getItem('tavily_api_key') || '';
+      const isBlocked = t => !t || t.trim().length < 60 || /(just a moment|security verification|verify you are human|cloudflare|ddos protection|challenge-platform|enable javascript|access denied|403 forbidden)/i.test(t);
+
+      const tavily = async () => {
+        if (!tk) throw 0;
+        const r = await fetch("https://api.tavily.com/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ api_key: tk, urls: [url] })
+        });
+        const t = (await r.json()).results?.[0]?.raw_content;
+        if (isBlocked(t)) throw 0;
+        return { source: "Tavily Extract", content: t.substring(0, 45000) };
+      };
+
+      const jina = async () => {
+        const r = await fetch(`https://r.jina.ai/${url}`, {
+          headers: { Accept: "text/plain", ...(jk ? { Authorization: `Bearer ${jk}` } : {}) }
+        });
+        if (!r.ok) throw 0;
+        const t = await r.text();
+        if (isBlocked(t)) throw 0;
+        return { source: "Jina Reader", content: t.substring(0, 45000) };
+      };
+
+      const proxy = async () => {
+        const d = await (await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`)).json();
+        const t = new DOMParser().parseFromString(d.contents, "text/html").body.innerText.replace(/\s+/g, ' ').trim();
+        if (isBlocked(t)) throw 0;
+        return { source: "Web Proxy", content: t.substring(0, 30000) };
+      };
+
+      const assist = async () => {
+        let q = url;
+        try {
+          const p = new URL(url);
+          q = `${p.pathname.split('/').filter(Boolean).pop()?.replace(/[-_.]/g, ' ') || ''} ${p.hostname.replace('www.', '')} mới nhất`.trim();
+        } catch {}
+        if (tk) { const r = await fetchTavilySearch(q); if (r) return { source: "Tavily Search Assist", content: r }; }
+        const r = await fetchJinaSearch(q); if (r) return { source: "Jina Search Assist", content: r };
+        throw new Error("Không thể bóc tách dữ liệu.");
+      };
+
+      const chain = mode === 'tavily' ? [tavily, jina, proxy, assist] : [tavily, jina, proxy, assist];
+      for (const fn of chain) { try { return await fn(); } catch {} }
+      throw new Error("Không thể bóc tách dữ liệu.");
+    }
+
+    // --- GEMINI MULTIMODAL LIVE CALL (WEBSOCKET + TAVILY TOOL CALLING) ---
+    let liveWs = null, liveAudioCtx = null, liveMediaStream = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] };
+    let liveMicSource = null, liveScriptProcessor = null, liveSilentGain = null;
+    let liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
+
+    function getLiveCallSI() {
+      const cs = sessions.find(x => x.id === activeId),
+            sSI = DOM.sysInst?.value.trim() || cs?.sys || '',
+            g = DOM.globContext?.value.trim() || ls.getItem('jarvis_global_context') || ls.getItem('huanmu_global_context') || '';
+      const now = new Date(),
+            days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
+      const hh = String(now.getHours()).padStart(2, '0'),
+            mm = String(now.getMinutes()).padStart(2, '0'),
+            ss = String(now.getSeconds()).padStart(2, '0');
+
+      let si = `[VAI TRÒ & NGỮ CẢNH PHIÊN]:\n${(DOM.toggleGlob?.checked !== false && g) ? `--- TOÀN CỤC: ${g}\n\n` : ''}${sSI ? `--- RIÊNG: ${sSI}` : 'Bạn là Jarvis AI thông minh, thân thiện và nhạy bén.'}\n\n[QUY TẮC ĐÀM THOẠI & TRA CỨU TAVILY]:\n- BẠN ĐƯỢC TRANG BỊ CÔNG CỤ 'search_web' (chạy bằng Tavily AI) VÀ 'read_url'.\n- BẮT BUỘC: Khi người dùng yêu cầu tìm kiếm, tra cứu bất kỳ thông tin nào về tin tức mới, sự kiện, giá cả, thời tiết, kết quả bóng đá, hoặc dữ liệu thực tế, bạn PHẢI GỌI CÔNG CỤ 'search_web' ngay lập tức mà không được từ chối.\n- Sau khi công cụ trả về kết quả, hãy tổng hợp ngắn gọn, súc tích 1-2 câu tự nhiên bằng tiếng Việt như người thật đang đàm thoại.\n[THỜI GIAN CHUẨN]: ${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}, lúc ${hh}:${mm}:${ss} (Giờ Việt Nam GMT+7).`;
+      if ($('live-toggle-context')?.checked && chatHistory.length) {
+        si += `\n\n[LỊCH SỬ 10 TIN TRƯỚC]:\n` + chatHistory.slice(-10).map(m => `${m.role==='model'?'AI':'Bạn'}: ${m.text.replace(/<[^>]+>/g,'').replace(/```[\s\S]*?```/g,'[code]')}`).join('\n');
+      }
+      return si;
+    }
+
+    function getLiveApiKey() {
+      const sel = $('live-key-select')?.value || 'auto';
+      if (sel !== 'auto') {
+        const idx = parseInt(sel),
+              k = (ls.getItem(`jarvis_api_${idx+1}`) || ls.getItem(`huanmu_api_${idx+1}`) || ls.getItem(`javiss_api_${idx+1}`) || '').trim();
+        if (k) return { key: k, index: idx };
+      }
+      return apiKeys.length ? { key: apiKeys[liveKeyIndex % apiKeys.length], index: liveKeyIndex % apiKeys.length } : { key: '', index: -1 };
+    }
+
+    function downsampleTo16kPCM(inputData, inputSampleRate) {
+      const ratio = inputSampleRate / 16000;
+      const length = Math.floor(inputData.length / ratio);
+      const result = new Int16Array(length);
+      for (let i = 0; i < length; i++) {
+        const originalIndex = Math.floor(i * ratio);
+        let s = Math.max(-1, Math.min(1, inputData[originalIndex]));
+        result[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+      return new Uint8Array(result.buffer);
+    }
+
+    function playPcm24k(b64, ctx, st) {
+      const bin = atob(b64), b = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+      const i16 = new Int16Array(b.buffer), f32 = new Float32Array(i16.length);
+      for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
+      const ab = ctx.createBuffer(1, f32.length, 24000);
+      ab.copyToChannel(f32, 0);
+      const src = ctx.createBufferSource();
+      src.buffer = ab;
+      src.connect(ctx.destination);
+      st.nextPlayTime = Math.max(st.nextPlayTime, ctx.currentTime);
+      src.start(st.nextPlayTime);
+      st.nextPlayTime += ab.duration;
+      st.activeSources.push(src);
+      if ($('live-orb')) $('live-orb').className = 'live-orb speaking';
+      src.onended = () => {
+        st.activeSources = st.activeSources.filter(s => s !== src);
+        if (!st.activeSources.length && $('live-orb')) $('live-orb').className = 'live-orb listening';
+      };
+    }
+
+    function cleanupLive() {
+      isLiveSetupComplete = false;
+      try { liveScriptProcessor?.disconnect(); liveScriptProcessor = null; } catch {}
+      try { liveMicSource?.disconnect(); liveMicSource = null; } catch {}
+      try { liveSilentGain?.disconnect(); liveSilentGain = null; } catch {}
+      liveMediaStream?.getTracks().forEach(t => t.stop());
+      liveMediaStream = null;
+      try { liveAudioCtx?.close(); } catch {}
+      liveAudioCtx = null;
+      clearInterval(liveCamInterval);
+      liveCamInterval = null;
+      const cv = $('live-camera-video');
+      if (cv) { cv.srcObject = null; cv.style.display = 'none'; }
+      isLiveCamOn = isLiveMicMuted = false;
+      if ($('btn-live-mic-toggle')) { $('btn-live-mic-toggle').className = 'live-control-btn active'; $('btn-live-mic-toggle').innerHTML = '🎙️'; }
+      if ($('btn-live-cam-toggle')) $('btn-live-cam-toggle').className = 'live-control-btn';
+    }
+
+    async function startLiveVoiceCall() {
+      const { key, index } = getLiveApiKey();
+      if (!key) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
+
+      const m = $('live-call-modal'), st = $('live-call-status'), tr = $('live-transcript'), orb = $('live-orb');
+      m.style.display = 'flex';
+      st.innerText = `Đang kết nối [Key ${index+1}]...`;
+      tr.innerHTML = '<i>Đang mở micro & kết nối máy chủ Jarvis Live...</i>';
+      orb.className = 'live-orb listening';
+      livePlaybackState = { nextPlayTime: 0, activeSources: [] };
+      isLiveSetupComplete = false;
+
+      try {
+        liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (liveAudioCtx.state === 'suspended') await liveAudioCtx.resume();
+        const actualSampleRate = liveAudioCtx.sampleRate;
+
+        liveMediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 }
+        });
+        liveWs = new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`);
+
+        liveWs.onopen = () => {
+          const selectedLiveModel = $('live-model-select')?.value || 'models/gemini-3.8-live';
+          const voice = $('live-voice-select')?.value || 'Charon',
+                temp = parseFloat($('live-temperature')?.value || 0.7);
+
+          const setupMsg = {
+            setup: {
+              model: selectedLiveModel,
+              generationConfig: {
+                responseModalities: ["AUDIO"],
+                temperature: temp,
+                speechConfig: {
+                  voiceConfig: {
+                    prebuiltVoiceConfig: { voiceName: voice }
+                  }
+                }
+              },
+              tools: [
+                {
+                  functionDeclarations: [
+                    {
+                      name: "search_web",
+                      description: "Tìm kiếm dữ liệu thời gian thực trên Internet bằng Tavily AI khi người dùng yêu cầu tìm kiếm, tra cứu tin tức, sự kiện hoặc câu hỏi thực tế.",
+                      parameters: {
+                        type: "OBJECT",
+                        properties: {
+                          query: { type: "STRING", description: "Từ khóa hoặc câu truy vấn cần tìm kiếm trên Internet" }
+                        },
+                        required: ["query"]
+                      }
+                    },
+                    {
+                      name: "read_url",
+                      description: "Đọc và bóc tách nội dung chi tiết từ một đường link URL cụ thể.",
+                      parameters: {
+                        type: "OBJECT",
+                        properties: {
+                          url: { type: "STRING", description: "Địa chỉ liên kết URL" }
+                        },
+                        required: ["url"]
+                      }
+                    }
+                  ]
+                }
+              ],
+              inputAudioTranscription: {},
+              outputAudioTranscription: {},
+              systemInstruction: { parts: [{ text: getLiveCallSI() }] }
+            }
+          };
+
+          liveWs.send(JSON.stringify(setupMsg));
+
+          liveMicSource = liveAudioCtx.createMediaStreamSource(liveMediaStream);
+          liveScriptProcessor = liveAudioCtx.createScriptProcessor(4096, 1, 1);
+          liveSilentGain = liveAudioCtx.createGain();
+          liveSilentGain.gain.value = 0;
+
+          liveScriptProcessor.onaudioprocess = e => {
+            if (!isLiveSetupComplete || isLiveMicMuted || liveWs?.readyState !== WebSocket.OPEN) return;
+            const floatData = e.inputBuffer.getChannelData(0);
+
+            let sum = 0;
+            for (let i = 0; i < floatData.length; i++) sum += floatData[i] * floatData[i];
+            const rms = Math.sqrt(sum / floatData.length);
+            if (rms > 0.015 && orb && !orb.classList.contains('speaking')) {
+              orb.style.transform = `scale(${1 + Math.min(rms * 2.5, 0.25)})`;
+            } else if (orb && !orb.classList.contains('speaking')) {
+              orb.style.transform = 'scale(1)';
+            }
+
+            const pcm16k = downsampleTo16kPCM(floatData, actualSampleRate);
+            let bin = '';
+            for (let i = 0; i < pcm16k.length; i++) bin += String.fromCharCode(pcm16k[i]);
+
+            liveWs.send(JSON.stringify({
+              realtimeInput: {
+                audio: { mimeType: "audio/pcm;rate=16000", data: btoa(bin) }
+              }
+            }));
+          };
+
+          liveMicSource.connect(liveScriptProcessor);
+          liveScriptProcessor.connect(liveSilentGain);
+          liveSilentGain.connect(liveAudioCtx.destination);
+        };
+
+        liveWs.onmessage = async e => {
+          try {
+            const msg = JSON.parse(e.data instanceof Blob ? await e.data.text() : e.data);
+
+            if (msg.setupComplete || msg.serverContent?.setupComplete) {
+              isLiveSetupComplete = true;
+              liveRetryCount = 0;
+              st.innerText = `🟢 Đã kết nối Jarvis Live 3.8`;
+              tr.innerHTML = '<i>Hãy nói chuyện bình thường hoặc yêu cầu tìm kiếm...</i>';
+              return;
+            }
+
+            if (msg.toolCall?.functionCalls?.length) {
+              for (const call of msg.toolCall.functionCalls) {
+                let searchOutput = "";
+                if (call.name === "search_web") {
+                  const q = call.args?.query || "";
+                  tr.innerHTML = `<span style="color:#38bdf8;">⚡ <b>Jarvis AI:</b> Đang dùng Tavily tìm: "<em>${q}</em>"...</span>`;
+                  searchOutput = await executeLiveSearch(q);
+                } else if (call.name === "read_url") {
+                  const u = call.args?.url || "";
+                  tr.innerHTML = `<span style="color:#38bdf8;">🌐 <b>Jarvis AI:</b> Đang đọc link: "<em>${u.substring(0, 25)}...</em>"</span>`;
+                  try {
+                    const ext = await extractWebPageContent(u);
+                    searchOutput = ext.content.substring(0, 10000);
+                  } catch {
+                    searchOutput = await executeLiveSearch(u);
+                  }
+                }
+
+                liveWs?.send(JSON.stringify({
+                  toolResponse: {
+                    functionResponses: [
+                      {
+                        response: { output: { results: searchOutput || "Không tìm thấy dữ liệu liên quan." } },
+                        id: call.id
+                      }
+                    ]
+                  }
+                }));
+              }
+            }
+
+            if (msg.serverContent?.interrupted) {
+              livePlaybackState.activeSources.forEach(s => { try { s.stop(); } catch {} });
+              livePlaybackState = { nextPlayTime: liveAudioCtx?.currentTime || 0, activeSources: [] };
+              orb.className = 'live-orb listening';
+            }
+
+            if (msg.serverContent?.interimTranscript || msg.serverContent?.inputAudioTranscription?.text) {
+              const userTxt = msg.serverContent.interimTranscript || msg.serverContent.inputAudioTranscription.text;
+              tr.innerHTML = `<span style="color:#94a3b8;">🗣️ <b>Bạn:</b> "${userTxt}"</span>`;
+            }
+
+            for (const p of (msg.serverContent?.modelTurn?.parts || [])) {
+              if (p.inlineData?.data) playPcm24k(p.inlineData.data, liveAudioCtx, livePlaybackState);
+              if (p.text) tr.innerHTML = `<strong>Jarvis AI:</strong> ${p.text}`;
+            }
+
+            if (msg.serverContent?.outputAudioTranscription?.text) {
+              tr.innerHTML = `<strong>Jarvis AI:</strong> ${msg.serverContent.outputAudioTranscription.text}`;
+            }
+          } catch {}
+        };
+
+        liveWs.onclose = ev => {
+          cleanupLive();
+          if (orb) { orb.className = 'live-orb'; orb.style.transform = 'scale(1)'; }
+          if ((ev.code === 1011 || ev.reason?.includes('quota')) && apiKeys.length > 1 && liveRetryCount < apiKeys.length) {
+            liveRetryCount++;
+            liveKeyIndex = (liveKeyIndex + 1) % apiKeys.length;
+            st.innerText = `⚠️ Đổi Key ${liveKeyIndex+1}...`;
+            setTimeout(startLiveVoiceCall, 600);
+            return;
+          }
+          st.innerText = `Đã ngắt (Mã: ${ev.code})`;
+          tr.innerHTML = `<span>Phiên thoại kết thúc.</span>`;
+        };
+      } catch (err) {
+        st.innerText = 'Lỗi kết nối';
+        tr.innerHTML = `<span>${err.message}</span>`;
+        cleanupLive();
+      }
+    }
+
+    $('btn-live-call-open').onclick = startLiveVoiceCall;
+    $('btn-live-end-call').onclick = () => {
+      try { liveWs?.close(); } catch {}
+      liveWs = null;
+      cleanupLive();
+      $('live-call-modal').style.display = 'none';
+    };
+    $('live-model-select').onchange = () => { if (liveWs?.readyState === WebSocket.OPEN) { liveWs.close(); setTimeout(startLiveVoiceCall, 300); } };
+    $('live-voice-select').onchange = e => { ls.setItem('live_voice_name', e.target.value); if (liveWs?.readyState === WebSocket.OPEN) { liveWs.close(); setTimeout(startLiveVoiceCall, 300); } };
+    $('live-key-select').onchange = e => { ls.setItem('live_selected_key', e.target.value); if (liveWs?.readyState === WebSocket.OPEN) { liveWs.close(); setTimeout(startLiveVoiceCall, 300); } };
+    $('btn-live-mic-toggle').onclick = () => {
+      isLiveMicMuted = !isLiveMicMuted;
+      const b = $('btn-live-mic-toggle');
+      b.className = `live-control-btn ${isLiveMicMuted ? '' : 'active'}`;
+      b.innerHTML = isLiveMicMuted ? '🔇' : '🎙️';
+    };
+    $('btn-live-cam-toggle').onclick = async () => {
+      const v = $('live-camera-video'), b = $('btn-live-cam-toggle');
+      if (!isLiveCamOn) {
+        try {
+          v.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: 640, height: 480 } });
+          v.style.display = 'block';
+          isLiveCamOn = true;
+          b.className = 'live-control-btn active';
+          const cv = document.createElement('canvas'), cx = cv.getContext('2d');
+          liveCamInterval = setInterval(() => {
+            if (!isLiveCamOn || liveWs?.readyState !== WebSocket.OPEN || !isLiveSetupComplete) return;
+            cv.width = v.videoWidth || 320; cv.height = v.videoHeight || 240; cx.drawImage(v, 0, 0, cv.width, cv.height);
+            liveWs.send(JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: "image/jpeg", data: cv.toDataURL('image/jpeg', 0.6).split(',')[1] }] } }));
+          }, 1000);
+        } catch (e) { showToast("Lỗi Cam: " + e.message, 'danger'); }
+      } else {
+        v.srcObject?.getTracks().forEach(t => t.stop());
+        v.style.display = 'none';
+        clearInterval(liveCamInterval);
+        isLiveCamOn = false;
+        b.className = 'live-control-btn';
+      }
+    };
+
+    // --- QUẢN LÝ 10 GOOGLE API KEYS & CẤU HÌNH ---
+    $('api-keys-container').innerHTML = Array.from({ length: 10 }, (_, i) => `<input type="password" id="api-key-${i+1}" placeholder="Google Key ${i+1}" class="modern-input">`).join('');
+
+    const cfgMap = [
+      ['global-context-input', 'jarvis_global_context'],
+      ['tavily-key-input', 'tavily_api_key'],
+      ['jina-key-input', 'jina_api_key'],
+      ['serper-key-input', 'serper_api_key'],
+      ['brave-key-input', 'brave_api_key'],
+      ['brave-worker-url-input', 'brave_worker_url'],
+      ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
+      ['web-extract-engine-input', 'web_extract_engine', 'auto'],
+      ['live-temperature', 'live_temperature', '0.7']
+    ];
+
+    function initAPIKeys() {
+      apiKeys = [];
+      for (let i = 1; i <= 10; i++) {
+        const k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
+        if ($(`api-key-${i}`)) $(`api-key-${i}`).value = k;
+        if (k) apiKeys.push(k);
+      }
+      const s = $('key-status-msg');
+      if (s) {
+        s.innerText = apiKeys.length ? `✅ Có ${apiKeys.length} Google Key` : "⚠️ Chưa có Key";
+        s.style.color = apiKeys.length ? "var(--success)" : "var(--danger)";
+      }
+      [$('api-key-select'), $('live-key-select')].forEach(d => {
+        if (!d) return;
+        const cur = d.value;
+        d.innerHTML = '<option value="auto">🔄 Tự động xoay Key</option>';
+        for (let i = 1; i <= 10; i++) {
+          const k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
+          if (k) d.innerHTML += `<option value="${i-1}">🔑 Key ${i} (${k.substring(0, 5)}...)</option>`;
+        }
+        if ([...d.options].some(o => o.value === cur)) d.value = cur;
+      });
+    }
+
+    function initExternalConfigs() {
+      cfgMap.forEach(([id, k, def = '']) => {
+        if ($(id)) {
+          $(id).value = ls.getItem(k) || (k === 'jarvis_global_context' ? (ls.getItem('huanmu_global_context') || ls.getItem('javiss_global_context') || '') : '') || def;
+        }
+      });
+      if ($('live-temp-val')) $('live-temp-val').innerText = ls.getItem('live_temperature') || '0.7';
+      if ($('live-toggle-search')) $('live-toggle-search').checked = ls.getItem('live_search_enabled') !== 'false';
+      if ($('live-toggle-context')) $('live-toggle-context').checked = ls.getItem('live_context_enabled') !== 'false';
+    }
+
+    $('live-temperature').oninput = e => { if ($('live-temp-val')) $('live-temp-val').innerText = e.target.value; };
+
+    if ($('global-context-input')) {
+      $('global-context-input').oninput = e => {
+        ls.setItem('jarvis_global_context', e.target.value);
+        ls.setItem('huanmu_global_context', e.target.value);
+      };
+    }
+
+    $('btn-save-keys').onclick = () => {
+      for (let i = 1; i <= 10; i++) {
+        const val = $(`api-key-${i}`)?.value.trim() || '';
+        ls.setItem(`jarvis_api_${i}`, val);
+        ls.setItem(`huanmu_api_${i}`, val);
+      }
+      cfgMap.forEach(([id, k]) => ls.setItem(k, $(id)?.value.trim() || ''));
+      ls.setItem('live_search_enabled', $('live-toggle-search')?.checked ? 'true' : 'false');
+      ls.setItem('live_context_enabled', $('live-toggle-context')?.checked ? 'true' : 'false');
+      initAPIKeys();
+      initExternalConfigs();
+      showToast("Đã lưu cấu hình Google & Hệ thống!");
+    };
+
+    $('btn-check-keys').onclick = async () => {
+      const b = $('btn-check-keys');
+      b.innerText = "⏳...";
+      let ok = 0, tot = 0;
+      for (let i = 1; i <= 10; i++) {
+        const el = $(`api-key-${i}`), k = el?.value.trim();
+        if (!k) continue;
+        tot++;
+        try {
+          await new GoogleGenAI({ apiKey: k }).models.generateContent({
+            model: "gemini-3.1-flash-lite",
+            contents: "hi",
+            config: { maxOutputTokens: 1 }
+          });
+          el.style.border = "2px solid var(--success)";
+          ok++;
+        } catch {
+          el.style.border = "2px solid var(--danger)";
+        }
+      }
+      b.innerText = "🔍 Kiểm tra Keys";
+      showToast(`Hoạt động: ${ok}/${tot} Keys`);
+    };
+
+    $('btn-check-duplicates').onclick = () => {
+      const m = {}, dups = [];
+      for (let i = 1; i <= 10; i++) {
+        const v = $(`api-key-${i}`)?.value.trim();
+        if (v) m[v] ? dups.push(i) : m[v] = i;
+      }
+      showToast(dups.length ? `⚠️ Có ${dups.length} key trùng lặp!` : "✅ Không có key trùng.");
+    };
+
+    initAPIKeys();
+    initExternalConfigs();
+
+    // --- INDEXED DB ENGINE ---
+    const DB_NAME = "JavissUltimateOS_DB", STORE_NAME = "chat_sessions", FILE_STORE = "file_library";
+    let db;
+    function initDB() {
+      return new Promise((res, rej) => {
+        const rq = indexedDB.open(DB_NAME, 5);
+        rq.onupgradeneeded = e => {
+          let d = e.target.result;
+          if (!d.objectStoreNames.contains(STORE_NAME)) d.createObjectStore(STORE_NAME, { keyPath: "id" });
+          if (!d.objectStoreNames.contains(FILE_STORE)) d.createObjectStore(FILE_STORE, { keyPath: "id" });
+        };
+        rq.onsuccess = async e => {
+          db = e.target.result;
+          try {
+            const checkHuan = indexedDB.open("HuanMU_DB", 6);
+            checkHuan.onsuccess = () => {
+              const hDb = checkHuan.result;
+              if (hDb.objectStoreNames.contains(STORE_NAME)) {
+                const getItems = hDb.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll();
+                getItems.onsuccess = () => {
+                  const hSessions = getItems.result || [];
+                  if (hSessions.length) {
+                    const wrTrans = db.transaction(STORE_NAME, "readwrite");
+                    hSessions.forEach(hs => {
+                      if (hs.his && hs.his.length > 0) wrTrans.objectStore(STORE_NAME).put(hs);
+                    });
+                  }
+                };
+              }
+            };
+          } catch {}
+          res();
+        };
+        rq.onerror = e => rej(e);
+      });
+    }
+
+    const saveToDB = s => new Promise(r => { const t = db.transaction(STORE_NAME, "readwrite"); t.objectStore(STORE_NAME).put(s); t.oncomplete = () => r(); });
+    const deleteFromDB = i => new Promise(r => { const t = db.transaction(STORE_NAME, "readwrite"); t.objectStore(STORE_NAME).delete(i); t.oncomplete = () => r(); });
+    const getAllFromDB = () => new Promise(r => { const rq = db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll(); rq.onsuccess = () => r(rq.result); });
+    const clearAllDB = () => new Promise(r => { const t = db.transaction(STORE_NAME, "readwrite"); t.objectStore(STORE_NAME).clear(); t.oncomplete = () => r(); });
+    const saveFileToLib = f => new Promise(r => { const t = db.transaction(FILE_STORE, "readwrite"); t.objectStore(FILE_STORE).put(f); t.oncomplete = () => r(); });
+    const getAllFilesFromLib = () => new Promise(r => { const rq = db.transaction(FILE_STORE, "readonly").objectStore(FILE_STORE).getAll(); rq.onsuccess = () => r(rq.result); });
+
+    // --- DOM REFERENCES ---
+    const DOM = {
+      chat: $('chat-container'),
+      input: $('user-input'),
+      sendBtn: $('send-button'),
+      fileUpload: $('file-upload'),
+      previewBox: $('image-preview-container'),
+      previewGrid: $('image-preview-grid'),
+      textFileList: $('text-files-list'),
+      clearFilesBtn: $('clear-all-images'),
+      fileCount: $('file-count'),
+      toast: $('toast'),
+      folderSelect: $('folder-select'),
+      btnNewFolder: $('btn-new-folder'),
+      btnDeleteFolder: $('btn-delete-folder'),
+      selSession: $('session-select'),
+      sysInst: $('system-instruction-input'),
+      globContext: $('global-context-input'),
+      model: $('model-select'),
+      engineSel: $('engine-select'),
+      apiKeySel: $('api-key-select'),
+      toggleGlob: $('toggle-global-context'),
+      toggleSearch: $('toggle-search'),
+      searchEngineBox: $('search-engine-box'),
+      searchEngineSel: $('search-engine-select'),
+      toggleMemory: $('toggle-memory'),
+      temp: $('temperature'),
+      tempVal: $('temp-val'),
+      topP: $('top-p'),
+      toppVal: $('topp-val'),
+      topK: $('top-k'),
+      thinking: $('thinking-level'),
+      searchInput: $('search-chat-input'),
+      scrollTopBtn: $('scroll-to-top'),
+      snippetsContainer: $('snippets-container'),
+      btnToggleSnippets: $('btn-toggle-snippets'),
+      btnFileLibrary: $('btn-file-library'),
+      btnAddUrl: $('btn-add-url'),
+      btnTheme: $('btn-theme'),
+      tabsContainer: $('tabs-container')
+    };
+
+    let sessions = [], activeId = null, chatHistory = [], filesData = [], txtContent = "", isProcessing = false;
+    let folders = JSON.parse(ls.getItem('jarvis_folders') || ls.getItem('huanmu_folders') || ls.getItem('javiss_folders') || '["Mặc định"]');
+    let activeFolder = ls.getItem('jarvis_active_folder') || ls.getItem('huanmu_active_folder') || "All";
+    let openTabs = JSON.parse(ls.getItem('jarvis_tabs') || ls.getItem('huanmu_tabs') || '[]');
+
+    const getSessionApiKey = (cs, forceRotate = false) => {
+      const sel = DOM.apiKeySel?.value || 'auto';
+      if (sel !== 'auto') return ls.getItem(`jarvis_api_${parseInt(sel)+1}`) || ls.getItem(`huanmu_api_${parseInt(sel)+1}`) || "";
+      if (!forceRotate && cs?.assignedApiKey) return cs.assignedApiKey;
+      if (apiKeys.length) {
+        const k = apiKeys[globalKeyIndex++ % apiKeys.length];
+        if (cs && !forceRotate) cs.assignedApiKey = k;
+        return k;
+      }
+      return "";
+    };
+
+    let sHideTO;
+    DOM.chat.addEventListener('scroll', () => {
+      if (DOM.chat.scrollTop > 250) {
+        DOM.scrollTopBtn.classList.add('visible');
+        clearTimeout(sHideTO);
+        sHideTO = setTimeout(() => DOM.scrollTopBtn.classList.remove('visible'), 2500);
+      } else {
+        DOM.scrollTopBtn.classList.remove('visible');
+      }
+    });
+    DOM.scrollTopBtn.onclick = () => DOM.chat.scrollTo({ top: 0, behavior: 'smooth' });
+
+    function updateThinkingVisibility() {
+      const m = DOM.model?.value || '', t = DOM.thinking;
+      if (!t) return;
+      const prev = t.value;
+      const opts = (m === 'gemini-3.8-flash') 
+        ? [['low', 'Low (Thấp)'], ['medium', 'Med (Chuẩn)'], ['high', 'High (Sâu)']] 
+        : [['minimal', 'Min (Tối thiểu)'], ['low', 'Low (Thấp)'], ['medium', 'Med (Chuẩn)'], ['high', 'High (Sâu)']];
+      t.innerHTML = opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+      t.value = opts.some(([v]) => v === prev) ? prev : (m === 'gemini-3.5-flash-lite' ? 'minimal' : opts[0][0]);
+    }
+
+    const updateTokenCount = () => {
+      if ($('token-count')) {
+        $('token-count').innerText = Math.ceil(((DOM.input?.value.length || 0) + (txtContent?.length || 0)) / 3.2).toLocaleString('vi-VN');
+      }
+    };
+
+    const applyTheme = m => {
+      const t = m === 'auto' ? ((new Date().getHours() >= 18 || new Date().getHours() < 6) ? 'dark' : 'light') : m;
+      DOM.btnTheme.innerText = m === 'auto' ? "🌙 Tự động" : m === 'dark' ? "🌙 Tối" : "☀️ Sáng";
+      document.documentElement.setAttribute('data-theme', t);
+      ls.setItem('theme', m);
+    };
+    applyTheme(ls.getItem('theme') || 'auto');
+    DOM.btnTheme.onclick = () => {
+      const c = ls.getItem('theme') || 'auto';
+      applyTheme(c === 'auto' ? 'dark' : c === 'dark' ? 'light' : 'auto');
+    };
+
+    if (DOM.input) {
+      DOM.input.value = ls.getItem('jarvis_draft') || '';
+      updateTokenCount();
+      DOM.input.oninput = () => {
+        ls.setItem('jarvis_draft', DOM.input.value);
+        DOM.input.style.height = 'auto';
+        DOM.input.style.height = Math.min(DOM.input.scrollHeight, 150) + 'px';
+        updateTokenCount();
+      };
+      DOM.input.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          DOM.sendBtn.click();
+        }
+      });
+    }
+
+    // --- DESKTOP DRAG & DROP SUPPORT (ADAPTIVE, ZERO CONFLICT ON MOBILE) ---
+    const dropOverlay = $('drop-overlay');
+    let dragCounter = 0;
+    window.addEventListener('dragenter', e => {
+      e.preventDefault();
+      dragCounter++;
+      if (e.dataTransfer?.types?.includes('Files')) {
+        dropOverlay.style.display = 'flex';
+      }
+    });
+    window.addEventListener('dragleave', e => {
+      e.preventDefault();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        dropOverlay.style.display = 'none';
+      }
+    });
+    window.addEventListener('dragover', e => e.preventDefault());
+    window.addEventListener('drop', async e => {
+      e.preventDefault();
+      dragCounter = 0;
+      dropOverlay.style.display = 'none';
+      if (e.dataTransfer?.files?.length) {
+        await processUploadFiles(Array.from(e.dataTransfer.files));
+        showToast(`📎 Đã đính kèm ${e.dataTransfer.files.length} tệp từ kéo thả!`);
+      }
+    });
+
+    // --- PROMPT ENHANCE BUTTON ---
+    $('btn-enhance-prompt').onclick = async () => {
+      const txt = DOM.input.value.trim();
+      if (!txt) return showToast("Nhập prompt trước khi Enhance!", "warning");
+      const k = getSessionApiKey(sessions.find(x => x.id === activeId));
+      if (!k) return showToast("Cần Google Key để Enhance!", "danger");
+      $('btn-enhance-prompt').innerText = "⏳...";
+      try {
+        const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
+          model: "gemini-3.5-flash-lite",
+          contents: `Hãy tối ưu và mở rộng câu lệnh prompt sau đây để rõ ràng, chi tiết, chuyên nghiệp và hiệu quả nhất khi gửi cho AI:\n\n"${txt}"\n\nChỉ trả về duy nhất nội dung prompt đã được tối ưu, không giải thích gì thêm.`
+        });
+        if (res.text) {
+          DOM.input.value = res.text.trim();
+          DOM.input.dispatchEvent(new Event('input'));
+          showToast("🪄 Đã tối ưu hóa Prompt!");
+        }
+      } catch (err) {
+        showToast("Lỗi Enhance: " + err.message, "danger");
+      } finally {
+        $('btn-enhance-prompt').innerHTML = `<svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Enhance`;
+      }
+    };
+
+    $('toggle-sidebar-btn').onclick = () => { $('sidebar').classList.add('active'); $('sidebar-overlay').classList.add('active'); };
+    $('close-sidebar-btn').onclick = $('sidebar-overlay').onclick = () => { $('sidebar').classList.remove('active'); $('sidebar-overlay').classList.remove('active'); };
+    $('btn-open-settings').onclick = () => { $('settings-modal').style.display = 'flex'; $('modal-overlay').style.display = 'block'; };
+
+    const getDynamicSI = () => {
+      const b = DOM.sysInst?.value || "Bạn là Jarvis AI - trợ lý thông minh và chuẩn xác.",
+            g = DOM.globContext?.value || ls.getItem('jarvis_global_context') || ls.getItem('huanmu_global_context') || '',
+            now = new Date(),
+            days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
+      const hh = String(now.getHours()).padStart(2, '0'),
+            mm = String(now.getMinutes()).padStart(2, '0'),
+            ss = String(now.getSeconds()).padStart(2, '0');
+      const timeStr = `${hh}:${mm}:${ss}`,
+            dateStr = `${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+      return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}\n\n[MỐC THỜI GIAN THỰC TẾ]: Hiện tại chính xác là ${timeStr} (${dateStr}, Múi giờ Việt Nam GMT+7).\nQUY TẮC BẮT BUỘC: Khi người dùng hỏi bây giờ là mấy giờ, thời gian hiện tại hoặc ngày tháng, bạn PHẢI trả lời chính xác theo mốc giờ ${timeStr} và ngày ${dateStr} này.`;
+    };
+
+    window.exportCleanArticle = () => {
+      const m = chatHistory.filter(x => x.role === 'model').map(x => x.text);
+      m.length ? saveOrShareBlob(new Blob([`# Jarvis AI - Bài viết trích xuất\n\n` + m.join('\n\n---\n\n')], { type: 'text/markdown' }), `JarvisAI_Export_${Date.now()}.md`) : showToast("Hội thoại trống!", "warning");
+    };
+
+    window.applySnippet = p => {
+      if (DOM.input) {
+        DOM.input.value = p + "\n" + DOM.input.value;
+        DOM.input.dispatchEvent(new Event('input'));
+        DOM.input.focus();
+      }
+      DOM.snippetsContainer.style.display = 'none';
+    };
+    DOM.btnToggleSnippets.onclick = () => DOM.snippetsContainer.style.display = DOM.snippetsContainer.style.display === 'flex' ? 'none' : 'flex';
+
+    async function readPDF(f) {
+      const p = await pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise;
+      let t = "";
+      for (let i = 1; i <= p.numPages; i++) {
+        t += (await (await p.getPage(i)).getTextContent()).items.map(x => x.str).join(' ') + "\n";
+      }
+      return t;
+    }
+
+    async function processUploadFiles(fs) {
+      DOM.fileCount.innerText = "⏳";
+      for (const f of fs) {
+        if (f.type.startsWith('image/') || f.type === 'video/mp4') {
+          if (filesData.length < 20) filesData.push(f);
+        } else if (f.type === 'application/pdf') {
+          txtContent += `\n[PDF: ${f.name}]:\n${(await readPDF(f)).substring(0, 50000)}\n`;
+          DOM.textFileList.innerHTML += `📑 ${f.name}<br>`;
+        } else {
+          txtContent += `\n[Văn bản: ${f.name}]:\n${(await f.text()).substring(0, 50000)}\n`;
+          DOM.textFileList.innerHTML += `📄 ${f.name}<br>`;
+        }
+      }
+      renderFiles();
+      updateTokenCount();
+    }
+
+    DOM.fileUpload.onchange = async e => {
+      await processUploadFiles(Array.from(e.target.files));
+      DOM.fileUpload.value = '';
+    };
+
+    DOM.btnAddUrl.onclick = async () => {
+      const u = prompt("Nhập link URL website hoặc YouTube:");
+      if (!u?.match(/https?:\/\//)) return;
+      DOM.btnAddUrl.innerHTML = "⏳...";
+      try {
+        if (u.includes("youtube.com") || u.includes("youtu.be")) {
+          const k = getSessionApiKey(sessions.find(x => x.id === activeId));
+          if (!k) throw new Error("Cần Google Key!");
+          const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
+            model: "gemini-3.5-flash-lite",
+            contents: `Tóm tắt video YouTube: ${u}`,
+            config: { safetySettings: SAFETY }
+          });
+          txtContent += `\n[YouTube: ${u}]:\n${res.text}\n`;
+          DOM.textFileList.innerHTML += `📺 YouTube<br>`;
+        } else {
+          const ext = await extractWebPageContent(u);
+          txtContent += `\n[Nội dung ${u} qua ${ext.source}]:\n${ext.content}\n`;
+          DOM.textFileList.innerHTML += `🌐 ${ext.source}<br>`;
+        }
+        DOM.previewBox.style.display = 'block';
+        DOM.fileCount.innerText = filesData.length + (txtContent ? 1 : 0);
+        updateTokenCount();
+        showToast("Đã bóc tách nội dung link!");
+      } catch (e) {
+        showToast(`Lỗi: ${e.message}`, 'danger');
+      }
+      DOM.btnAddUrl.innerHTML = `<svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Đọc Link/YT`;
+    };
+
+    $('btn-paste-clipboard').onclick = async () => {
+      try {
+        const is = await navigator.clipboard.read();
+        let h = false;
+        for (const i of is) {
+          if (i.types.some(t => t.startsWith('image/'))) {
+            const b = await i.getType('image/png');
+            filesData.push(new File([b], 'paste.png', { type: b.type }));
+            renderFiles();
+            h = true;
+          }
+        }
+        if (!h) {
+          const t = await navigator.clipboard.readText();
+          if (t && DOM.input) {
+            DOM.input.value += (DOM.input.value ? '\n' : '') + t;
+            h = true;
+          }
+        }
+        if (h) {
+          DOM.input?.dispatchEvent(new Event('input'));
+          showToast('Đã dán từ Clipboard!');
+        }
+      } catch {
+        showToast("Lỗi truy cập Clipboard", 'danger');
+      }
+    };
+
+    const oLay = $('modal-overlay'), closeModals = () => {
+      document.querySelectorAll('.modal-box').forEach(m => m.style.display = 'none');
+      oLay.style.display = 'none';
+    };
+    document.querySelectorAll('.close-btn').forEach(b => b.onclick = closeModals);
+    oLay.onclick = closeModals;
+
+    $('btn-camera-snap').onclick = async () => {
+      $('camera-modal').style.display = 'flex';
+      oLay.style.display = 'block';
+      try {
+        $('camera-preview').srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      } catch (e) {
+        showToast(e.message, 'danger');
+      }
+    };
+
+    $('btn-take-photo').onclick = () => {
+      const v = $('camera-preview');
+      if (!v.srcObject) return;
+      const c = document.createElement('canvas');
+      c.width = v.videoWidth;
+      c.height = v.videoHeight;
+      c.getContext('2d').drawImage(v, 0, 0);
+      c.toBlob(b => {
+        processUploadFiles([new File([b], `Cam_${Date.now()}.jpg`, { type: 'image/jpeg' })]);
+        v.srcObject?.getTracks().forEach(t => t.stop());
+        closeModals();
+        showToast("Đã chụp và đính kèm ảnh!");
+      }, 'image/jpeg', 0.85);
+    };
+
+    DOM.btnFileLibrary.onclick = () => {
+      $('file-library-modal').style.display = 'flex';
+      oLay.style.display = 'block';
+      renderLibrary();
+    };
+
+    $('library-upload-input').onchange = async e => {
+      for (const f of e.target.files) {
+        if (f.size <= 50 * 1024 * 1024) {
+          await saveFileToLib({
+            id: Date.now() + Math.random().toString().slice(2, 7),
+            name: f.name,
+            type: f.type,
+            size: f.size,
+            blob: f,
+            added: new Date().toISOString()
+          });
+        }
+      }
+      showToast("Đã thêm tệp vào thư viện!");
+      renderLibrary();
+      e.target.value = '';
+    };
+
+    async function renderLibrary() {
+      const c = $('library-files-container'), fs = await getAllFilesFromLib();
+      c.innerHTML = fs.length ? fs.map(f => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:var(--radius-md);background:var(--input-bg);border:1px solid var(--border);">
+          <div>
+            <strong>${f.name}</strong><br>
+            <small style="color:var(--text-muted);">${(f.size/1024).toFixed(1)} KB • ${new Date(f.added).toLocaleDateString('vi-VN')}</small>
+          </div>
+          <button class="btn primary" onclick="addFileFromLib('${f.id}')">➕ Đính</button>
+        </div>
+      `).join('') : "<i style='color:var(--text-muted);padding:10px;'>Thư viện hiện đang trống.</i>";
+    }
+
+    window.addFileFromLib = async id => {
+      const f = (await getAllFilesFromLib()).find(x => x.id === id);
+      if (f) {
+        await processUploadFiles([new File([f.blob], f.name, { type: f.type })]);
+        closeModals();
+        showToast(`Đã đính: ${f.name}`);
+      }
+    };
+
+    // --- SESSIONS & TABS CONTROLLER ---
+    function renderTabs() {
+      DOM.tabsContainer.innerHTML = openTabs.map(tId => {
+        const s = sessions.find(x => x.id === tId);
+        return s ? `<div class="tab-item ${tId === activeId ? 'active' : ''}">
+          <span onclick="window.switchSess('${tId}')">${s.name.substring(0, 16)}</span>
+          <span class="tab-close" onclick="window.closeTab('${tId}', event)">×</span>
+        </div>` : '';
+      }).join('');
+      ls.setItem('jarvis_tabs', JSON.stringify(openTabs));
+    }
+
+    window.switchSess = switchSess;
+    window.closeTab = (id, e) => {
+      e.stopPropagation();
+      openTabs = openTabs.filter(x => x !== id);
+      id === activeId ? (openTabs.length ? switchSess(openTabs[0]) : newSess()) : renderTabs();
+    };
+
+    function renderFolders() {
+      DOM.folderSelect.innerHTML = `<option value="All">📁 Tất cả Thư Mục</option>` + folders.map(f => `<option value="${f}">📁 ${f}</option>`).join('');
+      DOM.folderSelect.value = activeFolder;
+    }
+
+    DOM.folderSelect.onchange = e => {
+      activeFolder = e.target.value;
+      ls.setItem('jarvis_active_folder', activeFolder);
+      renderSel();
+      const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder);
+      if (v.length && !v.find(s => s.id === activeId)) switchSess(v[0].id);
+    };
+
+    DOM.btnNewFolder.onclick = () => {
+      const n = prompt("Nhập tên Thư mục mới:");
+      if (n && !folders.includes(n.trim())) {
+        folders.push(n.trim());
+        ls.setItem('jarvis_folders', JSON.stringify(folders));
+        activeFolder = n.trim();
+        renderFolders();
+        renderSel();
+        showToast("Đã tạo thư mục mới!");
+      }
+    };
+
+    DOM.btnDeleteFolder.onclick = async () => {
+      if (activeFolder === "All" || activeFolder === "Mặc định") return showToast("Không thể xóa thư mục này!", "warning");
+      if (confirm(`Bạn có chắc muốn xóa thư mục "${activeFolder}"? Các phiên bên trong sẽ chuyển về 'Mặc định'.`)) {
+        folders = folders.filter(f => f !== activeFolder);
+        ls.setItem('jarvis_folders', JSON.stringify(folders));
+        for (const s of sessions) {
+          if (s.folder === activeFolder) {
+            s.folder = "Mặc định";
+            await saveToDB(s);
+          }
+        }
+        activeFolder = "All";
+        renderFolders();
+        renderSel();
+        showToast("Đã xóa thư mục!");
+      }
+    };
+
+    async function loadSess() {
+      try {
+        await initDB();
+        const d = await getAllFromDB();
+        if (d && d.length > 0) {
+          sessions = d.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+          renderFolders();
+          activeId = ls.getItem('jarvis_active_id') || ls.getItem('huanmu_active_id') || ls.getItem('javiss_active_id') || sessions[0].id;
+          if (!sessions.find(s => s.id === activeId)) activeId = sessions[0].id;
+          await switchSess(activeId);
+        } else {
+          renderFolders();
+          await newSess();
+        }
+      } catch (e) {
+        console.error("Lỗi khởi động loadSess:", e);
+        renderFolders();
+      }
+    }
+
+    async function newSess(n) {
+      const id = 's_' + Date.now(), s = {
+        id,
+        name: n || `Hội thoại ${sessions.length + 1}`,
+        folder: activeFolder === "All" ? "Mặc định" : activeFolder,
+        his: [],
+        sys: '',
+        mod: 'gemini-3.5-flash-lite',
+        engine: 'stream',
+        lastInteractionId: null,
+        assignedApiKey: null,
+        keySel: 'auto',
+        tmp: 0.5,
+        tpp: 0.9,
+        top: 40,
+        thk: 'minimal',
+        sch: false,
+        schEngine: 'tavily',
+        mem: true,
+        useGlob: true,
+        orderIndex: Date.now()
+      };
+      sessions.unshift(s);
+      await saveToDB(s);
+      await switchSess(id);
+      showToast("➕ Đã tạo phiên mới!");
+      if (window.innerWidth <= 768) {
+        $('sidebar').classList.remove('active');
+        $('sidebar-overlay').classList.remove('active');
+      }
+    }
+
+    async function switchSess(id) {
+      activeId = id;
+      ls.setItem('jarvis_active_id', id);
+      ls.setItem('huanmu_active_id', id);
+      const s = sessions.find(x => x.id === id);
+      chatHistory = (s && Array.isArray(s.his)) ? [...s.his] : [];
+
+      if (s) {
+        DOM.sysInst.value = s.sys || '';
+        DOM.model.value = s.mod || 'gemini-3.5-flash-lite';
+        DOM.engineSel.value = s.engine || 'stream';
+        DOM.apiKeySel.value = s.keySel || 'auto';
+        DOM.temp.value = s.tmp || 0.5;
+        DOM.tempVal.innerText = DOM.temp.value;
+        DOM.topP.value = s.tpp || 0.9;
+        DOM.toppVal.innerText = DOM.topP.value;
+        DOM.topK.value = s.top || 40;
+        updateThinkingVisibility();
+        DOM.thinking.value = s.thk || 'minimal';
+        DOM.toggleGlob.checked = s.useGlob !== false;
+        DOM.toggleSearch.checked = s.sch || false;
+        DOM.searchEngineBox.style.display = s.sch ? 'block' : 'none';
+        DOM.searchEngineSel.value = s.schEngine || 'tavily';
+        DOM.toggleMemory.checked = s.mem !== false;
+      }
+
+      DOM.chat.innerHTML = '';
+      for (let j = 0; j < chatHistory.length; j++) {
+        try {
+          await appendMsg(chatHistory[j].role === 'model' ? 'bot' : 'user', chatHistory[j].text || '', j, true);
+        } catch (err) {
+          console.error("Lỗi vẽ tin nhắn " + j, err);
+        }
+      }
+      DOM.chat.scrollTop = DOM.chat.scrollHeight;
+      renderSel();
+      if (!openTabs.includes(id)) openTabs.push(id);
+      renderTabs();
+    }
+
+    DOM.selSession.onchange = e => switchSess(e.target.value);
+
+    function renderSel() {
+      const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder);
+      DOM.selSession.innerHTML = v.map(s => `<option value="${s.id}" ${s.id === activeId ? 'selected' : ''}>${activeFolder === "All" ? `[${s.folder}] ` : ''}${s.name}</option>`).join('');
+      const curS = sessions.find(x => x.id === activeId);
+      const kInfo = (curS?.engine === 'interactions' && curS?.assignedApiKey) ? ` • 🔒 Ghim Key ${apiKeys.indexOf(curS.assignedApiKey) + 1}` : '';
+      $('session-msg-count').innerText = `${chatHistory.length} tin nhắn${kInfo}`;
+    }
+
+    $('btn-new-session').onclick = () => newSess();
+
+    $('btn-rename-session').onclick = async () => {
+      const s = sessions.find(x => x.id === activeId);
+      if (!s) return;
+      const n = prompt("Nhập tên mới cho phiên:", s.name);
+      if (n && n.trim()) {
+        s.name = n.trim();
+        await saveToDB(s);
+        renderSel();
+        renderTabs();
+        showToast("✏️ Đã đổi tên phiên!");
+      }
+    };
+
+    $('btn-move-session').onclick = async () => {
+      const s = sessions.find(x => x.id === activeId);
+      if (!s) return;
+      const targetFolder = prompt(`Chuyển phiên sang Thư mục:\n(Các TM hiện có: ${folders.join(', ')})`, s.folder);
+      if (targetFolder && targetFolder.trim()) {
+        const tf = targetFolder.trim();
+        if (!folders.includes(tf)) {
+          folders.push(tf);
+          ls.setItem('jarvis_folders', JSON.stringify(folders));
+          renderFolders();
+        }
+        s.folder = tf;
+        await saveToDB(s);
+        renderSel();
+        showToast(`📂 Đã chuyển phiên sang "${tf}"!`);
+      }
+    };
+
+    $('btn-delete-session').onclick = async () => {
+      if (sessions.length <= 1) return showToast("Cần giữ lại ít nhất 1 phiên!", "warning");
+      const s = sessions.find(x => x.id === activeId);
+      if (confirm(`Bạn có chắc muốn xóa phiên "${s?.name || ''}"?`)) {
+        await deleteFromDB(activeId);
+        sessions = sessions.filter(x => x.id !== activeId);
+        openTabs = openTabs.filter(x => x !== activeId);
+        await switchSess(sessions[0].id);
+        showToast("🗑️ Đã xóa phiên!");
+      }
+    };
+
+    $('btn-move-up').onclick = async () => {
+      const idx = sessions.findIndex(x => x.id === activeId);
+      if (idx > 0) {
+        const temp = sessions[idx];
+        sessions[idx] = sessions[idx - 1];
+        sessions[idx - 1] = temp;
+        for (let i = 0; i < sessions.length; i++) {
+          sessions[i].orderIndex = i;
+          await saveToDB(sessions[i]);
+        }
+        renderSel();
+        showToast("⬆️ Đã di chuyển phiên lên!");
+      } else {
+        showToast("Phiên đã ở vị trí trên cùng!", "info");
+      }
+    };
+
+    $('btn-move-down').onclick = async () => {
+      const idx = sessions.findIndex(x => x.id === activeId);
+      if (idx >= 0 && idx < sessions.length - 1) {
+        const temp = sessions[idx];
+        sessions[idx] = sessions[idx + 1];
+        sessions[idx + 1] = temp;
+        for (let i = 0; i < sessions.length; i++) {
+          sessions[i].orderIndex = i;
+          await saveToDB(sessions[i]);
+        }
+        renderSel();
+        showToast("⬇️ Đã di chuyển phiên xuống!");
+      } else {
+        showToast("Phiên đã ở vị trí dưới cùng!", "info");
+      }
+    };
+
+    $('btn-bulk-edit').onclick = () => {
+      const modal = $('bulk-edit-modal'), list = $('bulk-edit-list');
+      if (!chatHistory.length) return showToast("Phiên này chưa có tin nhắn nào!", "warning");
+      list.innerHTML = chatHistory.map((m, i) => `
+        <label style="display:flex;align-items:flex-start;gap:10px;padding:8px;border-radius:var(--radius-sm);background:var(--input-bg);border:1px solid var(--border);cursor:pointer;">
+          <input type="checkbox" class="bulk-check" value="${i}" style="margin-top:3px;">
+          <div style="flex:1;overflow:hidden;">
+            <strong style="color:var(--primary);font-size:0.78rem;">${m.role === 'user' ? '👤 Bạn' : '✨ Jarvis AI'} [${m.time || ''}]</strong>
+            <p style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.82rem;color:var(--text-muted);margin:0;">${(m.text || '').replace(/<[^>]+>/g, '').substring(0, 70)}</p>
+          </div>
+        </label>
+      `).join('');
+      modal.style.display = 'flex';
+      oLay.style.display = 'block';
+    };
+
+    let allChecked = false;
+    $('btn-select-all-bulk').onclick = () => {
+      allChecked = !allChecked;
+      document.querySelectorAll('.bulk-check').forEach(ck => ck.checked = allChecked);
+      $('btn-select-all-bulk').innerText = allChecked ? "✖️ Bỏ chọn hết" : "☑️ Chọn tất cả";
+    };
+
+    $('btn-delete-selected-bulk').onclick = async () => {
+      const selected = Array.from(document.querySelectorAll('.bulk-check:checked')).map(ck => parseInt(ck.value)).sort((a, b) => b - a);
+      if (!selected.length) return showToast("Chưa chọn tin nhắn nào!", "warning");
+      if (confirm(`Bạn có chắc muốn xóa ${selected.length} tin nhắn đã chọn?`)) {
+        selected.forEach(idx => chatHistory.splice(idx, 1));
+        const s = sessions.find(x => x.id === activeId);
+        if (s) { s.lastInteractionId = null; await saveToDB(s); }
+        await reRenderHistory();
+        closeModals();
+        showToast(`🗑️ Đã xóa ${selected.length} tin nhắn!`);
+      }
+    };
+
+    async function updateConfig() {
+      const s = sessions.find(x => x.id === activeId);
+      if (s) {
+        Object.assign(s, {
+          sys: DOM.sysInst.value,
+          mod: DOM.model.value,
+          engine: DOM.engineSel.value,
+          keySel: DOM.apiKeySel.value,
+          tmp: DOM.temp.value,
+          tpp: DOM.topP.value,
+          top: DOM.topK.value,
+          thk: DOM.thinking.value,
+          useGlob: DOM.toggleGlob.checked,
+          sch: DOM.toggleSearch.checked,
+          schEngine: DOM.searchEngineSel.value,
+          mem: DOM.toggleMemory.checked
+        });
+        if (DOM.engineSel.value === 'stream') {
+          s.assignedApiKey = null;
+        }
+        await saveToDB(s);
+        renderSel();
+      }
+      DOM.searchEngineBox.style.display = DOM.toggleSearch.checked ? 'block' : 'none';
+    }
+
+    DOM.model.addEventListener('change', () => { updateThinkingVisibility(); updateConfig(); });
+    DOM.engineSel.addEventListener('change', updateConfig);
+    [DOM.sysInst, DOM.apiKeySel, DOM.toggleGlob, DOM.toggleSearch, DOM.searchEngineSel, DOM.toggleMemory, DOM.topK, DOM.thinking].forEach(el => el?.addEventListener('change', updateConfig));
+    DOM.temp.addEventListener('input', () => { DOM.tempVal.innerText = DOM.temp.value; updateConfig(); });
+    DOM.topP.addEventListener('input', () => { DOM.toppVal.innerText = DOM.topP.value; updateConfig(); });
+
+    // --- MARKDOWN & SYNTAX HIGHLIGHTING RENDERER ---
+    async function renderMsgContent(el, t) {
+      t = t || "";
+      el.innerHTML = marked.parse(t.replace(/\[URL:\s*(https?:\/\/[^\s]+)\]/g, '<a href="$1" target="_blank" style="color:var(--primary);text-decoration:underline;">$1</a>'));
+      
+      // Math KaTeX
+      window.renderMathInElement?.(el, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ],
+        throwOnError: false
+      });
+
+      // Mermaid diagrams
+      const mds = el.querySelectorAll('code.language-mermaid');
+      for (let i = 0; i < mds.length; i++) {
+        try {
+          const { svg } = await mermaid.render('m_' + Date.now() + '_' + i, mds[i].textContent);
+          const d = document.createElement('div');
+          d.style.cssText = 'overflow-x:auto;padding:10px;text-align:center;background:var(--bg-card);border-radius:var(--radius-md);margin:10px 0;';
+          d.innerHTML = svg;
+          mds[i].parentElement.replaceWith(d);
+        } catch {}
+      }
+
+      // Code blocks beautification & Copy buttons
+      el.querySelectorAll('pre code').forEach(block => {
+        if (!block.classList.contains('language-mermaid')) {
+          hljs.highlightElement(block);
+          const pre = block.parentElement;
+          if (!pre.parentElement.classList.contains('code-block-wrapper')) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'code-block-wrapper';
+            const lang = (block.className.match(/language-(\w+)/) || [, 'code'])[1];
+            const header = document.createElement('div');
+            header.className = 'code-block-header';
+            header.innerHTML = `<span>${lang}</span><button class="code-copy-btn">📋 Copy Code</button>`;
+            header.querySelector('.code-copy-btn').onclick = function() {
+              copyRawText(block.innerText, '📋 Đã copy đoạn mã!');
+              this.innerText = '✅ Copied!';
+              setTimeout(() => this.innerText = '📋 Copy Code', 2000);
+            };
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(header);
+            wrapper.appendChild(pre);
+          }
+        }
+      });
+    }
+
+    async function appendMsg(sd, t, i, iHL = false) {
+      t = t || "";
+      const c = document.createElement('div');
+      c.className = 'message-container';
+      const m = document.createElement('div');
+      m.className = sd === 'user' ? 'user-message' : 'bot-message';
+      m.setAttribute('data-raw', t);
+
+      const ixId = chatHistory[i]?.interactionId;
+      const kNum = chatHistory[i]?.pinnedKey;
+      const ixBadge = (sd === 'model' && ixId) ? `<span class="interaction-id-badge" title="Interaction ID: ${ixId}">⚡ ID: ${ixId.slice(0, 8)}...${kNum ? ` [🔒 Key ${kNum}]` : ''}</span>` : '';
+
+      m.innerHTML = `
+        <div class="message-header">
+          <span>${sd === 'user' ? '👤 Bạn' : '✨ Jarvis AI'}</span>
+          <span style="font-size:0.72rem;opacity:0.75;margin-left:4px;">🕒 ${chatHistory[i]?.time || getNowTime24h()}</span>
+          ${ixBadge}
+        </div>
+        <div class="msg-content"></div>
+      `;
+
+      const a = document.createElement('div');
+      a.className = 'msg-actions';
+      a.innerHTML = `
+        <button class="action-btn" onclick="copy(this)" title="Sao chép toàn bộ">📋 Copy</button>
+        ${sd === 'user' 
+          ? `<button class="action-btn" onclick="editMsg(${i})" title="Chỉnh sửa câu hỏi này">✏️ Sửa</button>` 
+          : `<button class="action-btn" onclick="retryMsg(${i})" title="Tạo lại câu trả lời này">🔄 Thử lại</button>`}
+        <button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${i})" title="Xóa tin nhắn này">🗑️ Xóa</button>
+      `;
+
+      c.append(m, a);
+      DOM.chat.appendChild(c);
+
+      if (!iHL && sd === 'user') DOM.chat.scrollTop = DOM.chat.scrollHeight;
+      await renderMsgContent(m.querySelector('.msg-content'), sd === 'user' ? t.replace(/\n/g, '<br>') : t);
+    }
+
+    async function reRenderHistory() {
+      const s = sessions.find(x => x.id === activeId);
+      if (s) { s.his = chatHistory; await saveToDB(s); renderSel(); }
+      DOM.chat.innerHTML = '';
+      for (let j = 0; j < chatHistory.length; j++) {
+        await appendMsg(chatHistory[j].role === 'model' ? 'bot' : 'user', chatHistory[j].text, j, true);
+      }
+    }
+
+    window.copy = b => {
+      const c = b.closest('.message-container').querySelector('.user-message, .bot-message');
+      if (c) copyRawText(c.getAttribute('data-raw') || c.innerText || '');
+    };
+
+    window.deleteMsg = async i => {
+      if (confirm("Xóa tin nhắn này?")) {
+        chatHistory.splice(i, 1);
+        const s = sessions.find(x => x.id === activeId);
+        if (s) { s.lastInteractionId = null; await saveToDB(s); }
+        await reRenderHistory();
+      }
+    };
+
+    window.retryMsg = async i => {
+      if (isProcessing || i <= 0 || chatHistory[i - 1].role !== 'user') return;
+      const up = chatHistory[i - 1].text;
+      chatHistory.splice(i, 1);
+      const s = sessions.find(x => x.id === activeId);
+      if (s) { s.lastInteractionId = null; await saveToDB(s); }
+      await reRenderHistory();
+      DOM.input.value = up;
+      DOM.input.dispatchEvent(new Event('input'));
+      DOM.sendBtn.click();
+    };
+
+    window.editMsg = async i => {
+      DOM.input.value = chatHistory[i].text;
+      DOM.input.dispatchEvent(new Event('input'));
+      chatHistory = chatHistory.slice(0, i);
+      const s = sessions.find(x => x.id === activeId);
+      if (s) { s.lastInteractionId = null; await saveToDB(s); }
+      await reRenderHistory();
+    };
+
+    window.clearActiveSession = async () => {
+      if (confirm("Bạn có chắc muốn xóa sạch toàn bộ tin nhắn trong phiên này?")) {
+        chatHistory = [];
+        const s = sessions.find(x => x.id === activeId);
+        if (s) { s.lastInteractionId = null; await saveToDB(s); }
+        await reRenderHistory();
+        showToast('Đã dọn sạch hội thoại phiên này!');
+      }
+    };
+
+    // --- SEND MESSAGE (STREAM / INTERACTIONS) ---
+    DOM.sendBtn.onclick = async () => {
+      if (isProcessing) return abortController?.abort();
+      const am = DOM.model.value || 'gemini-3.5-flash-lite';
+      const msg = DOM.input.value.trim();
+      if (!msg && !filesData.length && !txtContent) return;
+
+      const cs = sessions.find(x => x.id === activeId);
+      const currentEngine = cs?.engine || DOM.engineSel?.value || 'stream';
+
+      let gKey = "";
+      let keyIndexNum = 1;
+
+      if (currentEngine === 'interactions') {
+        if (!cs.assignedApiKey) {
+          gKey = getSessionApiKey(cs);
+          cs.assignedApiKey = gKey;
+          await saveToDB(cs);
+          keyIndexNum = apiKeys.indexOf(gKey) + 1;
+        } else {
+          gKey = cs.assignedApiKey;
+          keyIndexNum = apiKeys.indexOf(gKey) + 1;
+        }
+      } else {
+        gKey = getSessionApiKey(cs, true);
+        keyIndexNum = apiKeys.indexOf(gKey) + 1;
+      }
+
+      if (!gKey) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
+
+      ls.removeItem('jarvis_draft');
+      isProcessing = true;
+      abortController = new AbortController();
+
+      DOM.sendBtn.innerHTML = `<span>Dừng</span> 🛑`;
+      DOM.sendBtn.style.background = 'var(--danger)';
+
+      let finalResp = "",
+          botTime = getNowTime24h(),
+          dispText = msg || "📎 [Gửi tệp]",
+          fP = (txtContent ? (msg ? msg + "\n\n" + txtContent : txtContent) : msg).trim() || "Hãy phân tích nội dung này.",
+          bD;
+      let recordedIxId = null;
+      const startTime = performance.now();
+
+      const saveTurn = async (suffix = '') => {
+        if (!finalResp.trim()) return bD?.remove();
+        chatHistory.push(
+          { role: 'user', text: fP },
+          { role: 'model', text: finalResp, time: botTime, interactionId: recordedIxId, pinnedKey: currentEngine === 'interactions' ? keyIndexNum : null }
+        );
+
+        if (cs) {
+          cs.his = chatHistory;
+          if (recordedIxId) cs.lastInteractionId = recordedIxId;
+          await saveToDB(cs);
+          renderSel();
+        }
+
+        if (bD?.querySelector('.bot-message')) {
+          bD.querySelector('.bot-message').setAttribute('data-raw', finalResp);
+          const ixBadge = recordedIxId ? `<span class="interaction-id-badge" title="ID: ${recordedIxId}">⚡ ID: ${recordedIxId.slice(0, 8)}... [🔒 Key ${keyIndexNum}]</span>` : '';
+          bD.querySelector('.message-header').innerHTML = `<span>✨ Jarvis AI</span><span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}</span>${ixBadge}`;
+          const currentBotIdx = chatHistory.length - 1, aDiv = document.createElement('div');
+          aDiv.className = 'msg-actions';
+          aDiv.innerHTML = `
+            <button class="action-btn" onclick="copy(this)">📋 Copy</button>
+            <button class="action-btn" onclick="retryMsg(${currentBotIdx})">🔄 Thử lại</button>
+            <button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${currentBotIdx})">🗑️ Xóa</button>
+          `;
+          bD.appendChild(aDiv);
+        }
+      };
+
+      try {
+        await appendMsg('user', dispText + (filesData.length ? ` [${filesData.length} tệp]` : ''), chatHistory.length, false);
+        DOM.input.value = '';
+        DOM.input.style.height = '38px';
+        updateTokenCount();
+        const imgs = [...filesData];
+        DOM.clearFilesBtn.click();
+
+        bD = document.createElement('div');
+        bD.className = 'message-container';
+        bD.innerHTML = `
+          <div class="bot-message">
+            <div class="message-header">
+              <span>✨ Jarvis AI</span>
+              <span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span>
+              <span class="streaming-indicator"><span class="pulse-dot"></span> Đang kết nối...</span>
+            </div>
+            <div class="msg-content"></div>
+          </div>
+        `;
+        DOM.chat.appendChild(bD);
+        bD.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        const cD = bD.querySelector('.msg-content');
+        const renderer = createStreamRenderer(cD);
+        let fnP = fP;
+
+        const uMatch = fnP.match(/https?:\/\/[^\s]+/)?.[0];
+        if (uMatch && !uMatch.includes("youtube.com") && !uMatch.includes("youtu.be")) {
+          if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerHTML = `<span class="pulse-dot"></span> 🌐 Đang bóc tách link...`;
+          try {
+            const ext = await extractWebPageContent(uMatch);
+            fnP = `[NỘI DUNG TỪ ${uMatch} QUA ${ext.source}]:\n${ext.content}\n\n[YÊU CẦU]:\n${fnP}`;
+          } catch {}
+        }
+        if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
+
+        const quoted = extractQuotedKeywords(fnP);
+        if (quoted && DOM.toggleSearch.checked) {
+          const sel = DOM.searchEngineSel.value,
+                tgt = sel === 'auto' ? (ls.getItem('auto_search_default_engine') || 'tavily') : sel;
+          if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerHTML = `<span class="pulse-dot"></span> 🔍 Tìm kiếm "${quoted}"...`;
+          try {
+            const sText = await ({ tavily: fetchTavilySearch, jina: fetchJinaSearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[tgt] || fetchTavilySearch)(quoted);
+            if (sText) fnP = `[DỮ LIỆU TÌM ĐƯỢC CHO "${quoted}"]: \n${sText}\n\n[YÊU CẦU]: ${fnP}`;
+          } catch (e) {}
+        }
+        if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
+
+        const currentParts = [{ text: fnP }];
+        for (const f of imgs) currentParts.push(await fileToInteractionPart(f));
+        const thk = DOM.thinking.value;
+        let pS = false, lastErr = null;
+
+        // ENGINE 1: INTERACTIONS API
+        if (currentEngine === 'interactions') {
+          if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerHTML = `<span class="pulse-dot"></span> ⚡ Interactions API...`;
+          try {
+            const ai = new GoogleGenAI({ apiKey: gKey });
+            const interactionParams = {
+              model: am,
+              input: imgs.length ? currentParts : fnP,
+              stream: true,
+              system_instruction: getDynamicSI()
+            };
+
+            const genConfig = {
+              temperature: +DOM.temp.value,
+              top_p: +DOM.topP.value,
+              top_k: +DOM.topK.value
+            };
+            if (thk && thk !== 'none' && thk !== 'minimal') {
+              genConfig.thinking_level = thk;
+            }
+            interactionParams.generation_config = genConfig;
+
+            if (DOM.toggleMemory?.checked && cs?.lastInteractionId) {
+              interactionParams.previous_interaction_id = cs.lastInteractionId;
+            }
+
+            let streamObj;
+            try {
+              streamObj = await ai.interactions.create(interactionParams);
+            } catch (ixErr) {
+              if (interactionParams.previous_interaction_id && (ixErr.message.includes('not found') || ixErr.message.includes('404') || ixErr.message.includes('invalid'))) {
+                delete interactionParams.previous_interaction_id;
+                if (cs) cs.lastInteractionId = null;
+                streamObj = await ai.interactions.create(interactionParams);
+              } else {
+                throw ixErr;
+              }
+            }
+
+            for await (const event of streamObj) {
+              const foundId = event.interaction?.id || event.id || event.interaction_id;
+              if (foundId) recordedIxId = foundId;
+
+              let chunkText = "";
+              if (event.event_type === "step.delta" && event.delta?.type === "text") chunkText = event.delta.text;
+              else if (event.delta?.text) chunkText = event.delta.text;
+              else if (event.text) chunkText = event.text;
+
+              if (chunkText) {
+                bD.querySelector('.streaming-indicator')?.remove();
+                finalResp += chunkText;
+                renderer.push(finalResp);
+                if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
+                pS = true;
+              }
+            }
+
+            await renderer.flush(finalResp);
+          } catch (err) {
+            lastErr = err;
+            showToast(`Lỗi Interactions: ${err.message}`, "danger");
+          }
+        }
+
+        // ENGINE 2: GENERATECONTENTSTREAM
+        if (!pS && currentEngine === 'stream') {
+          const contents = [];
+          if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
+            chatHistory.slice(-16).forEach(m => contents.push({
+              role: m.role === 'model' ? 'model' : 'user',
+              parts: [{ text: m.text }]
+            }));
+          }
+          contents.push({ role: 'user', parts: currentParts });
+
+          const config = {
+            systemInstruction: getDynamicSI(),
+            safetySettings: SAFETY,
+            temperature: +DOM.temp.value,
+            topP: +DOM.topP.value,
+            topK: +DOM.topK.value,
+            ...(thk && thk !== 'none' && thk !== 'minimal' ? { thinkingConfig: { thinkingLevel: thk } } : {})
+          };
+
+          try {
+            const resStream = await new GoogleGenAI({ apiKey: gKey }).models.generateContentStream({
+              model: am,
+              contents,
+              config,
+              abortSignal: abortController.signal
+            });
+
+            for await (const ck of resStream) {
+              if (ck.text) {
+                bD.querySelector('.streaming-indicator')?.remove();
+                finalResp += ck.text;
+                renderer.push(finalResp);
+                if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
+                pS = true;
+              }
+            }
+            await renderer.flush(finalResp);
+          } catch (e) {
+            if (e.name === 'AbortError' || abortController.signal.aborted) throw e;
+            lastErr = e;
+          }
+        }
+
+        if (!pS) {
+          bD.remove();
+          return showToast(formatGoogleApiError(lastErr), 'danger');
+        }
+        await saveTurn();
+      } catch (err) {
+        if (err.name === 'AbortError' || abortController?.signal.aborted) {
+          showToast("Đã dừng phản hồi!", "warning");
+          await saveTurn(' (Đã dừng)');
+        } else {
+          showToast("Lỗi: " + err.message, 'danger');
+          bD?.remove();
+        }
+      } finally {
+        isProcessing = false;
+        abortController = null;
+        DOM.sendBtn.innerHTML = `<span>Gửi</span> <svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
+        DOM.sendBtn.style.background = 'var(--primary)';
+      }
+    };
+
+    // --- EXPORT JSON & RESTORE ---
+    window.exportAllSessions = async () => {
+      const cfgs = { chat_font_size: ls.getItem('chat_font_size') || "16" };
+      for (let i = 1; i <= 10; i++) cfgs[`jarvis_api_${i}`] = ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || "";
+      cfgMap.forEach(([, k]) => cfgs[k] = ls.getItem(k) || "");
+      saveOrShareBlob(new Blob([JSON.stringify({ brand: "Jarvis AI", sessions: await getAllFromDB(), configs: cfgs }, null, 2)], { type: 'application/json' }), `JarvisAI_Backup_${Date.now()}.json`);
+    };
+
+    $('import-all-input').onchange = e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const rd = new FileReader();
+      rd.onload = async ev => {
+        try {
+          const d = JSON.parse(ev.target.result);
+          if (d.sessions) {
+            await clearAllDB();
+            for (const s of d.sessions) await saveToDB(s);
+            if (d.configs) Object.entries(d.configs).forEach(([k, v]) => ls.setItem(k, v));
+            initAPIKeys();
+            initExternalConfigs();
+            applyFontSize(parseInt(ls.getItem('chat_font_size') || '16', 10));
+            await loadSess();
+            showToast('🎉 Đã khôi phục toàn bộ dữ liệu Jarvis AI thành công!');
+          }
+        } catch {
+          showToast('Lỗi: Tệp JSON sao lưu không hợp lệ', 'danger');
+        }
+      };
+      rd.readAsText(f);
+    };
+
+    function renderFiles() {
+      DOM.previewBox.style.display = (filesData.length || txtContent) ? 'block' : 'none';
+      DOM.fileCount.innerText = filesData.length + (txtContent ? 1 : 0);
+      DOM.previewGrid.innerHTML = filesData.map((f, i) => `
+        <div style="position:relative;width:50px;height:50px;background:#1e293b;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;overflow:hidden;border:1px solid var(--border);">
+          ${f.type.startsWith('image') ? `<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover;">` : '📄 FILE'}
+          <button onclick="rmImg(${i})" style="position:absolute;top:2px;right:2px;background:rgba(239,68,68,0.9);color:white;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;">×</button>
+        </div>
+      `).join('');
+    }
+
+    window.rmImg = i => {
+      filesData.splice(i, 1);
+      renderFiles();
+      updateTokenCount();
+    };
+
+    DOM.clearFilesBtn.onclick = () => {
+      filesData = [];
+      txtContent = "";
+      DOM.textFileList.innerHTML = "";
+      renderFiles();
+      updateTokenCount();
+    };
+
+    const fileToInteractionPart = f => new Promise(r => {
+      const rd = new FileReader();
+      rd.onloadend = () => r({ inlineData: { mimeType: f.type, data: rd.result.split(',')[1] } });
+      rd.readAsDataURL(f);
+    });
+
+    window.exportChatDoc = () => {
+      const h = `<html><head><meta charset="utf-8"></head><body><h2>Lịch sử Trò chuyện Jarvis AI</h2>` + chatHistory.map(m => `<p><strong>${m.role === 'user' ? 'Bạn' : 'Jarvis AI'}:</strong><br>${m.role === 'model' ? marked.parse(m.text) : m.text}</p><hr>`).join('') + "</body></html>";
+      saveOrShareBlob(new Blob(['\ufeff', h], { type: 'application/msword' }), `JarvisAI_Chat_${Date.now()}.doc`);
+    };
+
+    window.exportChatPDF = () => {
+      const e = document.createElement('div');
+      e.style.padding = '20px';
+      e.innerHTML = `<h2 style="color:#2563eb;margin-bottom:16px;">Jarvis AI Chat Transcript</h2>` + chatHistory.map(m => `<div style="margin:14px 0;"><strong>${m.role === 'user' ? 'Bạn' : 'Jarvis AI'} [${m.time || ''}]:</strong><br>${m.role === 'model' ? marked.parse(m.text) : m.text}</div><hr style="border:none;border-top:1px solid #e2e8f0;">`).join('');
+      html2pdf().from(e).outputPdf('blob').then(b => saveOrShareBlob(b, `JarvisAI_Chat_${Date.now()}.pdf`));
+    };
+
+    // --- TOAST NOTIFIER ---
+    let tTO;
+    function showToast(m, t = 'success') {
+      clearTimeout(tTO);
+      DOM.toast.innerText = m;
+      DOM.toast.className = `toast ${t} show`;
+      tTO = setTimeout(() => DOM.toast.classList.remove('show'), 3200);
+    }
+
+    // --- SEARCH BAR POPUP & TRIGGER ---
+    const sBar = document.querySelector('.header-search-bar');
+    $('btn-global-search').onclick = e => {
+      e.stopPropagation();
+      if (!sBar.classList.contains('active')) {
+        sBar.classList.add('active');
+        DOM.searchInput.focus();
+      } else {
+        $('search-modal').style.display = 'flex';
+        oLay.style.display = 'block';
+      }
+    };
+    document.addEventListener('click', e => {
+      if (!sBar.contains(e.target)) sBar.classList.remove('active');
+    });
+
+    $('global-search-input').oninput = e => {
+      const q = e.target.value.toLowerCase().trim(), resBox = $('search-results');
+      if (!q) return resBox.innerHTML = '';
+      const matched = [];
+      sessions.forEach(s => {
+        (s.his || []).forEach(m => {
+          if ((m.text || '').toLowerCase().includes(q)) {
+            matched.push({ session: s, text: m.text, role: m.role, time: m.time });
+          }
+        });
+      });
+      resBox.innerHTML = matched.length ? matched.slice(0, 30).map(item => `
+        <div onclick="window.switchSess('${item.session.id}'); document.querySelectorAll('.modal-box').forEach(m => m.style.display='none'); document.getElementById('modal-overlay').style.display='none';" style="padding:10px;border-radius:var(--radius-sm);background:var(--bg-main);border-left:3px solid var(--primary);cursor:pointer;font-size:0.82rem;">
+          <strong style="color:var(--primary);">${item.session.name} (${item.role === 'user' ? 'Bạn' : 'AI'} - ${item.time || ''})</strong>
+          <p style="margin:4px 0 0 0;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.text.replace(/<[^>]+>/g, '').substring(0, 100)}</p>
+        </div>
+      `).join('') : '<i style="color:var(--text-muted);">Không tìm thấy kết quả phù hợp.</i>';
+    };
+
+    // BOOTSTRAP APP
+    loadSess();
+  </script>
+</body>
+</html>
