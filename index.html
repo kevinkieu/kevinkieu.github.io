@@ -2022,13 +2022,18 @@
 
     @media (max-width: 900px) {
       .modal-box.modal-tts-studio {
-        width: 100vw;
-        height: 100vh;
-        max-height: 100vh;
-        border-radius: 0;
-        top: 0;
-        left: 0;
-        transform: none;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+        transform: none !important;
+        animation: none !important;
+        z-index: 2100 !important;
       }
       .tts-layout-body {
         grid-template-columns: 1fr;
@@ -2239,7 +2244,7 @@
           </button>
 
           <!-- TTS STUDIO BUTTON -->
-          <button id="btn-tts-studio-header" class="btn" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(139,92,246,0.3);display:flex;align-items:center;gap:5px;" title="Gemini TTS Studio Pro (Chuyển văn bản thành giọng nói, xuất MP3)">
+          <button id="btn-tts-studio-header" class="btn" onclick="openTTSStudioModal()" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(139,92,246,0.3);display:flex;align-items:center;gap:5px;" title="Gemini TTS Studio Pro (Chuyển văn bản thành giọng nói, xuất MP3)">
             🎙️ <span class="mobile-hidden">Studio TTS</span>
           </button>
 
@@ -2303,7 +2308,7 @@
           <button id="btn-cloud-sync-chip" class="tool-chip" style="border-color:#0284c7;color:#0284c7;font-weight:600;" title="Đồng bộ Cloud đa thiết bị">
             ☁️ Đồng bộ Cloud
           </button>
-          <button id="btn-open-tts-studio" class="tool-chip" style="border-color:#8b5cf6;color:#8b5cf6;font-weight:600;" title="Mở Gemini TTS Studio Pro (Chuyển văn bản thành giọng nói, xuất MP3)">
+          <button id="btn-open-tts-studio" class="tool-chip" onclick="openTTSStudioModal()" style="border-color:#8b5cf6;color:#8b5cf6;font-weight:600;" title="Mở Gemini TTS Studio Pro (Chuyển văn bản thành giọng nói, xuất MP3)">
             🎙️ Studio TTS
           </button>
           <label class="tool-chip" for="file-upload" style="cursor:pointer;" title="Đính kèm ảnh, video, PDF, txt, code">
@@ -2752,6 +2757,8 @@
           </ol>
         </details>
       </div>
+    </div>
+
     <!-- ==========================================
          MODAL: GEMINI TTS STUDIO PRO
          ========================================== -->
@@ -4162,7 +4169,7 @@
     let db;
     function initDB() {
       return new Promise((res, rej) => {
-        const rq = indexedDB.open(DB_NAME, 6);
+        const rq = indexedDB.open(DB_NAME, 7);
         rq.onupgradeneeded = e => {
           let d = e.target.result;
           if (!d.objectStoreNames.contains(STORE_NAME)) d.createObjectStore(STORE_NAME, { keyPath: "id" });
@@ -4926,7 +4933,8 @@
 
     const oLay = $('modal-overlay'), closeModals = () => {
       document.querySelectorAll('.modal-box, #command-palette-modal, #ab-compare-modal').forEach(m => m.style.display = 'none');
-      oLay.style.display = 'none';
+      if (oLay) oLay.style.display = 'none';
+      if (typeof window.closeTTSStudioModal === 'function') window.closeTTSStudioModal();
     };
     document.querySelectorAll('.close-btn').forEach(b => b.onclick = closeModals);
     oLay.onclick = closeModals;
@@ -5581,7 +5589,7 @@
 
       const ixId = chatHistory[i]?.interactionId;
       const kNum = chatHistory[i]?.pinnedKey;
-      const ixBadge = (sd === 'model' && ixId) ? `<span class="interaction-id-badge" title="Interaction ID: ${ixId}">⚡ ID: ${ixId.slice(0, 8)}...${kNum ? ` [🔒 Key ${kNum}]` : ''}</span>` : '';
+      const ixBadge = ((sd !== 'user') && ixId) ? `<span class="interaction-id-badge" title="Interaction ID: ${ixId}">⚡ ID: ${ixId.slice(0, 8)}...${kNum ? ` [🔒 Key ${kNum}]` : ''}</span>` : '';
       const pinnedBadge = isPinned ? `<span class="pinned-tag">📌 ĐÃ GHIM</span>` : '';
       const liveBadge = chatHistory[i]?.isLiveCall ? `<span style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:rgba(16,185,129,0.15);color:#10b981;font-weight:600;margin-left:4px;border:1px solid rgba(16,185,129,0.3);">📞 Thoại Live</span>` : '';
 
@@ -5602,7 +5610,7 @@
         <button class="action-btn" onclick="copy(this)" title="Sao chép toàn bộ">📋 Copy</button>
         <button class="action-btn ${isPinned ? 'pinned-active' : ''}" onclick="togglePinMsg(${i})" title="${isPinned ? 'Bỏ ghim tin nhắn' : 'Ghim tin nhắn này để AI luôn nhớ'}">${isPinned ? '📌 Bỏ ghim' : '📌 Ghim'}</button>
         <button class="action-btn" onclick="forkSessionAt(${i})" title="Rẽ nhánh tạo phiên mới từ điểm này">🌿 Rẽ nhánh</button>
-        ${sd === 'model' ? `<button class="action-btn tts-btn" onclick="toggleSpeakMsg(this, ${i})" title="Đọc to bằng giọng nói">🔊 Nghe</button><button class="action-btn" onclick="openMsgInTTSStudio(${i})" title="Chuyển nội dung vào Gemini TTS Studio">🎙️ Studio</button>` : ''}
+        ${sd !== 'user' ? `<button class="action-btn tts-btn" onclick="toggleSpeakMsg(this, ${i})" title="Đọc to bằng giọng nói">🔊 Nghe</button><button class="action-btn" onclick="openMsgInTTSStudio(${i})" title="Chuyển nội dung vào Gemini TTS Studio">🎙️ Studio</button>` : ''}
         ${sd === 'user' 
           ? `<button class="action-btn" onclick="editMsg(${i})" title="Chỉnh sửa câu hỏi này">✏️ Sửa</button>` 
           : `<button class="action-btn" onclick="retryMsg(${i})" title="Tạo lại câu trả lời này">🔄 Thử lại</button>`}
@@ -6967,7 +6975,7 @@
     // IndexedDB for TTS Library
     function ttsDbSave(record) {
       return new Promise((resolve) => {
-        if (!db) return resolve();
+        if (!db || !db.objectStoreNames.contains(TTS_STORE)) return resolve();
         try {
           const tx = db.transaction(TTS_STORE, "readwrite");
           const st = tx.objectStore(TTS_STORE);
@@ -6980,7 +6988,7 @@
 
     function ttsDbGetAll() {
       return new Promise((resolve) => {
-        if (!db) return resolve([]);
+        if (!db || !db.objectStoreNames.contains(TTS_STORE)) return resolve([]);
         try {
           const tx = db.transaction(TTS_STORE, "readonly");
           const st = tx.objectStore(TTS_STORE);
@@ -6993,7 +7001,7 @@
 
     function ttsDbDelete(id) {
       return new Promise((resolve) => {
-        if (!db) return resolve();
+        if (!db || !db.objectStoreNames.contains(TTS_STORE)) return resolve();
         try {
           const tx = db.transaction(TTS_STORE, "readwrite");
           const st = tx.objectStore(TTS_STORE);
@@ -7005,7 +7013,7 @@
 
     function ttsDbClearAll() {
       return new Promise((resolve) => {
-        if (!db) return resolve();
+        if (!db || !db.objectStoreNames.contains(TTS_STORE)) return resolve();
         try {
           const tx = db.transaction(TTS_STORE, "readwrite");
           const st = tx.objectStore(TTS_STORE);
@@ -7313,39 +7321,48 @@
     // Modal Control & Init
     function openTTSStudioModal(initialText = '') {
       const modal = $('tts-studio-modal');
-      if (!modal) return;
+      if (!modal) {
+        console.error("tts-studio-modal not found!");
+        return;
+      }
       modal.style.display = 'flex';
-      oLay.style.display = 'block';
+      const oLay = $('modal-overlay');
+      if (oLay) oLay.style.display = 'block';
 
-      // Update Key count info
-      const activeKeys = getGoogleKeysList().filter(Boolean);
-      const keyInfo = $('tts-key-count-info');
-      if (keyInfo) {
-        keyInfo.innerText = activeKeys.length > 0 
-          ? `✅ Sẵn sàng ${activeKeys.length}/10 Google Keys từ Jarvis AI`
-          : `⚠️ Chưa có Google API Key nào trong Jarvis AI`;
-        keyInfo.style.color = activeKeys.length > 0 ? '#10b981' : '#ef4444';
-      }
-
-      if (initialText) {
-        const ed = $('tts-editor-input');
-        if (ed) {
-          ed.value = initialText;
-          updateTTSMetrics();
+      try {
+        // Update Key count info
+        const activeKeys = getGoogleKeysList().filter(Boolean);
+        const keyInfo = $('tts-key-count-info');
+        if (keyInfo) {
+          keyInfo.innerText = activeKeys.length > 0 
+            ? `✅ Sẵn sàng ${activeKeys.length}/10 Google Keys từ Jarvis AI`
+            : `⚠️ Chưa có Google API Key nào trong Jarvis AI`;
+          keyInfo.style.color = activeKeys.length > 0 ? '#10b981' : '#ef4444';
         }
-        // Auto-detect dialogue markers
-        if (/^(?:A|Speaker\s*A|\[A\]|\[Speaker\s*A\])\s*:/im.test(initialText) && /^(?:B|Speaker\s*B|\[B\]|\[Speaker\s*B\])\s*:/im.test(initialText)) {
-          setTTSStudioMode('dialogue');
-        }
-      }
 
-      renderTTSHistory();
+        if (initialText) {
+          const ed = $('tts-editor-input');
+          if (ed) {
+            ed.value = initialText;
+            updateTTSMetrics();
+          }
+          // Auto-detect dialogue markers
+          if (/^(?:A|Speaker\s*A|\[A\]|\[Speaker\s*A\])\s*:/im.test(initialText) && /^(?:B|Speaker\s*B|\[B\]|\[Speaker\s*B\])\s*:/im.test(initialText)) {
+            setTTSStudioMode('dialogue');
+          }
+        }
+
+        renderTTSHistory();
+      } catch (err) {
+        console.warn("TTS open modal error:", err);
+      }
     }
 
     function closeTTSStudioModal() {
       const modal = $('tts-studio-modal');
       if (modal) modal.style.display = 'none';
-      oLay.style.display = 'none';
+      const oLay = $('modal-overlay');
+      if (oLay) oLay.style.display = 'none';
       if (ttsAudioCtx && ttsAudioCtx.state === 'running') {
         ttsAudioCtx.suspend().catch(() => {});
       }
