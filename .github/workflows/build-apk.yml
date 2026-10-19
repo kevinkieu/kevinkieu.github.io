@@ -3,7 +3,7 @@ name: Build Jarvis AI Android APK
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch:
+  workflow_dispatch: # Cho phép bấm nút "Run workflow" thủ công trên tab Actions của GitHub
 
 jobs:
   build:
@@ -220,20 +220,23 @@ jobs:
         </FrameLayout>
         EOF
 
-        # 8. MainActivity.java
         cat << 'EOF' > android/app/src/main/java/com/kevinkieu/jarvisai/MainActivity.java
         package com.kevinkieu.jarvisai;
 
         import android.Manifest;
         import android.annotation.SuppressLint;
         import android.app.Activity;
+        import android.content.Context;
         import android.content.Intent;
+        import android.content.SharedPreferences;
         import android.content.pm.PackageManager;
         import android.net.Uri;
         import android.os.Build;
         import android.os.Bundle;
         import android.view.Window;
         import android.view.WindowManager;
+        import android.webkit.CookieManager;
+        import android.webkit.JavascriptInterface;
         import android.webkit.PermissionRequest;
         import android.webkit.ValueCallback;
         import android.webkit.WebChromeClient;
@@ -247,6 +250,10 @@ jobs:
         import androidx.core.app.ActivityCompat;
         import androidx.core.content.ContextCompat;
 
+        import org.json.JSONObject;
+
+        import java.util.Map;
+
         public class MainActivity extends AppCompatActivity {
             private static final String TARGET_URL = "https://kevinkieu.github.io/index.html";
             private static final int PERMISSION_REQ_CODE = 1001;
@@ -255,6 +262,54 @@ jobs:
             private WebView webView;
             private ValueCallback<Uri[]> filePathCallback;
             private long lastBackPressTime = 0;
+
+            public static class NativeStorageBridge {
+                private final SharedPreferences prefs;
+
+                public NativeStorageBridge(Context context) {
+                    this.prefs = context.getSharedPreferences("JarvisPersistentStore", Context.MODE_PRIVATE);
+                }
+
+                @JavascriptInterface
+                public void setItem(String key, String value) {
+                    if (key != null && value != null) {
+                        prefs.edit().putString(key, value).commit();
+                    }
+                }
+
+                @JavascriptInterface
+                public String getItem(String key) {
+                    if (key == null) return null;
+                    return prefs.getString(key, null);
+                }
+
+                @JavascriptInterface
+                public void removeItem(String key) {
+                    if (key != null) {
+                        prefs.edit().remove(key).commit();
+                    }
+                }
+
+                @JavascriptInterface
+                public String getAllDataJson() {
+                    try {
+                        JSONObject obj = new JSONObject();
+                        for (Map.Entry<String, ?> entry : prefs.getAll().entrySet()) {
+                            if (entry.getValue() != null) {
+                                obj.put(entry.getKey(), entry.getValue().toString());
+                            }
+                        }
+                        return obj.toString();
+                    } catch (Exception e) {
+                        return "{}";
+                    }
+                }
+
+                @JavascriptInterface
+                public void commit() {
+                    prefs.edit().commit();
+                }
+            }
 
             @SuppressLint("SetJavaScriptEnabled")
             @Override
@@ -290,6 +345,14 @@ jobs:
                 settings.setUseWideViewPort(true);
                 settings.setLoadWithOverviewMode(true);
                 settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+
+                CookieManager cookieManager = CookieManager.getInstance();
+                cookieManager.setAcceptCookie(true);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    cookieManager.setAcceptThirdPartyCookies(webView, true);
+                }
+
+                webView.addJavascriptInterface(new NativeStorageBridge(this), "JarvisNativeBridge");
 
                 webView.setWebViewClient(new WebViewClient() {
                     @Override
@@ -369,6 +432,23 @@ jobs:
                     return;
                 }
                 super.onActivityResult(requestCode, resultCode, data);
+            }
+
+            @Override
+            protected void onPause() {
+                super.onPause();
+                if (webView != null) {
+                    webView.onPause();
+                }
+                CookieManager.getInstance().flush();
+            }
+
+            @Override
+            protected void onResume() {
+                super.onResume();
+                if (webView != null) {
+                    webView.onResume();
+                }
             }
 
             @Override
