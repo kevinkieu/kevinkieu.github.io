@@ -1979,8 +1979,10 @@
 
       <div class="live-controls">
         <select id="live-model-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;font-size:0.78rem;">
-          <option value="models/gemini-3.8-live" selected>⚡ Gemini 3.8 Live</option>
+          <option value="models/gemini-3.8-live" selected>⚡ Gemini 3.8 Live (Mặc định)</option>
           <option value="models/gemini-3.8-live-extended-thinking">🧠 Gemini 3.8 Extended</option>
+          <option value="models/gemini-2.0-flash-exp">⚡ Gemini 2.0 Flash Live (Dự phòng)</option>
+          <option value="models/gemini-2.0-flash-realtime-exp">⚡ Gemini 2.0 Realtime (Dự phòng)</option>
         </select>
         <select id="live-key-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;font-size:0.78rem;">
           <option value="auto">🔄 Tự động Key</option>
@@ -2550,6 +2552,51 @@
     let liveWs = null, liveAudioCtx = null, liveMediaStream = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] };
     let liveMicSource = null, liveScriptProcessor = null, liveSilentGain = null;
     let liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
+    let liveCallHistory = []; // Lưu lại hội thoại Live để đưa vào Chat Text khi kết thúc
+    let liveSilenceTimer = null, liveSilenceInterval = null, liveFarewellDetected = false;
+
+    function resetLiveSilenceTimer() {
+      if (liveSilenceTimer) { clearTimeout(liveSilenceTimer); liveSilenceTimer = null; }
+      if (liveSilenceInterval) { clearInterval(liveSilenceInterval); liveSilenceInterval = null; }
+    }
+
+    function isFarewellIntent(txt) {
+      if (!txt) return false;
+      const lower = txt.toLowerCase();
+      return /\b(tạm biệt|hẹn gặp lại|kết thúc cuộc gọi|dừng cuộc gọi|tắt máy|cúp máy|ngắt máy|goodbye|bye bye|bye jarvis|see you)\b/i.test(lower);
+    }
+
+    async function endLiveCall(reasonNotice = "") {
+      resetLiveSilenceTimer();
+      try { liveWs?.close(); } catch {}
+      liveWs = null;
+      cleanupLive();
+      $('live-call-modal').style.display = 'none';
+
+      // Chuyển toàn bộ hội thoại cuộc gọi Live vào khung chat chính
+      if (liveCallHistory.length > 0) {
+        const cs = sessions.find(x => x.id === activeId);
+        for (const item of liveCallHistory) {
+          if (item.text?.trim()) {
+            chatHistory.push({
+              role: item.role,
+              text: item.text.trim(),
+              time: item.time || getNowTime24h()
+            });
+          }
+        }
+        if (cs) {
+          cs.his = chatHistory;
+          await saveToDB(cs);
+          renderSel();
+        }
+        await reRenderHistory();
+        liveCallHistory = [];
+        showToast(reasonNotice || "Đã lưu nội dung cuộc gọi vào hội thoại!", "info");
+      } else if (reasonNotice) {
+        showToast(reasonNotice, "info");
+      }
+    }
 
     function getLiveCallSI() {
       const cs = sessions.find(x => x.id === activeId),
@@ -2607,7 +2654,29 @@
       if ($('live-orb')) $('live-orb').className = 'live-orb speaking';
       src.onended = () => {
         st.activeSources = st.activeSources.filter(s => s !== src);
-        if (!st.activeSources.length && $('live-orb')) $('live-orb').className = 'live-orb listening';
+        if (!st.activeSources.length && $('live-orb')) {
+          $('live-orb').className = 'live-orb listening';
+          
+          // Nếu có câu chào tạm biệt, tự ngắt cuộc gọi ngay sau khi AI nói xong
+          if (liveFarewellDetected) {
+            setTimeout(() => endLiveCall("Đã tự động kết thúc cuộc gọi theo lời chào!"), 1200);
+            return;
+          }
+
+          // Kích hoạt đếm ngược tự ngắt nếu người dùng im lặng trong 16 giây
+          resetLiveSilenceTimer();
+          let timeLeft = 16;
+          liveSilenceInterval = setInterval(() => {
+            timeLeft--;
+            if (timeLeft <= 5 && $('live-call-status') && isLiveSetupComplete) {
+              $('live-call-status').innerText = `🟢 Đang nghe... (Tự ngắt sau ${timeLeft}s)`;
+            }
+          }, 1000);
+
+          liveSilenceTimer = setTimeout(() => {
+            endLiveCall("Đã tự động kết thúc cuộc gọi do không có tương tác.");
+          }, 16000);
+        }
       };
     }
 
@@ -2640,6 +2709,8 @@
       orb.className = 'live-orb listening';
       livePlaybackState = { nextPlayTime: 0, activeSources: [] };
       isLiveSetupComplete = false;
+      liveFarewellDetected = false;
+      resetLiveSilenceTimer();
 
       try {
         liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2722,6 +2793,7 @@
               orb.style.transform = 'scale(1)';
             }
 
+            if (rms > 0.02) resetLiveSilenceTimer();
             const pcm16k = downsampleTo16kPCM(floatData, actualSampleRate);
             let bin = '';
             for (let i = 0; i < pcm16k.length; i++) bin += String.fromCharCode(pcm16k[i]);
@@ -2787,34 +2859,68 @@
               orb.className = 'live-orb listening';
             }
 
-            if (msg.serverContent?.interimTranscript || msg.serverContent?.inputAudioTranscription?.text) {
-              const userTxt = msg.serverContent.interimTranscript || msg.serverContent.inputAudioTranscription.text;
+            if (msg.serverContent?.inputAudioTranscription?.text) {
+              resetLiveSilenceTimer();
+              const userTxt = msg.serverContent.inputAudioTranscription.text.trim();
               tr.innerHTML = `<span style="color:#94a3b8;">🗣️ <b>Bạn:</b> "${userTxt}"</span>`;
+              if (userTxt) {
+                liveCallHistory.push({ role: 'user', text: userTxt, time: getNowTime24h() });
+                if (isFarewellIntent(userTxt)) liveFarewellDetected = true;
+              }
+            } else if (msg.serverContent?.interimTranscript) {
+              resetLiveSilenceTimer();
+              const userTxt = msg.serverContent.interimTranscript;
+              tr.innerHTML = `<span style="color:#94a3b8;">🗣️ <b>Bạn:</b> "${userTxt}"</span>`;
+              if (isFarewellIntent(userTxt)) liveFarewellDetected = true;
             }
 
             for (const p of (msg.serverContent?.modelTurn?.parts || [])) {
               if (p.inlineData?.data) playPcm24k(p.inlineData.data, liveAudioCtx, livePlaybackState);
-              if (p.text) tr.innerHTML = `<strong>Jarvis AI:</strong> ${p.text}`;
+              if (p.text) {
+                tr.innerHTML = `<strong>Jarvis AI:</strong> ${p.text}`;
+                liveCallHistory.push({ role: 'model', text: p.text.trim(), time: getNowTime24h() });
+                if (isFarewellIntent(p.text)) liveFarewellDetected = true;
+              }
             }
 
             if (msg.serverContent?.outputAudioTranscription?.text) {
-              tr.innerHTML = `<strong>Jarvis AI:</strong> ${msg.serverContent.outputAudioTranscription.text}`;
+              const aiTxt = msg.serverContent.outputAudioTranscription.text.trim();
+              tr.innerHTML = `<strong>Jarvis AI:</strong> ${aiTxt}`;
+              const last = liveCallHistory[liveCallHistory.length - 1];
+              if (last && last.role === 'model') {
+                last.text = aiTxt;
+              } else {
+                liveCallHistory.push({ role: 'model', text: aiTxt, time: getNowTime24h() });
+              }
+              if (isFarewellIntent(aiTxt)) liveFarewellDetected = true;
             }
           } catch {}
         };
 
         liveWs.onclose = ev => {
+          resetLiveSilenceTimer();
           cleanupLive();
           if (orb) { orb.className = 'live-orb'; orb.style.transform = 'scale(1)'; }
-          if ((ev.code === 1011 || ev.reason?.includes('quota')) && apiKeys.length > 1 && liveRetryCount < apiKeys.length) {
+
+          // MÃ 1008 (Policy Violation / Quota / Rate limit) HOẶC 1011 / 1006
+          const isRetryable = (ev.code === 1008 || ev.code === 1011 || ev.code === 1006 || ev.reason?.toLowerCase().includes('quota') || ev.reason?.toLowerCase().includes('policy') || ev.reason?.toLowerCase().includes('rate'));
+          if (isRetryable && apiKeys.length > 1 && liveRetryCount < apiKeys.length) {
             liveRetryCount++;
+            const prevIdx = liveKeyIndex;
             liveKeyIndex = (liveKeyIndex + 1) % apiKeys.length;
-            st.innerText = `⚠️ Đổi Key ${liveKeyIndex+1}...`;
-            setTimeout(startLiveVoiceCall, 600);
+            st.innerText = `⚠️ Key ${prevIdx+1} bận (Mã ${ev.code}) ➔ Tự động đổi sang Key ${liveKeyIndex+1}...`;
+            tr.innerHTML = `<span style="color:#f59e0b;">Đang chuyển sang Google Key ${liveKeyIndex+1} để tiếp tục...</span>`;
+            setTimeout(startLiveVoiceCall, 500);
             return;
           }
+
           st.innerText = `Đã ngắt (Mã: ${ev.code})`;
-          tr.innerHTML = `<span>Phiên thoại kết thúc.</span>`;
+          tr.innerHTML = `<span>Phiên thoại kết thúc.${ev.code === 1008 ? ' (Mã 1008 là do Key này bị giới hạn rate limit hoặc hết quota. Hãy thêm nhiều Key trong Cài đặt để hệ thống tự xoay vòng)' : ''}</span>`;
+          
+          // Tự đóng sau 2 giây nếu có hội thoại để chuyển về chat văn bản
+          if (liveCallHistory.length > 0) {
+            setTimeout(() => endLiveCall("Đã chuyển về giao diện chat văn bản!"), 1500);
+          }
         };
       } catch (err) {
         st.innerText = 'Lỗi kết nối';
@@ -2824,12 +2930,7 @@
     }
 
     $('btn-live-call-open').onclick = startLiveVoiceCall;
-    $('btn-live-end-call').onclick = () => {
-      try { liveWs?.close(); } catch {}
-      liveWs = null;
-      cleanupLive();
-      $('live-call-modal').style.display = 'none';
-    };
+    $('btn-live-end-call').onclick = () => endLiveCall();
     $('live-model-select').onchange = () => { if (liveWs?.readyState === WebSocket.OPEN) { liveWs.close(); setTimeout(startLiveVoiceCall, 300); } };
     $('live-voice-select').onchange = e => { ls.setItem('live_voice_name', e.target.value); if (liveWs?.readyState === WebSocket.OPEN) { liveWs.close(); setTimeout(startLiveVoiceCall, 300); } };
     $('live-key-select').onchange = e => { ls.setItem('live_selected_key', e.target.value); if (liveWs?.readyState === WebSocket.OPEN) { liveWs.close(); setTimeout(startLiveVoiceCall, 300); } };
