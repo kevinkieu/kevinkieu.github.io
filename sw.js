@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v11 with Gemini TTS Studio & MP3 Export)
-const CACHE_NAME = 'jarvis-ai-pwa-v11';
+// Jarvis AI Service Worker for PWA (v12 with TTS Studio Fixes & Modal Restoration)
+const CACHE_NAME = 'jarvis-ai-pwa-v12';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
