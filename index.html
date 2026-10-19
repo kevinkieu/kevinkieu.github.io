@@ -244,6 +244,136 @@
       display: block;
       margin-bottom: 5px;
     }
+
+    /* COLOR TAGS BADGES */
+    .color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .color-picker-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 4px 2px;
+    }
+    .color-chip-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: var(--transition);
+      display: inline-block;
+    }
+    .color-chip-btn:hover, .color-chip-btn.active {
+      transform: scale(1.2);
+      border-color: var(--text-main);
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.25);
+    }
+
+    /* TYPING INDICATOR BUBBLE */
+    .typing-bubble {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      box-shadow: var(--shadow-sm);
+    }
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: typingBounce 1.2s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(1) { animation-delay: 0s; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingBounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+      40% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* COMMAND PALETTE STYLING */
+    #command-palette-modal {
+      display: none;
+      position: fixed;
+      top: 15%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 92%;
+      max-width: 580px;
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      z-index: 2100;
+      flex-direction: column;
+      overflow: hidden;
+      animation: cmdSlideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes cmdSlideDown {
+      from { transform: translate(-50%, -15px); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
+    }
+    .cmd-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-main);
+    }
+    .cmd-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 1rem;
+      color: var(--text-main);
+    }
+    .cmd-badge {
+      font-size: 0.72rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-family: ui-monospace, monospace;
+    }
+    .cmd-list {
+      max-height: 340px;
+      overflow-y: auto;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .cmd-item {
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: var(--transition);
+      font-size: 0.88rem;
+    }
+    .cmd-item:hover, .cmd-item.selected {
+      background: var(--primary-container);
+      color: var(--primary);
+    }
+    .cmd-item-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
   </style>
 
   <!-- ==========================================
@@ -494,7 +624,6 @@
       flex-wrap: wrap;
       transition: var(--transition);
     }
-    /* Hover effect for desktop, always visible on touch */
     @media (hover: hover) and (pointer: fine) {
       .message-container:not(:hover) .msg-actions {
         opacity: 0;
@@ -622,27 +751,6 @@
       font-style: italic;
       color: var(--text-muted);
       font-size: 0.88em;
-    }
-
-    /* STREAMING PULSE */
-    .streaming-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--primary);
-      font-size: 0.78rem;
-      font-style: normal;
-    }
-    .pulse-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--primary);
-      animation: pulse 1s infinite alternate;
-    }
-    @keyframes pulse {
-      from { transform: scale(0.7); opacity: 0.4; }
-      to { transform: scale(1.3); opacity: 1; }
     }
 
     /* BOTTOM INPUT PANEL */
@@ -1164,6 +1272,19 @@
           </div>
           <select id="session-select" class="modern-select"></select>
 
+          <!-- COLOR TAG SELECTOR ROW -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:var(--bg-card);border-radius:var(--radius-md);border:1px solid var(--border);">
+            <span style="font-size:0.75rem;font-weight:600;color:var(--text-muted);">Màu nhãn:</span>
+            <div class="color-picker-row" id="session-color-picker">
+              <span class="color-chip-btn" data-color="#2563eb" style="background:#2563eb;" title="Xanh Dương"></span>
+              <span class="color-chip-btn" data-color="#10b981" style="background:#10b981;" title="Xanh Lá"></span>
+              <span class="color-chip-btn" data-color="#f59e0b" style="background:#f59e0b;" title="Vàng Cam"></span>
+              <span class="color-chip-btn" data-color="#ef4444" style="background:#ef4444;" title="Đỏ"></span>
+              <span class="color-chip-btn" data-color="#8b5cf6" style="background:#8b5cf6;" title="Tím"></span>
+              <span class="color-chip-btn" data-color="none" style="background:transparent;border:1px dashed var(--border);position:relative;" title="Không màu">×</span>
+            </div>
+          </div>
+
           <!-- CONTEXT & SEARCH TOGGLES -->
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;padding:10px;background:var(--bg-card);border-radius:var(--radius-md);border:1px solid var(--border);">
             <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:8px;">
@@ -1269,6 +1390,12 @@
             Gọi Live AI
           </button>
 
+          <!-- QUICK COMMAND PALETTE BUTTON -->
+          <button id="btn-trigger-cmd" class="btn" style="padding:5px 10px;font-size:0.78rem;gap:4px;" title="Mở bảng lệnh nhanh (Ctrl+K)">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span class="mobile-hidden">Lệnh</span> <kbd style="font-family:monospace;background:var(--input-bg);padding:1px 4px;border-radius:3px;border:1px solid var(--border);font-size:0.7rem;">Ctrl+K</kbd>
+          </button>
+
           <!-- GLOBAL SEARCH INPUT -->
           <div class="header-search-bar">
             <input type="text" id="search-chat-input" placeholder="Tìm kiếm phiên...">
@@ -1306,13 +1433,8 @@
         <span>~ <strong id="token-count">0</strong> tokens</span>
       </div>
 
-      <!-- QUICK SNIPPETS CONTAINER -->
-      <div id="snippets-container">
-        <div class="snippet-chip" onclick="applySnippet('Hãy tóm tắt ngắn gọn thành BẢNG đối chiếu và GẠCH ĐẦU DÒNG:')">📝 Tóm tắt bảng</div>
-        <div class="snippet-chip" onclick="applySnippet('Vẽ sơ đồ tư duy bằng code Mermaid trong ```mermaid:')">📊 Sơ đồ Mermaid</div>
-        <div class="snippet-chip" onclick="applySnippet('Giải thích chi tiết từng bước kèm ví dụ minh họa:')">📖 Giải thích chi tiết</div>
-        <div class="snippet-chip" onclick="applySnippet('Viết mã nguồn sạch, tối ưu, chú thích rõ ràng trong markdown:')">💻 Viết Code tối ưu</div>
-      </div>
+      <!-- QUICK SNIPPETS CONTAINER (DYNAMICALLY LOADED FROM PROMPT LIBRARY) -->
+      <div id="snippets-container"></div>
 
       <!-- BOTTOM INPUT PANEL -->
       <div class="bottom-input-panel">
@@ -1331,9 +1453,13 @@
             <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             Chụp
           </button>
-          <button id="btn-toggle-snippets" class="tool-chip" title="Lệnh gợi ý nhanh">
+          <button id="btn-manage-prompts" class="tool-chip" title="Mở Kho Prompt mẫu cá nhân">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            Kho Prompt
+          </button>
+          <button id="btn-toggle-snippets" class="tool-chip" title="Bật/Tắt thanh gợi ý lệnh">
             <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            Lệnh nhanh
+            Gợi ý nhanh
           </button>
           <button id="btn-file-library" class="tool-chip" title="Thư viện tệp đã lưu">
             <svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
@@ -1350,7 +1476,7 @@
         </div>
 
         <div class="input-container-box">
-          <textarea id="user-input" rows="1" placeholder="Nhập tin nhắn (Ctrl+Enter để gửi, dùng &quot;từ khóa&quot; để tìm web)..."></textarea>
+          <textarea id="user-input" rows="1" placeholder="Nhập tin nhắn (Ctrl+Enter gửi, gõ &quot;từ khóa&quot; tìm web, Ctrl+K mở lệnh)..."></textarea>
           <button id="send-button">
             <span>Gửi</span>
             <svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -1362,6 +1488,44 @@
     <!-- ==========================================
          KHỐI 3: CÁC MODAL HỆ THỐNG
          ========================================== -->
+
+    <!-- MODAL COMMAND PALETTE (CTRL+K) -->
+    <div id="command-palette-modal">
+      <div class="cmd-header">
+        <svg class="icon icon-sm" style="color:var(--primary);" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <input type="text" id="cmd-palette-input" class="cmd-input" placeholder="Gõ lệnh hoặc hành động nhanh (/new, /live, /clear, /theme)...">
+        <span class="cmd-badge">ESC</span>
+      </div>
+      <div class="cmd-list" id="cmd-palette-list"></div>
+    </div>
+
+    <!-- MODAL PROMPT LIBRARY (KHO PROMPT CÁ NHÂN) -->
+    <div id="prompt-library-modal" class="modal-box">
+      <div class="modal-header">
+        <h3>
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Kho Prompt Mẫu Cá Nhân
+        </h3>
+        <button class="close-btn icon-btn" title="Đóng">&times;</button>
+      </div>
+      <div class="modal-scroll-body">
+        <div style="display:flex;gap:8px;align-items:flex-end;">
+          <div style="flex:1;">
+            <label class="field-label">Tiêu đề Prompt:</label>
+            <input type="text" id="new-prompt-title" placeholder="VD: So sánh & Đánh giá..." class="modern-input">
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Nội dung câu lệnh:</label>
+          <textarea id="new-prompt-text" rows="3" placeholder="Nhập nội dung câu lệnh chi tiết..." class="modern-textarea"></textarea>
+        </div>
+        <button id="btn-add-prompt-item" class="btn primary" style="align-self:flex-start;">➕ Thêm vào Kho</button>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:4px 0;">
+        <strong style="font-size:0.85rem;color:var(--primary);">📋 Danh sách Prompt của bạn:</strong>
+        <div id="prompt-items-list" style="display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;"></div>
+      </div>
+    </div>
 
     <!-- MODAL LIVE CALL (REALTIME VOICE & CAM) -->
     <div id="live-call-modal">
@@ -1619,7 +1783,7 @@
        ========================================== -->
   <script type="module">
     import { GoogleGenAI } from "@google/genai";
-    const $ = id => document.getElementById(id), ls = localStorage;
+    const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStorage;
     
     // Init libraries
     marked.use({ breaks: true });
@@ -1650,6 +1814,26 @@
       const m = Array.from((t || '').matchAll(/["“«]([^"”»]+)["”»]/g)).map(x => x[1].trim()).filter(Boolean);
       return m.length ? m.join(' ') : null;
     };
+
+    // --- SEARCH CACHE ENGINE (1 HOUR TTL - TIẾT KIỆM QUOTA) ---
+    const SEARCH_CACHE_TTL = 3600000;
+    function getSearchCache(query, engine) {
+      try {
+        const k = `src_${engine}_${query.toLowerCase().trim()}`;
+        const raw = ss.getItem(k);
+        if (!raw) return null;
+        const entry = JSON.parse(raw);
+        if (Date.now() - entry.time < SEARCH_CACHE_TTL) return entry.data;
+        ss.removeItem(k);
+      } catch {}
+      return null;
+    }
+    function setSearchCache(query, engine, data) {
+      try {
+        const k = `src_${engine}_${query.toLowerCase().trim()}`;
+        ss.setItem(k, JSON.stringify({ data, time: Date.now() }));
+      } catch {}
+    }
 
     // --- FONT SIZE CONTROLLER ---
     let currentFontSize = parseInt(ls.getItem('chat_font_size') || '16', 10);
@@ -1714,8 +1898,10 @@
       (navigator.clipboard && window.isSecureContext) ? navigator.clipboard.writeText(t).then(() => showToast(msg)).catch(fb) : fb();
     };
 
-    // --- TÌM KIẾM WEB (TAVILY, JINA, SERPER, BRAVE) ---
+    // --- TÌM KIẾM WEB (CÓ CACHE TỰ ĐỘNG) ---
     async function fetchTavilySearch(q) {
+      const cached = getSearchCache(q, 'tavily');
+      if (cached) return cached;
       const k = ls.getItem('tavily_api_key') || '';
       if (!k) throw new Error("Chưa nhập Tavily API Key trong cài đặt!");
       const r = await fetch("https://api.tavily.com/search", {
@@ -1725,22 +1911,30 @@
       });
       if (!r.ok) throw new Error(`Tavily HTTP ${r.status}`);
       const d = await r.json();
-      return [
+      const res = [
         ...(d.answer ? [`💡 **Tóm tắt Tavily**: ${d.answer}`] : []),
         ...(d.results || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.content}\n  *Nguồn*: ${x.url}`)
       ].join('\n\n');
+      setSearchCache(q, 'tavily', res);
+      return res;
     }
 
     async function fetchJinaSearch(q) {
+      const cached = getSearchCache(q, 'jina');
+      if (cached) return cached;
       const k = ls.getItem('jina_api_key') || '',
             r = await fetch(`https://s.jina.ai/${encodeURIComponent(q)}`, {
               headers: { Accept: "application/json", ...(k ? { Authorization: `Bearer ${k}` } : {}) }
             });
       if (!r.ok) throw new Error(`Jina HTTP ${r.status}`);
-      return ((await r.json()).data || []).slice(0, 5).map(x => `- **${x.title || 'Tin'}**\n  *Nội dung*: ${(x.content || x.description || '').substring(0, 800)}\n  *Nguồn*: ${x.url}`).join('\n\n');
+      const res = ((await r.json()).data || []).slice(0, 5).map(x => `- **${x.title || 'Tin'}**\n  *Nội dung*: ${(x.content || x.description || '').substring(0, 800)}\n  *Nguồn*: ${x.url}`).join('\n\n');
+      setSearchCache(q, 'jina', res);
+      return res;
     }
 
     async function fetchSerperSearch(q) {
+      const cached = getSearchCache(q, 'serper');
+      if (cached) return cached;
       const k = ls.getItem('serper_api_key') || '';
       if (!k) throw new Error("Chưa có Serper Key!");
       const r = await fetch("https://google.serper.dev/search", {
@@ -1750,20 +1944,26 @@
       });
       if (!r.ok) throw new Error(`Serper HTTP ${r.status}`);
       const d = await r.json();
-      return [
+      const res = [
         ...(d.answerBox?.snippet ? [`💡 **Google**: ${d.answerBox.snippet}`] : []),
         ...(d.organic || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.snippet}\n  *Nguồn*: ${x.link}`)
       ].join('\n\n');
+      setSearchCache(q, 'serper', res);
+      return res;
     }
 
     async function fetchBraveSearch(q) {
+      const cached = getSearchCache(q, 'brave');
+      if (cached) return cached;
       const k = ls.getItem('brave_api_key') || '';
       if (!k) throw new Error("Chưa có Brave Key!");
       const w = (ls.getItem('brave_worker_url') || '').replace(/\/+$/, ''),
             ep = `${w || 'https://api.search.brave.com/res/v1/web/search'}?q=${encodeURIComponent(q)}&count=5`;
       const r = await fetch(ep, { headers: { Accept: "application/json", "X-Subscription-Token": k } });
       if (!r.ok) throw new Error(`Brave HTTP ${r.status}`);
-      return ((await r.json()).web?.results || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.description}\n  *Nguồn*: ${x.url}`).join('\n\n');
+      const res = ((await r.json()).web?.results || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.description}\n  *Nguồn*: ${x.url}`).join('\n\n');
+      setSearchCache(q, 'brave', res);
+      return res;
     }
 
     async function executeLiveSearch(query) {
@@ -1831,7 +2031,7 @@
       throw new Error("Không thể bóc tách dữ liệu.");
     }
 
-    // --- GEMINI MULTIMODAL LIVE CALL (WEBSOCKET + TAVILY TOOL CALLING) ---
+    // --- GEMINI MULTIMODAL LIVE CALL ---
     let liveWs = null, liveAudioCtx = null, liveMediaStream = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] };
     let liveMicSource = null, liveScriptProcessor = null, liveSilentGain = null;
     let liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
@@ -2348,6 +2548,223 @@
     let activeFolder = ls.getItem('jarvis_active_folder') || ls.getItem('huanmu_active_folder') || "All";
     let openTabs = JSON.parse(ls.getItem('jarvis_tabs') || ls.getItem('huanmu_tabs') || '[]');
 
+    // --- PROMPT LIBRARY SYSTEM (KHO PROMPT CÁ NHÂN) ---
+    const DEFAULT_PROMPTS = [
+      { id: 'p1', title: '📝 Tóm tắt bảng', text: 'Hãy tóm tắt ngắn gọn nội dung thành BẢNG đối chiếu và GẠCH ĐẦU DÒNG các ý quan trọng nhất:' },
+      { id: 'p2', title: '📊 Sơ đồ Mermaid', text: 'Vẽ sơ đồ tư duy trực quan bằng code Mermaid trong khối ```mermaid để giải thích rõ cấu trúc:' },
+      { id: 'p3', title: '📖 Giải thích chi tiết', text: 'Giải thích chi tiết từng bước một, kèm ví dụ thực tế minh họa dễ hiểu nhất:' },
+      { id: 'p4', title: '💻 Viết Code tối ưu', text: 'Viết mã nguồn sạch, chuẩn kiến trúc, tối ưu hiệu năng và có chú thích rõ ràng trong markdown:' },
+      { id: 'p5', title: '🔍 So sánh & Đánh giá', text: 'Hãy phân tích ưu và nhược điểm, so sánh chi tiết giữa:' }
+    ];
+
+    function getCustomPrompts() {
+      try {
+        const stored = ls.getItem('jarvis_custom_prompts');
+        return stored ? JSON.parse(stored) : DEFAULT_PROMPTS;
+      } catch {
+        return DEFAULT_PROMPTS;
+      }
+    }
+    function saveCustomPrompts(list) {
+      ls.setItem('jarvis_custom_prompts', JSON.stringify(list));
+      renderSnippets();
+      renderPromptList();
+    }
+
+    function renderSnippets() {
+      const list = getCustomPrompts();
+      DOM.snippetsContainer.innerHTML = list.map(p => `
+        <div class="snippet-chip" onclick="applySnippet('${p.text.replace(/'/g, "\\'")}')">${p.title}</div>
+      `).join('');
+    }
+
+    function renderPromptList() {
+      const list = getCustomPrompts();
+      const c = $('prompt-items-list');
+      if (!c) return;
+      c.innerHTML = list.map((p, idx) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--input-bg);border-radius:var(--radius-sm);border:1px solid var(--border);">
+          <div style="flex:1;overflow:hidden;margin-right:10px;">
+            <strong style="font-size:0.82rem;color:var(--primary);">${p.title}</strong>
+            <p style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;">${p.text}</p>
+          </div>
+          <div style="display:flex;gap:4px;">
+            <button class="btn" style="padding:4px 8px;font-size:0.72rem;" onclick="applySnippet('${p.text.replace(/'/g, "\\'")}'); closeModals();">Dùng</button>
+            <button class="btn danger" style="padding:4px 8px;font-size:0.72rem;" onclick="removeCustomPrompt('${p.id}')">Xóa</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    window.removeCustomPrompt = id => {
+      const list = getCustomPrompts().filter(p => p.id !== id);
+      saveCustomPrompts(list);
+      showToast("Đã xóa prompt khỏi kho!");
+    };
+
+    $('btn-add-prompt-item').onclick = () => {
+      const title = $('new-prompt-title').value.trim(),
+            text = $('new-prompt-text').value.trim();
+      if (!title || !text) return showToast("Vui lòng nhập cả Tiêu đề và Nội dung!", "warning");
+      const list = getCustomPrompts();
+      list.push({ id: 'p_' + Date.now(), title, text });
+      saveCustomPrompts(list);
+      $('new-prompt-title').value = '';
+      $('new-prompt-text').value = '';
+      showToast("🎉 Đã thêm vào Kho Prompt!");
+    };
+
+    $('btn-manage-prompts').onclick = () => {
+      $('prompt-library-modal').style.display = 'flex';
+      oLay.style.display = 'block';
+      renderPromptList();
+    };
+
+    // --- COMMAND PALETTE (CTRL+K SHORTCUT) ---
+    const cmdModal = $('command-palette-modal');
+    const cmdInput = $('cmd-palette-input');
+    const cmdList = $('cmd-palette-list');
+
+    const COMMANDS = [
+      { id: 'new', title: 'Tạo phiên hội thoại mới', shortcut: '/new', icon: '➕', run: () => newSess() },
+      { id: 'live', title: 'Bắt đầu gọi Live AI Voice', shortcut: '/live', icon: '📞', run: () => startLiveVoiceCall() },
+      { id: 'settings', title: 'Mở Cài đặt hệ thống & 10 Keys', shortcut: '/settings', icon: '⚙️', run: () => $('btn-open-settings').click() },
+      { id: 'prompts', title: 'Mở Kho Prompt mẫu cá nhân', shortcut: '/prompts', icon: '📚', run: () => $('btn-manage-prompts').click() },
+      { id: 'search', title: 'Tìm kiếm nội dung hội thoại', shortcut: '/search', icon: '🔍', run: () => { $('search-modal').style.display = 'flex'; oLay.style.display = 'block'; } },
+      { id: 'theme', title: 'Chuyển đổi giao diện Sáng / Tối', shortcut: '/theme', icon: '🌙', run: () => DOM.btnTheme.click() },
+      { id: 'export', title: 'Sao lưu toàn bộ dữ liệu ra tệp JSON', shortcut: '/export', icon: '📥', run: () => exportAllSessions() },
+      { id: 'clear', title: 'Xóa sạch tin nhắn phiên hiện tại', shortcut: '/clear', icon: '🗑️', run: () => clearActiveSession() },
+      { id: 'library', title: 'Mở Thư viện tài liệu đã lưu', shortcut: '/library', icon: '🗄️', run: () => DOM.btnFileLibrary.click() }
+    ];
+
+    function openCommandPalette() {
+      cmdModal.style.display = 'flex';
+      oLay.style.display = 'block';
+      cmdInput.value = '';
+      renderCommandItems('');
+      setTimeout(() => cmdInput.focus(), 50);
+    }
+
+    function closeCommandPalette() {
+      cmdModal.style.display = 'none';
+      oLay.style.display = 'none';
+    }
+
+    function renderCommandItems(filterText) {
+      const q = filterText.toLowerCase().trim();
+      const filtered = COMMANDS.filter(c => c.title.toLowerCase().includes(q) || c.shortcut.includes(q));
+      cmdList.innerHTML = filtered.length ? filtered.map((c, i) => `
+        <div class="cmd-item ${i === 0 ? 'selected' : ''}" data-cmd="${c.id}">
+          <div class="cmd-item-left">
+            <span>${c.icon}</span>
+            <strong>${c.title}</strong>
+          </div>
+          <span class="cmd-badge">${c.shortcut}</span>
+        </div>
+      `).join('') : '<i style="color:var(--text-muted);padding:12px;text-align:center;">Không tìm thấy lệnh nào phù hợp.</i>';
+
+      cmdList.querySelectorAll('.cmd-item').forEach(item => {
+        item.onclick = () => {
+          const cmdObj = COMMANDS.find(c => c.id === item.getAttribute('data-cmd'));
+          closeCommandPalette();
+          cmdObj?.run();
+        };
+      });
+    }
+
+    cmdInput.oninput = e => renderCommandItems(e.target.value);
+    cmdInput.onkeydown = e => {
+      if (e.key === 'Escape') closeCommandPalette();
+      if (e.key === 'Enter') {
+        const first = cmdList.querySelector('.cmd-item');
+        if (first) first.click();
+      }
+    };
+
+    $('btn-trigger-cmd').onclick = openCommandPalette;
+    window.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        cmdModal.style.display === 'flex' ? closeCommandPalette() : openCommandPalette();
+      }
+      if (e.key === 'Escape' && cmdModal.style.display === 'flex') {
+        closeCommandPalette();
+      }
+    });
+
+    // --- SWIPE GESTURES FOR MOBILE (VUỐT MỞ/ĐÓNG SIDEBAR) ---
+    let touchStartX = 0, touchStartY = 0;
+    window.addEventListener('touchstart', e => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    window.addEventListener('touchend', e => {
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+      const diffX = touchEndX - touchStartX;
+      const diffY = touchEndY - touchStartY;
+
+      // Swipe right from left edge (< 40px) to open sidebar
+      if (touchStartX < 40 && diffX > 70 && Math.abs(diffY) < 60) {
+        $('sidebar').classList.add('active');
+        $('sidebar-overlay').classList.add('active');
+      }
+      // Swipe left on active sidebar to close
+      if ($('sidebar').classList.contains('active') && diffX < -70 && Math.abs(diffY) < 60) {
+        $('sidebar').classList.remove('active');
+        $('sidebar-overlay').classList.remove('active');
+      }
+    }, { passive: true });
+
+    // --- AUTO-NAME SESSION (TỰ ĐỘNG ĐẶT TÊN PHIÊN BẰNG AI) ---
+    async function tryAutoNameSession(sessionObj, userText, botText) {
+      if (!sessionObj || sessionObj.name.length > 25 || !sessionObj.name.startsWith('Hội thoại')) return;
+      const k = getSessionApiKey(sessionObj);
+      if (!k) return;
+      try {
+        const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
+          model: "gemini-3.1-flash-lite",
+          contents: `Hãy tóm tắt chủ đề chính của câu hỏi sau thành một tiêu đề ngắn gọn súc tích từ 3 đến 6 từ bằng tiếng Việt (không dùng dấu ngoặc kép, không thêm lời giải thích):\nNgười dùng: "${userText.slice(0, 160)}"\nAI: "${botText.slice(0, 160)}"`
+        });
+        const title = res.text?.trim()?.replace(/["“«»”]/g, '');
+        if (title && title.length >= 3) {
+          sessionObj.name = title;
+          await saveToDB(sessionObj);
+          renderSel();
+          renderTabs();
+          showToast(`🏷️ Đã tự động đặt tên: "${title}"`, 'info');
+        }
+      } catch (err) {
+        console.warn("Auto-name không thành công:", err);
+      }
+    }
+
+    // --- COLOR TAGS CONTROLLER ---
+    document.querySelectorAll('#session-color-picker .color-chip-btn').forEach(chip => {
+      chip.onclick = async () => {
+        const color = chip.getAttribute('data-color');
+        const s = sessions.find(x => x.id === activeId);
+        if (s) {
+          s.color = color === 'none' ? null : color;
+          await saveToDB(s);
+          updateColorPickerUI();
+          renderSel();
+          renderTabs();
+          showToast('Đã gán nhãn màu phiên!');
+        }
+      };
+    });
+
+    function updateColorPickerUI() {
+      const s = sessions.find(x => x.id === activeId);
+      const curColor = s?.color || 'none';
+      document.querySelectorAll('#session-color-picker .color-chip-btn').forEach(chip => {
+        const c = chip.getAttribute('data-color');
+        chip.classList.toggle('active', c === curColor);
+      });
+    }
+
     const getSessionApiKey = (cs, forceRotate = false) => {
       const sel = DOM.apiKeySel?.value || 'auto';
       if (sel !== 'auto') return ls.getItem(`jarvis_api_${parseInt(sel)+1}`) || ls.getItem(`huanmu_api_${parseInt(sel)+1}`) || "";
@@ -2418,7 +2835,7 @@
       });
     }
 
-    // --- DESKTOP DRAG & DROP SUPPORT (ADAPTIVE, ZERO CONFLICT ON MOBILE) ---
+    // --- DESKTOP DRAG & DROP SUPPORT ---
     const dropOverlay = $('drop-overlay');
     let dragCounter = 0;
     window.addEventListener('dragenter', e => {
@@ -2593,7 +3010,7 @@
     };
 
     const oLay = $('modal-overlay'), closeModals = () => {
-      document.querySelectorAll('.modal-box').forEach(m => m.style.display = 'none');
+      document.querySelectorAll('.modal-box, #command-palette-modal').forEach(m => m.style.display = 'none');
       oLay.style.display = 'none';
     };
     document.querySelectorAll('.close-btn').forEach(b => b.onclick = closeModals);
@@ -2674,7 +3091,9 @@
     function renderTabs() {
       DOM.tabsContainer.innerHTML = openTabs.map(tId => {
         const s = sessions.find(x => x.id === tId);
+        const dot = s?.color ? `<span class="color-dot" style="background:${s.color};"></span>` : '';
         return s ? `<div class="tab-item ${tId === activeId ? 'active' : ''}">
+          ${dot}
           <span onclick="window.switchSess('${tId}')">${s.name.substring(0, 16)}</span>
           <span class="tab-close" onclick="window.closeTab('${tId}', event)">×</span>
         </div>` : '';
@@ -2739,16 +3158,19 @@
         if (d && d.length > 0) {
           sessions = d.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
           renderFolders();
+          renderSnippets();
           activeId = ls.getItem('jarvis_active_id') || ls.getItem('huanmu_active_id') || ls.getItem('javiss_active_id') || sessions[0].id;
           if (!sessions.find(s => s.id === activeId)) activeId = sessions[0].id;
           await switchSess(activeId);
         } else {
           renderFolders();
+          renderSnippets();
           await newSess();
         }
       } catch (e) {
         console.error("Lỗi khởi động loadSess:", e);
         renderFolders();
+        renderSnippets();
       }
     }
 
@@ -2764,6 +3186,7 @@
         lastInteractionId: null,
         assignedApiKey: null,
         keySel: 'auto',
+        color: null,
         tmp: 0.5,
         tpp: 0.9,
         top: 40,
@@ -2808,6 +3231,7 @@
         DOM.searchEngineBox.style.display = s.sch ? 'block' : 'none';
         DOM.searchEngineSel.value = s.schEngine || 'tavily';
         DOM.toggleMemory.checked = s.mem !== false;
+        updateColorPickerUI();
       }
 
       DOM.chat.innerHTML = '';
@@ -2828,10 +3252,14 @@
 
     function renderSel() {
       const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder);
-      DOM.selSession.innerHTML = v.map(s => `<option value="${s.id}" ${s.id === activeId ? 'selected' : ''}>${activeFolder === "All" ? `[${s.folder}] ` : ''}${s.name}</option>`).join('');
+      DOM.selSession.innerHTML = v.map(s => {
+        const dot = s.color ? '● ' : '';
+        return `<option value="${s.id}" ${s.id === activeId ? 'selected' : ''}>${dot}${activeFolder === "All" ? `[${s.folder}] ` : ''}${s.name}</option>`;
+      }).join('');
       const curS = sessions.find(x => x.id === activeId);
       const kInfo = (curS?.engine === 'interactions' && curS?.assignedApiKey) ? ` • 🔒 Ghim Key ${apiKeys.indexOf(curS.assignedApiKey) + 1}` : '';
       $('session-msg-count').innerText = `${chatHistory.length} tin nhắn${kInfo}`;
+      updateColorPickerUI();
     }
 
     $('btn-new-session').onclick = () => newSess();
@@ -3196,6 +3624,11 @@
           `;
           bD.appendChild(aDiv);
         }
+
+        // TRIGGER AUTO-NAME SESSION (NẾU ĐÂY LÀ LƯỢT CHAT ĐẦU TIÊN CỦA PHIÊN)
+        if (chatHistory.length === 2 && cs) {
+          tryAutoNameSession(cs, fP, finalResp);
+        }
       };
 
       try {
@@ -3206,6 +3639,7 @@
         const imgs = [...filesData];
         DOM.clearFilesBtn.click();
 
+        // TYPING INDICATOR BUBBLE
         bD = document.createElement('div');
         bD.className = 'message-container';
         bD.innerHTML = `
@@ -3213,7 +3647,11 @@
             <div class="message-header">
               <span>✨ Jarvis AI</span>
               <span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span>
-              <span class="streaming-indicator"><span class="pulse-dot"></span> Đang kết nối...</span>
+              <div class="typing-bubble">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+              </div>
             </div>
             <div class="msg-content"></div>
           </div>
@@ -3227,7 +3665,6 @@
 
         const uMatch = fnP.match(/https?:\/\/[^\s]+/)?.[0];
         if (uMatch && !uMatch.includes("youtube.com") && !uMatch.includes("youtu.be")) {
-          if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerHTML = `<span class="pulse-dot"></span> 🌐 Đang bóc tách link...`;
           try {
             const ext = await extractWebPageContent(uMatch);
             fnP = `[NỘI DUNG TỪ ${uMatch} QUA ${ext.source}]:\n${ext.content}\n\n[YÊU CẦU]:\n${fnP}`;
@@ -3239,7 +3676,6 @@
         if (quoted && DOM.toggleSearch.checked) {
           const sel = DOM.searchEngineSel.value,
                 tgt = sel === 'auto' ? (ls.getItem('auto_search_default_engine') || 'tavily') : sel;
-          if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerHTML = `<span class="pulse-dot"></span> 🔍 Tìm kiếm "${quoted}"...`;
           try {
             const sText = await ({ tavily: fetchTavilySearch, jina: fetchJinaSearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[tgt] || fetchTavilySearch)(quoted);
             if (sText) fnP = `[DỮ LIỆU TÌM ĐƯỢC CHO "${quoted}"]: \n${sText}\n\n[YÊU CẦU]: ${fnP}`;
@@ -3254,7 +3690,6 @@
 
         // ENGINE 1: INTERACTIONS API
         if (currentEngine === 'interactions') {
-          if (bD.querySelector('.streaming-indicator')) bD.querySelector('.streaming-indicator').innerHTML = `<span class="pulse-dot"></span> ⚡ Interactions API...`;
           try {
             const ai = new GoogleGenAI({ apiKey: gKey });
             const interactionParams = {
@@ -3301,7 +3736,7 @@
               else if (event.text) chunkText = event.text;
 
               if (chunkText) {
-                bD.querySelector('.streaming-indicator')?.remove();
+                bD.querySelector('.typing-bubble')?.remove();
                 finalResp += chunkText;
                 renderer.push(finalResp);
                 if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
@@ -3346,7 +3781,7 @@
 
             for await (const ck of resStream) {
               if (ck.text) {
-                bD.querySelector('.streaming-indicator')?.remove();
+                bD.querySelector('.typing-bubble')?.remove();
                 finalResp += ck.text;
                 renderer.push(finalResp);
                 if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
@@ -3493,7 +3928,7 @@
         });
       });
       resBox.innerHTML = matched.length ? matched.slice(0, 30).map(item => `
-        <div onclick="window.switchSess('${item.session.id}'); document.querySelectorAll('.modal-box').forEach(m => m.style.display='none'); document.getElementById('modal-overlay').style.display='none';" style="padding:10px;border-radius:var(--radius-sm);background:var(--bg-main);border-left:3px solid var(--primary);cursor:pointer;font-size:0.82rem;">
+        <div onclick="window.switchSess('${item.session.id}'); document.querySelectorAll('.modal-box, #command-palette-modal').forEach(m => m.style.display='none'); document.getElementById('modal-overlay').style.display='none';" style="padding:10px;border-radius:var(--radius-sm);background:var(--bg-main);border-left:3px solid var(--primary);cursor:pointer;font-size:0.82rem;">
           <strong style="color:var(--primary);">${item.session.name} (${item.role === 'user' ? 'Bạn' : 'AI'} - ${item.time || ''})</strong>
           <p style="margin:4px 0 0 0;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.text.replace(/<[^>]+>/g, '').substring(0, 100)}</p>
         </div>
