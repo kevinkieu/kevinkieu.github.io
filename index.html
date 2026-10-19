@@ -2304,6 +2304,59 @@
     import { GoogleGenAI } from "@google/genai";
     const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStorage;
     
+    // --- ANDROID NATIVE BRIDGE & PERSISTENCE ENGINE ---
+    // Yêu cầu trình duyệt / WebView cấp quyền lưu trữ vĩnh viễn (Persistent Storage)
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().catch(() => {});
+    }
+
+    function syncFromNativeBridge() {
+      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.getAllDataJson === 'function') {
+        try {
+          const raw = window.JarvisNativeBridge.getAllDataJson();
+          if (raw) {
+            const data = JSON.parse(raw);
+            for (const [k, v] of Object.entries(data)) {
+              if (v !== null && v !== undefined && !ls.getItem(k)) {
+                ls.setItem(k, v);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("syncFromNativeBridge error:", e);
+        }
+      }
+    }
+
+    function saveToNativeBridge(key, val) {
+      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.setItem === 'function') {
+        try {
+          if (val === null || val === undefined) {
+            window.JarvisNativeBridge.removeItem(key);
+          } else {
+            window.JarvisNativeBridge.setItem(key, String(val));
+          }
+        } catch (e) {
+          console.warn("saveToNativeBridge error:", e);
+        }
+      }
+    }
+
+    // Nếu chạy trên Android APK có Native Bridge, đồng bộ tức thời mọi thay đổi localStorage xuống Flash ROM
+    if (window.JarvisNativeBridge) {
+      syncFromNativeBridge();
+      const origSetItem = localStorage.setItem.bind(localStorage);
+      const origRemoveItem = localStorage.removeItem.bind(localStorage);
+      localStorage.setItem = function(k, v) {
+        origSetItem(k, v);
+        saveToNativeBridge(k, v);
+      };
+      localStorage.removeItem = function(k) {
+        origRemoveItem(k);
+        saveToNativeBridge(k, null);
+      };
+    }
+
     // CENTRAL CONSTANT FOR SECONDARY & BACKGROUND TASKS (FLASH LITE)
     const FLASH_LITE_MODEL = 'gemini-3.5-flash-lite';
 
@@ -3349,10 +3402,72 @@
       });
     }
 
-    const saveToDB = s => new Promise(r => { const t = db.transaction(STORE_NAME, "readwrite"); t.objectStore(STORE_NAME).put(s); t.oncomplete = () => r(); });
-    const deleteFromDB = i => new Promise(r => { const t = db.transaction(STORE_NAME, "readwrite"); t.objectStore(STORE_NAME).delete(i); t.oncomplete = () => r(); });
-    const getAllFromDB = () => new Promise(r => { const rq = db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll(); rq.onsuccess = () => r(rq.result); });
-    const clearAllDB = () => new Promise(r => { const t = db.transaction(STORE_NAME, "readwrite"); t.objectStore(STORE_NAME).clear(); t.oncomplete = () => r(); });
+    let _nativeSyncTimer = null;
+    function syncSessionsToNative() {
+      if (!window.JarvisNativeBridge) return;
+      clearTimeout(_nativeSyncTimer);
+      _nativeSyncTimer = setTimeout(async () => {
+        try {
+          const all = await getAllFromDB();
+          if (all && all.length > 0) {
+            saveToNativeBridge('jarvis_sessions_backup', JSON.stringify(all));
+          }
+        } catch {}
+      }, 300);
+    }
+
+    const saveToDB = s => new Promise((resolve, reject) => {
+      try {
+        const t = db.transaction(STORE_NAME, "readwrite");
+        t.objectStore(STORE_NAME).put(s);
+        t.oncomplete = () => {
+          syncSessionsToNative();
+          resolve();
+        };
+        t.onerror = err => reject(err);
+      } catch (err) {
+        reject(err);
+      }
+    });
+
+    const deleteFromDB = i => new Promise((resolve, reject) => {
+      try {
+        const t = db.transaction(STORE_NAME, "readwrite");
+        t.objectStore(STORE_NAME).delete(i);
+        t.oncomplete = () => {
+          syncSessionsToNative();
+          resolve();
+        };
+        t.onerror = err => reject(err);
+      } catch (err) {
+        reject(err);
+      }
+    });
+
+    const getAllFromDB = () => new Promise((resolve, reject) => {
+      try {
+        const rq = db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll();
+        rq.onsuccess = () => resolve(rq.result || []);
+        rq.onerror = err => reject(err);
+      } catch (err) {
+        reject(err);
+      }
+    });
+
+    const clearAllDB = () => new Promise((resolve, reject) => {
+      try {
+        const t = db.transaction(STORE_NAME, "readwrite");
+        t.objectStore(STORE_NAME).clear();
+        t.oncomplete = () => {
+          if (window.JarvisNativeBridge) saveToNativeBridge('jarvis_sessions_backup', '[]');
+          resolve();
+        };
+        t.onerror = err => reject(err);
+      } catch (err) {
+        reject(err);
+      }
+    });
+
     const saveFileToLib = f => new Promise(r => { const t = db.transaction(FILE_STORE, "readwrite"); t.objectStore(FILE_STORE).put(f); t.oncomplete = () => r(); });
     const getAllFilesFromLib = () => new Promise(r => { const rq = db.transaction(FILE_STORE, "readonly").objectStore(FILE_STORE).getAll(); rq.onsuccess = () => r(rq.result); });
 
@@ -4193,7 +4308,21 @@
     async function loadSess() {
       try {
         await initDB();
-        const d = await getAllFromDB();
+        let d = await getAllFromDB();
+        if ((!d || d.length === 0) && window.JarvisNativeBridge) {
+          try {
+            const raw = window.JarvisNativeBridge.getItem('jarvis_sessions_backup');
+            if (raw) {
+              const nativeSessions = JSON.parse(raw);
+              if (Array.isArray(nativeSessions) && nativeSessions.length > 0) {
+                for (const s of nativeSessions) await saveToDB(s);
+                d = await getAllFromDB();
+              }
+            }
+          } catch (e) {
+            console.warn("Khôi phục phiên từ native bridge lỗi:", e);
+          }
+        }
         if (d && d.length > 0) {
           sessions = d.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
           renderFolders();
@@ -5030,6 +5159,10 @@
         cfgs[`jarvis_api_name_${i}`] = ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || "";
       }
       cfgMap.forEach(([, k]) => cfgs[k] = ls.getItem(k) || "");
+      cfgs['live_search_enabled'] = ls.getItem('live_search_enabled') || 'true';
+      cfgs['live_context_enabled'] = ls.getItem('live_context_enabled') || 'true';
+      cfgs['jarvis_folders'] = ls.getItem('jarvis_folders') || '["Mặc định"]';
+      cfgs['jarvis_custom_prompts'] = ls.getItem('jarvis_custom_prompts') || '[]';
       saveOrShareBlob(new Blob([JSON.stringify({ brand: "Jarvis AI", sessions: await getAllFromDB(), configs: cfgs }, null, 2)], { type: 'application/json' }), `JarvisAI_Backup_${Date.now()}.json`);
     };
 
@@ -5043,7 +5176,12 @@
           if (d.sessions) {
             await clearAllDB();
             for (const s of d.sessions) await saveToDB(s);
-            if (d.configs) Object.entries(d.configs).forEach(([k, v]) => ls.setItem(k, v));
+            if (d.configs) {
+              Object.entries(d.configs).forEach(([k, v]) => ls.setItem(k, v));
+              if (d.configs.jarvis_folders) {
+                try { folders = JSON.parse(d.configs.jarvis_folders); } catch {}
+              }
+            }
             initAPIKeys();
             initExternalConfigs();
             applyFontSize(parseInt(ls.getItem('chat_font_size') || '16', 10));
@@ -5346,18 +5484,25 @@
       initAPIKeys();
     }
 
-    function getExternalConfigsObj() {
+    function getExternalConfigsObj(obfuscate = false) {
       const obj = {};
       cfgMap.forEach(([_, k]) => {
-        obj[k] = ls.getItem(k) || '';
+        const val = ls.getItem(k) || '';
+        obj[k] = (obfuscate && val) ? obfuscateKey(val) : val;
       });
+      obj['live_search_enabled'] = ls.getItem('live_search_enabled') || 'true';
+      obj['live_context_enabled'] = ls.getItem('live_context_enabled') || 'true';
       return obj;
     }
 
     function setExternalConfigsObj(obj) {
       if (!obj || typeof obj !== 'object') return;
       Object.entries(obj).forEach(([k, val]) => {
-        ls.setItem(k, val);
+        let v = val;
+        if (typeof v === 'string' && v.startsWith('ENC_')) {
+          v = deobfuscateKey(v);
+        }
+        ls.setItem(k, v);
       });
       initExternalConfigs();
     }
@@ -5447,6 +5592,7 @@
           settings: {
             keys: getGoogleKeysList(true), // Tự động mã hóa để GitHub Secret Scanner không bắt được pattern AIzaSy...
             keyNames: getGoogleKeyNamesList(),
+            externalConfigs: getExternalConfigsObj(true),
             model: DOM.model.value,
             temperature: DOM.temp.value,
             searchEngine: DOM.searchEngineSel.value,
@@ -5578,8 +5724,11 @@
         }
         if (!parsed.sessions || !Array.isArray(parsed.sessions)) throw new Error("Cấu trúc dữ liệu không hợp lệ!");
 
-        for (const s of parsed.sessions) {
-          await saveToDB(s);
+        if (parsed.sessions && parsed.sessions.length > 0) {
+          await clearAllDB();
+          for (const s of parsed.sessions) {
+            await saveToDB(s);
+          }
         }
 
         sessions = await getAllFromDB();
@@ -5587,6 +5736,12 @@
           activeId = parsed.activeId;
         } else if (sessions.length > 0) {
           activeId = sessions[0].id;
+        }
+        ls.setItem('jarvis_active_id', activeId);
+
+        if (parsed.folders && Array.isArray(parsed.folders)) {
+          folders = parsed.folders;
+          ls.setItem('jarvis_folders', JSON.stringify(folders));
         }
 
         if (parsed.customPrompts && Array.isArray(parsed.customPrompts)) {
@@ -5596,6 +5751,7 @@
         if (parsed.settings) {
           if (parsed.settings.keys) setGoogleKeysList(parsed.settings.keys);
           if (parsed.settings.keyNames) setGoogleKeyNamesList(parsed.settings.keyNames);
+          if (parsed.settings.externalConfigs) setExternalConfigsObj(parsed.settings.externalConfigs);
           if (parsed.settings.model && DOM.model) DOM.model.value = parsed.settings.model;
           if (parsed.settings.temperature && DOM.temp) {
             DOM.temp.value = parsed.settings.temperature;
@@ -5604,6 +5760,10 @@
           if (parsed.settings.searchEngine && DOM.searchEngineSel) DOM.searchEngineSel.value = parsed.settings.searchEngine;
           if (parsed.settings.globalContext && DOM.globContext) DOM.globContext.value = parsed.settings.globalContext;
           if (parsed.settings.systemInstruction && DOM.sysInst) DOM.sysInst.value = parsed.settings.systemInstruction;
+          if (parsed.settings.theme) {
+            ls.setItem('jarvis_theme', parsed.settings.theme);
+            if (typeof applyTheme === 'function') applyTheme(parsed.settings.theme);
+          }
         }
 
         const timeStr = new Date().toLocaleString('vi-VN');
@@ -5611,16 +5771,21 @@
         ls.setItem('jarvis_gist_id', gistId);
         ls.setItem('jarvis_gist_last_sync', timeStr);
 
+        // Đảm bảo đồng bộ ngay xuống Native Bridge trên Android nếu có
+        if (window.JarvisNativeBridge) {
+          saveToNativeBridge('jarvis_sessions_backup', JSON.stringify(sessions));
+          if (typeof window.JarvisNativeBridge.commit === 'function') {
+            window.JarvisNativeBridge.commit();
+          }
+        }
+
         gistStatusText.innerText = `Đã đồng bộ (${sessions.length} phiên)`;
         gistStatusText.style.color = '#10b981';
         gistLastTime.innerText = `Lần cuối: ${timeStr}`;
 
-        const curSess = sessions.find(s => s.id === activeId);
-        chatHistory = curSess?.his || [];
         renderFolders();
-        renderSel();
-        renderTabs();
-        await reRenderHistory();
+        renderSnippets();
+        await switchSess(activeId);
 
         showToast(`Đã đồng bộ thành công ${sessions.length} phiên từ Cloud!`, "success");
       } catch (err) {
