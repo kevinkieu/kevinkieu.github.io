@@ -148,8 +148,8 @@ jobs:
                 applicationId "com.kevinkieu.jarvisai"
                 minSdk 24
                 targetSdk 34
-                versionCode 2
-                versionName "1.0.1"
+                versionCode ${{ github.run_number }}
+                versionName "1.0.${{ github.run_number }}"
             }
             signingConfigs {
                 release {
