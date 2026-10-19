@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
   <title>Jarvis AI - Ultimate Intelligence Assistant</title>
   
+  <!-- PWA META & MANIFEST -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Jarvis AI">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%232563eb'/><text x='50' y='65' font-size='48' font-weight='bold' fill='white' text-anchor='middle'>J</text></svg>">
+
   <!-- CDN LIBRARIES -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -247,11 +255,12 @@
 
     /* COLOR TAGS BADGES */
     .color-dot {
-      width: 10px;
-      height: 10px;
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
       display: inline-block;
       flex-shrink: 0;
+      margin-right: 4px;
     }
     .color-picker-row {
       display: flex;
@@ -298,6 +307,25 @@
     @keyframes typingBounce {
       0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
       40% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* TOKEN PROGRESS BAR */
+    .token-bar-track {
+      width: 65px;
+      height: 6px;
+      background: var(--border);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 4px;
+    }
+    .token-bar-fill {
+      height: 100%;
+      width: 5%;
+      background: var(--success);
+      border-radius: var(--radius-full);
+      transition: width 0.3s ease, background 0.3s ease;
     }
 
     /* COMMAND PALETTE STYLING */
@@ -373,6 +401,61 @@
       display: flex;
       align-items: center;
       gap: 10px;
+    }
+
+    /* A/B MODEL COMPARE MODAL */
+    #ab-compare-modal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 95%;
+      max-width: 960px;
+      height: 85vh;
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      z-index: 2005;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .ab-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      flex: 1;
+      padding: 14px;
+      overflow-y: auto;
+    }
+    @media (max-width: 768px) {
+      .ab-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .ab-column {
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-main);
+      overflow: hidden;
+    }
+    .ab-col-header {
+      padding: 10px 14px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .ab-col-body {
+      flex: 1;
+      padding: 14px;
+      overflow-y: auto;
+      font-size: 0.9rem;
+      line-height: 1.6;
     }
   </style>
 
@@ -501,7 +584,7 @@
     .header-left, .header-right {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     /* MULTI TABS */
@@ -524,7 +607,7 @@
       border-right: 1px solid var(--border);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       white-space: nowrap;
       transition: var(--transition);
     }
@@ -869,6 +952,7 @@
       padding: 0 16px;
       display: flex;
       justify-content: flex-end;
+      align-items: center;
       gap: 14px;
     }
     #snippets-container {
@@ -1210,6 +1294,9 @@
       .sidebar-overlay.active, .mobile-only {
         display: block;
       }
+      .mobile-hidden {
+        display: none !important;
+      }
       .user-message {
         max-width: 90%;
       }
@@ -1305,6 +1392,9 @@
             <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:var(--success);display:flex;align-items:center;gap:8px;">
               <input type="checkbox" id="toggle-memory" checked> 🧠 Bộ nhớ ngữ cảnh
             </label>
+            <label style="cursor:pointer;font-size:.78rem;font-weight:600;color:#8b5cf6;display:flex;align-items:center;gap:8px;" title="Tự động nén các tin nhắn cũ để duy trì trí nhớ vĩnh viễn">
+              <input type="checkbox" id="toggle-auto-summary" checked> 🧬 Nén trí nhớ dài hạn (Auto-Summary)
+            </label>
           </div>
 
           <!-- GEMINI MODEL SELECT -->
@@ -1390,10 +1480,15 @@
             Gọi Live AI
           </button>
 
+          <!-- A/B COMPARE BUTTON -->
+          <button id="btn-open-compare" class="btn" style="padding:5px 10px;font-size:0.78rem;" title="So sánh 2 Model (A/B Compare)">
+            ⚖️ <span class="mobile-hidden">So sánh</span>
+          </button>
+
           <!-- QUICK COMMAND PALETTE BUTTON -->
           <button id="btn-trigger-cmd" class="btn" style="padding:5px 10px;font-size:0.78rem;gap:4px;" title="Mở bảng lệnh nhanh (Ctrl+K)">
             <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            <span class="mobile-hidden">Lệnh</span> <kbd style="font-family:monospace;background:var(--input-bg);padding:1px 4px;border-radius:3px;border:1px solid var(--border);font-size:0.7rem;">Ctrl+K</kbd>
+            <span class="mobile-hidden">Lệnh</span> <kbd class="mobile-hidden" style="font-family:monospace;background:var(--input-bg);padding:1px 4px;border-radius:3px;border:1px solid var(--border);font-size:0.7rem;">Ctrl+K</kbd>
           </button>
 
           <!-- GLOBAL SEARCH INPUT -->
@@ -1427,10 +1522,13 @@
         <div id="text-files-list" style="font-size:0.82rem;margin-top:6px;color:var(--primary);"></div>
       </div>
 
-      <!-- LATENCY & TOKEN COUNTER BAR -->
+      <!-- LATENCY & TOKEN COUNTER BAR WITH PROGRESS BAR -->
       <div class="token-counter-bar">
         <span>⏱️ Latency: <strong id="latency-val">0</strong>ms</span>
-        <span>~ <strong id="token-count">0</strong> tokens</span>
+        <span>
+          ~ <strong id="token-count">0</strong> tokens
+          <div class="token-bar-track"><div id="token-bar-fill" class="token-bar-fill"></div></div>
+        </span>
       </div>
 
       <!-- QUICK SNIPPETS CONTAINER (DYNAMICALLY LOADED FROM PROMPT LIBRARY) -->
@@ -1489,11 +1587,49 @@
          KHỐI 3: CÁC MODAL HỆ THỐNG
          ========================================== -->
 
+    <!-- MODAL A/B MODEL COMPARE -->
+    <div id="ab-compare-modal">
+      <div class="modal-header">
+        <h3>⚖️ So sánh Hai Mô hình (A/B Model Compare)</h3>
+        <button class="close-btn icon-btn" onclick="$('ab-compare-modal').style.display='none'; $('modal-overlay').style.display='none';">&times;</button>
+      </div>
+      <div style="padding:12px 16px;background:var(--bg-main);border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;">
+        <input type="text" id="ab-prompt-input" placeholder="Nhập câu hỏi để cùng gửi cho 2 model thử nghiệm..." class="modern-input" style="flex:1;">
+        <button id="btn-run-ab-compare" class="btn primary">🚀 So sánh ngay</button>
+      </div>
+      <div class="ab-grid">
+        <div class="ab-column">
+          <div class="ab-col-header">
+            <strong style="color:var(--primary);">Model A:</strong>
+            <select id="ab-model-a" class="modern-select" style="width:auto;font-size:0.8rem;padding:4px 8px;">
+              <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash Lite</option>
+              <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+              <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+              <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+            </select>
+          </div>
+          <div id="ab-result-a" class="ab-col-body"><i>Chưa có kết quả.</i></div>
+        </div>
+        <div class="ab-column">
+          <div class="ab-col-header">
+            <strong style="color:var(--accent);">Model B:</strong>
+            <select id="ab-model-b" class="modern-select" style="width:auto;font-size:0.8rem;padding:4px 8px;">
+              <option value="gemini-3.8-flash" selected>Gemini 3.8 Flash</option>
+              <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+              <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+              <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+            </select>
+          </div>
+          <div id="ab-result-b" class="ab-col-body"><i>Chưa có kết quả.</i></div>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL COMMAND PALETTE (CTRL+K) -->
     <div id="command-palette-modal">
       <div class="cmd-header">
         <svg class="icon icon-sm" style="color:var(--primary);" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        <input type="text" id="cmd-palette-input" class="cmd-input" placeholder="Gõ lệnh hoặc hành động nhanh (/new, /live, /clear, /theme)...">
+        <input type="text" id="cmd-palette-input" class="cmd-input" placeholder="Gõ lệnh hoặc hành động nhanh (/new, /live, /clear, /compare, /theme)...">
         <span class="cmd-badge">ESC</span>
       </div>
       <div class="cmd-list" id="cmd-palette-list"></div>
@@ -1789,6 +1925,11 @@
     marked.use({ breaks: true });
     mermaid.initialize({ startOnLoad: false, theme: 'default' });
 
+    // Register PWA Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+
     let apiKeys = [], globalKeyIndex = 0, liveKeyIndex = 0, liveRetryCount = 0, abortController = null;
     const SAFETY = [
       'HARM_CATEGORY_HARASSMENT',
@@ -1815,7 +1956,7 @@
       return m.length ? m.join(' ') : null;
     };
 
-    // --- SEARCH CACHE ENGINE (1 HOUR TTL - TIẾT KIỆM QUOTA) ---
+    // --- SEARCH CACHE ENGINE (1 HOUR TTL) ---
     const SEARCH_CACHE_TTL = 3600000;
     function getSearchCache(query, engine) {
       try {
@@ -2527,6 +2668,7 @@
       searchEngineBox: $('search-engine-box'),
       searchEngineSel: $('search-engine-select'),
       toggleMemory: $('toggle-memory'),
+      toggleAutoSummary: $('toggle-auto-summary'),
       temp: $('temperature'),
       tempVal: $('temp-val'),
       topP: $('top-p'),
@@ -2548,7 +2690,7 @@
     let activeFolder = ls.getItem('jarvis_active_folder') || ls.getItem('huanmu_active_folder') || "All";
     let openTabs = JSON.parse(ls.getItem('jarvis_tabs') || ls.getItem('huanmu_tabs') || '[]');
 
-    // --- PROMPT LIBRARY SYSTEM (KHO PROMPT CÁ NHÂN) ---
+    // --- PROMPT LIBRARY SYSTEM ---
     const DEFAULT_PROMPTS = [
       { id: 'p1', title: '📝 Tóm tắt bảng', text: 'Hãy tóm tắt ngắn gọn nội dung thành BẢNG đối chiếu và GẠCH ĐẦU DÒNG các ý quan trọng nhất:' },
       { id: 'p2', title: '📊 Sơ đồ Mermaid', text: 'Vẽ sơ đồ tư duy trực quan bằng code Mermaid trong khối ```mermaid để giải thích rõ cấu trúc:' },
@@ -2582,7 +2724,7 @@
       const list = getCustomPrompts();
       const c = $('prompt-items-list');
       if (!c) return;
-      c.innerHTML = list.map((p, idx) => `
+      c.innerHTML = list.map(p => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--input-bg);border-radius:var(--radius-sm);border:1px solid var(--border);">
           <div style="flex:1;overflow:hidden;margin-right:10px;">
             <strong style="font-size:0.82rem;color:var(--primary);">${p.title}</strong>
@@ -2620,13 +2762,14 @@
       renderPromptList();
     };
 
-    // --- COMMAND PALETTE (CTRL+K SHORTCUT) ---
+    // --- COMMAND PALETTE (CTRL+K) ---
     const cmdModal = $('command-palette-modal');
     const cmdInput = $('cmd-palette-input');
     const cmdList = $('cmd-palette-list');
 
     const COMMANDS = [
       { id: 'new', title: 'Tạo phiên hội thoại mới', shortcut: '/new', icon: '➕', run: () => newSess() },
+      { id: 'compare', title: 'So sánh Hai Mô hình (A/B Compare)', shortcut: '/compare', icon: '⚖️', run: () => openAbCompare() },
       { id: 'live', title: 'Bắt đầu gọi Live AI Voice', shortcut: '/live', icon: '📞', run: () => startLiveVoiceCall() },
       { id: 'settings', title: 'Mở Cài đặt hệ thống & 10 Keys', shortcut: '/settings', icon: '⚙️', run: () => $('btn-open-settings').click() },
       { id: 'prompts', title: 'Mở Kho Prompt mẫu cá nhân', shortcut: '/prompts', icon: '📚', run: () => $('btn-manage-prompts').click() },
@@ -2687,12 +2830,12 @@
         e.preventDefault();
         cmdModal.style.display === 'flex' ? closeCommandPalette() : openCommandPalette();
       }
-      if (e.key === 'Escape' && cmdModal.style.display === 'flex') {
-        closeCommandPalette();
+      if (e.key === 'Escape') {
+        closeModals();
       }
     });
 
-    // --- SWIPE GESTURES FOR MOBILE (VUỐT MỞ/ĐÓNG SIDEBAR) ---
+    // --- SWIPE GESTURES FOR MOBILE ---
     let touchStartX = 0, touchStartY = 0;
     window.addEventListener('touchstart', e => {
       touchStartX = e.touches[0].clientX;
@@ -2705,19 +2848,17 @@
       const diffX = touchEndX - touchStartX;
       const diffY = touchEndY - touchStartY;
 
-      // Swipe right from left edge (< 40px) to open sidebar
       if (touchStartX < 40 && diffX > 70 && Math.abs(diffY) < 60) {
         $('sidebar').classList.add('active');
         $('sidebar-overlay').classList.add('active');
       }
-      // Swipe left on active sidebar to close
       if ($('sidebar').classList.contains('active') && diffX < -70 && Math.abs(diffY) < 60) {
         $('sidebar').classList.remove('active');
         $('sidebar-overlay').classList.remove('active');
       }
     }, { passive: true });
 
-    // --- AUTO-NAME SESSION (TỰ ĐỘNG ĐẶT TÊN PHIÊN BẰNG AI) ---
+    // --- AUTO-NAME SESSION ---
     async function tryAutoNameSession(sessionObj, userText, botText) {
       if (!sessionObj || sessionObj.name.length > 25 || !sessionObj.name.startsWith('Hội thoại')) return;
       const k = getSessionApiKey(sessionObj);
@@ -2739,6 +2880,94 @@
         console.warn("Auto-name không thành công:", err);
       }
     }
+
+    // --- AUTO-SUMMARY LONG-TERM MEMORY (NÉN LỊCH SỬ DÀI) ---
+    async function condenseSessionMemory(sessionObj) {
+      if (!sessionObj || chatHistory.length <= 16 || DOM.toggleAutoSummary?.checked === false) return;
+      const lastCond = sessionObj.lastCondensedLength || 0;
+      if (chatHistory.length - lastCond < 10) return;
+
+      const k = getSessionApiKey(sessionObj);
+      if (!k) return;
+
+      try {
+        const toSummarize = chatHistory.slice(0, chatHistory.length - 10).map(m => `${m.role === 'model' ? 'AI' : 'User'}: ${m.text.slice(0, 300)}`).join('\n');
+        const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
+          model: "gemini-3.1-flash-lite",
+          contents: `Hãy tóm tắt cô đọng các thông tin quan trọng, ngữ cảnh và các quyết định cốt lõi trong đoạn hội thoại sau thành 1 đoạn ngắn gọn (khoảng 3-5 gạch đầu dòng):\n\n${toSummarize}`
+        });
+        if (res.text) {
+          sessionObj.summaryMemory = res.text.trim();
+          sessionObj.lastCondensedLength = chatHistory.length;
+          await saveToDB(sessionObj);
+        }
+      } catch (e) {
+        console.warn("Lỗi tóm tắt bộ nhớ dài:", e);
+      }
+    }
+
+    // --- CONVERSATION BRANCHING (RẼ NHÁNH HỘI THOẠI) ---
+    window.forkSessionAt = async index => {
+      const curS = sessions.find(x => x.id === activeId);
+      if (!curS || index < 0 || index >= chatHistory.length) return;
+      
+      const newForkId = 's_fork_' + Date.now();
+      const forkedHistory = JSON.parse(JSON.stringify(chatHistory.slice(0, index + 1)));
+      const baseName = curS.name.replace(/\s*\(Nhánh.*?\)$/, '');
+
+      const newS = {
+        ...curS,
+        id: newForkId,
+        name: `🌿 ${baseName} (Nhánh ${index + 1})`,
+        his: forkedHistory,
+        lastInteractionId: null,
+        assignedApiKey: null,
+        orderIndex: Date.now()
+      };
+
+      sessions.unshift(newS);
+      await saveToDB(newS);
+      await switchSess(newForkId);
+      showToast(`🌿 Đã rẽ nhánh sang phiên mới từ tin #${index + 1}!`);
+    };
+
+    // --- A/B MODEL COMPARE CONTROLLER ---
+    function openAbCompare() {
+      $('ab-compare-modal').style.display = 'flex';
+      oLay.style.display = 'block';
+      $('ab-prompt-input').value = DOM.input.value || '';
+      $('ab-prompt-input').focus();
+    }
+    $('btn-open-compare').onclick = openAbCompare;
+
+    $('btn-run-ab-compare').onclick = async () => {
+      const q = $('ab-prompt-input').value.trim();
+      if (!q) return showToast("Nhập câu hỏi để so sánh!", "warning");
+      const mA = $('ab-model-a').value, mB = $('ab-model-b').value;
+      const resA = $('ab-result-a'), resB = $('ab-result-b');
+      resA.innerHTML = '<span class="streaming-indicator"><span class="pulse-dot"></span> Đang sinh...</span>';
+      resB.innerHTML = '<span class="streaming-indicator"><span class="pulse-dot"></span> Đang sinh...</span>';
+
+      const cs = sessions.find(x => x.id === activeId);
+      const k = getSessionApiKey(cs);
+      if (!k) return showToast("Cần Google Key!", "danger");
+
+      const runModel = async (model, targetEl) => {
+        try {
+          const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
+            model,
+            contents: q,
+            config: { safetySettings: SAFETY, temperature: +DOM.temp.value }
+          });
+          targetEl.innerHTML = marked.parse(res.text || 'Trống');
+          window.renderMathInElement?.(targetEl, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }] });
+        } catch (e) {
+          targetEl.innerHTML = `<span style="color:var(--danger)">Lỗi: ${e.message}</span>`;
+        }
+      };
+
+      await Promise.all([runModel(mA, resA), runModel(mB, resB)]);
+    };
 
     // --- COLOR TAGS CONTROLLER ---
     document.querySelectorAll('#session-color-picker .color-chip-btn').forEach(chip => {
@@ -2801,8 +3030,14 @@
     }
 
     const updateTokenCount = () => {
-      if ($('token-count')) {
-        $('token-count').innerText = Math.ceil(((DOM.input?.value.length || 0) + (txtContent?.length || 0)) / 3.2).toLocaleString('vi-VN');
+      const count = Math.ceil(((DOM.input?.value.length || 0) + (txtContent?.length || 0)) / 3.2);
+      if ($('token-count')) $('token-count').innerText = count.toLocaleString('vi-VN');
+      
+      const bar = $('token-bar-fill');
+      if (bar) {
+        const pct = Math.min(Math.max((count / 15000) * 100, 4), 100);
+        bar.style.width = pct + '%';
+        bar.style.background = pct > 80 ? 'var(--danger)' : pct > 50 ? 'var(--warning)' : 'var(--success)';
       }
     };
 
@@ -2893,6 +3128,7 @@
     $('btn-open-settings').onclick = () => { $('settings-modal').style.display = 'flex'; $('modal-overlay').style.display = 'block'; };
 
     const getDynamicSI = () => {
+      const cs = sessions.find(x => x.id === activeId);
       const b = DOM.sysInst?.value || "Bạn là Jarvis AI - trợ lý thông minh và chuẩn xác.",
             g = DOM.globContext?.value || ls.getItem('jarvis_global_context') || ls.getItem('huanmu_global_context') || '',
             now = new Date(),
@@ -2902,7 +3138,12 @@
             ss = String(now.getSeconds()).padStart(2, '0');
       const timeStr = `${hh}:${mm}:${ss}`,
             dateStr = `${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
-      return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}\n\n[MỐC THỜI GIAN THỰC TẾ]: Hiện tại chính xác là ${timeStr} (${dateStr}, Múi giờ Việt Nam GMT+7).\nQUY TẮC BẮT BUỘC: Khi người dùng hỏi bây giờ là mấy giờ, thời gian hiện tại hoặc ngày tháng, bạn PHẢI trả lời chính xác theo mốc giờ ${timeStr} và ngày ${dateStr} này.`;
+      
+      const memorySnippet = (cs?.summaryMemory && DOM.toggleAutoSummary?.checked !== false) 
+        ? `\n\n[BỐI CẢNH DÀI HẠN ĐÃ TÓM TẮT TỪ CÁC TIN CŨ]:\n${cs.summaryMemory}\n` 
+        : '';
+
+      return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}\n\n[MỐC THỜI GIAN THỰC TẾ]: Hiện tại chính xác là ${timeStr} (${dateStr}, Múi giờ Việt Nam GMT+7).\nQUY TẮC BẮT BUỘC: Khi người dùng hỏi bây giờ là mấy giờ, thời gian hiện tại hoặc ngày tháng, bạn PHẢI trả lời chính xác theo mốc giờ ${timeStr} và ngày ${dateStr} này.`;
     };
 
     window.exportCleanArticle = () => {
@@ -3010,7 +3251,7 @@
     };
 
     const oLay = $('modal-overlay'), closeModals = () => {
-      document.querySelectorAll('.modal-box, #command-palette-modal').forEach(m => m.style.display = 'none');
+      document.querySelectorAll('.modal-box, #command-palette-modal, #ab-compare-modal').forEach(m => m.style.display = 'none');
       oLay.style.display = 'none';
     };
     document.querySelectorAll('.close-btn').forEach(b => b.onclick = closeModals);
@@ -3187,6 +3428,8 @@
         assignedApiKey: null,
         keySel: 'auto',
         color: null,
+        summaryMemory: '',
+        lastCondensedLength: 0,
         tmp: 0.5,
         tpp: 0.9,
         top: 40,
@@ -3485,6 +3728,7 @@
       a.className = 'msg-actions';
       a.innerHTML = `
         <button class="action-btn" onclick="copy(this)" title="Sao chép toàn bộ">📋 Copy</button>
+        <button class="action-btn" onclick="forkSessionAt(${i})" title="Rẽ nhánh tạo phiên mới từ điểm này">🌿 Rẽ nhánh</button>
         ${sd === 'user' 
           ? `<button class="action-btn" onclick="editMsg(${i})" title="Chỉnh sửa câu hỏi này">✏️ Sửa</button>` 
           : `<button class="action-btn" onclick="retryMsg(${i})" title="Tạo lại câu trả lời này">🔄 Thử lại</button>`}
@@ -3546,7 +3790,7 @@
       if (confirm("Bạn có chắc muốn xóa sạch toàn bộ tin nhắn trong phiên này?")) {
         chatHistory = [];
         const s = sessions.find(x => x.id === activeId);
-        if (s) { s.lastInteractionId = null; await saveToDB(s); }
+        if (s) { s.lastInteractionId = null; s.summaryMemory = ''; await saveToDB(s); }
         await reRenderHistory();
         showToast('Đã dọn sạch hội thoại phiên này!');
       }
@@ -3619,15 +3863,21 @@
           aDiv.className = 'msg-actions';
           aDiv.innerHTML = `
             <button class="action-btn" onclick="copy(this)">📋 Copy</button>
+            <button class="action-btn" onclick="forkSessionAt(${currentBotIdx})">🌿 Rẽ nhánh</button>
             <button class="action-btn" onclick="retryMsg(${currentBotIdx})">🔄 Thử lại</button>
             <button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${currentBotIdx})">🗑️ Xóa</button>
           `;
           bD.appendChild(aDiv);
         }
 
-        // TRIGGER AUTO-NAME SESSION (NẾU ĐÂY LÀ LƯỢT CHAT ĐẦU TIÊN CỦA PHIÊN)
+        // AUTO-NAME SESSION TRÊN LƯỢT CHAT ĐẦU TIÊN
         if (chatHistory.length === 2 && cs) {
           tryAutoNameSession(cs, fP, finalResp);
+        }
+
+        // AUTO-SUMMARY BỘ NHỚ DÀI HẠN
+        if (chatHistory.length > 16 && cs) {
+          condenseSessionMemory(cs);
         }
       };
 
@@ -3928,7 +4178,7 @@
         });
       });
       resBox.innerHTML = matched.length ? matched.slice(0, 30).map(item => `
-        <div onclick="window.switchSess('${item.session.id}'); document.querySelectorAll('.modal-box, #command-palette-modal').forEach(m => m.style.display='none'); document.getElementById('modal-overlay').style.display='none';" style="padding:10px;border-radius:var(--radius-sm);background:var(--bg-main);border-left:3px solid var(--primary);cursor:pointer;font-size:0.82rem;">
+        <div onclick="window.switchSess('${item.session.id}'); document.querySelectorAll('.modal-box, #command-palette-modal, #ab-compare-modal').forEach(m => m.style.display='none'); document.getElementById('modal-overlay').style.display='none';" style="padding:10px;border-radius:var(--radius-sm);background:var(--bg-main);border-left:3px solid var(--primary);cursor:pointer;font-size:0.82rem;">
           <strong style="color:var(--primary);">${item.session.name} (${item.role === 'user' ? 'Bạn' : 'AI'} - ${item.time || ''})</strong>
           <p style="margin:4px 0 0 0;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.text.replace(/<[^>]+>/g, '').substring(0, 100)}</p>
         </div>

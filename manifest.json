@@ -1,15 +1,18 @@
 {
-  "name": "Jarvis Ultimate AI",
+  "name": "Jarvis AI Assistant",
   "short_name": "Jarvis AI",
+  "description": "Trợ lý AI đa năng thông minh với Gemini 3.8, Live Voice Call và tra cứu Internet",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#131314",
-  "theme_color": "#0b57d0",
+  "background_color": "#090d16",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "icon.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%232563eb'/><text x='50' y='65' font-size='48' font-weight='bold' fill='white' text-anchor='middle'>J</text></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ]
 }
