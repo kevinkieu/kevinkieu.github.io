@@ -2292,6 +2292,9 @@
     import { GoogleGenAI } from "@google/genai";
     const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStorage;
     
+    // CENTRAL CONSTANT FOR SECONDARY & BACKGROUND TASKS (FLASH LITE)
+    const FLASH_LITE_MODEL = 'gemini-3.5-flash-lite';
+
     // Init libraries
     marked.use({ breaks: true });
     mermaid.initialize({ startOnLoad: false, theme: 'default' });
@@ -2943,7 +2946,7 @@
         tot++;
         try {
           await new GoogleGenAI({ apiKey: k }).models.generateContent({
-            model: "gemini-3.1-flash-lite",
+            model: FLASH_LITE_MODEL,
             contents: "hi",
             config: { maxOutputTokens: 1 }
           });
@@ -3238,7 +3241,7 @@
       if (!k) return;
       try {
         const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
-          model: "gemini-3.1-flash-lite",
+          model: FLASH_LITE_MODEL,
           contents: `Hãy tóm tắt chủ đề chính của câu hỏi sau thành một tiêu đề ngắn gọn súc tích từ 3 đến 6 từ bằng tiếng Việt (không dùng dấu ngoặc kép, không thêm lời giải thích):\nNgười dùng: "${userText.slice(0, 160)}"\nAI: "${botText.slice(0, 160)}"`
         });
         const title = res.text?.trim()?.replace(/["“«»”]/g, '');
@@ -3266,7 +3269,7 @@
       try {
         const toSummarize = chatHistory.slice(0, chatHistory.length - 10).map(m => `${m.role === 'model' ? 'AI' : 'User'}: ${m.text.slice(0, 300)}`).join('\n');
         const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
-          model: "gemini-3.1-flash-lite",
+          model: FLASH_LITE_MODEL,
           contents: `Hãy tóm tắt cô đọng các thông tin quan trọng, ngữ cảnh và các quyết định cốt lõi trong đoạn hội thoại sau thành 1 đoạn ngắn gọn (khoảng 3-5 gạch đầu dòng):\n\n${toSummarize}`
         });
         if (res.text) {
@@ -3482,7 +3485,7 @@
       $('btn-enhance-prompt').innerText = "⏳...";
       try {
         const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
-          model: "gemini-3.5-flash-lite",
+          model: FLASH_LITE_MODEL,
           contents: `Hãy tối ưu và mở rộng câu lệnh prompt sau đây để rõ ràng, chi tiết, chuyên nghiệp và hiệu quả nhất khi gửi cho AI:\n\n"${txt}"\n\nChỉ trả về duy nhất nội dung prompt đã được tối ưu, không giải thích gì thêm.`
         });
         if (res.text) {
@@ -3623,7 +3626,7 @@
           const k = getSessionApiKey(sessions.find(x => x.id === activeId));
           if (!k) throw new Error("Cần Google Key!");
           const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
-            model: "gemini-3.5-flash-lite",
+            model: FLASH_LITE_MODEL,
             contents: `Tóm tắt video YouTube: ${u}`,
             config: { safetySettings: SAFETY }
           });
@@ -4483,7 +4486,7 @@
           try {
             const sAi = new GoogleGenAI({ apiKey: gKey });
             const sRes = await sAi.models.generateContent({
-              model: 'gemini-3.5-flash-lite',
+              model: FLASH_LITE_MODEL,
               contents: `Dựa vào câu hỏi sau của người dùng: "${msg}"\nHãy tạo đúng 3 câu truy vấn tìm kiếm ngách ngắn gọn bằng tiếng Việt hoặc tiếng Anh (mỗi câu tối đa 8 từ, mỗi câu trên 1 dòng, không đánh số, không gạch đầu dòng) để quét thông tin từ nhiều khía cạnh:\n`,
               config: { safetySettings: SAFETY, maxOutputTokens: 120, temperature: 0.5 }
             });
@@ -4874,7 +4877,7 @@
         if (!k) return;
         const ai = new GoogleGenAI({ apiKey: k });
         const res = await ai.models.generateContent({
-          model: 'gemini-3.5-flash-lite',
+          model: FLASH_LITE_MODEL,
           contents: `Dựa vào trao đổi gần nhất:\nNgười dùng: "${userPrompt.slice(0, 200)}"\nAI: "${botReply.slice(0, 400)}"\nHãy tạo đúng 3 câu hỏi gợi ý tiếp theo ngắn gọn (mỗi câu tối đa 8 từ, không gạch đầu dòng, không đánh số thứ tự, mỗi câu 1 dòng) mà người dùng có thể muốn bấm để hỏi tiếp:`,
           config: { safetySettings: SAFETY, maxOutputTokens: 100, temperature: 0.6 }
         });
