@@ -1281,6 +1281,59 @@
       backdrop-filter: blur(2px);
     }
     @media (max-width: 768px) {
+      .main-header {
+        height: 52px;
+        min-height: 52px;
+        padding: 0 8px;
+        gap: 6px;
+      }
+      .header-left {
+        gap: 4px;
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+      .header-right {
+        gap: 4px;
+        flex-shrink: 0;
+      }
+      .header-right .btn {
+        padding: 5px 8px !important;
+        font-size: 0.82rem !important;
+        min-width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #btn-live-call-open {
+        width: 36px !important;
+        height: 36px !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        justify-content: center !important;
+      }
+      .header-search-bar {
+        padding: 0;
+        border: none;
+        background: transparent;
+      }
+      .header-search-bar input {
+        display: none !important;
+      }
+      .header-search-bar.active input {
+        display: block !important;
+        position: absolute;
+        top: 52px;
+        left: 8px;
+        right: 8px;
+        width: calc(100% - 16px) !important;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-lg);
+        padding: 8px 12px;
+        border-radius: var(--radius-md);
+        z-index: 1000;
+      }
       .sidebar {
         position: fixed;
         left: 0;
@@ -1304,9 +1357,6 @@
         width: calc(100% - 16px);
         margin-bottom: 8px;
         padding: 6px 12px;
-      }
-      .header-search-bar.active input {
-        width: 110px;
       }
       #chat-container {
         padding: 12px 10px;
@@ -1695,47 +1745,47 @@
           <button id="toggle-sidebar-btn" class="icon-btn mobile-only" title="Mở Sidebar">
             <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:1.1rem;font-weight:700;color:var(--primary);">Jarvis AI</span>
+          <div style="display:flex;align-items:center;gap:6px;white-space:nowrap;">
+            <span style="font-size:1.05rem;font-weight:700;color:var(--primary);white-space:nowrap;">Jarvis AI</span>
             <span class="pulse-dot" title="Hệ thống trực tuyến"></span>
-            <span style="font-size:0.68rem;background:linear-gradient(135deg,#0284c7,#2563eb);color:white;padding:2px 7px;border-radius:10px;font-weight:700;letter-spacing:0.02em;">v3.2 Cloud</span>
+            <span class="mobile-hidden" style="font-size:0.68rem;background:linear-gradient(135deg,#0284c7,#2563eb);color:white;padding:2px 7px;border-radius:10px;font-weight:700;letter-spacing:0.02em;">v3.3 Mobile</span>
           </div>
         </div>
 
         <div class="header-right">
-          <!-- CLOUD SYNC HEADER BUTTON -->
-          <button id="btn-cloud-sync-header" class="btn" style="background:linear-gradient(135deg,#0284c7,#2563eb);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(2,132,199,0.35);display:flex;align-items:center;gap:5px;" title="Đồng bộ Cloud Đa thiết bị (Gist)">
+          <!-- CLOUD SYNC HEADER BUTTON (DESKTOP ONLY - ON MOBILE IT IS ON THE INPUT TOOLBAR) -->
+          <button id="btn-cloud-sync-header" class="btn mobile-hidden" style="background:linear-gradient(135deg,#0284c7,#2563eb);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(2,132,199,0.35);display:flex;align-items:center;gap:5px;" title="Đồng bộ Cloud Đa thiết bị (Gist)">
             ☁️ <span>Đồng bộ</span>
           </button>
 
-          <!-- LIVE CALL OPEN BUTTON -->
-          <button id="btn-live-call-open" class="btn" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;border-radius:var(--radius-full);padding:6px 14px;font-weight:600;box-shadow:0 2px 8px rgba(16,185,129,0.3);">
+          <!-- LIVE CALL OPEN BUTTON (CIRCULAR COMPACT ON MOBILE) -->
+          <button id="btn-live-call-open" class="btn" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;box-shadow:0 2px 8px rgba(16,185,129,0.3);display:flex;align-items:center;gap:5px;" title="Gọi Live AI">
             <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-            Gọi Live AI
+            <span class="mobile-hidden">Gọi Live AI</span>
           </button>
 
           <!-- A/B COMPARE BUTTON -->
-          <button id="btn-open-compare" class="btn" style="padding:5px 10px;font-size:0.78rem;" title="So sánh 2 Model (A/B Compare)">
+          <button id="btn-open-compare" class="btn" style="padding:5px 9px;font-size:0.78rem;" title="So sánh 2 Model (A/B Compare)">
             ⚖️ <span class="mobile-hidden">So sánh</span>
           </button>
 
           <!-- QUICK COMMAND PALETTE BUTTON -->
-          <button id="btn-trigger-cmd" class="btn" style="padding:5px 10px;font-size:0.78rem;gap:4px;" title="Mở bảng lệnh nhanh (Ctrl+K)">
+          <button id="btn-trigger-cmd" class="btn" style="padding:5px 9px;font-size:0.78rem;gap:4px;" title="Mở bảng lệnh nhanh (Ctrl+K)">
             <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             <span class="mobile-hidden">Lệnh</span> <kbd class="mobile-hidden" style="font-family:monospace;background:var(--input-bg);padding:1px 4px;border-radius:3px;border:1px solid var(--border);font-size:0.7rem;">Ctrl+K</kbd>
           </button>
 
-          <!-- GLOBAL SEARCH INPUT -->
+          <!-- GLOBAL SEARCH BUTTON -->
           <div class="header-search-bar">
             <input type="text" id="search-chat-input" placeholder="Tìm kiếm phiên...">
-            <button id="btn-global-search" class="icon-btn" style="width:30px;height:30px;" title="Tìm kiếm">
+            <button id="btn-global-search" class="icon-btn" style="width:32px;height:32px;" title="Tìm kiếm">
               <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </button>
           </div>
 
           <!-- THEME BUTTON -->
-          <button id="btn-theme" class="btn" style="padding:6px 10px;font-size:0.8rem;" title="Chuyển chế độ Sáng / Tối">
-            🌙 Tự động
+          <button id="btn-theme" class="btn" style="padding:5px 9px;font-size:0.8rem;" title="Chuyển chế độ Sáng / Tối">
+            🌙 <span class="mobile-hidden">Tự động</span>
           </button>
         </div>
       </header>
@@ -3366,7 +3416,8 @@
 
     const applyTheme = m => {
       const t = m === 'auto' ? ((new Date().getHours() >= 18 || new Date().getHours() < 6) ? 'dark' : 'light') : m;
-      DOM.btnTheme.innerText = m === 'auto' ? "🌙 Tự động" : m === 'dark' ? "🌙 Tối" : "☀️ Sáng";
+      const tIcons = { auto: '🌙', dark: '🌙', light: '☀️' }, tLabels = { auto: 'Tự động', dark: 'Tối', light: 'Sáng' };
+      DOM.btnTheme.innerHTML = `${tIcons[m] || '🌙'} <span class="mobile-hidden">${tLabels[m] || 'Tự động'}</span>`;
       document.documentElement.setAttribute('data-theme', t);
       ls.setItem('theme', m);
     };
