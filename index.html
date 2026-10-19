@@ -1698,7 +1698,7 @@
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:1.1rem;font-weight:700;color:var(--primary);">Jarvis AI</span>
             <span class="pulse-dot" title="Hệ thống trực tuyến"></span>
-            <span style="font-size:0.68rem;background:linear-gradient(135deg,#0284c7,#2563eb);color:white;padding:2px 7px;border-radius:10px;font-weight:700;letter-spacing:0.02em;">v3.1 Cloud</span>
+            <span style="font-size:0.68rem;background:linear-gradient(135deg,#0284c7,#2563eb);color:white;padding:2px 7px;border-radius:10px;font-weight:700;letter-spacing:0.02em;">v3.2 Cloud</span>
           </div>
         </div>
 
@@ -5013,7 +5013,7 @@
           public: false,
           files: {
             "jarvis_sync_data.json": {
-              content: JSON.stringify(backupData, null, 2)
+              content: JSON.stringify(backupData)
             }
           }
         };
@@ -5086,9 +5086,48 @@
 
         const data = await res.json();
         const fileObj = data.files?.["jarvis_sync_data.json"] || Object.values(data.files || {})[0];
-        if (!fileObj || !fileObj.content) throw new Error("Không tìm thấy tệp dữ liệu sao lưu hợp lệ trong Gist này!");
+        if (!fileObj) throw new Error("Không tìm thấy tệp dữ liệu sao lưu hợp lệ trong Gist này!");
 
-        const parsed = JSON.parse(fileObj.content);
+        let contentStr = fileObj.content || '';
+
+        // XỬ LÝ LỖI TRUNCATED CỦA GITHUB GIST KHI DỮ LIỆU LỚN (>750KB)
+        // Khi file lớn, GitHub Gist tự động cắt ngang chuỗi và đặt truncated: true.
+        // Ta cần fetch trực tiếp từ fileObj.raw_url để lấy nguyên vẹn 100% dữ liệu gốc!
+        if (fileObj.truncated || !contentStr || fileObj.raw_url) {
+          try {
+            let rawRes = await fetch(fileObj.raw_url, {
+              headers: { 'Authorization': `Bearer ${pat}` }
+            });
+            if (!rawRes.ok) {
+              rawRes = await fetch(fileObj.raw_url);
+            }
+            if (rawRes.ok) {
+              contentStr = await rawRes.text();
+            }
+          } catch (rawErr) {
+            console.warn("Lỗi fetch raw_url, thử dùng inline content:", rawErr);
+          }
+        }
+
+        if (!contentStr) throw new Error("Nội dung tệp sao lưu trên Gist bị trống!");
+
+        let parsed;
+        try {
+          parsed = JSON.parse(contentStr);
+        } catch (jsonErr) {
+          // Thử lại lần cuối với raw_url trực tiếp nếu parse lỗi
+          if (fileObj.raw_url) {
+            const fallbackRes = await fetch(fileObj.raw_url);
+            if (fallbackRes.ok) {
+              contentStr = await fallbackRes.text();
+              parsed = JSON.parse(contentStr);
+            } else {
+              throw jsonErr;
+            }
+          } else {
+            throw jsonErr;
+          }
+        }
         if (!parsed.sessions || !Array.isArray(parsed.sessions)) throw new Error("Cấu trúc dữ liệu không hợp lệ!");
 
         for (const s of parsed.sessions) {

@@ -1,5 +1,5 @@
 // Jarvis AI Service Worker for PWA (v3 with Network-First Navigation)
-const CACHE_NAME = 'jarvis-ai-pwa-v4';
+const CACHE_NAME = 'jarvis-ai-pwa-v5';
 const STATIC_ASSETS = [
   './manifest.json'
 ];
