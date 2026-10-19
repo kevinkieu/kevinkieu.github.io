@@ -1596,6 +1596,7 @@
     @keyframes pulseBtn {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.85; transform: scale(0.98); }
+    }
     /* ==========================================
        6. GEMINI TTS STUDIO PRO STYLING
        ========================================== */
@@ -2020,7 +2021,38 @@
       gap: 6px;
     }
 
+    @media (min-width: 901px) {
+      .tts-layout-body {
+        display: grid;
+        grid-template-columns: 370px 1fr;
+        gap: 16px;
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        background: var(--bg-main);
+        align-items: start;
+      }
+      #tts-col-settings {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+      }
+      #tts-col-editor {
+        grid-column: 2;
+        grid-row: 1;
+      }
+      #tts-col-history {
+        grid-column: 2;
+        grid-row: 2;
+      }
+      .tts-mobile-nav {
+        display: none !important;
+      }
+    }
+
     @media (max-width: 900px) {
+      body.tts-modal-open {
+        overflow: hidden !important;
+      }
       .modal-box.modal-tts-studio {
         position: fixed !important;
         top: 0 !important;
@@ -2029,18 +2061,45 @@
         bottom: 0 !important;
         width: 100vw !important;
         height: 100vh !important;
+        height: 100dvh !important;
         max-height: 100vh !important;
+        max-height: 100dvh !important;
         border-radius: 0 !important;
+        border: none !important;
         transform: none !important;
         animation: none !important;
         z-index: 2100 !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
       }
-      .tts-layout-body {
-        grid-template-columns: 1fr;
-        padding: 10px;
+      .tts-header-bar {
+        padding: 10px 14px;
+        flex-shrink: 0;
       }
       .tts-mobile-nav {
-        display: flex;
+        display: flex !important;
+        flex-shrink: 0;
+        padding: 6px 12px 0 12px;
+        gap: 6px;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border);
+      }
+      .tts-mobile-nav-btn {
+        flex: 1;
+        min-height: 38px;
+        font-size: 0.8rem;
+      }
+      .tts-layout-body {
+        display: block !important;
+        flex: 1 1 auto !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        touch-action: pan-y !important;
+        padding: 12px 12px 60px 12px !important;
+      }
+      .tts-card {
+        padding: 12px;
+        gap: 10px;
       }
       .modal-tts-studio[data-mobile-tab="editor"] #tts-col-settings,
       .modal-tts-studio[data-mobile-tab="editor"] #tts-col-history {
@@ -2048,6 +2107,8 @@
       }
       .modal-tts-studio[data-mobile-tab="editor"] #tts-col-editor {
         display: flex !important;
+        flex-direction: column;
+        gap: 12px;
       }
 
       .modal-tts-studio[data-mobile-tab="settings"] #tts-col-editor,
@@ -2056,6 +2117,8 @@
       }
       .modal-tts-studio[data-mobile-tab="settings"] #tts-col-settings {
         display: flex !important;
+        flex-direction: column;
+        gap: 12px;
       }
 
       .modal-tts-studio[data-mobile-tab="history"] #tts-col-editor,
@@ -2064,6 +2127,66 @@
       }
       .modal-tts-studio[data-mobile-tab="history"] #tts-col-history {
         display: flex !important;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .tts-expr-toolbar {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        padding: 6px 8px !important;
+        gap: 6px !important;
+      }
+      .tts-expr-toolbar::-webkit-scrollbar {
+        display: none !important;
+      }
+      .tts-expr-btn {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        padding: 6px 10px !important;
+        font-size: 0.78rem !important;
+      }
+      .tts-chip-group {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        padding-bottom: 4px !important;
+      }
+      .tts-chip-group::-webkit-scrollbar {
+        display: none !important;
+      }
+      .tts-chip-btn {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+      }
+      .tts-audio-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+      .tts-audio-controls audio {
+        width: 100%;
+        min-width: 0;
+      }
+      #tts-playback-speed-select {
+        width: 100%;
+        height: 38px;
+      }
+      .tts-dl-group {
+        flex-direction: column;
+        gap: 8px;
+      }
+      .tts-btn-mp3, .tts-btn-wav {
+        width: 100% !important;
+        height: 42px !important;
+        justify-content: center !important;
+      }
+      .tts-select, .tts-input {
+        min-height: 40px;
+        font-size: 0.88rem;
       }
     }
   </style>
@@ -3050,18 +3173,18 @@
               </button>
             </div>
           </div>
+        </div>
 
-          <!-- CARD: LỊCH SỬ ÂM THANH (PERSISTENT LIBRARY) -->
-          <div id="tts-col-history" class="tts-card">
-            <div class="tts-card-title">
-              <span>📜 Thư viện âm thanh đã tạo (<span id="tts-history-count">0</span>)</span>
-              <button id="btn-clear-tts-history" class="btn" style="padding:4px 8px;font-size:0.74rem;color:var(--danger,#ef4444);" title="Xóa toàn bộ lịch sử">
-                🗑️ Xóa hết
-              </button>
-            </div>
-            <div id="tts-history-container" class="tts-history-list">
-              <i id="tts-history-empty" style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Chưa có bản ghi âm thanh nào được lưu.</i>
-            </div>
+        <!-- CARD: LỊCH SỬ ÂM THANH (PERSISTENT LIBRARY) -->
+        <div id="tts-col-history" class="tts-card">
+          <div class="tts-card-title">
+            <span>📜 Thư viện âm thanh đã tạo (<span id="tts-history-count">0</span>)</span>
+            <button id="btn-clear-tts-history" class="btn" style="padding:4px 8px;font-size:0.74rem;color:var(--danger,#ef4444);" title="Xóa toàn bộ lịch sử">
+              🗑️ Xóa hết
+            </button>
+          </div>
+          <div id="tts-history-container" class="tts-history-list">
+            <i id="tts-history-empty" style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Chưa có bản ghi âm thanh nào được lưu.</i>
           </div>
         </div>
       </div>
@@ -7078,6 +7201,15 @@
       audioEl.play().catch(() => {});
       initTTSVisualizer(audioEl);
 
+      // On mobile, switch to editor tab so the user immediately sees the player deck & visualizer
+      const modal = $('tts-studio-modal');
+      if (modal && window.innerWidth <= 900) {
+        modal.setAttribute('data-mobile-tab', 'editor');
+        document.querySelectorAll('.tts-mobile-nav-btn').forEach(b => {
+          b.classList.toggle('active', b.getAttribute('data-tab') === 'editor');
+        });
+      }
+
       if ($('tts-mp3-size-tag')) $('tts-mp3-size-tag').innerText = `(${formatFileSize(item.mp3Size)})`;
       if ($('tts-wav-size-tag')) $('tts-wav-size-tag').innerText = `(${formatFileSize(item.wavSize)})`;
       showToast(`Đang phát: "${item.text.slice(0, 40)}..."`, "info");
@@ -7326,10 +7458,20 @@
         return;
       }
       modal.style.display = 'flex';
+      document.body.classList.add('tts-modal-open');
       const oLay = $('modal-overlay');
       if (oLay) oLay.style.display = 'block';
 
       try {
+        // Ensure default active tab on mobile
+        if (!modal.getAttribute('data-mobile-tab')) {
+          modal.setAttribute('data-mobile-tab', 'editor');
+        }
+        const curTab = modal.getAttribute('data-mobile-tab') || 'editor';
+        document.querySelectorAll('.tts-mobile-nav-btn').forEach(b => {
+          b.classList.toggle('active', b.getAttribute('data-tab') === curTab);
+        });
+
         // Update Key count info
         const activeKeys = getGoogleKeysList().filter(Boolean);
         const keyInfo = $('tts-key-count-info');
@@ -7361,6 +7503,7 @@
     function closeTTSStudioModal() {
       const modal = $('tts-studio-modal');
       if (modal) modal.style.display = 'none';
+      document.body.classList.remove('tts-modal-open');
       const oLay = $('modal-overlay');
       if (oLay) oLay.style.display = 'none';
       if (ttsAudioCtx && ttsAudioCtx.state === 'running') {
