@@ -9,6 +9,8 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
     - name: 📥 Checkout repository
@@ -22,6 +24,8 @@ jobs:
 
     - name: 🐘 Cài đặt Gradle Runner
       uses: gradle/actions/setup-gradle@v3
+      with:
+        cache-disabled: true
 
     - name: 🎨 Tạo Icon App & Khởi tạo dự án Android WebView
       run: |
@@ -491,7 +495,6 @@ jobs:
 
     - name: 🏷️ Tạo GitHub Release tải về
       uses: softprops/action-gh-release@v2
-      if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
       with:
         tag_name: v1.0.${{ github.run_number }}
         name: "Jarvis AI APK v1.0.${{ github.run_number }}"
