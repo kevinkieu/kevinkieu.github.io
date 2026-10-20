@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v21 - Seamless Stateful Context & Seeding for Interactions API)
-const CACHE_NAME = 'jarvis-ai-pwa-v21';
+// Jarvis AI Service Worker for PWA (v22 - Flexible Memory Toggle & Verifiable Interactions State)
+const CACHE_NAME = 'jarvis-ai-pwa-v22';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
