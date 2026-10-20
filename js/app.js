@@ -90,6 +90,87 @@ import { GoogleGenAI } from "@google/genai";
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
 
+    // --- KEY CIPHER & SECURITY HELPERS ---
+    const CIPHER_SECRET = "JarvisAI_SecretKey_Protect_2026_X9!";
+
+    function obfuscateKey(k) {
+      if (!k || typeof k !== 'string') return '';
+      try {
+        const salt = Math.random().toString(36).slice(2, 10);
+        const fullKey = CIPHER_SECRET + salt;
+        const utf8Bytes = new TextEncoder().encode(k);
+        const outBytes = new Uint8Array(utf8Bytes.length);
+        for (let i = 0; i < utf8Bytes.length; i++) {
+          outBytes[i] = utf8Bytes[i] ^ fullKey.charCodeAt(i % fullKey.length) ^ ((i * 31 + 17) & 0xFF);
+        }
+        let binStr = '';
+        for (let i = 0; i < outBytes.length; i++) {
+          binStr += String.fromCharCode(outBytes[i]);
+        }
+        return 'JVENC_' + salt + '_' + btoa(binStr);
+      } catch (e) {
+        try {
+          return 'ENC_' + btoa(unescape(encodeURIComponent(k.split('').reverse().join(''))));
+        } catch {
+          return 'ENC_' + btoa(k.split('').reverse().join(''));
+        }
+      }
+    }
+
+    function deobfuscateKey(k) {
+      if (!k || typeof k !== 'string') return '';
+      if (k.startsWith('JVENC_')) {
+        try {
+          const parts = k.slice(6).split('_');
+          if (parts.length >= 2) {
+            const salt = parts[0];
+            const b64 = parts.slice(1).join('_');
+            const fullKey = CIPHER_SECRET + salt;
+            const binStr = atob(b64);
+            const outBytes = new Uint8Array(binStr.length);
+            for (let i = 0; i < binStr.length; i++) {
+              outBytes[i] = binStr.charCodeAt(i) ^ ((i * 31 + 17) & 0xFF) ^ fullKey.charCodeAt(i % fullKey.length);
+            }
+            return new TextDecoder().decode(outBytes);
+          }
+        } catch (e) {
+          console.warn('JVENC decode failed:', e);
+        }
+      }
+      if (k.startsWith('ENC_')) {
+        try {
+          const rawB64 = k.slice(4);
+          return decodeURIComponent(escape(atob(rawB64))).split('').reverse().join('');
+        } catch {
+          try {
+            return atob(k.slice(4)).split('').reverse().join('');
+          } catch {
+            return k;
+          }
+        }
+      }
+      return k;
+    }
+
+    function sanitizeSessionForBackup(session) {
+      if (!session || typeof session !== 'object') return session;
+      const clean = JSON.parse(JSON.stringify(session));
+      clean.assignedApiKey = null;
+      if (Array.isArray(clean.his)) {
+        clean.his.forEach(msg => {
+          if (typeof msg.text === 'string') {
+            msg.text = msg.text
+              .replace(/AIzaSy[A-Za-z0-9_-]{30,40}/g, 'AIzaSy[PROTECTED_BY_JARVIS]')
+              .replace(/tvly-[A-Za-z0-9_-]{20,40}/g, 'tvly-[PROTECTED_BY_JARVIS]')
+              .replace(/jina_[A-Za-z0-9_-]{20,}/g, 'jina_[PROTECTED_BY_JARVIS]')
+              .replace(/ghp_[A-Za-z0-9]{30,45}/g, 'ghp_[PROTECTED_BY_JARVIS]')
+              .replace(/github_pat_[A-Za-z0-9_]{30,}/g, 'github_pat_[PROTECTED_BY_JARVIS]');
+          }
+        });
+      }
+      return clean;
+    }
+
     let apiKeys = [], globalKeyIndex = 0, liveKeyIndex = 0, liveRetryCount = 0, abortController = null;
     const SAFETY = [
       'HARM_CATEGORY_HARASSMENT',
@@ -388,8 +469,12 @@ import { GoogleGenAI } from "@google/genai";
     function initAPIKeys() {
       apiKeys = [];
       for (let i = 1; i <= 10; i++) {
-        const k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
+        let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
         const n = (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || "").trim();
+        if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
+          k = deobfuscateKey(k);
+          ls.setItem(`jarvis_api_${i}`, k);
+        }
         if ($(`api-key-${i}`)) $(`api-key-${i}`).value = k;
         if ($(`api-key-name-${i}`)) $(`api-key-name-${i}`).value = n;
         if (k) apiKeys.push(k);
@@ -404,8 +489,9 @@ import { GoogleGenAI } from "@google/genai";
         const cur = d.value;
         d.innerHTML = '<option value="auto">🔄 Tự động xoay Key</option>';
         for (let i = 1; i <= 10; i++) {
-          const k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
+          let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
           const n = (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || "").trim();
+          if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
           if (k) {
             const label = n ? `🔑 ${n} (${k.substring(0, 5)}...)` : `🔑 Key ${i} (${k.substring(0, 5)}...)`;
             d.innerHTML += `<option value="${i-1}">${label}</option>`;
@@ -1219,8 +1305,14 @@ import { GoogleGenAI } from "@google/genai";
 
     const getSessionApiKey = (cs, forceRotate = false) => {
       const sel = DOM.apiKeySel?.value || 'auto';
-      if (sel !== 'auto') return ls.getItem(`jarvis_api_${parseInt(sel)+1}`) || ls.getItem(`huanmu_api_${parseInt(sel)+1}`) || "";
-      if (!forceRotate && cs?.assignedApiKey) return cs.assignedApiKey;
+      if (sel !== 'auto') {
+        let manualKey = (ls.getItem(`jarvis_api_${parseInt(sel)+1}`) || ls.getItem(`huanmu_api_${parseInt(sel)+1}`) || "").trim();
+        if (manualKey.startsWith('JVENC_') || manualKey.startsWith('ENC_')) manualKey = deobfuscateKey(manualKey);
+        return manualKey;
+      }
+      if (!forceRotate && cs?.assignedApiKey && apiKeys.includes(cs.assignedApiKey)) {
+        return cs.assignedApiKey;
+      }
       if (apiKeys.length) {
         const k = apiKeys[globalKeyIndex++ % apiKeys.length];
         if (cs && !forceRotate) cs.assignedApiKey = k;
@@ -2284,15 +2376,16 @@ import { GoogleGenAI } from "@google/genai";
       let keyIndexNum = 1;
 
       if (currentEngine === 'interactions') {
-        if (!cs.assignedApiKey) {
-          gKey = getSessionApiKey(cs);
-          cs.assignedApiKey = gKey;
-          await saveToDB(cs);
-          keyIndexNum = apiKeys.indexOf(gKey) + 1;
+        if (!cs.assignedApiKey || !apiKeys.includes(cs.assignedApiKey)) {
+          gKey = getSessionApiKey(cs, true);
+          if (cs) {
+            cs.assignedApiKey = gKey;
+            await saveToDB(cs);
+          }
         } else {
           gKey = cs.assignedApiKey;
-          keyIndexNum = apiKeys.indexOf(gKey) + 1;
         }
+        keyIndexNum = apiKeys.indexOf(gKey) + 1;
       } else {
         gKey = getSessionApiKey(cs, true);
         keyIndexNum = apiKeys.indexOf(gKey) + 1;
@@ -2486,76 +2579,150 @@ import { GoogleGenAI } from "@google/genai";
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
+        const base64Files = [];
+        for (const f of imgs) base64Files.push(await fileToBase64(f));
+
         const currentParts = [{ text: fnP }];
-        for (const f of imgs) currentParts.push(await fileToInteractionPart(f));
+        base64Files.forEach(({ mimeType, data }) => {
+          currentParts.push({ inlineData: { mimeType, data } });
+        });
+
+        const interactionInput = [];
+        if (fnP) interactionInput.push({ type: 'text', text: fnP });
+        base64Files.forEach(({ mimeType, data }) => {
+          interactionInput.push({ type: 'image', data, mime_type: mimeType });
+        });
+
         const thk = DOM.thinking.value;
         let pS = false, lastErr = null;
 
         // ENGINE 1: INTERACTIONS API
         if (currentEngine === 'interactions') {
-          try {
-            const ai = new GoogleGenAI({ apiKey: gKey });
-            const interactionParams = {
-              model: am,
-              input: imgs.length ? currentParts : fnP,
-              stream: true,
-              system_instruction: getDynamicSI()
-            };
+          const interactionParams = {
+            model: am,
+            input: imgs.length ? interactionInput : fnP,
+            stream: true
+          };
 
-            const genConfig = {
-              temperature: +DOM.temp.value,
-              top_p: +DOM.topP.value,
-              top_k: +DOM.topK.value
-            };
-            if (thk && thk !== 'none' && thk !== 'minimal') {
-              genConfig.thinking_level = thk;
-            }
+          const dynamicSI = getDynamicSI();
+          if (dynamicSI) {
+            interactionParams.system_instruction = dynamicSI;
+          }
+
+          // Cấu hình GenerationConfig cho Interactions API (không nhận temperature/topP/topK)
+          const genConfig = {};
+          if (thk && thk !== 'none') {
+            genConfig.thinking_level = thk;
+          }
+          if (Object.keys(genConfig).length > 0) {
             interactionParams.generation_config = genConfig;
+          }
 
-            if (DOM.toggleMemory?.checked && cs?.lastInteractionId) {
-              interactionParams.previous_interaction_id = cs.lastInteractionId;
-            }
+          if (DOM.toggleMemory?.checked && cs?.lastInteractionId) {
+            interactionParams.previous_interaction_id = cs.lastInteractionId;
+          }
 
-            let streamObj;
+          let streamObj = null;
+          let currentTryKey = gKey;
+          let retryCount = 0;
+          const maxRetries = Math.min(apiKeys.length, 3);
+
+          while (retryCount <= maxRetries) {
             try {
-              streamObj = await ai.interactions.create(interactionParams);
-            } catch (ixErr) {
-              if (interactionParams.previous_interaction_id && (ixErr.message.includes('not found') || ixErr.message.includes('404') || ixErr.message.includes('invalid'))) {
+              const ai = new GoogleGenAI({
+                apiKey: currentTryKey,
+                httpOptions: { apiVersion: 'v1alpha' }
+              });
+
+              try {
+                streamObj = await ai.interactions.create(interactionParams);
+              } catch (ixErr) {
+                if (interactionParams.previous_interaction_id && (
+                  ixErr.message.includes('not found') ||
+                  ixErr.message.includes('404') ||
+                  ixErr.message.includes('invalid') ||
+                  ixErr.message.includes('interaction')
+                )) {
+                  delete interactionParams.previous_interaction_id;
+                  if (cs) {
+                    cs.lastInteractionId = null;
+                    await saveToDB(cs);
+                  }
+                  streamObj = await ai.interactions.create(interactionParams);
+                } else {
+                  throw ixErr;
+                }
+              }
+
+              if (cs) {
+                cs.assignedApiKey = currentTryKey;
+                await saveToDB(cs);
+              }
+              break;
+            } catch (err) {
+              lastErr = err;
+              const isKeyOrQuotaErr = err.message && (
+                err.message.includes('API key') ||
+                err.message.includes('403') ||
+                err.message.includes('429') ||
+                err.message.includes('quota') ||
+                err.message.includes('RESOURCE_EXHAUSTED')
+              );
+
+              if (isKeyOrQuotaErr && apiKeys.length > 1 && retryCount < maxRetries) {
+                retryCount++;
+                currentTryKey = apiKeys[(apiKeys.indexOf(currentTryKey) + 1) % apiKeys.length];
                 delete interactionParams.previous_interaction_id;
                 if (cs) cs.lastInteractionId = null;
-                streamObj = await ai.interactions.create(interactionParams);
+                console.warn(`Interactions: Key lỗi, xoay sang Key tiếp theo (lần ${retryCount}):`, err.message);
+                continue;
               } else {
-                throw ixErr;
+                break;
               }
             }
+          }
 
-            for await (const event of streamObj) {
-              const foundId = event.interaction?.id || event.id || event.interaction_id;
-              if (foundId) recordedIxId = foundId;
+          if (streamObj) {
+            try {
+              for await (const event of streamObj) {
+                const foundId = event.interaction?.id || event.id || event.interaction_id;
+                if (foundId) recordedIxId = foundId;
 
-              let chunkText = "";
-              if (event.event_type === "step.delta" && event.delta?.type === "text") chunkText = event.delta.text;
-              else if (event.delta?.text) chunkText = event.delta.text;
-              else if (event.text) chunkText = event.text;
+                let chunkText = "";
+                if (event.event_type === "step.delta" && event.delta?.type === "text") {
+                  chunkText = event.delta.text || "";
+                } else if (event.delta?.text) {
+                  chunkText = event.delta.text;
+                } else if (event.text) {
+                  chunkText = event.text;
+                } else if (event.event_type === "interaction.completed" && !finalResp && event.interaction?.output_text) {
+                  chunkText = event.interaction.output_text;
+                }
 
-              if (chunkText) {
-                bD.querySelector('.typing-bubble')?.remove();
-                finalResp += chunkText;
-                renderer.push(finalResp);
-                if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
-                pS = true;
+                if (chunkText) {
+                  bD.querySelector('.typing-bubble')?.remove();
+                  finalResp += chunkText;
+                  renderer.push(finalResp);
+                  if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
+                  pS = true;
+                }
               }
-            }
 
-            await renderer.flush(finalResp);
-          } catch (err) {
-            lastErr = err;
-            showToast(`Lỗi Interactions: ${err.message}`, "danger");
+              await renderer.flush(finalResp);
+            } catch (streamErr) {
+              lastErr = streamErr;
+            }
+          }
+
+          // Tự động dự phòng chuyển sang Stream Engine nếu Interactions API không phản hồi
+          if (!pS) {
+            console.warn("Interactions API gặp sự cố, tự động dùng Stream Engine dự phòng:", lastErr);
+            showToast("Interactions API gặp sự cố, tự động dùng Stream Engine dự phòng.", "warning");
           }
         }
 
         // ENGINE 2: GENERATECONTENTSTREAM
-        if (!pS && currentEngine === 'stream') {
+        if (!pS) {
           const contents = [];
           if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
             chatHistory.slice(-16).forEach(m => contents.push({
@@ -2714,11 +2881,15 @@ import { GoogleGenAI } from "@google/genai";
       updateTokenCount();
     };
 
-    const fileToInteractionPart = f => new Promise(r => {
+    const fileToBase64 = f => new Promise(r => {
       const rd = new FileReader();
-      rd.onloadend = () => r({ inlineData: { mimeType: f.type, data: rd.result.split(',')[1] } });
+      rd.onloadend = () => {
+        const b64 = (rd.result || '').split(',')[1] || '';
+        r({ mimeType: f.type || 'image/jpeg', data: b64 });
+      };
       rd.readAsDataURL(f);
     });
+    const fileToInteractionPart = fileToBase64;
 
     window.exportChatDoc = () => {
       const h = `<html><head><meta charset="utf-8"></head><body><h2>Lịch sử Trò chuyện Jarvis AI</h2>` + chatHistory.map(m => `<p><strong>${m.role === 'user' ? 'Bạn' : 'Jarvis AI'}:</strong><br>${m.role === 'model' ? marked.parse(m.text) : m.text}</p><hr>`).join('') + "</body></html>";
@@ -2910,87 +3081,6 @@ import { GoogleGenAI } from "@google/genai";
     updateDrBtnUI();
 
     // --- KEY & CONFIG SYNC HELPERS (PROTECTED AGAINST SECRET SCANNER) ---
-    const CIPHER_SECRET = "JarvisAI_SecretKey_Protect_2026_X9!";
-
-    function obfuscateKey(k) {
-      if (!k || typeof k !== 'string') return '';
-      try {
-        const salt = Math.random().toString(36).slice(2, 10);
-        const fullKey = CIPHER_SECRET + salt;
-        const utf8Bytes = new TextEncoder().encode(k);
-        const outBytes = new Uint8Array(utf8Bytes.length);
-        for (let i = 0; i < utf8Bytes.length; i++) {
-          outBytes[i] = utf8Bytes[i] ^ fullKey.charCodeAt(i % fullKey.length) ^ ((i * 31 + 17) & 0xFF);
-        }
-        let binStr = '';
-        for (let i = 0; i < outBytes.length; i++) {
-          binStr += String.fromCharCode(outBytes[i]);
-        }
-        return 'JVENC_' + salt + '_' + btoa(binStr);
-      } catch (e) {
-        try {
-          return 'ENC_' + btoa(unescape(encodeURIComponent(k.split('').reverse().join(''))));
-        } catch {
-          return 'ENC_' + btoa(k.split('').reverse().join(''));
-        }
-      }
-    }
-
-    function deobfuscateKey(k) {
-      if (!k || typeof k !== 'string') return '';
-      if (k.startsWith('JVENC_')) {
-        try {
-          const parts = k.slice(6).split('_');
-          if (parts.length >= 2) {
-            const salt = parts[0];
-            const b64 = parts.slice(1).join('_');
-            const fullKey = CIPHER_SECRET + salt;
-            const binStr = atob(b64);
-            const outBytes = new Uint8Array(binStr.length);
-            for (let i = 0; i < binStr.length; i++) {
-              outBytes[i] = binStr.charCodeAt(i) ^ ((i * 31 + 17) & 0xFF) ^ fullKey.charCodeAt(i % fullKey.length);
-            }
-            return new TextDecoder().decode(outBytes);
-          }
-        } catch (e) {
-          console.warn('JVENC decode failed:', e);
-        }
-      }
-      if (k.startsWith('ENC_')) {
-        try {
-          const rawB64 = k.slice(4);
-          return decodeURIComponent(escape(atob(rawB64))).split('').reverse().join('');
-        } catch {
-          try {
-            return atob(k.slice(4)).split('').reverse().join('');
-          } catch {
-            return k;
-          }
-        }
-      }
-      return k;
-    }
-
-    function sanitizeSessionForBackup(session) {
-      if (!session || typeof session !== 'object') return session;
-      const clean = JSON.parse(JSON.stringify(session));
-      // Xóa hoàn toàn assignedApiKey (chứa raw key từ Interactions API) để bảo mật tuyệt đối
-      clean.assignedApiKey = null;
-      // Khử trùng mọi API key và PAT có thể bị lọt vào tin nhắn chat
-      if (Array.isArray(clean.his)) {
-        clean.his.forEach(msg => {
-          if (typeof msg.text === 'string') {
-            msg.text = msg.text
-              .replace(/AIzaSy[A-Za-z0-9_-]{30,40}/g, 'AIzaSy[PROTECTED_BY_JARVIS]')
-              .replace(/tvly-[A-Za-z0-9_-]{20,40}/g, 'tvly-[PROTECTED_BY_JARVIS]')
-              .replace(/jina_[A-Za-z0-9_-]{20,}/g, 'jina_[PROTECTED_BY_JARVIS]')
-              .replace(/ghp_[A-Za-z0-9]{30,45}/g, 'ghp_[PROTECTED_BY_JARVIS]')
-              .replace(/github_pat_[A-Za-z0-9_]{30,}/g, 'github_pat_[PROTECTED_BY_JARVIS]');
-          }
-        });
-      }
-      return clean;
-    }
 
     function getGoogleKeysList(obfuscate = false) {
       const list = [];
