@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v18 - Modular Architecture, Web Share Target & Fast Cache)
-const CACHE_NAME = 'jarvis-ai-pwa-v18';
+// Jarvis AI Service Worker for PWA (v19 - Interactions Engine Fix & High Resilience)
+const CACHE_NAME = 'jarvis-ai-pwa-v19';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
