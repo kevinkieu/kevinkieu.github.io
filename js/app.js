@@ -79,7 +79,7 @@ import { GoogleGenAI } from "@google/genai";
     };
 
     // CENTRAL CONSTANT FOR SECONDARY & BACKGROUND TASKS (FLASH LITE)
-    const FLASH_LITE_MODEL = 'gemini-3.5-flash-lite';
+    const FLASH_LITE_MODEL = 'gemini-3.6-flash';
 
     // Init libraries
     marked.use({ breaks: true });
@@ -1835,7 +1835,7 @@ import { GoogleGenAI } from "@google/genai";
         folder: activeFolder === "All" ? "Mặc định" : activeFolder,
         his: [],
         sys: '',
-        mod: 'gemini-3.5-flash-lite',
+        mod: 'gemini-3.6-flash',
         engine: 'stream',
         lastInteractionId: null,
         assignedApiKey: null,
@@ -1872,7 +1872,7 @@ import { GoogleGenAI } from "@google/genai";
 
       if (s) {
         DOM.sysInst.value = s.sys || '';
-        DOM.model.value = s.mod || 'gemini-3.5-flash-lite';
+        DOM.model.value = s.mod || 'gemini-3.6-flash';
         DOM.engineSel.value = s.engine || 'stream';
         DOM.apiKeySel.value = s.keySel || 'auto';
         DOM.temp.value = s.tmp || 0.5;
@@ -2355,6 +2355,10 @@ import { GoogleGenAI } from "@google/genai";
 
       if (!iHL && sd === 'user') DOM.chat.scrollTop = DOM.chat.scrollHeight;
       await renderMsgContent(m.querySelector('.msg-content'), sd === 'user' ? t.replace(/\n/g, '<br>') : t);
+      if (sd !== 'user' && chatHistory[i]?.suggestions?.length) {
+        const fBox = renderFollowUpChips(chatHistory[i].suggestions);
+        if (fBox) m.querySelector('.msg-content').appendChild(fBox);
+      }
     }
 
     async function reRenderHistory() {
@@ -2426,7 +2430,7 @@ import { GoogleGenAI } from "@google/genai";
     // --- SEND MESSAGE (STREAM / INTERACTIONS) ---
     DOM.sendBtn.onclick = async () => {
       if (isProcessing) return abortController?.abort();
-      const am = DOM.model.value || 'gemini-3.5-flash-lite';
+      const am = DOM.model.value || 'gemini-3.6-flash';
       const msg = DOM.input.value.trim();
       if (!msg && !filesData.length && !txtContent) return;
 
@@ -3142,17 +3146,43 @@ import { GoogleGenAI } from "@google/genai";
     };
 
     // --- SMART FOLLOW-UP QUESTIONS GENERATOR ---
+    function renderFollowUpChips(lines) {
+      if (!lines || !lines.length) return null;
+      const fBox = document.createElement('div');
+      fBox.className = 'follow-up-container';
+      fBox.innerHTML = `
+        <span class="follow-up-title">💡 Gợi ý câu hỏi tiếp theo:</span>
+        ${lines.map(q => `<button class="follow-up-chip"><span>👉</span> ${escapeHtml(q)}</button>`).join('')}
+      `;
+      fBox.querySelectorAll('.follow-up-chip').forEach(btn => {
+        btn.onclick = () => {
+          const query = btn.innerText.replace(/^👉\s*/, '').trim();
+          DOM.input.value = query;
+          DOM.input.dispatchEvent(new Event('input'));
+          DOM.input.focus();
+          DOM.sendBtn.click();
+        };
+      });
+      return fBox;
+    }
+
     async function generateFollowUpSuggestions(userPrompt, botReply, botContainer) {
-      if (!botContainer || !botReply || botReply.length < 30) return;
+      if (!botContainer || !botReply || botReply.trim().length < 5) return;
       try {
         const cs = sessions.find(x => x.id === activeId);
         const k = getSessionApiKey(cs);
         if (!k) return;
         const ai = new GoogleGenAI({ apiKey: k });
+        const targetModel = 'gemini-3.6-flash';
         const res = await ai.models.generateContent({
-          model: FLASH_LITE_MODEL,
+          model: targetModel,
           contents: `Dựa vào trao đổi gần nhất:\nNgười dùng: "${userPrompt.slice(0, 200)}"\nAI: "${botReply.slice(0, 400)}"\nHãy tạo đúng 3 câu hỏi gợi ý tiếp theo ngắn gọn (mỗi câu tối đa 8 từ, không gạch đầu dòng, không đánh số thứ tự, mỗi câu 1 dòng) mà người dùng có thể muốn bấm để hỏi tiếp:`,
-          config: { safetySettings: SAFETY, maxOutputTokens: 100, temperature: 0.6 }
+          config: {
+            safetySettings: SAFETY,
+            maxOutputTokens: 80,
+            temperature: 0.6,
+            thinkingConfig: { thinkingLevel: 'minimal' }
+          }
         });
 
         const lines = (res.text || '').split('\n')
@@ -3160,24 +3190,23 @@ import { GoogleGenAI } from "@google/genai";
           .filter(l => l.length >= 3 && l.length <= 45)
           .slice(0, 3);
 
-        if (lines.length > 0 && botContainer && botContainer.querySelector('.msg-content')) {
-          const fBox = document.createElement('div');
-          fBox.className = 'follow-up-container';
-          fBox.innerHTML = `
-            <span class="follow-up-title">💡 Gợi ý câu hỏi tiếp theo:</span>
-            ${lines.map(q => `<button class="follow-up-chip"><span>👉</span> ${escapeHtml(q)}</button>`).join('')}
-          `;
-          fBox.querySelectorAll('.follow-up-chip').forEach(btn => {
-            btn.onclick = () => {
-              const query = btn.innerText.replace(/^👉\s*/, '').trim();
-              DOM.input.value = query;
-              DOM.input.dispatchEvent(new Event('input'));
-              DOM.sendBtn.click();
-            };
-          });
-          botContainer.querySelector('.msg-content').appendChild(fBox);
+        if (lines.length > 0) {
+          const fBox = renderFollowUpChips(lines);
+          if (fBox && botContainer && botContainer.querySelector('.msg-content')) {
+            botContainer.querySelector('.msg-content').appendChild(fBox);
+          }
+          const lastBot = chatHistory[chatHistory.length - 1];
+          if (lastBot && lastBot.role === 'model') {
+            lastBot.suggestions = lines;
+            if (cs) {
+              cs.his = chatHistory;
+              await saveToDB(cs);
+            }
+          }
         }
-      } catch (err) {}
+      } catch (err) {
+        console.warn("Lỗi tạo follow-up suggestions:", err);
+      }
     }
 
     // --- DEEP RESEARCH & THINKING CONTROLLER ---
