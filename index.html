@@ -2985,8 +2985,8 @@
             <div class="tts-field-group" id="tts-dialect-group">
               <label class="tts-field-label" for="tts-dialect-select">Phương ngữ / Vùng miền:</label>
               <select id="tts-dialect-select" class="tts-select">
-                <option value="Bắc chuẩn Hà Nội" selected>Giọng Miền Bắc (Hà Nội chuẩn)</option>
-                <option value="Nam chuẩn Sài Gòn">Giọng Miền Nam (Sài Gòn truyền cảm)</option>
+                <option value="Nam chuẩn Sài Gòn" selected>Giọng Miền Nam (Sài Gòn truyền cảm)</option>
+                <option value="Bắc chuẩn Hà Nội">Giọng Miền Bắc (Hà Nội chuẩn)</option>
                 <option value="Trung Huế - Đà Nẵng">Giọng Miền Trung (Huế / Đà Nẵng)</option>
                 <option value="Phát thanh toàn quốc">Giọng Phát thanh toàn quốc chuẩn</option>
               </select>
@@ -3378,23 +3378,7 @@
           return;
         }
 
-        // 2. Thử Web Share API nếu thiết bị hỗ trợ chia sẻ tệp
-        if (navigator.canShare && navigator.share) {
-          try {
-            const file = new File([b], fn, { type: b.type || 'application/octet-stream' });
-            if (navigator.canShare({ files: [file] })) {
-              await navigator.share({
-                files: [file],
-                title: fn
-              });
-              return showToast(`✅ Đã xuất tệp: ${fn}`);
-            }
-          } catch (shareErr) {
-            if (shareErr.name === 'AbortError') return;
-          }
-        }
-
-        // 3. Fallback cho trình duyệt PC / Mobile web thông thường
+        // 2. Trình duyệt PC và Mobile Web: Tải trực tiếp vào Downloads của máy (tránh bật hộp thoại Share của Windows/Edge/Chrome)
         fallbackBrowserDownload(b, fn);
       } catch (e) {
         showToast(`❌ Lỗi: ${e.message}`, 'danger');
@@ -3402,12 +3386,17 @@
     };
 
     function fallbackBrowserDownload(b, fn) {
-      const u = URL.createObjectURL(b), a = document.createElement('a');
+      const u = URL.createObjectURL(b);
+      const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = u;
       a.download = fn;
       document.body.appendChild(a);
       a.click();
-      setTimeout(() => { a.remove(); URL.revokeObjectURL(u); }, 1500);
+      setTimeout(() => { 
+        a.remove(); 
+        URL.revokeObjectURL(u); 
+      }, 2000);
       showToast(`📥 Đã tải: ${fn}`);
     }
 
@@ -6887,6 +6876,7 @@
       let sampleRate = 24000;
       let channels = 1;
       let pcmOffset = 44;
+      let pcmSize = bytes.length - 44;
 
       let offset = 12;
       while (offset < bytes.length - 8) {
@@ -6897,13 +6887,40 @@
           sampleRate = view.getUint32(offset + 12, true);
         } else if (chunkId === 'data') {
           pcmOffset = offset + 8;
+          pcmSize = chunkSize;
           break;
         }
         offset += 8 + chunkSize;
       }
 
-      const pcmBytes = bytes.slice(pcmOffset);
-      return { sampleRate, channels, pcmData: pcmBytes };
+      // Chỉ lấy đúng vùng dữ liệu âm thanh, không đọc vào trailing metadata hay padding bytes ở cuối WAV
+      const actualEnd = Math.min(bytes.length, pcmOffset + pcmSize);
+      let pcmBytes = bytes.slice(pcmOffset, actualEnd);
+
+      // Đảm bảo số lượng byte chẵn cho 16-bit PCM (2 bytes / sample)
+      if (pcmBytes.length % 2 !== 0) {
+        pcmBytes = pcmBytes.subarray(0, pcmBytes.length - 1);
+      }
+
+      // Xử lý khử tiếng "xẹt" / crackle / pop ở đầu và cuối mỗi đoạn âm thanh:
+      const samples = new Int16Array(pcmBytes.buffer, pcmBytes.byteOffset, pcmBytes.byteLength / 2);
+      
+      // 1. Micro fade-out (~20ms ở 24kHz = 480 mẫu) đưa biên độ về 0 êm dịu, triệt tiêu tiếng xẹt khi kết thúc
+      const fadeOutCount = Math.min(480, samples.length);
+      const startFade = samples.length - fadeOutCount;
+      for (let i = 0; i < fadeOutCount; i++) {
+        const factor = Math.cos((i / fadeOutCount) * (Math.PI / 2));
+        samples[startFade + i] = Math.round(samples[startFade + i] * factor);
+      }
+
+      // 2. Micro fade-in (~5ms = 120 mẫu) tránh tiếng bật khi bắt đầu phát
+      const fadeInCount = Math.min(120, samples.length);
+      for (let i = 0; i < fadeInCount; i++) {
+        const factor = Math.sin((i / fadeInCount) * (Math.PI / 2));
+        samples[i] = Math.round(samples[i] * factor);
+      }
+
+      return { sampleRate, channels, pcmData: new Uint8Array(samples.buffer, samples.byteOffset, samples.byteLength) };
     }
 
     function createWavBlob(pcmBytes, sampleRate = 24000) {
@@ -7295,7 +7312,7 @@
 
       const model = $('tts-model-select')?.value || 'gemini-3.8-flash-lite-tts';
       const lang = $('tts-lang-select')?.value || 'vi';
-      const region = $('tts-dialect-select')?.value || 'Bắc chuẩn Hà Nội';
+      const region = $('tts-dialect-select')?.value || ls.getItem('tts_dialect_pref') || 'Nam chuẩn Sài Gòn';
       const style = $('tts-style-select')?.value || 'Tự nhiên, gần gũi';
       const speed = $('tts-speed-select')?.value || 'vừa phải, tự nhiên';
 
@@ -7533,6 +7550,13 @@
           }
         }
 
+        // Khôi phục phương ngữ ưa thích (mặc định Nam chuẩn Sài Gòn)
+        const dialectSelect = $('tts-dialect-select');
+        if (dialectSelect && ($('tts-lang-select')?.value === 'vi' || !$('tts-lang-select'))) {
+          const savedDialect = ls.getItem('tts_dialect_pref') || 'Nam chuẩn Sài Gòn';
+          dialectSelect.value = savedDialect;
+        }
+
         renderTTSHistory();
       } catch (err) {
         console.warn("TTS open modal error:", err);
@@ -7649,19 +7673,32 @@
         };
       }
 
-      // Language dialect switcher
+      // Language dialect switcher & persistence
+      const dialectSelect = $('tts-dialect-select');
+      if (dialectSelect) {
+        const savedDialect = ls.getItem('tts_dialect_pref') || 'Nam chuẩn Sài Gòn';
+        dialectSelect.value = savedDialect;
+        dialectSelect.addEventListener('change', (e) => {
+          if ($('tts-lang-select')?.value === 'vi') {
+            ls.setItem('tts_dialect_pref', e.target.value);
+          }
+        });
+      }
+
       if ($('tts-lang-select')) {
         $('tts-lang-select').onchange = (e) => {
           const lang = e.target.value;
           const dialectSelect = $('tts-dialect-select');
           if (!dialectSelect) return;
           if (lang === 'vi') {
+            const savedDialect = ls.getItem('tts_dialect_pref') || 'Nam chuẩn Sài Gòn';
             dialectSelect.innerHTML = `
-              <option value="Bắc chuẩn Hà Nội" selected>Giọng Miền Bắc (Hà Nội chuẩn)</option>
               <option value="Nam chuẩn Sài Gòn">Giọng Miền Nam (Sài Gòn truyền cảm)</option>
+              <option value="Bắc chuẩn Hà Nội">Giọng Miền Bắc (Hà Nội chuẩn)</option>
               <option value="Trung Huế - Đà Nẵng">Giọng Miền Trung (Huế / Đà Nẵng)</option>
               <option value="Phát thanh toàn quốc">Giọng Phát thanh toàn quốc chuẩn</option>
             `;
+            dialectSelect.value = savedDialect;
             if ($('tts-dialect-group')) $('tts-dialect-group').style.display = 'flex';
           } else {
             dialectSelect.innerHTML = `

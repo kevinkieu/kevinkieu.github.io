@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v14 with Native File Bridge & JSON Backup)
-const CACHE_NAME = 'jarvis-ai-pwa-v14';
+// Jarvis AI Service Worker for PWA (v15 - direct download, Southern TTS default, audio micro-fade)
+const CACHE_NAME = 'jarvis-ai-pwa-v15';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
