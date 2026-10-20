@@ -1,15 +1,23 @@
-// Jarvis AI Service Worker for PWA (v17 - Web Share Target, PWA Shortcuts & Offline Navigation)
-const CACHE_NAME = 'jarvis-ai-pwa-v17';
+// Jarvis AI Service Worker for PWA (v18 - Modular Architecture, Web Share Target & Fast Cache)
+const CACHE_NAME = 'jarvis-ai-pwa-v18';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './css/style.css',
+  './css/live.css',
+  './css/tts.css',
+  './css/arena.css',
+  './js/app.js',
+  './js/live.js',
+  './js/arena.js',
+  './js/tts.js'
 ];
 
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS)).catch(() => {})
   );
 });
 
@@ -39,8 +47,11 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Network-First for HTML navigation so updates on GitHub Pages take effect immediately!
-  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+  // Network-First for HTML, JS & CSS so updates on GitHub Pages take effect immediately!
+  const isDocument = event.request.mode === 'navigate' || event.request.destination === 'document';
+  const isScriptOrStyle = url.includes('/js/') || url.includes('/css/') || url.endsWith('.js') || url.endsWith('.css');
+
+  if (isDocument || isScriptOrStyle) {
     event.respondWith(
       fetch(event.request)
         .then(response => {
@@ -50,7 +61,13 @@ self.addEventListener('fetch', event => {
           }
           return response;
         })
-        .catch(() => caches.match('./index.html').then(match => match || caches.match(event.request)))
+        .catch(() => {
+          return caches.match(event.request).then(cached => {
+            if (cached) return cached;
+            if (isDocument) return caches.match('./index.html');
+            return null;
+          });
+        })
     );
     return;
   }
