@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v29 - Disable auto scroll to bottom after generation)
-const CACHE_NAME = 'jarvis-ai-pwa-v29';
+// Jarvis AI Service Worker for PWA (v30 - Auto recover stream cutoffs & Gemini 3 config optimization)
+const CACHE_NAME = 'jarvis-ai-pwa-v30';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
