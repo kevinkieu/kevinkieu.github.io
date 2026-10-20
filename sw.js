@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v28 - Auto-name session & Stream generation fix)
-const CACHE_NAME = 'jarvis-ai-pwa-v28';
+// Jarvis AI Service Worker for PWA (v29 - Disable auto scroll to bottom after generation)
+const CACHE_NAME = 'jarvis-ai-pwa-v29';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
