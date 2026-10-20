@@ -1,9 +1,13 @@
 name: Build Jarvis AI Android APK
 
 on:
+  workflow_dispatch: # Cho phép bấm nút "Run workflow" thủ công trên tab Actions của GitHub
+  # Chỉ tự động kích hoạt khi có thay đổi thực sự trong thư mục android/ (không build thừa khi sửa web)
   push:
     branches: [ main, master ]
-  workflow_dispatch: # Cho phép bấm nút "Run workflow" thủ công trên tab Actions của GitHub
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-apk.yml'
 
 jobs:
   build:
