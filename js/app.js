@@ -1886,7 +1886,12 @@ import { GoogleGenAI } from "@google/genai";
         DOM.toggleSearch.checked = s.sch || false;
         DOM.searchEngineBox.style.display = s.sch ? 'block' : 'none';
         DOM.searchEngineSel.value = s.schEngine || 'tavily';
-        DOM.toggleMemory.checked = s.mem !== false;
+        if (s.engine === 'interactions') {
+          DOM.toggleMemory.checked = true;
+          s.mem = true;
+        } else {
+          DOM.toggleMemory.checked = s.mem !== false;
+        }
         updateColorPickerUI();
       }
 
@@ -2052,11 +2057,15 @@ import { GoogleGenAI } from "@google/genai";
         });
         if (DOM.engineSel.value === 'stream') {
           s.assignedApiKey = null;
-        } else if (DOM.apiKeySel.value !== 'auto') {
-          const idx = parseInt(DOM.apiKeySel.value, 10) + 1;
-          let mk = (ls.getItem(`jarvis_api_${idx}`) || ls.getItem(`huanmu_api_${idx}`) || ls.getItem(`javiss_api_${idx}`) || "").trim();
-          if (mk.startsWith('JVENC_') || mk.startsWith('ENC_')) mk = deobfuscateKey(mk);
-          if (mk) s.assignedApiKey = mk;
+        } else if (DOM.engineSel.value === 'interactions') {
+          DOM.toggleMemory.checked = true;
+          s.mem = true;
+          if (DOM.apiKeySel.value !== 'auto') {
+            const idx = parseInt(DOM.apiKeySel.value, 10) + 1;
+            let mk = (ls.getItem(`jarvis_api_${idx}`) || ls.getItem(`huanmu_api_${idx}`) || ls.getItem(`javiss_api_${idx}`) || "").trim();
+            if (mk.startsWith('JVENC_') || mk.startsWith('ENC_')) mk = deobfuscateKey(mk);
+            if (mk) s.assignedApiKey = mk;
+          }
         }
         await saveToDB(s);
         renderSel();
@@ -2331,7 +2340,11 @@ import { GoogleGenAI } from "@google/genai";
       if (confirm("Xóa tin nhắn này?")) {
         chatHistory.splice(i, 1);
         const s = sessions.find(x => x.id === activeId);
-        if (s) { s.lastInteractionId = null; await saveToDB(s); }
+        if (s) {
+          const prevBot = chatHistory.slice().reverse().find(m => m.role === 'model' && m.interactionId);
+          s.lastInteractionId = prevBot?.interactionId || null;
+          await saveToDB(s);
+        }
         await reRenderHistory();
       }
     };
@@ -2339,9 +2352,13 @@ import { GoogleGenAI } from "@google/genai";
     window.retryMsg = async i => {
       if (isProcessing || i <= 0 || chatHistory[i - 1].role !== 'user') return;
       const up = chatHistory[i - 1].text;
-      chatHistory.splice(i, 1);
+      chatHistory.splice(i - 1, 2);
       const s = sessions.find(x => x.id === activeId);
-      if (s) { s.lastInteractionId = null; await saveToDB(s); }
+      if (s) {
+        const prevBot = chatHistory.slice().reverse().find(m => m.role === 'model' && m.interactionId);
+        s.lastInteractionId = prevBot?.interactionId || null;
+        await saveToDB(s);
+      }
       await reRenderHistory();
       DOM.input.value = up;
       DOM.input.dispatchEvent(new Event('input'));
@@ -2353,7 +2370,11 @@ import { GoogleGenAI } from "@google/genai";
       DOM.input.dispatchEvent(new Event('input'));
       chatHistory = chatHistory.slice(0, i);
       const s = sessions.find(x => x.id === activeId);
-      if (s) { s.lastInteractionId = null; await saveToDB(s); }
+      if (s) {
+        const prevBot = chatHistory.slice().reverse().find(m => m.role === 'model' && m.interactionId);
+        s.lastInteractionId = prevBot?.interactionId || null;
+        await saveToDB(s);
+      }
       await reRenderHistory();
     };
 
@@ -2636,8 +2657,23 @@ import { GoogleGenAI } from "@google/genai";
             interactionParams.generation_config = genConfig;
           }
 
-          if (DOM.toggleMemory?.checked && cs?.lastInteractionId) {
+          // QUẢN LÝ TIẾP NỐI MẠCH HỘI THOẠI (STATEFUL INTERACTIONS)
+          if (cs?.lastInteractionId) {
             interactionParams.previous_interaction_id = cs.lastInteractionId;
+          } else if (chatHistory.length > 0) {
+            // Khi phiên đã có tin nhắn nhưng chưa có interactionId trên server Google
+            // (ví dụ tin trước chạy bằng Stream, hoặc khôi phục từ Cloud/sao lưu):
+            // Tiếp tế bối cảnh các lượt gần nhất vào prompt để AI nắm trọn vẹn mạch chuyện
+            const histSummary = chatHistory.slice(-10).map(m => `${m.role === 'model' ? 'AI' : 'Người dùng'}: ${m.text}`).join('\n\n');
+            const seededPrompt = `[BỐI CẢNH CÁC LƯỢT TRÒ CHUYỆN TRƯỚC ĐÓ]:\n${histSummary}\n\n[CÂU HỎI TIẾP THEO CỦA NGƯỜI DÙNG]:\n${fnP}`;
+            if (imgs.length) {
+              interactionParams.input = [
+                { type: 'text', text: seededPrompt },
+                ...base64Files.map(({ mimeType, data }) => ({ type: 'image', data, mime_type: mimeType }))
+              ];
+            } else {
+              interactionParams.input = seededPrompt;
+            }
           }
 
           let streamObj = null;
@@ -2664,6 +2700,18 @@ import { GoogleGenAI } from "@google/genai";
                   if (cs) {
                     cs.lastInteractionId = null;
                     await saveToDB(cs);
+                  }
+                  if (chatHistory.length > 0) {
+                    const histSummary = chatHistory.slice(-10).map(m => `${m.role === 'model' ? 'AI' : 'Người dùng'}: ${m.text}`).join('\n\n');
+                    const seededPrompt = `[BỐI CẢNH CÁC LƯỢT TRÒ CHUYỆN TRƯỚC ĐÓ]:\n${histSummary}\n\n[CÂU HỎI TIẾP THEO CỦA NGƯỜI DÙNG]:\n${fnP}`;
+                    if (imgs.length) {
+                      interactionParams.input = [
+                        { type: 'text', text: seededPrompt },
+                        ...base64Files.map(({ mimeType, data }) => ({ type: 'image', data, mime_type: mimeType }))
+                      ];
+                    } else {
+                      interactionParams.input = seededPrompt;
+                    }
                   }
                   streamObj = await ai.interactions.create(interactionParams);
                 } else {
