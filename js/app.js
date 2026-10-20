@@ -2127,10 +2127,47 @@ import { GoogleGenAI } from "@google/genai";
     let currentSpeakingAudio = null;
     let currentSpeechUtterance = null;
 
-    window.openMsgInTTSStudio = (i) => {
-      const raw = chatHistory[i]?.text || "";
+    function sanitizeTranscript(text) {
+      if (!text) return "";
+      return text
+        .replace(/```[\s\S]*?```/g, ' [đoạn mã] ')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+        .replace(/[#*_~>]/g, '')
+        .replace(/https?:\/\/\S+/g, '')
+        .trim();
+    }
+    window.sanitizeTranscript = sanitizeTranscript;
+
+    window.openMsgInTTSStudio = (btnOrIdx, directIdx) => {
+      let raw = "";
+      let idx = directIdx;
+      if (typeof btnOrIdx === 'number') {
+        idx = btnOrIdx;
+      }
+      if (idx !== undefined && chatHistory && chatHistory[idx]) {
+        raw = chatHistory[idx].text || "";
+      }
+      if (!raw && btnOrIdx instanceof Element) {
+        const container = btnOrIdx.closest('.message-container');
+        const msgEl = container?.querySelector('.bot-message, .msg-content');
+        raw = msgEl?.getAttribute('data-raw') || msgEl?.innerText || "";
+      }
       const clean = sanitizeTranscript(raw);
-      openTTSStudioModal(clean || raw);
+      if (!clean && !raw) {
+        showToast("Không tìm thấy nội dung tin nhắn để mở Studio!", "warning");
+        return;
+      }
+      if (typeof window.openTTSStudioModal === 'function') {
+        window.openTTSStudioModal(clean || raw);
+      } else {
+        showToast("Đang mở TTS Studio...", "info");
+        setTimeout(() => {
+          if (typeof window.openTTSStudioModal === 'function') {
+            window.openTTSStudioModal(clean || raw);
+          }
+        }, 200);
+      }
     };
 
     window.toggleSpeakMsg = async (btn, i) => {
@@ -2301,7 +2338,7 @@ import { GoogleGenAI } from "@google/genai";
         <button class="action-btn" onclick="copy(this)" title="Sao chép toàn bộ">📋 Copy</button>
         <button class="action-btn ${isPinned ? 'pinned-active' : ''}" onclick="togglePinMsg(${i})" title="${isPinned ? 'Bỏ ghim tin nhắn' : 'Ghim tin nhắn này để AI luôn nhớ'}">${isPinned ? '📌 Bỏ ghim' : '📌 Ghim'}</button>
         <button class="action-btn" onclick="forkSessionAt(${i})" title="Rẽ nhánh tạo phiên mới từ điểm này">🌿 Rẽ nhánh</button>
-        ${sd !== 'user' ? `<button class="action-btn tts-btn" onclick="toggleSpeakMsg(this, ${i})" title="Đọc to bằng giọng nói">🔊 Nghe</button><button class="action-btn" onclick="openMsgInTTSStudio(${i})" title="Chuyển nội dung vào Gemini TTS Studio">🎙️ Studio</button>` : ''}
+        ${sd !== 'user' ? `<button class="action-btn tts-btn" onclick="toggleSpeakMsg(this, ${i})" title="Đọc to bằng giọng nói">🔊 Nghe</button><button class="action-btn" onclick="openMsgInTTSStudio(this, ${i})" title="Chuyển nội dung vào Gemini TTS Studio">🎙️ Studio</button>` : ''}
         ${sd === 'user' 
           ? `<button class="action-btn" onclick="editMsg(${i})" title="Chỉnh sửa câu hỏi này">✏️ Sửa</button>` 
           : `<button class="action-btn" onclick="retryMsg(${i})" title="Tạo lại câu trả lời này">🔄 Thử lại</button>`}
@@ -2465,7 +2502,7 @@ import { GoogleGenAI } from "@google/genai";
             <button class="action-btn" onclick="togglePinMsg(${currentBotIdx})" title="Ghim tin nhắn">📌 Ghim</button>
             <button class="action-btn" onclick="forkSessionAt(${currentBotIdx})">🌿 Rẽ nhánh</button>
             <button class="action-btn tts-btn" onclick="toggleSpeakMsg(this, ${currentBotIdx})" title="Đọc to bằng giọng nói">🔊 Nghe</button>
-            <button class="action-btn" onclick="openMsgInTTSStudio(${currentBotIdx})" title="Chuyển nội dung vào Gemini TTS Studio">🎙️ Studio</button>
+            <button class="action-btn" onclick="openMsgInTTSStudio(this, ${currentBotIdx})" title="Chuyển nội dung vào Gemini TTS Studio">🎙️ Studio</button>
             <button class="action-btn" onclick="retryMsg(${currentBotIdx})">🔄 Thử lại</button>
             <button class="action-btn" style="color:var(--danger);" onclick="deleteMsg(${currentBotIdx})">🗑️ Xóa</button>
           `;
@@ -3523,7 +3560,7 @@ import { GoogleGenAI } from "@google/genai";
 // --- [GEMINI TTS STUDIO PRO MODULE MOVED TO js/tts.js] ---
 
     // Call initTTSStudio once loaded
-    initTTSStudio();
+    if (typeof initTTSStudio === "function") initTTSStudio(); else if (typeof window.initTTSStudio === "function") window.initTTSStudio();
 
     // Init Web Share Target & Shortcuts listener and Storage estimation
     handleIncomingWebShare();

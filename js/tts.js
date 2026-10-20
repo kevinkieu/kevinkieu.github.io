@@ -32,6 +32,7 @@
         .replace(/https?:\/\/\S+/g, '')
         .trim();
     }
+    window.sanitizeTranscript = sanitizeTranscript;
 
     function splitTextIntoSmartChunks(text, maxChars = 850) {
       if (!text || text.length <= maxChars) return [text || ""];
