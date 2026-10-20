@@ -90,6 +90,18 @@ import { GoogleGenAI } from "@google/genai";
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
 
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+    window.escapeHtml = escapeHtml;
+
+
     // --- KEY CIPHER & SECURITY HELPERS ---
     const CIPHER_SECRET = "JarvisAI_SecretKey_Protect_2026_X9!";
 
@@ -3152,7 +3164,9 @@ import { GoogleGenAI } from "@google/genai";
         ${lines.map(q => `<button class="follow-up-chip" type="button"><span>👉</span> ${escapeHtml(q)}</button>`).join('')}
       `;
       fBox.querySelectorAll('.follow-up-chip').forEach(btn => {
-        btn.onclick = () => {
+        btn.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
           const query = btn.innerText.replace(/^👉\s*/, '').trim();
           fBox.remove();
           DOM.input.value = query;
@@ -3165,7 +3179,7 @@ import { GoogleGenAI } from "@google/genai";
     }
 
     async function generateFollowUpSuggestions(userPrompt, botReply, botContainer) {
-      if (!botContainer || !botReply || botReply.trim().length < 4) return;
+      if (!botReply || botReply.trim().length < 4) return;
       try {
         const cs = sessions.find(x => x.id === activeId);
         const k = getSessionApiKey(cs) || (apiKeys.length ? apiKeys[0] : '');
@@ -3174,7 +3188,7 @@ import { GoogleGenAI } from "@google/genai";
         const targetModel = 'gemini-3.6-flash';
         const res = await ai.models.generateContent({
           model: targetModel,
-          contents: `Bạn là trợ lý đàm thoại. Dựa vào câu hỏi và câu trả lời sau đây:\nNgười dùng: "${userPrompt.slice(0, 150)}"\nAI: "${botReply.slice(0, 250)}"\nHãy gợi ý đúng 3 câu hỏi tiếp theo thật ngắn gọn bằng tiếng Việt (mỗi câu tối đa 8 từ, mỗi câu trên 1 dòng, không đánh số, không gạch đầu dòng, không giải thích) để người dùng có thể bấm vào hỏi tiếp:`,
+          contents: `Bạn là trợ lý AI thông minh. Dựa vào đối thoại vừa rồi:\nNgười dùng: "${(userPrompt || '').slice(0, 150)}"\nAI: "${botReply.slice(0, 250)}"\nHãy gợi ý đúng 3 câu hỏi tiếp theo thật ngắn gọn bằng tiếng Việt (mỗi câu tối đa 8 từ, mỗi câu trên 1 dòng, không đánh số, không gạch đầu dòng, không giải thích gì thêm) để người dùng có thể bấm vào hỏi tiếp:`,
           config: {
             safetySettings: SAFETY,
             maxOutputTokens: 350,
@@ -3199,7 +3213,8 @@ import { GoogleGenAI } from "@google/genai";
         if (lines.length > 0) {
           document.querySelectorAll('.follow-up-container').forEach(el => el.remove());
           const fBox = renderFollowUpChips(lines);
-          const target = botContainer.querySelector('.msg-content') || botContainer.querySelector('.bot-message') || botContainer;
+          const container = botContainer || DOM.chat.querySelector('.message-container:last-child');
+          const target = container?.querySelector('.msg-content') || container?.querySelector('.bot-message') || container;
           if (fBox && target) {
             target.appendChild(fBox);
             if (DOM.chat) DOM.chat.scrollTop = DOM.chat.scrollHeight;
