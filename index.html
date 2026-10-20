@@ -458,6 +458,269 @@
       font-size: 0.9rem;
       line-height: 1.6;
     }
+
+    /* ==========================================
+       MULTI-AGENT ARENA MODAL & COMPONENTS
+       ========================================== */
+    #arena-modal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 95%;
+      max-width: 980px;
+      height: 88vh;
+      max-height: 860px;
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      z-index: 2005;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .arena-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+    .arena-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 16px;
+    }
+    .arena-section {
+      margin-bottom: 14px;
+    }
+    .arena-topic-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .arena-suggestion-tag {
+      font-size: 0.76rem;
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+    .arena-suggestion-tag:hover {
+      border-color: #f59e0b;
+      color: #d97706;
+      background: rgba(245, 158, 11, 0.08);
+    }
+    .arena-preset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .arena-preset-card {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .arena-preset-card:hover {
+      border-color: #f59e0b;
+      transform: translateY(-1px);
+    }
+    .arena-preset-card.active {
+      border-color: #f59e0b;
+      background: rgba(245, 158, 11, 0.08);
+      box-shadow: 0 0 0 1px #f59e0b;
+    }
+    .preset-title {
+      font-weight: 700;
+      font-size: 0.88rem;
+      margin-bottom: 4px;
+      color: var(--text-main);
+    }
+    .preset-desc {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+    .arena-stage-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: var(--bg-main);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+    .arena-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #d97706;
+    }
+    .arena-status-badge.complete {
+      color: var(--success);
+    }
+    .arena-status-badge.stopped {
+      color: var(--danger);
+    }
+    .arena-pulse-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #f59e0b;
+      animation: arena-pulse 1.4s infinite ease-in-out;
+    }
+    @keyframes arena-pulse {
+      0%, 100% { transform: scale(0.8); opacity: 0.5; }
+      50% { transform: scale(1.2); opacity: 1; }
+    }
+    .arena-debate-stream {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding-right: 4px;
+    }
+    .arena-round-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 10px 0;
+      position: relative;
+    }
+    .arena-round-divider::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--border);
+      z-index: 1;
+    }
+    .arena-round-divider span {
+      position: relative;
+      z-index: 2;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 4px 14px;
+      border-radius: var(--radius-full);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+    .arena-card {
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--bg-main);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    .arena-card.agent-a {
+      border-left: 4px solid var(--primary);
+    }
+    .arena-card.agent-b {
+      border-left: 4px solid var(--danger);
+    }
+    .arena-card.referee {
+      border-left: 4px solid #f59e0b;
+      background: rgba(245, 158, 11, 0.03);
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.12);
+    }
+    .arena-card-header {
+      padding: 10px 14px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .arena-card-speaker {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .arena-card-speaker strong {
+      font-size: 0.9rem;
+      display: block;
+      color: var(--text-main);
+    }
+    .arena-card-speaker small {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+    .arena-role-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .arena-role-pill.a {
+      background: var(--primary-container);
+      color: var(--primary);
+    }
+    .arena-role-pill.b {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+    .arena-role-pill.ref {
+      background: rgba(245, 158, 11, 0.15);
+      color: #d97706;
+    }
+    .arena-card-body {
+      padding: 14px;
+      font-size: 0.92rem;
+      line-height: 1.65;
+      color: var(--text-main);
+      overflow-x: auto;
+    }
+    .arena-card-body p {
+      margin-bottom: 8px;
+    }
+    .arena-card-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 0.85rem;
+    }
+    .arena-card-body th, .arena-card-body td {
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      text-align: left;
+    }
+    .arena-card-body th {
+      background: var(--bg-card);
+    }
+    .arena-bottom-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      margin-top: 10px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
   </style>
 
   <!-- ==========================================
@@ -2376,6 +2639,11 @@
             ⚖️ <span class="mobile-hidden">So sánh</span>
           </button>
 
+          <!-- MULTI-AGENT ARENA BUTTON -->
+          <button id="btn-arena-header" class="btn" onclick="openArenaModal()" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(245,158,11,0.3);display:flex;align-items:center;gap:5px;" title="Đấu trường Tranh biện AI Đa góc nhìn (Multi-Agent Arena)">
+            ⚔️ <span class="mobile-hidden">Tranh biện</span>
+          </button>
+
           <!-- QUICK COMMAND PALETTE BUTTON -->
           <button id="btn-trigger-cmd" class="btn" style="padding:5px 9px;font-size:0.78rem;gap:4px;" title="Mở bảng lệnh nhanh (Ctrl+K)">
             <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -2433,6 +2701,9 @@
           </button>
           <button id="btn-open-tts-studio" class="tool-chip" onclick="openTTSStudioModal()" style="border-color:#8b5cf6;color:#8b5cf6;font-weight:600;" title="Mở Gemini TTS Studio Pro (Chuyển văn bản thành giọng nói, xuất MP3)">
             🎙️ Studio TTS
+          </button>
+          <button id="btn-open-arena-chip" class="tool-chip" onclick="openArenaModal()" style="border-color:#f59e0b;color:#f59e0b;font-weight:600;" title="Mở Đấu trường Tranh biện AI Đa góc nhìn">
+            ⚔️ Tranh biện AI
           </button>
           <label class="tool-chip" for="file-upload" style="cursor:pointer;" title="Đính kèm ảnh, video, PDF, txt, code">
             <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
@@ -2523,6 +2794,154 @@
             </select>
           </div>
           <div id="ab-result-b" class="ab-col-body"><i>Chưa có kết quả.</i></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL MULTI-AGENT ARENA -->
+    <div id="arena-modal" class="modal-box arena-modal">
+      <div class="modal-header" style="background:linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.1));border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.4rem;">⚔️</span>
+          <div>
+            <h3 style="margin:0;font-size:1.05rem;color:var(--text-main);">Multi-Agent Arena</h3>
+            <span style="font-size:0.75rem;color:var(--text-muted);">Đấu trường Tranh biện Đa góc nhìn & Phán quyết Khách quan</span>
+          </div>
+        </div>
+        <button class="close-btn icon-btn" onclick="closeArenaModal()">&times;</button>
+      </div>
+
+      <div class="arena-body" id="arena-body">
+        <!-- SETUP VIEW -->
+        <div id="arena-setup-view" class="arena-view active">
+          <div class="arena-section">
+            <label class="field-label" style="font-weight:700;">🎯 Chủ đề hoặc Vấn đề cần ra quyết định:</label>
+            <textarea id="arena-topic-input" class="modern-textarea" rows="2" placeholder="Ví dụ: Có nên chuyển sang Microservices thay vì Monolith cho startup?"></textarea>
+            
+            <div class="arena-topic-suggestions">
+              <span class="arena-suggestion-tag" onclick="window.setArenaTopic('Có nên chuyển kiến trúc hệ thống sang Microservices hay giữ Monolith?')">💡 Microservices vs Monolith</span>
+              <span class="arena-suggestion-tag" onclick="window.setArenaTopic('Nên đầu tư vào Vàng hay Bất động sản trong bối cảnh lạm phát hiện nay?')">💡 Vàng vs Bất động sản</span>
+              <span class="arena-suggestion-tag" onclick="window.setArenaTopic('AI có thay thế hoàn toàn lập trình viên trong vòng 5 năm tới không?')">💡 AI vs Lập trình viên</span>
+              <span class="arena-suggestion-tag" onclick="window.setArenaTopic('Khởi nghiệp ngay sau đại học hay đi làm tích lũy kinh nghiệm 3-5 năm?')">💡 Khởi nghiệp vs Đi làm</span>
+            </div>
+          </div>
+
+          <div class="arena-section">
+            <label class="field-label" style="font-weight:700;">🎭 Kịch bản / Phong cách Tranh biện:</label>
+            <div class="arena-preset-grid">
+              <div class="arena-preset-card active" data-preset="pro-con" onclick="window.selectArenaPreset('pro-con')">
+                <div class="preset-title">🔵 Ủng hộ vs 🔴 Phản biện</div>
+                <div class="preset-desc">Bên A tìm kiếm mọi lợi ích & cơ hội, bên B vạch trần mọi rủi ro & chi phí ẩn.</div>
+              </div>
+              <div class="arena-preset-card" data-preset="tech-biz" onclick="window.selectArenaPreset('tech-biz')">
+                <div class="preset-title">💻 Kỹ thuật vs 💼 Kinh doanh</div>
+                <div class="preset-desc">Chuyên gia Công nghệ tối ưu kiến trúc vs Giám đốc Kinh doanh tối ưu chi phí & ROI.</div>
+              </div>
+              <div class="arena-preset-card" data-preset="vision-pragmatic" onclick="window.selectArenaPreset('vision-pragmatic')">
+                <div class="preset-title">🚀 Táo bạo vs 🛡️ Thực tế</div>
+                <div class="preset-desc">Tư duy đột phá đón đầu tương lai vs Tư duy thực dụng an toàn, chắc chắn.</div>
+              </div>
+              <div class="arena-preset-card" data-preset="custom" onclick="window.selectArenaPreset('custom')">
+                <div class="preset-title">⚙️ Tự do tùy chỉnh</div>
+                <div class="preset-desc">Tự thiết lập danh tính và lập trường cho 2 Agent theo ý bạn.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CUSTOM AGENTS CONFIG (SHOWN WHEN 'custom' IS ACTIVE) -->
+          <div id="arena-custom-roles" style="display:none;background:var(--bg-main);padding:12px;border-radius:var(--radius-md);margin-bottom:14px;border:1px solid var(--border);">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div>
+                <label class="field-label" style="color:var(--primary);">🔵 Vai trò Agent A:</label>
+                <input type="text" id="arena-role-a" class="modern-input" placeholder="Ví dụ: Nhà phát triển Frontend">
+                <input type="text" id="arena-desc-a" class="modern-input" style="margin-top:4px;" placeholder="Lập trường: Ưu tiên trải nghiệm người dùng, đồ họa đẹp">
+              </div>
+              <div>
+                <label class="field-label" style="color:var(--danger);">🔴 Vai trò Agent B:</label>
+                <input type="text" id="arena-role-b" class="modern-input" placeholder="Ví dụ: Kỹ sư Backend / DevOps">
+                <input type="text" id="arena-desc-b" class="modern-input" style="margin-top:4px;" placeholder="Lập trường: Ưu tiên ổn định máy chủ, bảo mật, tải cao">
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:14px;">
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+              <div>
+                <label class="field-label">Số hiệp tranh biện:</label>
+                <select id="arena-rounds" class="modern-select" style="width:auto;padding:6px 12px;">
+                  <option value="1">1 Hiệp (Tổng quan nhanh)</option>
+                  <option value="2" selected>2 Hiệp (Đối đáp & Đào sâu)</option>
+                  <option value="3">3 Hiệp (Toàn diện, nảy lửa)</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label">Model AI:</label>
+                <select id="arena-model" class="modern-select" style="width:auto;padding:6px 12px;">
+                  <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash Lite (Tốc độ cao)</option>
+                  <option value="gemini-3.8-flash">Gemini 3.8 Flash (Thông minh, sắc bén)</option>
+                  <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+                </select>
+              </div>
+            </div>
+
+            <button id="btn-start-arena" class="btn primary" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;border:none;padding:10px 22px;font-weight:700;font-size:0.95rem;box-shadow:0 4px 12px rgba(245,158,11,0.35);">
+              ⚔️ Khởi tranh Đấu trường
+            </button>
+          </div>
+        </div>
+
+        <!-- STAGE VIEW (LIVE RUNNING / RESULT) -->
+        <div id="arena-stage-view" class="arena-view" style="display:none;">
+          <div class="arena-stage-header">
+            <div id="arena-status-badge" class="arena-status-badge">
+              <span class="arena-pulse-dot"></span>
+              <span id="arena-status-text">Đang chuẩn bị sàn đấu...</span>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button id="btn-arena-stop" class="btn danger" style="padding:4px 10px;font-size:0.78rem;">⏹️ Dừng</button>
+              <button id="btn-arena-reset" class="btn" style="padding:4px 10px;font-size:0.78rem;">🔄 Làm mới</button>
+            </div>
+          </div>
+
+          <div id="arena-debate-stream" class="arena-debate-stream"></div>
+
+          <!-- ARENA BOTTOM ACTIONS -->
+          <div id="arena-bottom-actions" class="arena-bottom-actions" style="display:none;">
+            <button id="btn-arena-export-chat" class="btn primary" style="gap:6px;">
+              💬 Nhập vào Phiên Chat chính
+            </button>
+            <button id="btn-arena-copy-all" class="btn" style="gap:6px;">
+              📋 Sao chép Biên bản Markdown
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL WEB SHARE TARGET PROMPT -->
+    <div id="share-target-modal" class="modal-box" style="max-width:540px;display:none;">
+      <div class="modal-header" style="background:linear-gradient(135deg, rgba(2,132,199,0.15), rgba(37,99,235,0.1));border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.3rem;">📥</span>
+          <h3 style="margin:0;font-size:1.05rem;">Nhận nội dung chia sẻ từ thiết bị</h3>
+        </div>
+        <button class="close-btn icon-btn" onclick="$('share-target-modal').style.display='none'; $('modal-overlay').style.display='none';">&times;</button>
+      </div>
+      <div style="padding:16px;">
+        <div id="share-preview-content" style="max-height:160px;overflow-y:auto;background:var(--bg-main);padding:12px;border-radius:var(--radius-md);border:1px solid var(--border);font-size:0.88rem;word-break:break-word;line-height:1.5;"></div>
+        <div id="share-url-indicator" style="margin-top:10px;font-size:0.8rem;color:var(--primary);font-weight:600;display:none;">
+          🔗 Đã phát hiện liên kết: <span id="share-detected-url" style="text-decoration:underline;"></span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;">
+          <button id="btn-share-extract-now" class="btn primary" style="padding:10px;font-weight:600;display:none;">
+            ⚡ Bóc tách & Tóm tắt Link ngay
+          </button>
+          <button id="btn-share-insert-input" class="btn" style="padding:10px;font-weight:600;">
+            💬 Đưa vào ô nhập Chat để hỏi tiếp
+          </button>
+          <button id="btn-share-arena" class="btn" style="padding:10px;font-weight:600;background:rgba(245,158,11,0.15);color:#d97706;border:1px solid rgba(245,158,11,0.4);">
+            ⚔️ Đưa vào Đấu trường Tranh biện AI
+          </button>
         </div>
       </div>
     </div>
@@ -2738,6 +3157,37 @@
               <label class="field-label">Brave Worker Proxy URL:</label>
               <input type="text" id="brave-worker-url-input" class="modern-input">
             </div>
+          </div>
+        </fieldset>
+
+        <!-- STORAGE & MEMORY MANAGEMENT -->
+        <fieldset class="settings-group" style="border: 2px solid #10b981; background: rgba(16,185,129,0.04);">
+          <legend style="color:#10b981; font-weight:700;">💾 Bộ nhớ & Trạng thái Lưu trữ (IndexedDB)</legend>
+          <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:10px;line-height:1.4;">
+            Toàn bộ lịch sử trò chuyện và tài liệu được lưu trong IndexedDB dung lượng lớn trên thiết bị của bạn.
+          </div>
+          
+          <div style="margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;font-size:0.82rem;font-weight:600;margin-bottom:4px;">
+              <span>Dung lượng đã dùng: <strong id="storage-used-txt">Đang tính...</strong></span>
+              <span id="storage-quota-txt">Khả dụng: ...</span>
+            </div>
+            <div style="height:8px;background:var(--border);border-radius:var(--radius-full);overflow:hidden;">
+              <div id="storage-bar-progress" style="height:100%;width:0%;background:linear-gradient(90deg,#10b981,#059669);transition:width 0.4s ease;"></div>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-card);padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:10px;font-size:0.82rem;">
+            <div>
+              <span style="font-weight:600;">Bảo vệ vĩnh viễn (Persistent):</span>
+              <span id="storage-persist-status" style="margin-left:6px;font-weight:700;color:var(--success);">Kiểm tra...</span>
+            </div>
+            <button id="btn-request-persist" class="btn" style="padding:3px 8px;font-size:0.75rem;">🛡️ Kích hoạt</button>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button id="btn-refresh-storage" class="btn" style="padding:6px 12px;font-size:0.8rem;">🔄 Kiểm tra lại</button>
+            <button id="btn-clear-temp-cache" class="btn" style="padding:6px 12px;font-size:0.8rem;" title="Xóa cache tìm kiếm web & dữ liệu tạm, giữ nguyên lịch sử chat">🧹 Dọn Cache Tạm</button>
           </div>
         </fieldset>
 
@@ -3250,20 +3700,35 @@
       }
     }
 
-    // Nếu chạy trên Android APK có Native Bridge, đồng bộ tức thời mọi thay đổi localStorage xuống Flash ROM
+    // Persistent Storage & Safe LocalStorage Wrapper with Quota Protection & Native Bridge Sync
     if (window.JarvisNativeBridge) {
       syncFromNativeBridge();
-      const origSetItem = localStorage.setItem.bind(localStorage);
-      const origRemoveItem = localStorage.removeItem.bind(localStorage);
-      localStorage.setItem = function(k, v) {
-        origSetItem(k, v);
-        saveToNativeBridge(k, v);
-      };
-      localStorage.removeItem = function(k) {
-        origRemoveItem(k);
-        saveToNativeBridge(k, null);
-      };
     }
+    const _nativeOrigSetItem = localStorage.setItem.bind(localStorage);
+    const _nativeOrigRemoveItem = localStorage.removeItem.bind(localStorage);
+    localStorage.setItem = function(k, v) {
+      try {
+        _nativeOrigSetItem(k, v);
+      } catch (err) {
+        if (err.name === 'QuotaExceededError' || err.code === 22) {
+          console.warn("LocalStorage Quota Exceeded on key:", k);
+          if (typeof showToast === 'function') {
+            showToast("⚠️ LocalStorage (5MB) đã đầy. Dữ liệu chat được lưu an toàn trên IndexedDB!", "warning");
+          }
+        }
+      }
+      if (window.JarvisNativeBridge) {
+        saveToNativeBridge(k, v);
+      }
+    };
+    localStorage.removeItem = function(k) {
+      try {
+        _nativeOrigRemoveItem(k);
+      } catch {}
+      if (window.JarvisNativeBridge) {
+        saveToNativeBridge(k, null);
+      }
+    };
 
     // CENTRAL CONSTANT FOR SECONDARY & BACKGROUND TASKS (FLASH LITE)
     const FLASH_LITE_MODEL = 'gemini-3.5-flash-lite';
@@ -4534,6 +4999,7 @@
     const cmdList = $('cmd-palette-list');
 
     const COMMANDS = [
+      { id: 'arena', title: 'Đấu trường Tranh biện AI (Multi-Agent Arena)', shortcut: '/arena', icon: '⚔️', run: () => openArenaModal() },
       { id: 'cloud', title: 'Đồng bộ Cloud đa thiết bị (GitHub Gist)', shortcut: '/cloud', icon: '☁️', run: () => $('btn-open-cloud-sync').click() },
       { id: 'deep', title: 'Bật/Tắt Chế độ Nghiên cứu Sâu (Deep Research)', shortcut: '/deep', icon: '🔬', run: () => $('btn-toggle-deep-research').click() },
       { id: 'new', title: 'Tạo phiên hội thoại mới', shortcut: '/new', icon: '➕', run: () => newSess() },
@@ -4541,6 +5007,7 @@
       { id: 'live', title: 'Bắt đầu gọi Live AI Voice', shortcut: '/live', icon: '📞', run: () => startLiveVoiceCall() },
       { id: 'tts', title: 'Mở Gemini TTS Studio Pro (Chuyển văn bản thành giọng nói, xuất MP3)', shortcut: '/tts', icon: '🎙️', run: () => openTTSStudioModal() },
       { id: 'settings', title: 'Mở Cài đặt hệ thống & 10 Keys', shortcut: '/settings', icon: '⚙️', run: () => $('btn-open-settings').click() },
+      { id: 'storage', title: 'Quản lý Bộ nhớ & Trạng thái Lưu trữ (IndexedDB)', shortcut: '/storage', icon: '💾', run: () => { $('btn-open-settings').click(); setTimeout(updateStorageStatus, 150); } },
       { id: 'prompts', title: 'Mở Kho Prompt mẫu cá nhân', shortcut: '/prompts', icon: '📚', run: () => $('btn-manage-prompts').click() },
       { id: 'search', title: 'Tìm kiếm nội dung hội thoại', shortcut: '/search', icon: '🔍', run: () => { $('search-modal').style.display = 'flex'; oLay.style.display = 'block'; } },
       { id: 'theme', title: 'Chuyển đổi giao diện Sáng / Tối', shortcut: '/theme', icon: '🌙', run: () => DOM.btnTheme.click() },
@@ -4737,6 +5204,508 @@
 
       await Promise.all([runModel(mA, resA), runModel(mB, resB)]);
     };
+
+    // --- MULTI-AGENT ARENA CONTROLLER ---
+    let currentArenaPreset = 'pro-con';
+    let arenaAbortCtrl = null;
+    let lastArenaTranscript = [];
+    let lastArenaTopic = '';
+
+    window.openArenaModal = function() {
+      const modal = $('arena-modal');
+      if (!modal) return;
+      modal.style.display = 'flex';
+      if (oLay) oLay.style.display = 'block';
+      
+      // Pre-fill topic if user has written in prompt box
+      if (DOM.input && DOM.input.value.trim() && !$('arena-topic-input').value.trim()) {
+        $('arena-topic-input').value = DOM.input.value.trim();
+      }
+      setTimeout(() => $('arena-topic-input')?.focus(), 60);
+    };
+
+    window.closeArenaModal = function() {
+      const modal = $('arena-modal');
+      if (modal) modal.style.display = 'none';
+      if (oLay) oLay.style.display = 'none';
+      if (arenaAbortCtrl) {
+        arenaAbortCtrl.abort();
+        arenaAbortCtrl = null;
+      }
+    };
+
+    window.setArenaTopic = function(topic) {
+      if ($('arena-topic-input')) {
+        $('arena-topic-input').value = topic;
+        $('arena-topic-input').focus();
+      }
+    };
+
+    window.selectArenaPreset = function(presetKey) {
+      currentArenaPreset = presetKey;
+      document.querySelectorAll('.arena-preset-card').forEach(c => {
+        c.classList.toggle('active', c.getAttribute('data-preset') === presetKey);
+      });
+      const customBox = $('arena-custom-roles');
+      if (customBox) {
+        customBox.style.display = presetKey === 'custom' ? 'block' : 'none';
+      }
+    };
+
+    $('btn-arena-reset')?.addEventListener('click', () => {
+      if (arenaAbortCtrl) {
+        arenaAbortCtrl.abort();
+        arenaAbortCtrl = null;
+      }
+      $('arena-stage-view').style.display = 'none';
+      $('arena-setup-view').style.display = 'flex';
+    });
+
+    $('btn-arena-stop')?.addEventListener('click', () => {
+      if (arenaAbortCtrl) {
+        arenaAbortCtrl.abort();
+        arenaAbortCtrl = null;
+        showToast("⏹️ Đã dừng lượt tranh biện!", "warning");
+      }
+    });
+
+    async function callArenaModel(model, prompt, signal) {
+      const cs = sessions.find(x => x.id === activeId);
+      const k = getSessionApiKey(cs, true);
+      if (!k) throw new Error("Chưa có API Key Google khả dụng. Vui lòng cấu hình trong Cài đặt!");
+
+      const ai = new GoogleGenAI({ apiKey: k });
+      const res = await ai.models.generateContent({
+        model: model,
+        contents: prompt,
+        config: {
+          safetySettings: SAFETY,
+          temperature: 0.7
+        }
+      });
+      return res.text || "(Không nhận được phản hồi)";
+    }
+
+    $('btn-start-arena')?.addEventListener('click', async () => {
+      const topic = $('arena-topic-input').value.trim();
+      if (!topic) {
+        showToast("Vui lòng nhập chủ đề tranh luận!", "warning");
+        $('arena-topic-input').focus();
+        return;
+      }
+
+      const cs = sessions.find(x => x.id === activeId);
+      const k = getSessionApiKey(cs);
+      if (!k) {
+        showToast("Vui lòng cấu hình Google API Key trước khi tranh biện!", "danger");
+        return;
+      }
+
+      const model = $('arena-model').value || 'gemini-3.5-flash-lite';
+      const totalRounds = parseInt($('arena-rounds').value) || 2;
+      const presetKey = currentArenaPreset;
+
+      let roleA = "Bên Ủng Hộ (Advocate)";
+      let stanceA = "Tìm kiếm mọi cơ hội, lợi ích, giá trị thực tiễn và đưa ra các luận cứ thuyết phục nhất để bảo vệ quan điểm.";
+      let roleB = "Bên Phản Biện (Skeptic / Devil's Advocate)";
+      let stanceB = "Vạch ra mọi rủi ro tiềm ẩn, chi phí ngầm, rào cản thực thi và kịch bản thất bại tồi tệ nhất.";
+
+      if (presetKey === 'tech-biz') {
+        roleA = "Chuyên Gia Kỹ Thuật (Tech Lead)";
+        stanceA = "Tối ưu hóa kiến trúc, hiệu năng, độ tin cậy kỹ thuật và khả năng mở rộng hệ thống.";
+        roleB = "Giám Đốc Kinh Doanh (Business ROI & Product Manager)";
+        stanceB = "Tối ưu hóa chi phí đầu tư, thời gian đưa sản phẩm ra thị trường, tính kinh tế và trải nghiệm người dùng.";
+      } else if (presetKey === 'vision-pragmatic') {
+        roleA = "Nhà Đổi Mới Táo Bạo (Visionary Innovator)";
+        stanceA = "Tư duy đột phá, đón đầu tương lai, chấp nhận mạo hiểm để tạo ra bước nhảy vọt.";
+        roleB = "Chuyên Gia Thực Tế & Thận Trọng (Pragmatic Realist)";
+        stanceB = "Bám sát thực tế nguồn lực hiện có, ưu tiên giải pháp an toàn, chắc chắn, kiểm soát rủi ro.";
+      } else if (presetKey === 'custom') {
+        roleA = $('arena-role-a').value.trim() || "Agent A (Ủng hộ)";
+        stanceA = $('arena-desc-a').value.trim() || "Bảo vệ lập trường bằng logic chặt chẽ.";
+        roleB = $('arena-role-b').value.trim() || "Agent B (Phản biện)";
+        stanceB = $('arena-desc-b').value.trim() || "Phản bác và chỉ ra các kẽ hở sắc bén.";
+      }
+
+      // Switch view
+      $('arena-setup-view').style.display = 'none';
+      $('arena-stage-view').style.display = 'flex';
+      const stream = $('arena-debate-stream');
+      stream.innerHTML = '';
+      $('arena-bottom-actions').style.display = 'none';
+      $('arena-status-badge').className = 'arena-status-badge';
+      $('btn-arena-stop').style.display = 'inline-block';
+
+      arenaAbortCtrl = new AbortController();
+      lastArenaTopic = topic;
+      lastArenaTranscript = [];
+      lastArenaTranscript.push({ speaker: 'CHỦ ĐỀ TRANH BIỆN', text: topic });
+
+      try {
+        for (let round = 1; round <= totalRounds; round++) {
+          if (arenaAbortCtrl?.signal?.aborted) break;
+
+          // Round divider
+          const roundDiv = document.createElement('div');
+          roundDiv.className = 'arena-round-divider';
+          roundDiv.innerHTML = `<span>⚔️ HIỆP ${round} / ${totalRounds}</span>`;
+          stream.appendChild(roundDiv);
+          stream.scrollTop = stream.scrollHeight;
+
+          // AGENT A TURN
+          $('arena-status-text').innerText = `Hiệp ${round}: ${roleA} đang lập luận...`;
+          const cardA = document.createElement('div');
+          cardA.className = 'arena-card agent-a';
+          cardA.innerHTML = `
+            <div class="arena-card-header">
+              <div class="arena-card-speaker">
+                <span class="arena-avatar">🔵</span>
+                <div>
+                  <strong>${roleA}</strong>
+                  <small>Lượt phát biểu hiệp ${round}</small>
+                </div>
+              </div>
+              <span class="arena-role-pill a">Ủng hộ</span>
+            </div>
+            <div class="arena-card-body"><span class="pulse-dot"></span> Đang tư duy lập luận sắc bén...</div>
+          `;
+          stream.appendChild(cardA);
+          stream.scrollTop = stream.scrollHeight;
+
+          let promptA = "";
+          if (round === 1) {
+            promptA = `Bạn là ${roleA}. Lập trường của bạn: ${stanceA}.\nChủ đề tranh luận: "${topic}".\nNhiệm vụ (Hiệp 1): Trình bày bài phát biểu mở màn thật sắc bén, nêu 3-4 luận điểm cốt lõi nhất để bảo vệ lập trường của bạn. Trình bày rõ ràng, mạch lạc, có dẫn chứng logic. Hãy nói với sự tự tin như một nhà hùng biện xuất sắc.`;
+          } else {
+            const prevB = lastArenaTranscript.filter(x => x.speaker === roleB).slice(-1)[0]?.text || '';
+            promptA = `Bạn là ${roleA}. Lập trường: ${stanceA}.\nChủ đề: "${topic}".\nĐối thủ (${roleB}) vừa phản biện:\n"${prevB}"\n\nNhiệm vụ của bạn (Hiệp ${round}): Hãy đáp trả thẳng thắn các chỉ trích và nghi ngại mà đối thủ vừa nêu. Đưa ra giải pháp hóa giải rủi ro, đồng thời củng cố lại lý do vì sao lập trường của bạn vẫn là lựa chọn ưu việt. Logic đanh thép, hùng biện tự tin.`;
+          }
+
+          const bodyA = cardA.querySelector('.arena-card-body');
+          const speechA = await callArenaModel(model, promptA, arenaAbortCtrl.signal);
+          bodyA.innerHTML = marked.parse(speechA);
+          window.renderMathInElement?.(bodyA, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }] });
+          lastArenaTranscript.push({ speaker: roleA, round, text: speechA });
+          stream.scrollTop = stream.scrollHeight;
+
+          if (arenaAbortCtrl?.signal?.aborted) break;
+
+          // AGENT B TURN
+          $('arena-status-text').innerText = `Hiệp ${round}: ${roleB} đang phản bác...`;
+          const cardB = document.createElement('div');
+          cardB.className = 'arena-card agent-b';
+          cardB.innerHTML = `
+            <div class="arena-card-header">
+              <div class="arena-card-speaker">
+                <span class="arena-avatar">🔴</span>
+                <div>
+                  <strong>${roleB}</strong>
+                  <small>Lượt phản bác hiệp ${round}</small>
+                </div>
+              </div>
+              <span class="arena-role-pill b">Phản biện</span>
+            </div>
+            <div class="arena-card-body"><span class="pulse-dot"></span> Đang phân tích kẽ hở & chuẩn bị phản đòn...</div>
+          `;
+          stream.appendChild(cardB);
+          stream.scrollTop = stream.scrollHeight;
+
+          const promptB = `Bạn là ${roleB}. Lập trường của bạn: ${stanceB}.\nChủ đề tranh luận: "${topic}".\nĐối thủ (${roleA}) vừa phát biểu:\n"${speechA}"\n\nNhiệm vụ của bạn (Hiệp ${round}): Hãy phản bác trực diện vào các luận điểm mà đối thủ vừa đưa ra! Vạch ra những lỗ hổng logic, chi phí ngầm, rủi ro tiềm ẩn hoặc sự thiếu thực tế. Đặt ra những câu hỏi hóc búa và đưa ra lập luận phản chứng mạnh mẽ. Phát biểu đanh thép, thuyết phục.`;
+
+          const bodyB = cardB.querySelector('.arena-card-body');
+          const speechB = await callArenaModel(model, promptB, arenaAbortCtrl.signal);
+          bodyB.innerHTML = marked.parse(speechB);
+          window.renderMathInElement?.(bodyB, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }] });
+          lastArenaTranscript.push({ speaker: roleB, round, text: speechB });
+          stream.scrollTop = stream.scrollHeight;
+        }
+
+        if (!arenaAbortCtrl?.signal?.aborted) {
+          // REFEREE VERDICT
+          $('arena-status-text').innerText = `Trọng tài AI đang tổng hợp phán quyết khách quan...`;
+          const cardRef = document.createElement('div');
+          cardRef.className = 'arena-card referee';
+          cardRef.innerHTML = `
+            <div class="arena-card-header">
+              <div class="arena-card-speaker">
+                <span class="arena-avatar">⚖️</span>
+                <div>
+                  <strong style="color:#d97706;">Trọng Tài AI (Verdict & Actionable Synthesis)</strong>
+                  <small>Tổng kết đa chiều & Ma trận quyết định</small>
+                </div>
+              </div>
+              <span class="arena-role-pill ref">Phán quyết</span>
+            </div>
+            <div class="arena-card-body"><span class="pulse-dot"></span> Đang lập bảng so sánh và phân tích hành động...</div>
+          `;
+          stream.appendChild(cardRef);
+          stream.scrollTop = stream.scrollHeight;
+
+          const summaryLog = lastArenaTranscript.map(x => `### ${x.speaker}${x.round ? ` (Hiệp ${x.round})` : ''}:\n${x.text}`).join('\n\n');
+
+          const promptRef = `Bạn là một Trọng Tài và Cố Vấn Chiến Lược Khách Quan Cấp Cao (Senior Strategic Advisor & Referee).\nChủ đề tranh luận: "${topic}".\n\nDưới đây là biên bản tranh luận giữa ${roleA} và ${roleB}:\n${summaryLog}\n\nNhiệm vụ của bạn là đưa ra một Báo Cáo Phán Quyết Toàn Diện và Thực Tiễn:\n1. 📊 **BẢNG SO SÁNH ĐỐI CHIẾU:** Bảng Markdown tóm tắt Điểm Mạnh Nhất của Bên A vs Rủi Ro Lớn Nhất của Bên B.\n2. 🤝 **ĐIỂM ĐỒNG THUẬN (Common Ground):** Những thực tế khách quan mà cả hai bên đều phải thừa nhận.\n3. ⚖️ **CHẤM ĐIỂM LUẬN ĐIỂM (Thang điểm 1 - 10):** Đánh giá sức thuyết phục của mỗi bên kèm lý do ngắn gọn.\n4. 🏆 **PHÁN QUYẾT & LỜI KHUYÊN HÀNH ĐỘNG (Actionable Verdict):**\n   - Khi nào NÊN chọn giải pháp của Bên A?\n   - Khi nào NÊN chọn giải pháp của Bên B?\n   - Đề xuất lộ trình hoặc giải pháp dung hòa tối ưu (Hybrid Solution) giúp tối đa hóa lợi ích và kiểm soát rủi ro.`;
+
+          const bodyRef = cardRef.querySelector('.arena-card-body');
+          const speechRef = await callArenaModel(model, promptRef, arenaAbortCtrl.signal);
+          bodyRef.innerHTML = marked.parse(speechRef);
+          window.renderMathInElement?.(bodyRef, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }] });
+          lastArenaTranscript.push({ speaker: 'TRỌNG TÀI AI (PHÁN QUYẾT)', text: speechRef });
+          stream.scrollTop = stream.scrollHeight;
+
+          $('arena-status-text').innerText = `✅ Đã có phán quyết trọng tài!`;
+          $('arena-status-badge').className = 'arena-status-badge complete';
+        } else {
+          $('arena-status-text').innerText = `⏹️ Đã dừng tranh biện.`;
+          $('arena-status-badge').className = 'arena-status-badge stopped';
+        }
+
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          $('arena-status-text').innerText = `⏹️ Đã dừng tranh biện.`;
+        } else {
+          $('arena-status-text').innerText = `❌ Lỗi: ${err.message}`;
+          showToast(`Lỗi tranh biện: ${err.message}`, 'danger');
+        }
+      } finally {
+        $('btn-arena-stop').style.display = 'none';
+        $('arena-bottom-actions').style.display = 'flex';
+      }
+    });
+
+    $('btn-arena-export-chat')?.addEventListener('click', async () => {
+      if (!lastArenaTranscript || lastArenaTranscript.length <= 1) {
+        return showToast("Chưa có nội dung tranh biện để lưu!", "warning");
+      }
+      let md = `## ⚔️ ĐẤU TRƯỜNG TRANH BIỆN AI: ${lastArenaTopic}\n\n`;
+      lastArenaTranscript.forEach(t => {
+        if (t.speaker === 'CHỦ ĐỀ TRANH BIỆN') return;
+        md += `### ${t.speaker}${t.round ? ` (Hiệp ${t.round})` : ''}\n\n${t.text}\n\n---\n\n`;
+      });
+
+      const cs = sessions.find(x => x.id === activeId);
+      if (!cs) return showToast("Không tìm thấy phiên chat!", "danger");
+      chatHistory.push({
+        role: 'model',
+        text: md.trim(),
+        time: getNowTime24h(),
+        isArenaDebate: true
+      });
+      cs.his = chatHistory;
+      await saveToDB(cs);
+      await switchSess(activeId);
+      closeArenaModal();
+      showToast("💬 Đã lưu toàn bộ biên bản tranh biện vào phiên Chat!", "success");
+    });
+
+    $('btn-arena-copy-all')?.addEventListener('click', () => {
+      if (!lastArenaTranscript || lastArenaTranscript.length <= 1) {
+        return showToast("Chưa có nội dung tranh biện!", "warning");
+      }
+      let md = `# ⚔️ ĐẤU TRƯỜNG TRANH BIỆN AI: ${lastArenaTopic}\n\n`;
+      lastArenaTranscript.forEach(t => {
+        if (t.speaker === 'CHỦ ĐỀ TRANH BIỆN') return;
+        md += `## ${t.speaker}${t.round ? ` (Hiệp ${t.round})` : ''}\n\n${t.text}\n\n---\n\n`;
+      });
+      fallbackBrowserDownload(new Blob([md], { type: 'text/markdown' }), `arena_debate_${Date.now()}.md`);
+      showToast("📋 Đã sao chép/xuất biên bản tranh biện!");
+    });
+
+    // --- WEB SHARE TARGET & SHORTCUTS CONTROLLER ---
+    function openShareTargetModal(content, detectedUrl) {
+      const modal = $('share-target-modal');
+      const prevBox = $('share-preview-content');
+      const urlInd = $('share-url-indicator');
+      const urlTxt = $('share-detected-url');
+      const btnExtract = $('btn-share-extract-now');
+      const btnInsert = $('btn-share-insert-input');
+      const btnArena = $('btn-share-arena');
+
+      if (!modal) return;
+      prevBox.innerText = content;
+
+      if (detectedUrl) {
+        urlInd.style.display = 'block';
+        urlTxt.innerText = detectedUrl;
+        btnExtract.style.display = 'block';
+        btnExtract.onclick = async () => {
+          modal.style.display = 'none';
+          if (oLay) oLay.style.display = 'none';
+          await processSharedUrl(detectedUrl);
+        };
+      } else {
+        urlInd.style.display = 'none';
+        btnExtract.style.display = 'none';
+      }
+
+      btnInsert.onclick = () => {
+        modal.style.display = 'none';
+        if (oLay) oLay.style.display = 'none';
+        DOM.input.value = (DOM.input.value ? DOM.input.value + '\n\n' : '') + content;
+        DOM.input.focus();
+        showToast("💬 Đã đưa nội dung vào ô nhập liệu!");
+      };
+
+      btnArena.onclick = () => {
+        modal.style.display = 'none';
+        if (oLay) oLay.style.display = 'none';
+        openArenaModal();
+        setArenaTopic(content);
+      };
+
+      modal.style.display = 'block';
+      if (oLay) oLay.style.display = 'block';
+    }
+
+    async function processSharedUrl(url) {
+      showToast("⏳ Đang bóc tách nội dung liên kết...", "warning");
+      try {
+        if (url.includes("youtube.com") || url.includes("youtu.be")) {
+          const k = getSessionApiKey(sessions.find(x => x.id === activeId));
+          if (!k) throw new Error("Cần Google Key để phân tích YouTube!");
+          const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
+            model: FLASH_LITE_MODEL,
+            contents: `Tóm tắt video YouTube: ${url}`,
+            config: { safetySettings: SAFETY }
+          });
+          txtContent += `\n[YouTube: ${url}]:\n${res.text}\n`;
+          DOM.textFileList.innerHTML += `📺 YouTube (${url.substring(0, 30)}...)<br>`;
+        } else {
+          const ext = await extractWebPageContent(url);
+          txtContent += `\n[Nội dung ${url} qua ${ext.source}]:\n${ext.content}\n`;
+          DOM.textFileList.innerHTML += `🌐 ${ext.source} (${url.substring(0, 30)}...)<br>`;
+        }
+        DOM.previewBox.style.display = 'block';
+        DOM.fileCount.innerText = filesData.length + (txtContent ? 1 : 0);
+        updateTokenCount();
+        showToast("✅ Đã bóc tách nội dung liên kết chia sẻ!", "success");
+      } catch (e) {
+        showToast(`Lỗi bóc tách: ${e.message}`, 'danger');
+      }
+    }
+
+    function handleIncomingWebShare() {
+      const params = new URLSearchParams(window.location.search);
+      const action = params.get('action');
+
+      if (action === 'arena') {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setTimeout(() => openArenaModal(), 300);
+        return;
+      }
+      if (action === 'live') {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setTimeout(() => startLiveVoiceCall(), 300);
+        return;
+      }
+      if (action === 'tts') {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setTimeout(() => openTTSStudioModal(), 300);
+        return;
+      }
+
+      const shareTitle = params.get('share_title') || '';
+      const shareText = params.get('share_text') || '';
+      const shareUrl = params.get('share_url') || '';
+
+      if (shareTitle || shareText || shareUrl) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        const parts = [];
+        if (shareTitle) parts.push(shareTitle);
+        if (shareText && shareText !== shareTitle) parts.push(shareText);
+        if (shareUrl && !shareText.includes(shareUrl)) parts.push(shareUrl);
+        const full = parts.join('\n\n').trim();
+
+        const match = full.match(/https?:\/\/[^\s]+/i);
+        const detUrl = match ? match[0] : (shareUrl ? shareUrl.trim() : '');
+
+        setTimeout(() => openShareTargetModal(full, detUrl), 400);
+      }
+    }
+
+    // --- STORAGE & MEMORY MANAGEMENT CONTROLLER ---
+    async function updateStorageStatus() {
+      try {
+        if (navigator.storage && navigator.storage.estimate) {
+          const est = await navigator.storage.estimate();
+          const usedBytes = est.usage || 0;
+          const quotaBytes = est.quota || 0;
+          const usedMB = (usedBytes / (1024 * 1024)).toFixed(1);
+          const quotaGB = (quotaBytes / (1024 * 1024 * 1024)).toFixed(1);
+          const pct = quotaBytes > 0 ? ((usedBytes / quotaBytes) * 100).toFixed(2) : '0';
+
+          const usedEl = $('storage-used-txt');
+          const quotaEl = $('storage-quota-txt');
+          const barEl = $('storage-bar-progress');
+
+          if (usedEl) usedEl.innerText = `${usedMB} MB (${pct}%)`;
+          if (quotaEl) quotaEl.innerText = `Khả dụng: ${quotaGB} GB`;
+          if (barEl) {
+            barEl.style.width = `${Math.min(Math.max(parseFloat(pct), 1), 100)}%`;
+            if (parseFloat(pct) > 80) barEl.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
+            else if (parseFloat(pct) > 50) barEl.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
+            else barEl.style.background = 'linear-gradient(90deg, #10b981, #059669)';
+          }
+        }
+
+        if (navigator.storage && navigator.storage.persisted) {
+          const isPersisted = await navigator.storage.persisted();
+          const statusEl = $('storage-persist-status');
+          const btnPersist = $('btn-request-persist');
+          if (statusEl) {
+            if (isPersisted) {
+              statusEl.innerText = "🟢 Đã kích hoạt (Vĩnh viễn)";
+              statusEl.style.color = "var(--success)";
+              if (btnPersist) btnPersist.style.display = "none";
+            } else {
+              statusEl.innerText = "⚪ Chưa bật";
+              statusEl.style.color = "var(--warning)";
+              if (btnPersist) btnPersist.style.display = "inline-block";
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Lỗi kiểm tra bộ nhớ:", e);
+      }
+    }
+
+    $('btn-refresh-storage')?.addEventListener('click', () => {
+      updateStorageStatus();
+      showToast("🔄 Đã cập nhật trạng thái bộ nhớ!", "success");
+    });
+
+    $('btn-request-persist')?.addEventListener('click', async () => {
+      if (navigator.storage && navigator.storage.persist) {
+        const ok = await navigator.storage.persist();
+        if (ok) {
+          showToast("🛡️ Đã kích hoạt Lưu trữ Vĩnh viễn (Persistent Storage)!", "success");
+        } else {
+          showToast("Trình duyệt chưa cho phép cấp quyền vĩnh viễn.", "warning");
+        }
+        updateStorageStatus();
+      }
+    });
+
+    $('btn-clear-temp-cache')?.addEventListener('click', () => {
+      if (confirm("Bạn có muốn dọn sạch bộ nhớ đệm tìm kiếm (search cache) và dữ liệu tạm thời không?\n(Toàn bộ Lịch sử chat và API keys sẽ được BẢO TỒN NGUYÊN VẸN 100%)")) {
+        try {
+          const keys = [];
+          for (let i = 0; i < sessionStorage.length; i++) {
+            const k = sessionStorage.key(i);
+            if (k && (k.startsWith('src_') || k.startsWith('cache_'))) keys.push(k);
+          }
+          keys.forEach(k => sessionStorage.removeItem(k));
+          updateStorageStatus();
+          showToast(`🧹 Đã dọn sạch ${keys.length} mục bộ đệm tạm thời!`, "success");
+        } catch (e) {
+          showToast(`Lỗi dọn cache: ${e.message}`, "danger");
+        }
+      }
+    });
+
+    // Wire up settings open to refresh storage status
+    $('btn-open-settings')?.addEventListener('click', () => {
+      setTimeout(updateStorageStatus, 100);
+    });
 
     // --- COLOR TAGS CONTROLLER ---
     document.querySelectorAll('#session-color-picker .color-chip-btn').forEach(chip => {
@@ -5069,9 +6038,10 @@
     };
 
     const oLay = $('modal-overlay'), closeModals = () => {
-      document.querySelectorAll('.modal-box, #command-palette-modal, #ab-compare-modal').forEach(m => m.style.display = 'none');
+      document.querySelectorAll('.modal-box, #command-palette-modal, #ab-compare-modal, #arena-modal, #share-target-modal').forEach(m => m.style.display = 'none');
       if (oLay) oLay.style.display = 'none';
       if (typeof window.closeTTSStudioModal === 'function') window.closeTTSStudioModal();
+      if (typeof window.closeArenaModal === 'function') window.closeArenaModal();
     };
     document.querySelectorAll('.close-btn').forEach(b => b.onclick = closeModals);
     oLay.onclick = closeModals;
@@ -7785,6 +8755,10 @@
 
     // Call initTTSStudio once loaded
     initTTSStudio();
+
+    // Init Web Share Target & Shortcuts listener and Storage estimation
+    handleIncomingWebShare();
+    updateStorageStatus();
 
   </script>
 </body>

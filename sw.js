@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v16 - continuous audio playback fix & robust audio pipeline)
-const CACHE_NAME = 'jarvis-ai-pwa-v16';
+// Jarvis AI Service Worker for PWA (v17 - Web Share Target, PWA Shortcuts & Offline Navigation)
+const CACHE_NAME = 'jarvis-ai-pwa-v17';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
@@ -50,7 +50,7 @@ self.addEventListener('fetch', event => {
           }
           return response;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() => caches.match('./index.html').then(match => match || caches.match(event.request)))
     );
     return;
   }
