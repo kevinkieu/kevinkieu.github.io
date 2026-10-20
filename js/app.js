@@ -2145,7 +2145,7 @@ import { GoogleGenAI } from "@google/genai";
       if (typeof btnOrIdx === 'number') {
         idx = btnOrIdx;
       }
-      if (idx !== undefined && chatHistory && chatHistory[idx]) {
+      if (idx !== undefined && idx !== null && chatHistory && chatHistory[idx]) {
         raw = chatHistory[idx].text || "";
       }
       if (!raw && btnOrIdx instanceof Element) {
@@ -2153,18 +2153,23 @@ import { GoogleGenAI } from "@google/genai";
         const msgEl = container?.querySelector('.bot-message, .msg-content');
         raw = msgEl?.getAttribute('data-raw') || msgEl?.innerText || "";
       }
+      if (!raw && chatHistory && chatHistory.length > 0) {
+        const lastBot = [...chatHistory].reverse().find(m => m.role === 'model');
+        if (lastBot) raw = lastBot.text || "";
+      }
       const clean = sanitizeTranscript(raw);
-      if (!clean && !raw) {
+      const textToSend = clean || raw;
+      if (!textToSend.trim()) {
         showToast("Không tìm thấy nội dung tin nhắn để mở Studio!", "warning");
         return;
       }
       if (typeof window.openTTSStudioModal === 'function') {
-        window.openTTSStudioModal(clean || raw);
+        window.openTTSStudioModal(textToSend);
       } else {
         showToast("Đang mở TTS Studio...", "info");
         setTimeout(() => {
           if (typeof window.openTTSStudioModal === 'function') {
-            window.openTTSStudioModal(clean || raw);
+            window.openTTSStudioModal(textToSend);
           }
         }, 200);
       }
@@ -2565,7 +2570,7 @@ import { GoogleGenAI } from "@google/genai";
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
         // DEEP RESEARCH & THINKING PROTOCOL
-        if (isDeepResearch && msg) {
+        if (isDeepResearch && msg && msg.trim().length > 15 && !/^(chào|hello|hi|hey|alo|ê|ơi|chào bạn|xin chào)\b/i.test(msg.trim())) {
           const drCard = document.createElement('div');
           drCard.className = 'deep-research-card';
           drCard.innerHTML = `
@@ -2858,7 +2863,7 @@ import { GoogleGenAI } from "@google/genai";
             temperature: +DOM.temp.value,
             topP: +DOM.topP.value,
             topK: +DOM.topK.value,
-            ...(thk && thk !== 'none' && thk !== 'minimal' ? { thinkingConfig: { thinkingLevel: thk } } : {})
+            ...(thk && thk !== 'none' ? { thinkingConfig: { thinkingLevel: thk } } : {})
           };
 
           try {
@@ -3202,6 +3207,7 @@ import { GoogleGenAI } from "@google/genai";
 
     // --- KEY & CONFIG SYNC HELPERS (PROTECTED AGAINST SECRET SCANNER) ---
 
+    window.getGoogleKeysList = (obfuscate = false) => getGoogleKeysList(obfuscate);
     function getGoogleKeysList(obfuscate = false) {
       const list = [];
       for (let i = 1; i <= 10; i++) {

@@ -741,6 +741,16 @@
       }
     }
 
+        function getGoogleKeysList() {
+      if (typeof window.getGoogleKeysList === 'function') return window.getGoogleKeysList();
+      const list = [];
+      for (let i = 1; i <= 10; i++) {
+        const val = (localStorage.getItem('jarvis_api_' + i) || localStorage.getItem('huanmu_api_' + i) || localStorage.getItem('javiss_api_' + i) || '').trim();
+        list.push(val);
+      }
+      return list;
+    }
+
     // Modal Control & Init
     function openTTSStudioModal(initialText = '') {
       resumeTTSAudioContext();
@@ -753,6 +763,19 @@
       document.body.classList.add('tts-modal-open');
       const oLay = $('modal-overlay');
       if (oLay) oLay.style.display = 'block';
+
+      // 1. Nạp ngay lập tức văn bản ban đầu vào ô soạn thảo
+      if (initialText) {
+        const ed = $('tts-editor-input');
+        if (ed) {
+          ed.value = initialText;
+          updateTTSMetrics();
+          try { ed.dispatchEvent(new Event('input')); } catch (_) {}
+        }
+        if (/^(?:A|Speaker\s*A|\[A\]|\[Speaker\s*A\])\s*:/im.test(initialText) && /^(?:B|Speaker\s*B|\[B\]|\[Speaker\s*B\])\s*:/im.test(initialText)) {
+          setTTSStudioMode('dialogue');
+        }
+      }
 
       try {
         // Ensure default active tab on mobile
@@ -772,18 +795,6 @@
             ? `✅ Sẵn sàng ${activeKeys.length}/10 Google Keys từ Jarvis AI`
             : `⚠️ Chưa có Google API Key nào trong Jarvis AI`;
           keyInfo.style.color = activeKeys.length > 0 ? '#10b981' : '#ef4444';
-        }
-
-        if (initialText) {
-          const ed = $('tts-editor-input');
-          if (ed) {
-            ed.value = initialText;
-            updateTTSMetrics();
-          }
-          // Auto-detect dialogue markers
-          if (/^(?:A|Speaker\s*A|\[A\]|\[Speaker\s*A\])\s*:/im.test(initialText) && /^(?:B|Speaker\s*B|\[B\]|\[Speaker\s*B\])\s*:/im.test(initialText)) {
-            setTTSStudioMode('dialogue');
-          }
         }
 
         // Khôi phục phương ngữ ưa thích (mặc định Nam chuẩn Sài Gòn)
