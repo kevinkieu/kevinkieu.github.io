@@ -3,14 +3,23 @@ package com.kevinkieu.jarvisai;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.View;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.util.Base64;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -24,6 +33,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.util.Map;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String TARGET_URL = "https://kevinkieu.github.io/index.html";
@@ -33,6 +49,110 @@ public class MainActivity extends AppCompatActivity {
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private long lastBackPressTime = 0;
+
+    /**
+     * Native Storage & File Bridge: Cầu nối lưu trữ đồng bộ Flash Storage và ghi file
+     * trực tiếp vào thư mục Download của Android (hỗ trợ Android 7 -> Android 15 qua Scoped Storage).
+     */
+    public class NativeStorageBridge {
+        private final SharedPreferences prefs;
+
+        public NativeStorageBridge(Context context) {
+            this.prefs = context.getSharedPreferences("JarvisPersistentStore", Context.MODE_PRIVATE);
+        }
+
+        @JavascriptInterface
+        public void setItem(String key, String value) {
+            if (key != null && value != null) {
+                prefs.edit().putString(key, value).commit();
+            }
+        }
+
+        @JavascriptInterface
+        public String getItem(String key) {
+            if (key == null) return null;
+            return prefs.getString(key, null);
+        }
+
+        @JavascriptInterface
+        public void removeItem(String key) {
+            if (key != null) {
+                prefs.edit().remove(key).commit();
+            }
+        }
+
+        @JavascriptInterface
+        public String getAllDataJson() {
+            try {
+                JSONObject obj = new JSONObject();
+                for (Map.Entry<String, ?> entry : prefs.getAll().entrySet()) {
+                    if (entry.getValue() != null) {
+                        obj.put(entry.getKey(), entry.getValue().toString());
+                    }
+                }
+                return obj.toString();
+            } catch (Exception e) {
+                return "{}";
+            }
+        }
+
+        @JavascriptInterface
+        public void commit() {
+            prefs.edit().commit();
+        }
+
+        /**
+         * Lưu tệp (MP3, WAV, JSON, PDF, DOCX) trực tiếp vào thư mục Download công khai của Android
+         */
+        @JavascriptInterface
+        public void saveBase64File(String base64Data, String mimeType, String fileName) {
+            if (base64Data == null || fileName == null) return;
+            try {
+                byte[] fileBytes = Base64.decode(base64Data, Base64.DEFAULT);
+                String cleanMime = (mimeType != null && !mimeType.isEmpty()) ? mimeType : "application/octet-stream";
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Downloads.DISPLAY_NAME, fileName);
+                    values.put(MediaStore.Downloads.MIME_TYPE, cleanMime);
+                    values.put(MediaStore.Downloads.IS_PENDING, 1);
+
+                    ContentResolver resolver = getContentResolver();
+                    Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+
+                    if (uri != null) {
+                        try (OutputStream os = resolver.openOutputStream(uri)) {
+                            if (os != null) {
+                                os.write(fileBytes);
+                                os.flush();
+                            }
+                        }
+                        values.clear();
+                        values.put(MediaStore.Downloads.IS_PENDING, 0);
+                        resolver.update(uri, values, null, null);
+                    }
+                } else {
+                    File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    if (!downloadDir.exists()) downloadDir.mkdirs();
+                    File outFile = new File(downloadDir, fileName);
+                    try (FileOutputStream fos = new FileOutputStream(outFile)) {
+                        fos.write(fileBytes);
+                        fos.flush();
+                    }
+                    MediaScannerConnection.scanFile(MainActivity.this, new String[]{outFile.getAbsolutePath()}, new String[]{cleanMime}, null);
+                }
+
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "✅ Đã lưu tệp vào thư mục Tải về (Download):\n" + fileName, Toast.LENGTH_LONG).show();
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "❌ Lỗi lưu tệp: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        }
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -75,6 +195,16 @@ public class MainActivity extends AppCompatActivity {
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+
+        // Kích hoạt lưu Cookie và hỗ trợ Third Party
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            cookieManager.setAcceptThirdPartyCookies(webView, true);
+        }
+
+        // Cầu nối lưu trữ Native SharedPreferences chống mất dữ liệu khi đóng/thoát app
+        webView.addJavascriptInterface(new NativeStorageBridge(this), "JarvisNativeBridge");
 
         // Giữ các liên kết trong WebView thay vì mở trình duyệt ngoài
         webView.setWebViewClient(new WebViewClient() {
@@ -186,6 +316,23 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (webView != null) {
+            webView.onPause();
+        }
+        CookieManager.getInstance().flush();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (webView != null) {
+            webView.onResume();
+        }
     }
 
     @Override

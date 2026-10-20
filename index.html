@@ -3360,6 +3360,25 @@
     // --- EXPORT & COPY HELPERS ---
     window.saveOrShareBlob = async (b, fn) => {
       try {
+        // 1. Nếu đang chạy trong Android APK (có Native Bridge hỗ trợ ghi file vào Download):
+        if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.saveBase64File === 'function') {
+          showToast(`⏳ Đang lưu tệp ${fn}...`, 'info');
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            try {
+              const res = reader.result || '';
+              const base64Data = res.includes(',') ? res.split(',')[1] : res;
+              window.JarvisNativeBridge.saveBase64File(base64Data, b.type || 'application/octet-stream', fn);
+            } catch (err) {
+              console.warn("Native saveBase64File error, falling back to browser:", err);
+              fallbackBrowserDownload(b, fn);
+            }
+          };
+          reader.readAsDataURL(b);
+          return;
+        }
+
+        // 2. Thử Web Share API nếu thiết bị hỗ trợ chia sẻ tệp
         if (navigator.canShare && navigator.share) {
           try {
             const file = new File([b], fn, { type: b.type || 'application/octet-stream' });
@@ -3374,17 +3393,23 @@
             if (shareErr.name === 'AbortError') return;
           }
         }
-        const u = URL.createObjectURL(b), a = document.createElement('a');
-        a.href = u;
-        a.download = fn;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { a.remove(); URL.revokeObjectURL(u); }, 1000);
-        showToast(`📥 Đã tải: ${fn}`);
+
+        // 3. Fallback cho trình duyệt PC / Mobile web thông thường
+        fallbackBrowserDownload(b, fn);
       } catch (e) {
         showToast(`❌ Lỗi: ${e.message}`, 'danger');
       }
     };
+
+    function fallbackBrowserDownload(b, fn) {
+      const u = URL.createObjectURL(b), a = document.createElement('a');
+      a.href = u;
+      a.download = fn;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { a.remove(); URL.revokeObjectURL(u); }, 1500);
+      showToast(`📥 Đã tải: ${fn}`);
+    }
 
     window.copyRawText = (t, msg = '📋 Đã copy vào bộ nhớ!') => {
       if (!t) return showToast('Nội dung trống!', 'warning');
@@ -6162,7 +6187,21 @@
       cfgs['live_context_enabled'] = ls.getItem('live_context_enabled') || 'true';
       cfgs['jarvis_folders'] = ls.getItem('jarvis_folders') || '["Mặc định"]';
       cfgs['jarvis_custom_prompts'] = ls.getItem('jarvis_custom_prompts') || '[]';
-      saveOrShareBlob(new Blob([JSON.stringify({ brand: "Jarvis AI", sessions: await getAllFromDB(), configs: cfgs }, null, 2)], { type: 'application/json' }), `JarvisAI_Backup_${Date.now()}.json`);
+      
+      const backupObj = { brand: "Jarvis AI", sessions: await getAllFromDB(), configs: cfgs };
+      const jsonStr = JSON.stringify(backupObj, null, 2);
+      const filename = `JarvisAI_Backup_${Date.now()}.json`;
+
+      await saveOrShareBlob(new Blob([jsonStr], { type: 'application/json' }), filename);
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(jsonStr);
+          setTimeout(() => {
+            showToast('📋 Đã sao chép nội dung JSON sao lưu vào Clipboard!', 'info');
+          }, 1500);
+        }
+      } catch {}
     };
 
     $('import-all-input').onchange = e => {

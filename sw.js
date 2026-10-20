@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v13 with TTS Studio Mobile UI & Scrolling Fixes)
-const CACHE_NAME = 'jarvis-ai-pwa-v13';
+// Jarvis AI Service Worker for PWA (v14 with Native File Bridge & JSON Backup)
+const CACHE_NAME = 'jarvis-ai-pwa-v14';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
