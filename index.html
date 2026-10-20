@@ -282,21 +282,18 @@
       <!-- BOTTOM INPUT PANEL -->
       <div class="bottom-input-panel">
         <div class="input-tools-scroll">
-          <button id="btn-cloud-sync-chip" class="tool-chip" style="border-color:#0284c7;color:#0284c7;font-weight:600;" title="Đồng bộ Cloud đa thiết bị">
-            ☁️ Đồng bộ Cloud
-          </button>
+          <label class="tool-chip" for="file-upload" style="cursor:pointer;" title="Đính kèm ảnh, video, PDF, txt, code">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            Đính kèm (<span id="file-count">0</span>)
+          </label>
+          <input type="file" id="camera-file-input" accept="image/*" capture="environment" style="display:none;">
+          <input type="file" id="file-upload" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;">
           <button id="btn-open-tts-studio" class="tool-chip" onclick="openTTSStudioModal()" style="border-color:#8b5cf6;color:#8b5cf6;font-weight:600;" title="Mở Gemini TTS Studio Pro (Chuyển văn bản thành giọng nói, xuất MP3)">
             🎙️ Studio TTS
           </button>
           <button id="btn-open-arena-chip" class="tool-chip" onclick="openArenaModal()" style="border-color:#f59e0b;color:#f59e0b;font-weight:600;" title="Mở Đấu trường Tranh biện AI Đa góc nhìn">
             ⚔️ Tranh biện AI
           </button>
-          <label class="tool-chip" for="file-upload" style="cursor:pointer;" title="Đính kèm ảnh, video, PDF, txt, code">
-            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-            Đính kèm (<span id="file-count">0</span>)
-          </label>
-                    <input type="file" id="camera-file-input" accept="image/*" capture="environment" style="display:none;">
-          <input type="file" id="file-upload" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;">
 
                     <button id="btn-toggle-deep-research" class="tool-chip" title="Bật/Tắt chế độ Nghiên cứu Sâu đa tầng (Deep Research)">
             <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
