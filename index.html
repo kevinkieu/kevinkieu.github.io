@@ -486,6 +486,7 @@
       flex-direction: column;
       overflow: hidden;
       position: relative;
+      min-height: 0;
     }
     .arena-view {
       flex: 1;
@@ -493,6 +494,12 @@
       flex-direction: column;
       overflow-y: auto;
       padding: 16px;
+      min-height: 0;
+    }
+    #arena-stage-view {
+      overflow: hidden !important;
+      min-height: 0 !important;
+      height: 100% !important;
     }
     .arena-section {
       margin-bottom: 14px;
@@ -590,18 +597,21 @@
       50% { transform: scale(1.2); opacity: 1; }
     }
     .arena-debate-stream {
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      padding-right: 4px;
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      height: 100% !important;
+      overflow-y: auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 16px !important;
+      padding-right: 6px !important;
     }
     .arena-round-divider {
+      flex-shrink: 0 !important;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 10px 0;
+      margin: 14px 0 6px 0;
       position: relative;
     }
     .arena-round-divider::before {
@@ -619,39 +629,45 @@
       z-index: 2;
       background: var(--bg-card);
       border: 1px solid var(--border);
-      padding: 4px 14px;
+      padding: 5px 16px;
       border-radius: var(--radius-full);
-      font-size: 0.78rem;
+      font-size: 0.8rem;
       font-weight: 700;
       color: var(--text-muted);
       letter-spacing: 0.5px;
+      box-shadow: var(--shadow-sm);
     }
     .arena-card {
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border);
-      background: var(--bg-main);
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
-      animation: fadeIn 0.3s ease-in-out;
+      flex-shrink: 0 !important;
+      width: 100% !important;
+      display: flex !important;
+      flex-direction: column !important;
+      border-radius: var(--radius-md) !important;
+      border: 1px solid var(--border) !important;
+      background: var(--bg-card) !important;
+      box-shadow: var(--shadow-sm) !important;
+      animation: fadeIn 0.3s ease-in-out !important;
+      overflow: hidden !important;
     }
     .arena-card.agent-a {
-      border-left: 4px solid var(--primary);
+      border-left: 5px solid var(--primary) !important;
     }
     .arena-card.agent-b {
-      border-left: 4px solid var(--danger);
+      border-left: 5px solid var(--danger) !important;
     }
     .arena-card.referee {
-      border-left: 4px solid #f59e0b;
-      background: rgba(245, 158, 11, 0.03);
-      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.12);
+      border-left: 5px solid #f59e0b !important;
+      background: rgba(245, 158, 11, 0.04) !important;
+      box-shadow: 0 4px 16px rgba(245, 158, 11, 0.16) !important;
     }
     .arena-card-header {
-      padding: 10px 14px;
-      background: var(--bg-card);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-shrink: 0 !important;
+      padding: 12px 16px !important;
+      background: var(--bg-main) !important;
+      border-bottom: 1px solid var(--border) !important;
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
     }
     .arena-card-speaker {
       display: flex;
@@ -659,18 +675,18 @@
       gap: 10px;
     }
     .arena-card-speaker strong {
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       display: block;
       color: var(--text-main);
     }
     .arena-card-speaker small {
-      font-size: 0.72rem;
+      font-size: 0.74rem;
       color: var(--text-muted);
     }
     .arena-role-pill {
-      font-size: 0.72rem;
+      font-size: 0.74rem;
       font-weight: 700;
-      padding: 2px 8px;
+      padding: 3px 10px;
       border-radius: var(--radius-full);
       text-transform: uppercase;
       letter-spacing: 0.4px;
@@ -684,32 +700,53 @@
       color: var(--danger);
     }
     .arena-role-pill.ref {
-      background: rgba(245, 158, 11, 0.15);
+      background: rgba(245, 158, 11, 0.2);
       color: #d97706;
     }
     .arena-card-body {
-      padding: 14px;
-      font-size: 0.92rem;
-      line-height: 1.65;
-      color: var(--text-main);
-      overflow-x: auto;
+      display: block !important;
+      padding: 18px 20px !important;
+      font-size: 0.95rem !important;
+      line-height: 1.75 !important;
+      color: var(--text-main) !important;
+      word-break: break-word !important;
+      overflow-x: auto !important;
+      background: var(--bg-card) !important;
     }
     .arena-card-body p {
-      margin-bottom: 8px;
+      margin-bottom: 12px !important;
+    }
+    .arena-card-body p:last-child {
+      margin-bottom: 0 !important;
+    }
+    .arena-card-body ul, .arena-card-body ol {
+      margin: 8px 0 12px 24px !important;
+    }
+    .arena-card-body li {
+      margin-bottom: 6px !important;
+    }
+    .arena-card-body strong {
+      color: var(--text-main) !important;
+      font-weight: 700 !important;
+    }
+    .arena-card-body h1, .arena-card-body h2, .arena-card-body h3, .arena-card-body h4 {
+      margin: 16px 0 8px 0 !important;
+      color: var(--text-main) !important;
     }
     .arena-card-body table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 10px 0;
-      font-size: 0.85rem;
+      width: 100% !important;
+      border-collapse: collapse !important;
+      margin: 14px 0 !important;
+      font-size: 0.88rem !important;
     }
     .arena-card-body th, .arena-card-body td {
-      border: 1px solid var(--border);
-      padding: 6px 10px;
-      text-align: left;
+      border: 1px solid var(--border) !important;
+      padding: 8px 12px !important;
+      text-align: left !important;
     }
     .arena-card-body th {
-      background: var(--bg-card);
+      background: var(--bg-main) !important;
+      font-weight: 700 !important;
     }
     .arena-bottom-actions {
       display: flex;
@@ -5381,6 +5418,12 @@
           }
 
           const bodyA = cardA.querySelector('.arena-card-body');
+          const headA = cardA.querySelector('.arena-card-header');
+          if (headA) {
+            headA.style.cursor = 'pointer';
+            headA.title = 'Nhấn để thu gọn / mở rộng';
+            headA.onclick = () => { bodyA.style.display = bodyA.style.display === 'none' ? 'block' : 'none'; };
+          }
           const speechA = await callArenaModel(model, promptA, arenaAbortCtrl.signal);
           bodyA.innerHTML = marked.parse(speechA);
           window.renderMathInElement?.(bodyA, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }] });
@@ -5412,6 +5455,12 @@
           const promptB = `Bạn là ${roleB}. Lập trường của bạn: ${stanceB}.\nChủ đề tranh luận: "${topic}".\nĐối thủ (${roleA}) vừa phát biểu:\n"${speechA}"\n\nNhiệm vụ của bạn (Hiệp ${round}): Hãy phản bác trực diện vào các luận điểm mà đối thủ vừa đưa ra! Vạch ra những lỗ hổng logic, chi phí ngầm, rủi ro tiềm ẩn hoặc sự thiếu thực tế. Đặt ra những câu hỏi hóc búa và đưa ra lập luận phản chứng mạnh mẽ. Phát biểu đanh thép, thuyết phục.`;
 
           const bodyB = cardB.querySelector('.arena-card-body');
+          const headB = cardB.querySelector('.arena-card-header');
+          if (headB) {
+            headB.style.cursor = 'pointer';
+            headB.title = 'Nhấn để thu gọn / mở rộng';
+            headB.onclick = () => { bodyB.style.display = bodyB.style.display === 'none' ? 'block' : 'none'; };
+          }
           const speechB = await callArenaModel(model, promptB, arenaAbortCtrl.signal);
           bodyB.innerHTML = marked.parse(speechB);
           window.renderMathInElement?.(bodyB, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }] });
@@ -5445,11 +5494,18 @@
           const promptRef = `Bạn là một Trọng Tài và Cố Vấn Chiến Lược Khách Quan Cấp Cao (Senior Strategic Advisor & Referee).\nChủ đề tranh luận: "${topic}".\n\nDưới đây là biên bản tranh luận giữa ${roleA} và ${roleB}:\n${summaryLog}\n\nNhiệm vụ của bạn là đưa ra một Báo Cáo Phán Quyết Toàn Diện và Thực Tiễn:\n1. 📊 **BẢNG SO SÁNH ĐỐI CHIẾU:** Bảng Markdown tóm tắt Điểm Mạnh Nhất của Bên A vs Rủi Ro Lớn Nhất của Bên B.\n2. 🤝 **ĐIỂM ĐỒNG THUẬN (Common Ground):** Những thực tế khách quan mà cả hai bên đều phải thừa nhận.\n3. ⚖️ **CHẤM ĐIỂM LUẬN ĐIỂM (Thang điểm 1 - 10):** Đánh giá sức thuyết phục của mỗi bên kèm lý do ngắn gọn.\n4. 🏆 **PHÁN QUYẾT & LỜI KHUYÊN HÀNH ĐỘNG (Actionable Verdict):**\n   - Khi nào NÊN chọn giải pháp của Bên A?\n   - Khi nào NÊN chọn giải pháp của Bên B?\n   - Đề xuất lộ trình hoặc giải pháp dung hòa tối ưu (Hybrid Solution) giúp tối đa hóa lợi ích và kiểm soát rủi ro.`;
 
           const bodyRef = cardRef.querySelector('.arena-card-body');
+          const headRef = cardRef.querySelector('.arena-card-header');
+          if (headRef) {
+            headRef.style.cursor = 'pointer';
+            headRef.title = 'Nhấn để thu gọn / mở rộng';
+            headRef.onclick = () => { bodyRef.style.display = bodyRef.style.display === 'none' ? 'block' : 'none'; };
+          }
           const speechRef = await callArenaModel(model, promptRef, arenaAbortCtrl.signal);
           bodyRef.innerHTML = marked.parse(speechRef);
           window.renderMathInElement?.(bodyRef, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }] });
           lastArenaTranscript.push({ speaker: 'TRỌNG TÀI AI (PHÁN QUYẾT)', text: speechRef });
           stream.scrollTop = stream.scrollHeight;
+          setTimeout(() => { cardRef.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
 
           $('arena-status-text').innerText = `✅ Đã có phán quyết trọng tài!`;
           $('arena-status-badge').className = 'arena-status-badge complete';
