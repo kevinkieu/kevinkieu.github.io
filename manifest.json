@@ -1,7 +1,7 @@
 {
   "name": "Jarvis AI Assistant",
   "short_name": "Jarvis AI",
-  "description": "Trợ lý AI đa năng thông minh với Gemini 3.8, Live Voice Call và tra cứu Internet thời gian thực",
+  "description": "Trợ lý AI đa năng thông minh với Gemini 3.8, Live Voice Call, Multi-Agent Arena và tra cứu Internet thời gian thực",
   "id": "/index.html",
   "start_url": "./index.html",
   "scope": "./",
@@ -22,6 +22,38 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "params": {
+      "title": "share_title",
+      "text": "share_text",
+      "url": "share_url"
+    }
+  },
+  "shortcuts": [
+    {
+      "name": "Đấu trường Tranh biện AI",
+      "short_name": "AI Arena",
+      "description": "Mở Đấu trường Tranh biện Đa góc nhìn",
+      "url": "./index.html?action=arena",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Gọi Live AI Voice",
+      "short_name": "Live Call",
+      "description": "Cuộc gọi thoại tương tác với Gemini AI",
+      "url": "./index.html?action=live",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Gemini TTS Studio",
+      "short_name": "TTS Studio",
+      "description": "Chuyển văn bản thành giọng nói và tải MP3",
+      "url": "./index.html?action=tts",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
