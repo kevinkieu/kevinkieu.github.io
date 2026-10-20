@@ -3298,7 +3298,6 @@ import { GoogleGenAI } from "@google/genai";
           const target = container?.querySelector('.msg-content') || container?.querySelector('.bot-message') || container;
           if (fBox && target) {
             target.appendChild(fBox);
-            if (DOM.chat) DOM.chat.scrollTop = DOM.chat.scrollHeight;
           }
         }
       } catch (err) {
