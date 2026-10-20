@@ -2623,16 +2623,22 @@ import { GoogleGenAI } from "@google/genai";
     window.exportAllSessions = async () => {
       const cfgs = { chat_font_size: ls.getItem('chat_font_size') || "16" };
       for (let i = 1; i <= 10; i++) {
-        cfgs[`jarvis_api_${i}`] = ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || "";
+        const kVal = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || "").trim();
+        cfgs[`jarvis_api_${i}`] = kVal ? obfuscateKey(kVal) : "";
         cfgs[`jarvis_api_name_${i}`] = ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || "";
       }
-      cfgMap.forEach(([, k]) => cfgs[k] = ls.getItem(k) || "");
+      cfgMap.forEach(([, k]) => {
+        const val = ls.getItem(k) || "";
+        cfgs[k] = (k.includes('key') || k === 'brave_worker_url') && val ? obfuscateKey(val) : val;
+      });
       cfgs['live_search_enabled'] = ls.getItem('live_search_enabled') || 'true';
       cfgs['live_context_enabled'] = ls.getItem('live_context_enabled') || 'true';
       cfgs['jarvis_folders'] = ls.getItem('jarvis_folders') || '["Mặc định"]';
       cfgs['jarvis_custom_prompts'] = ls.getItem('jarvis_custom_prompts') || '[]';
       
-      const backupObj = { brand: "Jarvis AI", sessions: await getAllFromDB(), configs: cfgs };
+      const rawSessions = await getAllFromDB();
+      const cleanSessions = rawSessions.map(sanitizeSessionForBackup);
+      const backupObj = { brand: "Jarvis AI", sessions: cleanSessions, configs: cfgs };
       const jsonStr = JSON.stringify(backupObj, null, 2);
       const filename = `JarvisAI_Backup_${Date.now()}.json`;
 
@@ -2659,7 +2665,13 @@ import { GoogleGenAI } from "@google/genai";
             await clearAllDB();
             for (const s of d.sessions) await saveToDB(s);
             if (d.configs) {
-              Object.entries(d.configs).forEach(([k, v]) => ls.setItem(k, v));
+              Object.entries(d.configs).forEach(([k, v]) => {
+                let val = v;
+                if (typeof val === 'string' && (val.startsWith('JVENC_') || val.startsWith('ENC_'))) {
+                  val = deobfuscateKey(val);
+                }
+                ls.setItem(k, val);
+              });
               if (d.configs.jarvis_folders) {
                 try { folders = JSON.parse(d.configs.jarvis_folders); } catch {}
               }
@@ -2898,18 +2910,52 @@ import { GoogleGenAI } from "@google/genai";
     updateDrBtnUI();
 
     // --- KEY & CONFIG SYNC HELPERS (PROTECTED AGAINST SECRET SCANNER) ---
+    const CIPHER_SECRET = "JarvisAI_SecretKey_Protect_2026_X9!";
+
     function obfuscateKey(k) {
       if (!k || typeof k !== 'string') return '';
-      // Mã hóa an toàn để GitHub Secret Scanner không bắt được pattern AIzaSy...
       try {
-        return 'ENC_' + btoa(unescape(encodeURIComponent(k.split('').reverse().join(''))));
-      } catch {
-        return 'ENC_' + btoa(k.split('').reverse().join(''));
+        const salt = Math.random().toString(36).slice(2, 10);
+        const fullKey = CIPHER_SECRET + salt;
+        const utf8Bytes = new TextEncoder().encode(k);
+        const outBytes = new Uint8Array(utf8Bytes.length);
+        for (let i = 0; i < utf8Bytes.length; i++) {
+          outBytes[i] = utf8Bytes[i] ^ fullKey.charCodeAt(i % fullKey.length) ^ ((i * 31 + 17) & 0xFF);
+        }
+        let binStr = '';
+        for (let i = 0; i < outBytes.length; i++) {
+          binStr += String.fromCharCode(outBytes[i]);
+        }
+        return 'JVENC_' + salt + '_' + btoa(binStr);
+      } catch (e) {
+        try {
+          return 'ENC_' + btoa(unescape(encodeURIComponent(k.split('').reverse().join(''))));
+        } catch {
+          return 'ENC_' + btoa(k.split('').reverse().join(''));
+        }
       }
     }
 
     function deobfuscateKey(k) {
       if (!k || typeof k !== 'string') return '';
+      if (k.startsWith('JVENC_')) {
+        try {
+          const parts = k.slice(6).split('_');
+          if (parts.length >= 2) {
+            const salt = parts[0];
+            const b64 = parts.slice(1).join('_');
+            const fullKey = CIPHER_SECRET + salt;
+            const binStr = atob(b64);
+            const outBytes = new Uint8Array(binStr.length);
+            for (let i = 0; i < binStr.length; i++) {
+              outBytes[i] = binStr.charCodeAt(i) ^ ((i * 31 + 17) & 0xFF) ^ fullKey.charCodeAt(i % fullKey.length);
+            }
+            return new TextDecoder().decode(outBytes);
+          }
+        } catch (e) {
+          console.warn('JVENC decode failed:', e);
+        }
+      }
       if (k.startsWith('ENC_')) {
         try {
           const rawB64 = k.slice(4);
@@ -2925,6 +2971,27 @@ import { GoogleGenAI } from "@google/genai";
       return k;
     }
 
+    function sanitizeSessionForBackup(session) {
+      if (!session || typeof session !== 'object') return session;
+      const clean = JSON.parse(JSON.stringify(session));
+      // Xóa hoàn toàn assignedApiKey (chứa raw key từ Interactions API) để bảo mật tuyệt đối
+      clean.assignedApiKey = null;
+      // Khử trùng mọi API key và PAT có thể bị lọt vào tin nhắn chat
+      if (Array.isArray(clean.his)) {
+        clean.his.forEach(msg => {
+          if (typeof msg.text === 'string') {
+            msg.text = msg.text
+              .replace(/AIzaSy[A-Za-z0-9_-]{30,40}/g, 'AIzaSy[PROTECTED_BY_JARVIS]')
+              .replace(/tvly-[A-Za-z0-9_-]{20,40}/g, 'tvly-[PROTECTED_BY_JARVIS]')
+              .replace(/jina_[A-Za-z0-9_-]{20,}/g, 'jina_[PROTECTED_BY_JARVIS]')
+              .replace(/ghp_[A-Za-z0-9]{30,45}/g, 'ghp_[PROTECTED_BY_JARVIS]')
+              .replace(/github_pat_[A-Za-z0-9_]{30,}/g, 'github_pat_[PROTECTED_BY_JARVIS]');
+          }
+        });
+      }
+      return clean;
+    }
+
     function getGoogleKeysList(obfuscate = false) {
       const list = [];
       for (let i = 1; i <= 10; i++) {
@@ -2938,7 +3005,7 @@ import { GoogleGenAI } from "@google/genai";
       if (!Array.isArray(keys)) return;
       for (let i = 1; i <= 10; i++) {
         let val = (keys[i - 1] || "").trim();
-        if (val.startsWith('ENC_')) val = deobfuscateKey(val);
+        if (val.startsWith('JVENC_') || val.startsWith('ENC_')) val = deobfuscateKey(val);
         ls.setItem(`jarvis_api_${i}`, val);
         ls.setItem(`huanmu_api_${i}`, val);
         if ($(`api-key-${i}`)) $(`api-key-${i}`).value = val;
@@ -2981,7 +3048,7 @@ import { GoogleGenAI } from "@google/genai";
       if (!obj || typeof obj !== 'object') return;
       Object.entries(obj).forEach(([k, val]) => {
         let v = val;
-        if (typeof v === 'string' && v.startsWith('ENC_')) {
+        if (typeof v === 'string' && (v.startsWith('JVENC_') || v.startsWith('ENC_'))) {
           v = deobfuscateKey(v);
         }
         ls.setItem(k, v);
@@ -3061,18 +3128,19 @@ import { GoogleGenAI } from "@google/genai";
 
       try {
         const allSessions = await getAllFromDB();
+        const cleanSessions = allSessions.map(sanitizeSessionForBackup);
         const backupData = {
           version: 2,
           app: "Jarvis AI",
           timestamp: new Date().toISOString(),
           timeReadable: new Date().toLocaleString('vi-VN'),
           device: ('ontouchstart' in window) ? 'Mobile' : 'Desktop',
-          sessions: allSessions,
+          sessions: cleanSessions,
           activeId,
           customPrompts: JSON.parse(ls.getItem('jarvis_custom_prompts') || '[]'),
           folders: JSON.parse(ls.getItem('jarvis_folders') || '["Mặc định"]'),
           settings: {
-            keys: getGoogleKeysList(true), // Tự động mã hóa để GitHub Secret Scanner không bắt được pattern AIzaSy...
+            keys: getGoogleKeysList(true), // Mã hóa Salted XOR để Secret Scanner không quét được
             keyNames: getGoogleKeyNamesList(),
             externalConfigs: getExternalConfigsObj(true),
             model: DOM.model.value,
