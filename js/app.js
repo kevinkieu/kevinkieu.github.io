@@ -244,19 +244,22 @@ import { GoogleGenAI } from "@google/genai";
 
     // --- STREAM RENDERER WITH REQUEST ANIMATION FRAME ---
     function createStreamRenderer(targetEl) {
-      let pending = false, latest = "";
+      let pending = false, latest = "", rafId = null;
       return {
         push: text => {
           latest = text;
           if (!pending) {
             pending = true;
-            requestAnimationFrame(() => {
-              targetEl.innerHTML = marked.parse(latest);
+            rafId = requestAnimationFrame(() => {
+              try {
+                targetEl.innerHTML = marked.parse(latest);
+              } catch (_) {}
               pending = false;
             });
           }
         },
         flush: async finalText => {
+          if (rafId) cancelAnimationFrame(rafId);
           pending = false;
           await renderMsgContent(targetEl, finalText);
         }
@@ -980,17 +983,38 @@ import { GoogleGenAI } from "@google/genai";
 
     // --- AUTO-NAME SESSION ---
     async function tryAutoNameSession(sessionObj, userText, botText) {
-      if (!sessionObj || sessionObj.name.length > 25 || !sessionObj.name.startsWith('Hội thoại')) return;
-      const k = getSessionApiKey(sessionObj);
+      if (!sessionObj) return;
+      const normName = (sessionObj.name || '').normalize('NFC').trim();
+      const isDefault = !normName || /^(hội thoại|phiên|cuộc trò chuyện|new session)/i.test(normName);
+      if (!isDefault || sessionObj.isCustomNamed) return;
+
+      const k = getSessionApiKey(sessionObj) || (apiKeys.length ? apiKeys[0] : '');
       if (!k) return;
       try {
         const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
           model: FLASH_LITE_MODEL,
-          contents: `Hãy tóm tắt chủ đề chính của câu hỏi sau thành một tiêu đề ngắn gọn súc tích từ 3 đến 6 từ bằng tiếng Việt (không dùng dấu ngoặc kép, không thêm lời giải thích):\nNgười dùng: "${userText.slice(0, 160)}"\nAI: "${botText.slice(0, 160)}"`
+          contents: `Hãy tóm tắt chủ đề chính của câu hỏi sau thành một tiêu đề ngắn gọn súc tích từ 3 đến 6 từ bằng tiếng Việt (không dùng dấu ngoặc kép, không thêm lời giải thích):\nNgười dùng: "${userText.slice(0, 160)}"\nAI: "${botText.slice(0, 160)}"`,
+          config: {
+            safetySettings: SAFETY,
+            maxOutputTokens: 60,
+            temperature: 0.5,
+            thinkingConfig: { thinkingLevel: 'minimal' }
+          }
         });
-        const title = res.text?.trim()?.replace(/["“«»”]/g, '');
+        let title = '';
+        try { title = res.text || ''; } catch (_) {}
+        if (!title && res.candidates?.[0]?.content?.parts) {
+          title = res.candidates[0].content.parts
+            .filter(p => !p.thought && typeof p.text === 'string')
+            .map(p => p.text)
+            .join(' ')
+            .trim();
+        }
+        title = title.replace(/["“«»”*\n#:]/g, '').trim();
+        if (title.length > 40) title = title.slice(0, 40) + '...';
         if (title && title.length >= 3) {
           sessionObj.name = title;
+          sessionObj.isAutoNamed = true;
           await saveToDB(sessionObj);
           renderSel();
           renderTabs();
@@ -1938,11 +1962,19 @@ import { GoogleGenAI } from "@google/genai";
       const n = prompt("Nhập tên mới cho phiên:", s.name);
       if (n && n.trim()) {
         s.name = n.trim();
+        s.isCustomNamed = true;
         await saveToDB(s);
         renderSel();
         renderTabs();
         showToast("✏️ Đã đổi tên phiên!");
       }
+    };
+
+    window.continueMsg = () => {
+      if (isProcessing) return;
+      DOM.input.value = "Hãy tiếp tục viết tiếp phần nội dung còn dang dở ở trên, không lặp lại các đoạn đã viết.";
+      DOM.input.dispatchEvent(new Event('input'));
+      DOM.sendBtn.click();
     };
 
     $('btn-move-session').onclick = async () => {
@@ -2493,6 +2525,8 @@ import { GoogleGenAI } from "@google/genai";
           fP = (txtContent ? (msg ? msg + "\n\n" + txtContent : txtContent) : msg).trim() || "Hãy phân tích nội dung này.",
           bD;
       let recordedIxId = null;
+      let streamFinishReason = null;
+      let pS = false, lastErr = null;
       const startTime = performance.now();
 
       const saveTurn = async (suffix = '') => {
@@ -2515,7 +2549,11 @@ import { GoogleGenAI } from "@google/genai";
           bD.querySelector('.message-header').innerHTML = `<span>✨ Jarvis AI</span><span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}</span>${ixBadge}`;
           const currentBotIdx = chatHistory.length - 1, aDiv = document.createElement('div');
           aDiv.className = 'msg-actions';
+          const continueBtn = (streamFinishReason === 'MAX_TOKENS' || (lastErr && pS)) 
+            ? `<button class="action-btn" style="color:var(--primary);font-weight:600;" onclick="continueMsg()" title="Yêu cầu AI viết tiếp phần còn lại">▶️ Viết tiếp</button>` 
+            : '';
           aDiv.innerHTML = `
+            ${continueBtn}
             <button class="action-btn" onclick="copy(this)">📋 Copy</button>
             <button class="action-btn" onclick="togglePinMsg(${currentBotIdx})" title="Ghim tin nhắn">📌 Ghim</button>
             <button class="action-btn" onclick="forkSessionAt(${currentBotIdx})">🌿 Rẽ nhánh</button>
@@ -2530,9 +2568,13 @@ import { GoogleGenAI } from "@google/genai";
           setTimeout(() => generateFollowUpSuggestions(fP, finalResp, bD), 500);
         }
 
-        // AUTO-NAME SESSION TRÊN LƯỢT CHAT ĐẦU TIÊN
-        if (chatHistory.length === 2 && cs) {
-          tryAutoNameSession(cs, fP, finalResp);
+        // AUTO-NAME SESSION NẾU PHIÊN CHƯA ĐẶT TÊN
+        if (cs && chatHistory.length >= 2) {
+          const normName = (cs.name || '').normalize('NFC').trim();
+          const isDefaultSessName = !normName || /^(hội thoại|phiên|cuộc trò chuyện|new session)/i.test(normName);
+          if (isDefaultSessName && !cs.isCustomNamed) {
+            setTimeout(() => tryAutoNameSession(cs, fP, finalResp), 200);
+          }
         }
 
         // AUTO-SUMMARY BỘ NHỚ DÀI HẠN
@@ -2681,7 +2723,6 @@ import { GoogleGenAI } from "@google/genai";
         });
 
         const thk = DOM.thinking.value;
-        let pS = false, lastErr = null;
 
         // ENGINE 1: INTERACTIONS API
         if (currentEngine === 'interactions') {
@@ -2826,6 +2867,12 @@ import { GoogleGenAI } from "@google/genai";
               await renderer.flush(finalResp);
             } catch (streamErr) {
               lastErr = streamErr;
+              if (pS) {
+                console.warn("Interactions stream lỗi giữa chừng:", streamErr);
+                finalResp += `\n\n*(⚠️ Quá trình tạo chữ bị ngắt giữa chừng do lỗi stream: ${streamErr.message || 'Mất kết nối'})`;
+                await renderer.flush(finalResp);
+                showToast("Đường truyền stream bị ngắt giữa chừng!", "warning");
+              }
             }
           }
 
@@ -2876,6 +2923,7 @@ import { GoogleGenAI } from "@google/genai";
             temperature: +DOM.temp.value,
             topP: +DOM.topP.value,
             topK: +DOM.topK.value,
+            maxOutputTokens: 8192,
             ...(thk && thk !== 'none' ? { thinkingConfig: { thinkingLevel: thk } } : {})
           };
 
@@ -2888,18 +2936,51 @@ import { GoogleGenAI } from "@google/genai";
             });
 
             for await (const ck of resStream) {
-              if (ck.text) {
+              const reason = ck.candidates?.[0]?.finishReason;
+              if (reason && reason !== 'STOP') streamFinishReason = reason;
+
+              let chunkText = "";
+              try {
+                chunkText = ck.text || "";
+              } catch (_) {}
+
+              if (!chunkText && ck.candidates?.[0]?.content?.parts) {
+                chunkText = ck.candidates[0].content.parts
+                  .filter(p => !p.thought && typeof p.text === 'string')
+                  .map(p => p.text)
+                  .join('');
+              }
+
+              if (chunkText) {
                 bD.querySelector('.typing-bubble')?.remove();
-                finalResp += ck.text;
+                finalResp += chunkText;
                 renderer.push(finalResp);
                 if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
                 pS = true;
               }
             }
+
+            if (streamFinishReason === 'MAX_TOKENS') {
+              finalResp += '\n\n*(⚠️ Đã đạt giới hạn độ dài phản hồi của mô hình - Max Tokens)*';
+              showToast("Phản hồi đạt giới hạn độ dài tối đa!", "warning");
+            } else if (streamFinishReason === 'SAFETY') {
+              finalResp += '\n\n*(⚠️ Nội dung tiếp theo bị ngắt bởi bộ lọc an toàn của Google - Safety)*';
+              showToast("Nội dung bị dừng bởi bộ lọc an toàn của Google!", "warning");
+            } else if (streamFinishReason === 'RECITATION') {
+              finalResp += '\n\n*(⚠️ Nội dung tiếp theo bị ngắt do phát hiện trùng lặp bản quyền - Recitation)*';
+              showToast("Nội dung bị dừng do phát hiện trùng lặp bản quyền!", "warning");
+            }
+
             await renderer.flush(finalResp);
           } catch (e) {
             if (e.name === 'AbortError' || abortController.signal.aborted) throw e;
             lastErr = e;
+            if (pS) {
+              console.warn("Lỗi stream giữa chừng:", e);
+              finalResp += `\n\n*(⚠️ Quá trình tạo chữ bị ngắt giữa chừng: ${e.message || 'Mất kết nối stream'})`;
+              await renderer.flush(finalResp);
+              showToast("Đường truyền stream bị ngắt giữa chừng!", "warning");
+            }
           }
         }
 
