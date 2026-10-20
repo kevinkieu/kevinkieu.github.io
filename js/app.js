@@ -2920,68 +2920,114 @@ import { GoogleGenAI } from "@google/genai";
           const config = {
             systemInstruction: getDynamicSI(),
             safetySettings: SAFETY,
-            temperature: +DOM.temp.value,
-            topP: +DOM.topP.value,
-            topK: +DOM.topK.value,
-            maxOutputTokens: 8192,
-            ...(thk && thk !== 'none' ? { thinkingConfig: { thinkingLevel: thk } } : {})
+            maxOutputTokens: 8192
           };
+          if (thk && thk !== 'none') {
+            config.thinkingConfig = { thinkingLevel: thk };
+          } else {
+            config.temperature = +DOM.temp.value;
+            config.topP = +DOM.topP.value;
+            config.topK = +DOM.topK.value;
+          }
 
-          try {
-            const resStream = await new GoogleGenAI({ apiKey: gKey }).models.generateContentStream({
-              model: am,
-              contents,
-              config,
-              abortSignal: abortController.signal
-            });
+          let streamAttempts = 0;
+          const maxStreamAttempts = 2;
 
-            for await (const ck of resStream) {
-              const reason = ck.candidates?.[0]?.finishReason;
-              if (reason && reason !== 'STOP') streamFinishReason = reason;
+          while (streamAttempts < maxStreamAttempts) {
+            streamAttempts++;
+            try {
+              const resStream = await new GoogleGenAI({ apiKey: gKey }).models.generateContentStream({
+                model: am,
+                contents,
+                config,
+                abortSignal: abortController.signal
+              });
 
-              let chunkText = "";
-              try {
-                chunkText = ck.text || "";
-              } catch (_) {}
+              for await (const ck of resStream) {
+                const reason = ck.candidates?.[0]?.finishReason;
+                if (reason && reason !== 'STOP') streamFinishReason = reason;
 
-              if (!chunkText && ck.candidates?.[0]?.content?.parts) {
-                chunkText = ck.candidates[0].content.parts
-                  .filter(p => !p.thought && typeof p.text === 'string')
-                  .map(p => p.text)
-                  .join('');
+                let chunkText = "";
+                try {
+                  chunkText = ck.text || "";
+                } catch (_) {}
+
+                if (!chunkText && ck.candidates?.[0]?.content?.parts) {
+                  chunkText = ck.candidates[0].content.parts
+                    .filter(p => !p.thought && typeof p.text === 'string')
+                    .map(p => p.text)
+                    .join('');
+                }
+
+                if (chunkText) {
+                  bD.querySelector('.typing-bubble')?.remove();
+                  finalResp += chunkText;
+                  renderer.push(finalResp);
+                  if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
+                  pS = true;
+                }
               }
 
-              if (chunkText) {
-                bD.querySelector('.typing-bubble')?.remove();
-                finalResp += chunkText;
-                renderer.push(finalResp);
-                if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
-                pS = true;
+              lastErr = null;
+              break;
+            } catch (e) {
+              if (e.name === 'AbortError' || abortController.signal.aborted) throw e;
+              lastErr = e;
+
+              const isStreamCutoff = e.message && (
+                e.message.includes('Incomplete JSON') ||
+                e.message.includes('network') ||
+                e.message.includes('fetch') ||
+                e.message.includes('Failed to fetch') ||
+                e.message.includes('429') ||
+                e.message.includes('quota')
+              );
+
+              if (pS && isStreamCutoff && streamAttempts < maxStreamAttempts && !abortController.signal.aborted) {
+                console.warn(`Stream bị ngắt giữa chừng (${e.message}), tự động xoay key và nối tiếp luồng...`);
+                showToast("⚡ Đang tự động kết nối lại để viết tiếp...", "info");
+
+                if (apiKeys.length > 1) {
+                  gKey = getSessionApiKey(cs, true);
+                }
+
+                const lastTail = finalResp.trim().slice(-150);
+                contents.length = 0;
+                if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
+                  chatHistory.slice(-6).forEach(m => contents.push({
+                    role: m.role === 'model' ? 'model' : 'user',
+                    parts: [{ text: m.text }]
+                  }));
+                }
+                contents.push({
+                  role: 'user',
+                  parts: [{ text: `Câu hỏi ban đầu: "${fP}"\n\nBạn đang trả lời dở đến đoạn sau:\n"...${lastTail}"\n\nHãy tiếp tục viết phần còn lại ngay từ điểm dừng trên, không lặp lại đoạn đã viết để hoàn tất câu trả lời.` }]
+                });
+
+                continue;
+              } else {
+                if (pS) {
+                  console.warn("Lỗi stream giữa chừng:", e);
+                  finalResp += `\n\n*(⚠️ Quá trình tạo chữ bị ngắt giữa chừng: ${e.message || 'Mất kết nối stream'})*`;
+                  showToast("Đường truyền stream bị ngắt giữa chừng!", "warning");
+                }
+                break;
               }
-            }
-
-            if (streamFinishReason === 'MAX_TOKENS') {
-              finalResp += '\n\n*(⚠️ Đã đạt giới hạn độ dài phản hồi của mô hình - Max Tokens)*';
-              showToast("Phản hồi đạt giới hạn độ dài tối đa!", "warning");
-            } else if (streamFinishReason === 'SAFETY') {
-              finalResp += '\n\n*(⚠️ Nội dung tiếp theo bị ngắt bởi bộ lọc an toàn của Google - Safety)*';
-              showToast("Nội dung bị dừng bởi bộ lọc an toàn của Google!", "warning");
-            } else if (streamFinishReason === 'RECITATION') {
-              finalResp += '\n\n*(⚠️ Nội dung tiếp theo bị ngắt do phát hiện trùng lặp bản quyền - Recitation)*';
-              showToast("Nội dung bị dừng do phát hiện trùng lặp bản quyền!", "warning");
-            }
-
-            await renderer.flush(finalResp);
-          } catch (e) {
-            if (e.name === 'AbortError' || abortController.signal.aborted) throw e;
-            lastErr = e;
-            if (pS) {
-              console.warn("Lỗi stream giữa chừng:", e);
-              finalResp += `\n\n*(⚠️ Quá trình tạo chữ bị ngắt giữa chừng: ${e.message || 'Mất kết nối stream'})`;
-              await renderer.flush(finalResp);
-              showToast("Đường truyền stream bị ngắt giữa chừng!", "warning");
             }
           }
+
+          if (streamFinishReason === 'MAX_TOKENS') {
+            finalResp += '\n\n*(⚠️ Đã đạt giới hạn độ dài phản hồi của mô hình - Max Tokens)*';
+            showToast("Phản hồi đạt giới hạn độ dài tối đa!", "warning");
+          } else if (streamFinishReason === 'SAFETY') {
+            finalResp += '\n\n*(⚠️ Nội dung tiếp theo bị ngắt bởi bộ lọc an toàn của Google - Safety)*';
+            showToast("Nội dung bị dừng bởi bộ lọc an toàn của Google!", "warning");
+          } else if (streamFinishReason === 'RECITATION') {
+            finalResp += '\n\n*(⚠️ Nội dung tiếp theo bị ngắt do phát hiện trùng lặp bản quyền - Recitation)*';
+            showToast("Nội dung bị dừng do phát hiện trùng lặp bản quyền!", "warning");
+          }
+
+          await renderer.flush(finalResp);
         }
 
         if (!pS) {
