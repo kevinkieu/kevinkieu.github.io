@@ -1886,12 +1886,7 @@ import { GoogleGenAI } from "@google/genai";
         DOM.toggleSearch.checked = s.sch || false;
         DOM.searchEngineBox.style.display = s.sch ? 'block' : 'none';
         DOM.searchEngineSel.value = s.schEngine || 'tavily';
-        if (s.engine === 'interactions') {
-          DOM.toggleMemory.checked = true;
-          s.mem = true;
-        } else {
-          DOM.toggleMemory.checked = s.mem !== false;
-        }
+        DOM.toggleMemory.checked = s.mem !== false;
         updateColorPickerUI();
       }
 
@@ -2058,8 +2053,6 @@ import { GoogleGenAI } from "@google/genai";
         if (DOM.engineSel.value === 'stream') {
           s.assignedApiKey = null;
         } else if (DOM.engineSel.value === 'interactions') {
-          DOM.toggleMemory.checked = true;
-          s.mem = true;
           if (DOM.apiKeySel.value !== 'auto') {
             const idx = parseInt(DOM.apiKeySel.value, 10) + 1;
             let mk = (ls.getItem(`jarvis_api_${idx}`) || ls.getItem(`huanmu_api_${idx}`) || ls.getItem(`javiss_api_${idx}`) || "").trim();
@@ -2658,21 +2651,23 @@ import { GoogleGenAI } from "@google/genai";
           }
 
           // QUẢN LÝ TIẾP NỐI MẠCH HỘI THOẠI (STATEFUL INTERACTIONS)
-          if (cs?.lastInteractionId) {
-            interactionParams.previous_interaction_id = cs.lastInteractionId;
-          } else if (chatHistory.length > 0) {
-            // Khi phiên đã có tin nhắn nhưng chưa có interactionId trên server Google
-            // (ví dụ tin trước chạy bằng Stream, hoặc khôi phục từ Cloud/sao lưu):
-            // Tiếp tế bối cảnh các lượt gần nhất vào prompt để AI nắm trọn vẹn mạch chuyện
-            const histSummary = chatHistory.slice(-10).map(m => `${m.role === 'model' ? 'AI' : 'Người dùng'}: ${m.text}`).join('\n\n');
-            const seededPrompt = `[BỐI CẢNH CÁC LƯỢT TRÒ CHUYỆN TRƯỚC ĐÓ]:\n${histSummary}\n\n[CÂU HỎI TIẾP THEO CỦA NGƯỜI DÙNG]:\n${fnP}`;
-            if (imgs.length) {
-              interactionParams.input = [
-                { type: 'text', text: seededPrompt },
-                ...base64Files.map(({ mimeType, data }) => ({ type: 'image', data, mime_type: mimeType }))
-              ];
-            } else {
-              interactionParams.input = seededPrompt;
+          const isMemoryEnabled = DOM.toggleMemory?.checked !== false;
+          if (isMemoryEnabled) {
+            if (cs?.lastInteractionId) {
+              // Dùng 100% Google Server State (chỉ gửi previous_interaction_id, input chỉ có câu hỏi hiện tại)
+              interactionParams.previous_interaction_id = cs.lastInteractionId;
+            } else if (chatHistory.length > 0) {
+              // Tiếp tế bối cảnh 1 lần duy nhất cho lượt khởi động nếu chưa có ID trên server Google
+              const histSummary = chatHistory.slice(-10).map(m => `${m.role === 'model' ? 'AI' : 'Người dùng'}: ${m.text}`).join('\n\n');
+              const seededPrompt = `[BỐI CẢNH CÁC LƯỢT TRÒ CHUYỆN TRƯỚC ĐÓ]:\n${histSummary}\n\n[CÂU HỎI TIẾP THEO CỦA NGƯỜI DÙNG]:\n${fnP}`;
+              if (imgs.length) {
+                interactionParams.input = [
+                  { type: 'text', text: seededPrompt },
+                  ...base64Files.map(({ mimeType, data }) => ({ type: 'image', data, mime_type: mimeType }))
+                ];
+              } else {
+                interactionParams.input = seededPrompt;
+              }
             }
           }
 
