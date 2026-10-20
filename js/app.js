@@ -2052,6 +2052,11 @@ import { GoogleGenAI } from "@google/genai";
         });
         if (DOM.engineSel.value === 'stream') {
           s.assignedApiKey = null;
+        } else if (DOM.apiKeySel.value !== 'auto') {
+          const idx = parseInt(DOM.apiKeySel.value, 10) + 1;
+          let mk = (ls.getItem(`jarvis_api_${idx}`) || ls.getItem(`huanmu_api_${idx}`) || ls.getItem(`javiss_api_${idx}`) || "").trim();
+          if (mk.startsWith('JVENC_') || mk.startsWith('ENC_')) mk = deobfuscateKey(mk);
+          if (mk) s.assignedApiKey = mk;
         }
         await saveToDB(s);
         renderSel();
@@ -2375,20 +2380,33 @@ import { GoogleGenAI } from "@google/genai";
       let gKey = "";
       let keyIndexNum = 1;
 
-      if (currentEngine === 'interactions') {
-        if (!cs.assignedApiKey || !apiKeys.includes(cs.assignedApiKey)) {
+      const manualSel = DOM.apiKeySel?.value || cs?.keySel || 'auto';
+      if (manualSel !== 'auto') {
+        const idx = parseInt(manualSel, 10) + 1;
+        let manualKey = (ls.getItem(`jarvis_api_${idx}`) || ls.getItem(`huanmu_api_${idx}`) || ls.getItem(`javiss_api_${idx}`) || "").trim();
+        if (manualKey.startsWith('JVENC_') || manualKey.startsWith('ENC_')) manualKey = deobfuscateKey(manualKey);
+        gKey = manualKey;
+        keyIndexNum = idx;
+        if (cs && currentEngine === 'interactions') {
+          cs.assignedApiKey = gKey;
+          await saveToDB(cs);
+          renderSel();
+        }
+      } else if (currentEngine === 'interactions') {
+        if (!cs?.assignedApiKey || !apiKeys.includes(cs.assignedApiKey)) {
           gKey = getSessionApiKey(cs, true);
           if (cs) {
             cs.assignedApiKey = gKey;
             await saveToDB(cs);
+            renderSel();
           }
         } else {
           gKey = cs.assignedApiKey;
         }
-        keyIndexNum = apiKeys.indexOf(gKey) + 1;
+        keyIndexNum = Math.max(1, apiKeys.indexOf(gKey) + 1);
       } else {
         gKey = getSessionApiKey(cs, true);
-        keyIndexNum = apiKeys.indexOf(gKey) + 1;
+        keyIndexNum = Math.max(1, apiKeys.indexOf(gKey) + 1);
       }
 
       if (!gKey) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
@@ -2630,8 +2648,7 @@ import { GoogleGenAI } from "@google/genai";
           while (retryCount <= maxRetries) {
             try {
               const ai = new GoogleGenAI({
-                apiKey: currentTryKey,
-                httpOptions: { apiVersion: 'v1alpha' }
+                apiKey: currentTryKey
               });
 
               try {
@@ -2714,10 +2731,33 @@ import { GoogleGenAI } from "@google/genai";
             }
           }
 
+          // Dự phòng 1: Nếu streaming không nhận được ký tự nào, thử gọi unary (stream: false)
+          if (!pS && !abortController.signal.aborted) {
+            try {
+              const aiUnary = new GoogleGenAI({ apiKey: currentTryKey });
+              const unaryParams = { ...interactionParams, stream: false };
+              const ixResult = await aiUnary.interactions.create(unaryParams);
+              const foundId = ixResult?.id || ixResult?.interaction?.id;
+              if (foundId) recordedIxId = foundId;
+              const unaryText = ixResult?.output_text || ixResult?.outputs?.find(o => o.type === 'text')?.text || "";
+              if (unaryText) {
+                bD.querySelector('.typing-bubble')?.remove();
+                finalResp = unaryText;
+                renderer.push(finalResp);
+                await renderer.flush(finalResp);
+                if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
+                pS = true;
+              }
+            } catch (uErr) {
+              lastErr = uErr;
+            }
+          }
+
           // Tự động dự phòng chuyển sang Stream Engine nếu Interactions API không phản hồi
           if (!pS) {
-            console.warn("Interactions API gặp sự cố, tự động dùng Stream Engine dự phòng:", lastErr);
-            showToast("Interactions API gặp sự cố, tự động dùng Stream Engine dự phòng.", "warning");
+            const errDetail = lastErr?.message ? ` (${lastErr.message})` : '';
+            console.warn("Interactions API gặp sự cố" + errDetail + ", tự động dùng Stream Engine dự phòng:", lastErr);
+            showToast("Interactions API gặp sự cố" + errDetail + ", tự động dùng Stream Engine dự phòng.", "warning");
           }
         }
 

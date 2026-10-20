@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v19 - Interactions Engine Fix & High Resilience)
-const CACHE_NAME = 'jarvis-ai-pwa-v19';
+// Jarvis AI Service Worker for PWA (v20 - Interactions API Production Endpoint & Key Binding Fix)
+const CACHE_NAME = 'jarvis-ai-pwa-v20';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
