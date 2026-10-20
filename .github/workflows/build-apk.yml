@@ -33,6 +33,12 @@ jobs:
         gradle wrapper --gradle-version 8.2
         chmod +x gradlew
 
+    - name: 🏷️ Đồng bộ Version Code & Version Name với GitHub Release
+      run: |
+        sed -i 's/versionCode [0-9]*/versionCode ${{ github.run_number }}/g' android/app/build.gradle
+        sed -i 's/versionName "[^"]*"/versionName "1.1.${{ github.run_number }}"/g' android/app/build.gradle
+        cat android/app/build.gradle | grep -E "versionCode|versionName"
+
     - name: 🚀 Biên dịch file Android APK
       run: |
         cd android
