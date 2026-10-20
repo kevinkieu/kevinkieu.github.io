@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v23 - First Position Attach Chip & TTS Studio Fix)
-const CACHE_NAME = 'jarvis-ai-pwa-v27';
+// Jarvis AI Service Worker for PWA (v28 - Auto-name session & Stream generation fix)
+const CACHE_NAME = 'jarvis-ai-pwa-v28';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
