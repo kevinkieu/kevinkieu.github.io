@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v15 - direct download, Southern TTS default, audio micro-fade)
-const CACHE_NAME = 'jarvis-ai-pwa-v15';
+// Jarvis AI Service Worker for PWA (v16 - continuous audio playback fix & robust audio pipeline)
+const CACHE_NAME = 'jarvis-ai-pwa-v16';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',

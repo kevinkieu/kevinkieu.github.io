@@ -6996,7 +6996,7 @@
       const flushBuf = mp3encoder.flush();
       if (flushBuf.length > 0) mp3Data.push(flushBuf);
 
-      return new Blob(mp3Data, { type: 'audio/mp3' });
+      return new Blob(mp3Data, { type: 'audio/mpeg' });
     }
 
     async function requestGeminiAudioWithFailover(payload, model, keyList, preferredIdx = 0) {
@@ -7102,7 +7102,17 @@
       updateTTSMetrics();
     }
 
-    // Canvas Visualizer
+    // Web Audio Context & Visualizer
+    function resumeTTSAudioContext() {
+      if (ttsAudioCtx && ttsAudioCtx.state === 'suspended') {
+        try {
+          ttsAudioCtx.resume();
+        } catch (e) {
+          console.warn("ttsAudioCtx.resume error:", e);
+        }
+      }
+    }
+
     function initTTSVisualizer(audioEl) {
       const canvas = $('tts-visualizer-canvas');
       if (!canvas || !audioEl) return;
@@ -7124,9 +7134,15 @@
         }
       }
 
+      resumeTTSAudioContext();
+
       function draw() {
         ttsAnimId = requestAnimationFrame(draw);
-        if (!ttsAnalyser) return;
+        if (!ttsAnalyser || !audioEl) return;
+        if (audioEl.paused || audioEl.ended) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          return;
+        }
         const bufferLength = ttsAnalyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         ttsAnalyser.getByteFrequencyData(dataArray);
@@ -7149,6 +7165,54 @@
       }
 
       if (!ttsAnimId) draw();
+    }
+
+    async function loadAndPlayTTSAudio(blob, forcePlay = true) {
+      const audioEl = $('tts-audio-element');
+      const playerDeck = $('tts-player-deck');
+      if (!audioEl) return;
+      if (playerDeck) playerDeck.style.display = 'flex';
+
+      // 1. Tạm dừng âm thanh cũ và reset trạng thái decoder
+      try {
+        audioEl.pause();
+      } catch (_) {}
+
+      // 2. Lưu URL cũ để thu hồi trễ an toàn sau 5s, không revoke ngay lập tức tránh làm gãy pipeline
+      const oldUrl = ttsMasterAudioUrl;
+
+      // 3. Khởi tạo Blob URL mới và gán vào thẻ Audio
+      ttsMasterAudioUrl = URL.createObjectURL(blob);
+      audioEl.src = ttsMasterAudioUrl;
+      audioEl.currentTime = 0;
+      audioEl.dataset.retriedWav = '';
+
+      // 4. Bắt buộc gọi .load() để trình duyệt khởi tạo lại Media Pipeline và nạp blob mới
+      audioEl.load();
+
+      // 5. Kết nối visualizer (nếu chưa kết nối) & đánh thức AudioContext
+      initTTSVisualizer(audioEl);
+      resumeTTSAudioContext();
+
+      // 6. Phát âm thanh
+      if (forcePlay) {
+        try {
+          const p = audioEl.play();
+          if (p !== undefined) {
+            await p;
+          }
+        } catch (playErr) {
+          console.warn("Autoplay deferred or blocked:", playErr);
+          showToast("🎵 Âm thanh đã sẵn sàng! Bấm nút Phát (▶) trên thanh điều khiển để nghe.", "info");
+        }
+      }
+
+      // 7. Thu hồi URL cũ sau 5 giây an toàn (khi trình duyệt đã nạp xong bài mới)
+      if (oldUrl && oldUrl !== ttsMasterAudioUrl) {
+        setTimeout(() => {
+          try { URL.revokeObjectURL(oldUrl); } catch (_) {}
+        }, 5000);
+      }
     }
 
     // IndexedDB for TTS Library
@@ -7242,20 +7306,11 @@
       const item = items.find(x => x.id === id);
       if (!item) return;
 
-      const audioEl = $('tts-audio-element');
-      const playerDeck = $('tts-player-deck');
-      if (!audioEl || !playerDeck) return;
-
-      playerDeck.style.display = 'flex';
       const blob = item.mp3Blob || item.wavBlob;
-      if (ttsMasterAudioUrl) URL.revokeObjectURL(ttsMasterAudioUrl);
-      ttsMasterAudioUrl = URL.createObjectURL(blob);
       ttsMasterMp3Blob = item.mp3Blob;
       ttsMasterWavBlob = item.wavBlob;
 
-      audioEl.src = ttsMasterAudioUrl;
-      audioEl.play().catch(() => {});
-      initTTSVisualizer(audioEl);
+      await loadAndPlayTTSAudio(blob, true);
 
       // On mobile, switch to editor tab so the user immediately sees the player deck & visualizer
       const modal = $('tts-studio-modal');
@@ -7292,6 +7347,13 @@
       const ed = $('tts-editor-input');
       const rawText = ed?.value.trim();
       if (!rawText) return showToast("Vui lòng nhập văn bản cần chuyển thành giọng nói!", "warning");
+
+      // Tạm dừng ngay âm thanh cũ nếu đang phát và đánh thức AudioContext trong cử chỉ click của người dùng
+      const curAudio = $('tts-audio-element');
+      if (curAudio) {
+        try { curAudio.pause(); } catch (_) {}
+      }
+      resumeTTSAudioContext();
 
       // Key selection
       const keyStrategy = $('tts-key-strategy-select')?.value || 'auto';
@@ -7456,21 +7518,14 @@
         progressPercent.innerText = '100%';
         progressStatus.innerText = '🎉 Hoàn tất!';
 
-        // Update Master Player Deck
-        const playerDeck = $('tts-player-deck');
-        const audioEl = $('tts-audio-element');
-        playerDeck.style.display = 'flex';
-
-        if (ttsMasterAudioUrl) URL.revokeObjectURL(ttsMasterAudioUrl);
-        ttsMasterAudioUrl = URL.createObjectURL(mp3Blob);
-        audioEl.src = ttsMasterAudioUrl;
-        audioEl.play().catch(() => {});
-        initTTSVisualizer(audioEl);
-
+        // Update Master Player Deck tags
         const mp3SizeStr = formatFileSize(mp3Blob.size);
         const wavSizeStr = formatFileSize(wavBlob.size);
         if ($('tts-mp3-size-tag')) $('tts-mp3-size-tag').innerText = `(${mp3SizeStr})`;
         if ($('tts-wav-size-tag')) $('tts-wav-size-tag').innerText = `(${wavSizeStr})`;
+
+        // Tải và phát âm thanh mới qua bộ điều khiển an toàn (tự động khôi phục AudioContext & reset decoder)
+        await loadAndPlayTTSAudio(mp3Blob, true);
 
         const voiceLabel = ttsStudioMode === 'single' ? $('tts-voice-select')?.value : `${$('tts-voice-a')?.value} & ${$('tts-voice-b')?.value}`;
         const totalDurationEst = formatDuration(Math.round(mergedPcm.length / (sampleRateCaptured * 2)));
@@ -7508,6 +7563,7 @@
 
     // Modal Control & Init
     function openTTSStudioModal(initialText = '') {
+      resumeTTSAudioContext();
       const modal = $('tts-studio-modal');
       if (!modal) {
         console.error("tts-studio-modal not found!");
@@ -7569,6 +7625,10 @@
       document.body.classList.remove('tts-modal-open');
       const oLay = $('modal-overlay');
       if (oLay) oLay.style.display = 'none';
+      const audioEl = $('tts-audio-element');
+      if (audioEl) {
+        try { audioEl.pause(); } catch (_) {}
+      }
       if (ttsAudioCtx && ttsAudioCtx.state === 'running') {
         ttsAudioCtx.suspend().catch(() => {});
       }
@@ -7656,10 +7716,23 @@
         };
       }
 
-      // Playback speed
-      if ($('tts-playback-speed-select') && $('tts-audio-element')) {
-        $('tts-playback-speed-select').onchange = (e) => {
-          $('tts-audio-element').playbackRate = parseFloat(e.target.value) || 1.0;
+      // Audio element listeners & playback speed
+      const audioEl = $('tts-audio-element');
+      if (audioEl) {
+        if ($('tts-playback-speed-select')) {
+          $('tts-playback-speed-select').onchange = (e) => {
+            audioEl.playbackRate = parseFloat(e.target.value) || 1.0;
+          };
+        }
+        audioEl.addEventListener('play', () => resumeTTSAudioContext());
+        audioEl.addEventListener('playing', () => resumeTTSAudioContext());
+        audioEl.onerror = () => {
+          console.warn("audioEl decoding error:", audioEl.error?.code, audioEl.error?.message);
+          if (ttsMasterWavBlob && !audioEl.dataset.retriedWav) {
+            audioEl.dataset.retriedWav = '1';
+            console.log("Tự động chuyển sang file gốc WAV để giải mã...");
+            loadAndPlayTTSAudio(ttsMasterWavBlob, true);
+          }
         };
       }
 
