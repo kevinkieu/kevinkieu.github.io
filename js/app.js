@@ -401,11 +401,13 @@ import { GoogleGenAI } from "@google/genai";
     }
 
     async function executeLiveSearch(query) {
+      let q = (query || '').trim();
+      const quoted = extractQuotedKeywords(q);
+      if (quoted) q = quoted;
       const now = new Date();
       const dateStr = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
-      let q = (query || '').trim();
-      if (/hôm nay|mới nhất|hiện nay|hiện tại|giá|tin tức|thời tiết|hôm qua|vừa qua|tháng này|năm nay/i.test(q) && !q.includes(String(now.getFullYear()))) {
-        q = `${q} ngày ${dateStr}`;
+      if (/(^|\s)(hôm nay|mới nhất|hôm qua)(\s|$)/i.test(q) && !q.includes(String(now.getFullYear()))) {
+        q = `${q} ${dateStr}`;
       }
       try {
         return await fetchTavilySearch(q);
@@ -2728,17 +2730,15 @@ import { GoogleGenAI } from "@google/genai";
         }
 
         const quoted = extractQuotedKeywords(fnP);
-        const shouldSearch = (quoted || DOM.toggleSearch.checked) && !isDeepResearch;
-        if (shouldSearch) {
+        if (quoted && DOM.toggleSearch.checked && !isDeepResearch) {
           const sel = DOM.searchEngineSel.value,
                 tgt = sel === 'auto' ? (ls.getItem('auto_search_default_engine') || 'tavily') : sel;
 
-          let rawQuery = quoted || fnP.replace(/https?:\/\/[^\s]+/g, '').replace(/\n+/g, ' ').trim().slice(0, 150);
+          let actualSearchQuery = quoted;
           const now = new Date();
           const dateStr = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
-          let actualSearchQuery = rawQuery;
-          if (/hôm nay|mới nhất|hiện nay|hiện tại|giá|tin tức|thời tiết|hôm qua|vừa qua|tháng này|năm nay/i.test(rawQuery) && !rawQuery.includes(String(now.getFullYear()))) {
-            actualSearchQuery = `${rawQuery} ngày ${dateStr}`;
+          if (/(^|\s)(hôm nay|mới nhất|hôm qua)(\s|$)/i.test(quoted) && !quoted.includes(String(now.getFullYear()))) {
+            actualSearchQuery = `${quoted} ${dateStr}`;
           }
 
           let searchBadge = null;
@@ -2747,7 +2747,7 @@ import { GoogleGenAI } from "@google/genai";
             searchBadge = document.createElement('span');
             searchBadge.className = 'search-status-badge';
             searchBadge.style.cssText = 'font-size:0.75rem;padding:2px 8px;border-radius:12px;background:rgba(59,130,246,0.15);color:#3b82f6;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin-left:8px;';
-            searchBadge.innerHTML = `🌐 Đang tìm kiếm (${tgt}): <em>"${escapeHtml(rawQuery.slice(0, 30))}"</em>...`;
+            searchBadge.innerHTML = `🌐 Đang tìm kiếm (${tgt}): <em>"${escapeHtml(quoted)}"</em>...`;
             msgHdr.appendChild(searchBadge);
           }
 
@@ -2775,10 +2775,10 @@ import { GoogleGenAI } from "@google/genai";
             if (searchBadge) {
               searchBadge.style.background = 'rgba(16,185,129,0.15)';
               searchBadge.style.color = '#10b981';
-              searchBadge.innerHTML = `✓ Đã cập nhật dữ liệu Web (${dateStr})`;
+              searchBadge.innerHTML = `✓ Đã cập nhật Web: "${escapeHtml(quoted)}"`;
               setTimeout(() => { if (searchBadge) searchBadge.remove(); }, 5000);
             }
-            fnP = `[DỮ LIỆU TÌM KIẾM WEB THỰC TẾ TRỰC TUYẾN NGÀY ${dateStr} CHO TRUY VẤN "${actualSearchQuery}"]:\n${sText}\n\n[CHỈ THỊ CẬP NHẬT THỜI GIAN THỰC]: Dữ liệu trên được lấy trực tiếp từ Internet vào ngày hôm nay (${dateStr}). BẮT BUỘC sử dụng các số liệu và thông tin mới nhất này để trả lời người dùng, không sử dụng kiến thức cũ đã lỗi thời.\n\n[CÂU HỎI CỦA NGƯỜI DÙNG]: ${fnP}`;
+            fnP = `[DỮ LIỆU TÌM ĐƯỢC TỪ INTERNET CHO TỪ KHÓA "${quoted}"]:\n${sText}\n\n[HÃY TỔNG HỢP THÔNG TIN TÌM ĐƯỢC Ở TRÊN ĐỂ TRẢ LỜI CÂU HỎI SAU]:\n${fnP}`;
           } else if (searchBadge) {
             searchBadge.style.background = 'rgba(239,68,68,0.15)';
             searchBadge.style.color = '#ef4444';
