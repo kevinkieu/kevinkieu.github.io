@@ -235,15 +235,16 @@
 
         let setupMsg;
         if (activeEngineModel === MODEL_35_TRANSLATE) {
-          // Chuẩn proto Gemini 3.5 Live Translate: translationConfig đặt trực tiếp dưới setup
+          // Cấu hình chuẩn của google-genai SDK cho gemini-3.5-live-translate-preview
           setupMsg = {
             setup: {
               model: MODEL_35_TRANSLATE,
               generationConfig: {
-                responseModalities: ["AUDIO"]
-              },
-              translationConfig: {
-                targetLanguageCode: targetLang
+                responseModalities: ["AUDIO"],
+                translationConfig: {
+                  targetLanguageCode: targetLang,
+                  echoTargetLanguage: false
+                }
               }
             }
           };
@@ -334,15 +335,15 @@ Rules:
         lastCloseInfo = { code: e.code, reason: e.reason || '' };
         updateAudioMeters(0);
 
-        // NẾU Gemini 3.5 Translate đóng trước khi setupComplete (Mã 1007, 1008, 1011, 1006 hoặc bất kỳ lỗi nào)
-        if (!wasReady && activeEngineModel === MODEL_35_TRANSLATE && e.code !== 1000) {
+        // NẾU Gemini 3.5 đóng trước khi setupComplete (BẤT KỂ mã lỗi nào: 1000, 1007, 1008, 1011, 1006)
+        if (!wasReady && activeEngineModel === MODEL_35_TRANSLATE) {
           console.log(`[Live Translate] Gemini 3.5 closed (code ${e.code}, reason: ${e.reason}), falling back to Gemini 3.8 Live...`);
-          updateStatusPill(`🔄 Gemini 3.5 (Mã ${e.code}) ➔ Đang tự động chuyển sang Gemini 3.8 Live...`);
+          updateStatusPill(`🔄 Gemini 3.5 ngắt kết nối (Mã ${e.code}) ➔ Tự động chuyển sang Gemini 3.8 Live...`);
           activeEngineModel = MODEL_38_LIVE;
           const modelSel = $('translate-model-select');
           if (modelSel) modelSel.value = MODEL_38_LIVE;
           updateModelBadge(MODEL_38_LIVE);
-          setTimeout(() => connectTranslateWs(targetLang, MODEL_38_LIVE), 300);
+          setTimeout(() => connectTranslateWs(targetLang, MODEL_38_LIVE), 250);
           return;
         }
 
@@ -700,20 +701,19 @@ Rules:
     const modelSelect = $('translate-model-select');
     if (modelSelect) {
       const savedModel = localStorage.getItem('jarvis_translate_model_pref');
-      if (savedModel && ['models/gemini-3.8-live', 'models/gemini-3.5-live-translate-preview', 'auto'].includes(savedModel)) {
+      if (savedModel && ['models/gemini-3.8-live', 'models/gemini-3.5-live-translate-preview'].includes(savedModel)) {
         modelSelect.value = savedModel;
-        activeEngineModel = savedModel === 'auto' ? MODEL_38_LIVE : savedModel;
+        activeEngineModel = savedModel;
+      } else {
+        modelSelect.value = MODEL_38_LIVE;
+        activeEngineModel = MODEL_38_LIVE;
       }
 
       modelSelect.onchange = () => {
         const val = modelSelect.value;
         localStorage.setItem('jarvis_translate_model_pref', val);
+        activeEngineModel = val;
         const targetLang = currentSpeaker === 'user' ? ($('translate-guest-lang-select')?.value || 'en') : 'vi';
-        if (val === 'auto') {
-          activeEngineModel = MODEL_38_LIVE;
-        } else {
-          activeEngineModel = val;
-        }
         connectTranslateWs(targetLang, activeEngineModel);
       };
     }
