@@ -298,21 +298,21 @@
   async function retrieveContextForPrompt(userPrompt, apiKey = null) {
     const ls = window.ls || localStorage;
     const isRagEnabled = ls.getItem('jarvis_rag_enabled') !== 'false';
-    if (!isRagEnabled) return "";
+    if (!isRagEnabled) return { text: "", matches: [] };
 
     const cleanPrompt = (userPrompt || '').trim();
     // Bỏ qua tin nhắn quá ngắn hoặc chào hỏi xã giao (0ms Latency!)
-    if (cleanPrompt.length < 6) return "";
+    if (cleanPrompt.length < 6) return { text: "", matches: [] };
     if (/^(chào|hi|hello|alo|ê|ơi|chào bạn|xin chào|ok|tiếp|tóm tắt|dạ|vâng|cảm ơn|thanks|bye|tạm biệt)\b/i.test(cleanPrompt)) {
-      return "";
+      return { text: "", matches: [] };
     }
 
     try {
       const allItems = await getAllVectorItems();
-      if (!allItems || allItems.length === 0) return ""; // Không có tri thức -> 0ms
+      if (!allItems || allItems.length === 0) return { text: "", matches: [] }; // Không có tri thức -> 0ms
 
-      const matches = await searchSimilarVectors(cleanPrompt, { topK: 3, threshold: 0.60, apiKey });
-      if (!matches.length) return "";
+      const matches = await searchSimilarVectors(cleanPrompt, { topK: 3, threshold: 0.58, apiKey });
+      if (!matches.length) return { text: "", matches: [] };
 
       const formattedSnippets = matches.map((m, idx) => {
         const item = m.item;
@@ -324,11 +324,144 @@
         }
       }).join('\n\n');
 
-      return `\n\n[DỮ LIỆU TRÍ NHỚ VÀ TÀI LIỆU TRÍCH XUẤT TỪ KHO RAG]:\n${formattedSnippets}\n\n[CHỈ THỊ RAG]: Hãy sử dụng dữ liệu trích xuất ở trên khi trả lời người dùng một cách chính xác, đúng ngữ cảnh và tự nhiên nhất. Nếu có thông tin trong tài liệu hoặc ghi nhớ cá nhân trên, hãy ưu tiên áp dụng.`;
+      const text = `\n\n[DỮ LIỆU TRÍ NHỚ VÀ TÀI LIỆU TRÍCH XUẤT TỪ KHO RAG]:\n${formattedSnippets}\n\n[CHỈ THỊ RAG]: Hãy sử dụng dữ liệu trích xuất ở trên khi trả lời người dùng một cách chính xác, đúng ngữ cảnh và tự nhiên nhất. Nếu có thông tin trong tài liệu hoặc ghi nhớ cá nhân trên, hãy ưu tiên áp dụng.`;
+      return { text, matches };
     } catch (e) {
       console.warn("[RAG Context Retrieval] Bỏ qua lỗi tìm kiếm vector:", e);
-      return "";
+      return { text: "", matches: [] };
     }
+  }
+
+  // --- SHOW RETRIEVED RAG DETAILS MODAL ---
+  function showRetrievedDetails(encodedData) {
+    const modal = document.getElementById('rag-details-modal');
+    const list = document.getElementById('rag-details-list');
+    const overlay = document.getElementById('modal-overlay');
+    if (!modal || !list) return;
+
+    let items = [];
+    try {
+      items = JSON.parse(decodeURIComponent(encodedData));
+    } catch (e) {
+      console.warn("Lỗi giải mã RAG details:", e);
+    }
+
+    if (!items.length) return;
+
+    list.innerHTML = items.map((it, idx) => {
+      const pct = Math.round((it.similarity || 0) * 100);
+      const isDoc = it.type === 'doc';
+      const icon = isDoc ? '📄' : '🧠';
+      const typeLabel = isDoc ? 'Tài liệu RAG' : 'Trí nhớ cá nhân';
+      return `
+        <div class="memory-card" style="margin-top:0;">
+          <div class="memory-card-header">
+            <span class="memory-card-title">${icon} #${idx + 1}: ${escapeHtml(it.title)}</span>
+            <span class="similarity-badge ${pct >= 80 ? 'high' : 'medium'}">⭐ ${pct}% khớp ý</span>
+          </div>
+          <div class="memory-card-body" style="background:var(--input-bg);padding:8px 10px;border-radius:var(--radius-sm);margin:6px 0;font-size:0.8rem;line-height:1.5;">
+            ${escapeHtml(it.text)}
+          </div>
+          <div class="memory-card-footer">
+            <span>Nguồn: ${typeLabel}</span>
+            <span>Đã đưa vào Context</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    modal.style.display = 'flex';
+    if (overlay) overlay.style.display = 'block';
+  }
+
+  // --- CHATGPT-STYLE AUTO-LEARN MEMORY ---
+  async function extractAndLearnMemory(userPrompt, apiKey = null) {
+    const ls = window.ls || localStorage;
+    const isAutoLearn = ls.getItem('jarvis_auto_learn_memory') !== 'false';
+    if (!isAutoLearn) return null;
+
+    const txt = (userPrompt || '').trim();
+    if (txt.length < 12) return null;
+
+    // Lọc nhanh: nếu là câu hỏi thuần túy và không chứa đại từ nhân xưng sở hữu thì bỏ qua
+    if (/^(viết|tạo|vẽ|code|dịch|giải thích|phân tích|sửa|tìm kiếm|cho tôi biết|hãy|tại sao|như thế nào|là gì|mấy giờ|thời tiết)\b/i.test(txt)) {
+      if (!/(tôi tên|tên tôi|nhà tôi|tôi ở|tôi sống|tôi thích|sở thích của tôi|tôi làm việc|công ty của tôi|nghề của tôi|tôi bị dị ứng|từ giờ gọi tôi|hãy nhớ rằng tôi|tôi mới|tôi có nuôi|tôi sinh năm)/i.test(txt)) {
+        return null;
+      }
+    }
+
+    const key = apiKey || getActiveApiKey();
+    if (!key || !window.GoogleGenAI) return null;
+
+    try {
+      const ai = new window.GoogleGenAI({ apiKey: key });
+      const prompt = `Bạn là hệ thống tự động nhận diện và ghi nhớ thông tin cá nhân của người dùng (tương tự tính năng Memory của ChatGPT).
+Phân tích câu nói sau đây của người dùng:
+"""${txt}"""
+
+Nhiệm vụ:
+1. Xác định xem người dùng có chia sẻ hoặc yêu cầu ghi nhớ một THÔNG TIN CÁ NHÂN BỀN VỮNG (tên, tuổi, nơi sống, nghề nghiệp, dự án cá nhân, sở thích, người thân/thú cưng, quy tắc phản hồi riêng, thói quen ăn uống/sinh hoạt) hay không.
+2. Nếu chỉ là câu chào hỏi, hỏi đáp kiến thức chung, nhờ viết văn/code/dịch thuật mà KHÔNG chứa thông tin về bản thân người dùng:
+   Trả về JSON: { "learn": false }
+3. Nếu CÓ thông tin cá nhân quan trọng cần ghi nhớ cho các phiên sau:
+   Trả về duy nhất định dạng JSON (không markdown, không bọc \`\`\`json):
+   {
+     "learn": true,
+     "title": "Tiêu đề ngắn 3-5 từ (VD: Nơi sinh sống, Sở thích âm nhạc, Quy tắc trả lời)",
+     "text": "Nội dung ghi nhớ khách quan ở ngôi thứ ba (VD: Người dùng mới chuyển nhà sang Quận 1, TP.HCM)",
+     "category": "personal"
+   }`;
+
+      let res = null;
+      try {
+        res = await ai.models.generateContent({
+          model: 'gemini-3.5-flash-lite',
+          contents: prompt,
+          config: {
+            temperature: 0.2,
+            maxOutputTokens: 250
+          }
+        });
+      } catch (fErr) {
+        res = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: { temperature: 0.2, maxOutputTokens: 250 }
+        });
+      }
+
+      const raw = (res?.text || '').trim();
+      const cleanJson = raw.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+      const parsed = JSON.parse(cleanJson);
+
+      if (parsed && parsed.learn && parsed.text) {
+        // Kiểm tra xem trí nhớ này đã tồn tại chưa để tránh trùng lặp
+        const duplicates = await searchSimilarVectors(parsed.text, { topK: 1, threshold: 0.88, apiKey: key });
+        if (duplicates && duplicates.length > 0) {
+          console.log("[Auto-Memory] Bỏ qua vì đã có trí nhớ tương tự:", duplicates[0].item.title);
+          return null;
+        }
+
+        const newItem = await addMemoryItem({
+          title: parsed.title || 'Thông tin cá nhân',
+          text: parsed.text,
+          category: parsed.category || 'personal'
+        });
+
+        // Hiển thị thông báo Toast đẹp mắt
+        if (typeof window.showToast === 'function') {
+          window.showToast(`🧠 Đã tự động ghi nhớ: "${newItem.title}"`, 'success');
+        }
+
+        // Cập nhật lại danh sách nếu đang mở modal
+        renderMemoryList();
+
+        return newItem;
+      }
+    } catch (e) {
+      console.warn("[Auto-Memory] Bỏ qua lỗi trích xuất ghi nhớ:", e);
+    }
+    return null;
   }
 
   // --- SEMANTIC CHAT SEARCH ENGINE ---
@@ -780,6 +913,17 @@
     if (toggleRagSidebar) {
       toggleRagSidebar.onchange = () => {
         updateRagUI(toggleRagSidebar.checked);
+      };
+    }
+
+    const toggleAutoLearn = document.getElementById('toggle-auto-learn-memory');
+    if (toggleAutoLearn) {
+      toggleAutoLearn.checked = localStorage.getItem('jarvis_auto_learn_memory') !== 'false';
+      toggleAutoLearn.onchange = () => {
+        localStorage.setItem('jarvis_auto_learn_memory', toggleAutoLearn.checked ? 'true' : 'false');
+        if (typeof window.showToast === 'function') {
+          window.showToast(`Tự động ghi nhớ: ${toggleAutoLearn.checked ? 'ĐÃ BẬT' : 'ĐÃ TẮT'}`, toggleAutoLearn.checked ? 'success' : 'info');
+        }
       };
     }
   }
