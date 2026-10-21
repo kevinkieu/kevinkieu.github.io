@@ -3208,7 +3208,11 @@ import { GoogleGenAI } from "@google/genai";
       
       const rawSessions = await getAllFromDB();
       const cleanSessions = rawSessions.map(sanitizeSessionForBackup);
-      const backupObj = { brand: "Jarvis AI", sessions: cleanSessions, configs: cfgs };
+      let localKnowledge = [];
+      if (window.JarvisRAG && typeof window.JarvisRAG.getAllKnowledge === 'function') {
+        try { localKnowledge = await window.JarvisRAG.getAllKnowledge(); } catch (e) {}
+      }
+      const backupObj = { brand: "Jarvis AI", sessions: cleanSessions, configs: cfgs, knowledgeBase: localKnowledge };
       const jsonStr = JSON.stringify(backupObj, null, 2);
       const filename = `JarvisAI_Backup_${Date.now()}.json`;
 
@@ -3234,6 +3238,9 @@ import { GoogleGenAI } from "@google/genai";
           if (d.sessions) {
             await clearAllDB();
             for (const s of d.sessions) await saveToDB(s);
+            if (d.knowledgeBase && Array.isArray(d.knowledgeBase) && window.JarvisRAG && typeof window.JarvisRAG.importKnowledge === 'function') {
+              try { await window.JarvisRAG.importKnowledge(d.knowledgeBase, true); } catch (e) {}
+            }
             if (d.configs) {
               Object.entries(d.configs).forEach(([k, v]) => {
                 let val = v;
@@ -3693,6 +3700,16 @@ import { GoogleGenAI } from "@google/genai";
       try {
         const allSessions = await getAllFromDB();
         const cleanSessions = allSessions.map(sanitizeSessionForBackup);
+
+        let allKnowledge = [];
+        if (window.JarvisRAG && typeof window.JarvisRAG.getAllKnowledge === 'function') {
+          try {
+            allKnowledge = await window.JarvisRAG.getAllKnowledge();
+          } catch (kErr) {
+            console.warn("Lỗi trích xuất Kho tri thức cho Gist sync:", kErr);
+          }
+        }
+
         const backupData = {
           version: 2,
           app: "Jarvis AI",
@@ -3703,6 +3720,7 @@ import { GoogleGenAI } from "@google/genai";
           activeId,
           customPrompts: JSON.parse(ls.getItem('jarvis_custom_prompts') || '[]'),
           folders: JSON.parse(ls.getItem('jarvis_folders') || '["Mặc định"]'),
+          knowledgeBase: allKnowledge,
           settings: {
             keys: getGoogleKeysList(true), // Mã hóa Salted XOR để Secret Scanner không quét được
             keyNames: getGoogleKeyNamesList(),
@@ -3712,7 +3730,9 @@ import { GoogleGenAI } from "@google/genai";
             searchEngine: DOM.searchEngineSel.value,
             globalContext: DOM.globContext.value,
             systemInstruction: DOM.sysInst.value,
-            theme: ls.getItem('jarvis_theme') || 'auto'
+            theme: ls.getItem('jarvis_theme') || 'auto',
+            autoLearnMemory: ls.getItem('jarvis_auto_learn_memory') || 'true',
+            ragEnabled: ls.getItem('jarvis_rag_enabled') || 'true'
           }
         };
 
@@ -3753,7 +3773,8 @@ import { GoogleGenAI } from "@google/genai";
         ls.setItem('jarvis_gist_id', gistId);
         ls.setItem('jarvis_gist_last_sync', timeStr);
 
-        gistStatusText.innerText = `Đã sao lưu (${allSessions.length} phiên)`;
+        const kCount = (allKnowledge && allKnowledge.length) ? `, ${allKnowledge.length} tri thức` : '';
+        gistStatusText.innerText = `Đã sao lưu (${allSessions.length} phiên${kCount})`;
         gistStatusText.style.color = '#10b981';
         gistLastTime.innerText = `Lần cuối: ${timeStr}`;
 
@@ -3878,6 +3899,17 @@ import { GoogleGenAI } from "@google/genai";
             ls.setItem('jarvis_theme', parsed.settings.theme);
             if (typeof applyTheme === 'function') applyTheme(parsed.settings.theme);
           }
+          if (parsed.settings.autoLearnMemory) ls.setItem('jarvis_auto_learn_memory', parsed.settings.autoLearnMemory);
+          if (parsed.settings.ragEnabled) ls.setItem('jarvis_rag_enabled', parsed.settings.ragEnabled);
+        }
+
+        let importedKCount = 0;
+        if (parsed.knowledgeBase && Array.isArray(parsed.knowledgeBase) && window.JarvisRAG && typeof window.JarvisRAG.importKnowledge === 'function') {
+          try {
+            importedKCount = await window.JarvisRAG.importKnowledge(parsed.knowledgeBase, true);
+          } catch (kErr) {
+            console.warn("Lỗi khôi phục Kho Tri Thức từ Gist:", kErr);
+          }
         }
 
         const timeStr = new Date().toLocaleString('vi-VN');
@@ -3893,7 +3925,8 @@ import { GoogleGenAI } from "@google/genai";
           }
         }
 
-        gistStatusText.innerText = `Đã đồng bộ (${sessions.length} phiên)`;
+        const kPullStatus = importedKCount ? `, ${importedKCount} tri thức` : '';
+        gistStatusText.innerText = `Đã đồng bộ (${sessions.length} phiên${kPullStatus})`;
         gistStatusText.style.color = '#10b981';
         gistLastTime.innerText = `Lần cuối: ${timeStr}`;
 
@@ -3901,7 +3934,7 @@ import { GoogleGenAI } from "@google/genai";
         renderSnippets();
         await switchSess(activeId);
 
-        showToast(`Đã đồng bộ thành công ${sessions.length} phiên từ Cloud!`, "success");
+        showToast(`Đã đồng bộ thành công ${sessions.length} phiên${importedKCount ? ' & ' + importedKCount + ' mẩu tri thức' : ''} từ Cloud!`, "success");
       } catch (err) {
         showToast(`Lỗi tải về từ Cloud: ${err.message}`, "danger");
       } finally {

@@ -91,6 +91,46 @@
     });
   }
 
+  async function clearAllVectorDB() {
+    const db = await initVectorDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(VECTOR_STORE_NAME, "readwrite");
+      tx.objectStore(VECTOR_STORE_NAME).clear();
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = (e) => reject(e);
+    });
+  }
+
+  async function importKnowledgeItems(items, clearExisting = false) {
+    if (!Array.isArray(items)) return 0;
+    const db = await initVectorDB();
+    if (clearExisting) {
+      await clearAllVectorDB();
+    }
+    return new Promise((resolve, reject) => {
+      if (!items.length) {
+        renderMemoryList();
+        renderDocsList();
+        return resolve(0);
+      }
+      const tx = db.transaction(VECTOR_STORE_NAME, "readwrite");
+      const store = tx.objectStore(VECTOR_STORE_NAME);
+      let count = 0;
+      items.forEach(it => {
+        if (it && it.id) {
+          store.put(it);
+          count++;
+        }
+      });
+      tx.oncomplete = () => {
+        renderMemoryList();
+        renderDocsList();
+        resolve(count);
+      };
+      tx.onerror = (e) => reject(e);
+    });
+  }
+
   // --- COSINE SIMILARITY CALCULATION (0ms In-Browser Math) ---
   function cosineSimilarity(vecA, vecB) {
     if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
@@ -1181,7 +1221,10 @@ Nhiệm vụ:
     searchChatSemantic: searchChatHistorySemantic,
     openModal: openKnowledgeModal,
     closeModal: closeKnowledgeModal,
-    openSearch: openSearchModalWithQuery
+    openSearch: openSearchModalWithQuery,
+    getAllKnowledge: getAllVectorItems,
+    importKnowledge: importKnowledgeItems,
+    clearAll: clearAllVectorDB
   };
 
   // Global functions for inline DOM onclick handlers
