@@ -38,6 +38,7 @@
   <link rel="stylesheet" href="./css/style.css">
   <link rel="stylesheet" href="./css/live.css">
   <link rel="stylesheet" href="./css/tts.css">
+  <link rel="stylesheet" href="./css/translate.css">
   <link rel="stylesheet" href="./css/arena.css">
 </head>
 <body>
@@ -207,6 +208,12 @@
           <!-- CLOUD SYNC HEADER BUTTON (DESKTOP ONLY - ON MOBILE IT IS ON THE INPUT TOOLBAR) -->
           <button id="btn-cloud-sync-header" class="btn mobile-hidden" style="background:linear-gradient(135deg,#0284c7,#2563eb);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(2,132,199,0.35);display:flex;align-items:center;gap:5px;" title="Đồng bộ Cloud Đa thiết bị (Gist)">
             ☁️ <span>Đồng bộ</span>
+          </button>
+
+          
+          <!-- LIVE TRANSLATE DUAL SCREEN BUTTON -->
+          <button id="btn-open-live-translate" class="btn" style="background:linear-gradient(135deg,#0ea5e9,#2563eb);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(14,165,233,0.35);display:flex;align-items:center;gap:5px;" title="Thông dịch viên Đối thoại 2 chiều (Gemini 3.5 Live Translate)">
+            🌐 <span class="mobile-hidden">Dịch Live</span>
           </button>
 
           <!-- LIVE CALL OPEN BUTTON (CIRCULAR COMPACT ON MOBILE) -->
@@ -609,6 +616,73 @@
         <button id="btn-live-mic-toggle" class="live-control-btn active" title="Bật/Tắt Micro">🎙️</button>
         <button id="btn-live-cam-toggle" class="live-control-btn" title="Bật/Tắt Camera">📹</button>
         <button id="btn-live-end-call" class="live-control-btn end-call" title="Ngắt cuộc gọi">🛑</button>
+      </div>
+    </div>
+
+    
+    <!-- MODAL LIVE TRANSLATE DUAL SCREEN (FACE-TO-FACE) -->
+    <div id="live-translate-modal">
+      <!-- TOP HALF: FACES GUEST (ROTATED 180 DEG) -->
+      <div id="translate-guest-half" class="translate-half translate-guest-half">
+        <div class="translate-bar">
+          <div class="translate-lang-badge">
+            <span style="font-size:1.1rem;">🗣️</span>
+            <select id="translate-guest-lang-select" class="translate-lang-select">
+              <option value="en" selected>🇺🇸 English (US)</option>
+            </select>
+          </div>
+          <button id="btn-toggle-flip-guest" class="translate-tool-btn" title="Xoay ngược / Thuận chiều hiển thị">
+            🔄
+          </button>
+        </div>
+
+        <div class="translate-display">
+          <div id="translate-guest-main-text" class="translate-text-main">
+            Tap the button and start speaking...
+          </div>
+          <div id="translate-guest-trans-text" class="translate-text-sub"></div>
+          <div id="translate-guest-status" class="translate-status-pill">
+            🟢 Ready for conversation
+          </div>
+        </div>
+
+        <div class="translate-mic-zone">
+          <button id="btn-translate-guest-mic" class="translate-mic-btn" title="Guest: Tap to Speak / Dành cho Khách">
+            🎙️
+          </button>
+        </div>
+      </div>
+
+      <!-- CENTER DIVIDER BAR -->
+      <div class="translate-divider">
+        <span class="translate-model-tag">⚡ Gemini 3.5 Live Translate</span>
+        <button id="btn-close-live-translate" class="translate-close-btn">✕ Đóng</button>
+      </div>
+
+      <!-- BOTTOM HALF: FACES YOU (NORMAL ORIENTATION) -->
+      <div id="translate-user-half" class="translate-half translate-user-half">
+        <div class="translate-bar">
+          <div class="translate-lang-badge">
+            <span style="font-size:1.1rem;">🇻🇳</span>
+            <span style="font-weight:700;font-size:0.95rem;">Tiếng Việt</span>
+          </div>
+        </div>
+
+        <div class="translate-display">
+          <div id="translate-user-main-text" class="translate-text-main">
+            Bấm nút micro để nói tiếng Việt...
+          </div>
+          <div id="translate-user-trans-text" class="translate-text-sub"></div>
+          <div id="translate-user-status" class="translate-status-pill">
+            🟢 Đang chờ bạn nói
+          </div>
+        </div>
+
+        <div class="translate-mic-zone">
+          <button id="btn-translate-user-mic" class="translate-mic-btn" title="Bấm để nói tiếng Việt">
+            🎙️
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1243,5 +1317,6 @@
   <script type="module" src="./js/live.js"></script>
   <script type="module" src="./js/arena.js"></script>
   <script type="module" src="./js/tts.js"></script>
+  <script type="module" src="./js/translate.js"></script>
 </body>
 </html>
