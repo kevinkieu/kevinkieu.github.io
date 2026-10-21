@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v32 - Auto recover stream cutoffs & Gemini 3 config optimization)
-const CACHE_NAME = 'jarvis-ai-pwa-v32';
+// Jarvis AI Service Worker for PWA (v33 - Auto recover stream cutoffs & Gemini 3 config optimization)
+const CACHE_NAME = 'jarvis-ai-pwa-v33';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
