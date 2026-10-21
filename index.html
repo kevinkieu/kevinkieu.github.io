@@ -40,6 +40,7 @@
   <link rel="stylesheet" href="./css/tts.css">
   <link rel="stylesheet" href="./css/translate.css">
   <link rel="stylesheet" href="./css/arena.css">
+  <link rel="stylesheet" href="./css/rag.css">
 </head>
 <body>
   <!-- DRAG & DROP OVERLAY (DESKTOP) -->
@@ -64,6 +65,14 @@
       </div>
 
       <div class="sidebar-scroll-content">
+        <!-- SIDEBAR QUICK SEARCH -->
+        <div class="sidebar-search-box">
+          <div class="sidebar-search-input-wrap">
+            <svg class="icon icon-sm search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="sidebar-search-input" placeholder="🔍 Tìm kiếm phiên & tri thức..." class="modern-input">
+          </div>
+        </div>
+
         <!-- FOLDERS -->
         <div class="sidebar-section">
           <div class="section-title">
@@ -121,7 +130,13 @@
             <label style="cursor:pointer;font-size:.78rem;font-weight:600;color:#8b5cf6;display:flex;align-items:center;gap:8px;" title="Tự động nén các tin nhắn cũ để duy trì trí nhớ vĩnh viễn">
               <input type="checkbox" id="toggle-auto-summary" checked> 🧬 Nén trí nhớ dài hạn (Auto-Summary)
             </label>
+            <label style="cursor:pointer;font-size:.78rem;font-weight:600;color:#10b981;display:flex;align-items:center;gap:8px;" title="Khai thác trí nhớ vĩnh cửu và tài liệu RAG bằng Gemini Embedding 2">
+              <input type="checkbox" id="toggle-rag-embedding" checked> 🧠 Trí nhớ Vector RAG (Gemini Embedding 2)
+            </label>
           </div>
+          <button id="btn-open-knowledge-sidebar" class="btn" onclick="openKnowledgeModal()" style="width:100%;margin-top:8px;background:var(--bg-card);border:1px solid var(--border);font-size:0.8rem;gap:6px;justify-content:center;font-weight:600;" title="Quản lý Kho Tri Thức Cá Nhân & RAG Studio">
+            📚 Quản lý Kho Tri Thức & RAG
+          </button>
 
           <!-- GEMINI MODEL SELECT -->
           <div style="margin-top:6px;">
@@ -305,6 +320,12 @@
                     <button id="btn-toggle-deep-research" class="tool-chip" title="Bật/Tắt chế độ Nghiên cứu Sâu đa tầng (Deep Research)">
             <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             🔬 Deep Research: <strong id="dr-chip-state" style="color:var(--text-muted);">TẮT</strong>
+          </button>
+          <button id="btn-toggle-rag-memory" class="tool-chip" title="Bật/Tắt Trí nhớ vĩnh cửu & RAG (Gemini Embedding 2)" style="border-color:#10b981;color:#10b981;font-weight:600;">
+            🧠 Trí nhớ RAG: <strong id="rag-memory-state" style="color:var(--success);">BẬT</strong>
+          </button>
+          <button id="btn-open-knowledge-chip" class="tool-chip" onclick="openKnowledgeModal()" title="Mở Kho Tri Thức Cá Nhân & RAG Studio">
+            📚 Kho Tri Thức
           </button>
           <button id="btn-enhance-prompt" class="tool-chip magic" title="Tối ưu câu lệnh Prompt bằng AI">
             <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
@@ -884,15 +905,173 @@
       </div>
     </div>
 
-    <!-- MODAL GLOBAL SEARCH -->
-    <div id="search-modal" class="modal-box">
+    <!-- MODAL GLOBAL & SEMANTIC SEARCH -->
+    <div id="search-modal" class="modal-box" style="max-width:620px;width:92%;">
       <div class="modal-header">
-        <h3>🔍 Tìm kiếm nâng cao</h3>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <h3 style="margin:0;font-size:1.05rem;">🔍 Tìm kiếm Nâng cao & Ngữ nghĩa AI</h3>
+          <span class="badge" style="background:rgba(14,165,233,0.15);color:#0ea5e9;font-size:0.7rem;padding:2px 8px;border-radius:10px;">Gemini Embedding 2</span>
+        </div>
         <button class="close-btn icon-btn">&times;</button>
       </div>
-      <div style="padding:16px;">
-        <input type="text" id="global-search-input" placeholder="Nhập từ khóa tìm kiếm nội dung phiên..." class="modern-input">
-        <div id="search-results" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-top:12px;"></div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <div style="position:relative;display:flex;align-items:center;">
+          <input type="text" id="global-search-input" placeholder="Nhập câu hỏi, ý tưởng hoặc từ khóa cần tìm..." class="modern-input" style="padding-left:36px;padding-right:32px;">
+          <svg class="icon icon-sm" style="position:absolute;left:10px;color:var(--text-muted);pointer-events:none;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <button id="btn-clear-search-modal" class="icon-btn" style="position:absolute;right:8px;width:24px;height:24px;display:none;color:var(--text-muted);" title="Xóa tìm kiếm">&times;</button>
+        </div>
+
+        <!-- SEARCH MODE SELECTOR -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div class="search-mode-segmented">
+            <button type="button" class="search-mode-btn active" data-mode="keyword" id="btn-search-mode-keyword">
+              📝 Từ khóa (Nhanh)
+            </button>
+            <button type="button" class="search-mode-btn" data-mode="semantic" id="btn-search-mode-semantic" title="Tìm theo ý nghĩa bằng Gemini Embedding 2">
+              🧠 Ngữ nghĩa AI (Vector)
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <select id="search-scope-select" class="modern-select" style="font-size:0.75rem;padding:4px 8px;">
+              <option value="all">🌐 Toàn bộ (Chat + Tri thức)</option>
+              <option value="chats">💬 Lịch sử Hội thoại</option>
+              <option value="knowledge">📚 Kho Tri thức & RAG</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- SEMANTIC SEARCH STATUS -->
+        <div id="search-semantic-status" style="display:none;font-size:0.78rem;color:var(--primary);padding:6px 10px;background:rgba(59,130,246,0.08);border-radius:var(--radius-sm);border:1px solid rgba(59,130,246,0.2);">
+          <span>⏳</span> Đang chuyển đổi ý nghĩa câu hỏi sang vector và so khớp...
+        </div>
+
+        <!-- RESULTS CONTAINER -->
+        <div id="search-results" style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+    </div>
+
+    <!-- MODAL KNOWLEDGE BASE & RAG STUDIO -->
+    <div id="knowledge-modal" class="modal-box" style="max-width:720px;width:94%;">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <h3 style="margin:0;font-size:1.05rem;">🧠 Kho Tri Thức Cá Nhân & RAG Studio</h3>
+          <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.7rem;padding:2px 8px;border-radius:10px;">gemini-embedding-2</span>
+        </div>
+        <button class="close-btn icon-btn">&times;</button>
+      </div>
+
+      <!-- TABS HEADER -->
+      <div class="rag-tabs-header">
+        <button type="button" class="rag-tab-btn active" data-tab="memory" id="rag-tab-memory">
+          🧠 Trí nhớ Cá nhân (Second Brain)
+        </button>
+        <button type="button" class="rag-tab-btn" data-tab="docs" id="rag-tab-docs">
+          📚 Tài liệu & PDF RAG Studio
+        </button>
+        <button type="button" class="rag-tab-btn" data-tab="test" id="rag-tab-test">
+          🔍 Thử nghiệm Truy vấn (RAG Tester)
+        </button>
+      </div>
+
+      <div class="rag-modal-body" style="padding:16px;max-height:68vh;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
+        <!-- TAB 1: SECOND BRAIN / PERSONAL MEMORY -->
+        <div id="rag-pane-memory" class="rag-tab-pane">
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-weight:700;font-size:0.85rem;color:var(--primary);display:flex;align-items:center;gap:6px;">
+              <span>➕ Thêm Mẩu Trí Nhớ Mới</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 140px;gap:8px;">
+              <input type="text" id="memory-input-title" placeholder="Tiêu đề (VD: Thông tin công việc, Sở thích, Dự án...)" class="modern-input">
+              <select id="memory-input-category" class="modern-select">
+                <option value="personal">👤 Cá nhân</option>
+                <option value="work">💼 Công việc</option>
+                <option value="project">🚀 Dự án</option>
+                <option value="hobbies">🎨 Sở thích</option>
+                <option value="rules">📜 Quy tắc AI</option>
+              </select>
+            </div>
+            <textarea id="memory-input-text" placeholder="Nội dung chi tiết cần Jarvis luôn ghi nhớ (VD: Tên tôi là Huân, chuyên làm ứng dụng Full-stack & Android. Luôn trả lời ngắn gọn, súc tích...)" class="modern-input" style="min-height:75px;resize:vertical;"></textarea>
+            <div style="display:flex;justify-content:flex-end;">
+              <button type="button" id="btn-save-memory" class="btn primary" style="padding:6px 16px;font-size:0.82rem;gap:6px;">
+                <span>💾 Lưu & Nhúng Vector ngay</span>
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span style="font-weight:700;font-size:0.85rem;">📋 Danh sách Trí nhớ Đã lưu (<span id="memory-count-badge">0 mục</span>)</span>
+            </div>
+            <div id="memory-list-container" class="memory-grid"></div>
+          </div>
+        </div>
+
+        <!-- TAB 2: DOCUMENT & PDF RAG STUDIO -->
+        <div id="rag-pane-docs" class="rag-tab-pane" style="display:none;">
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-weight:700;font-size:0.85rem;color:#10b981;display:flex;align-items:center;gap:6px;">
+              <span>📥 Tải lên & Nạp Tài liệu vào RAG</span>
+            </div>
+            <div id="rag-drop-zone" class="rag-drop-zone">
+              <div style="font-size:1.8rem;margin-bottom:4px;">📄</div>
+              <div style="font-weight:600;font-size:0.85rem;">Kéo thả tệp PDF, TXT, MD, JSON vào đây hoặc bấm để chọn</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Hỗ trợ: PDF tài liệu, TXT, Markdown, CSV, JSON</div>
+              <input type="file" id="rag-doc-file-input" accept=".pdf,.txt,.md,.markdown,.json,.csv" style="display:none;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <input type="text" id="rag-doc-name-input" placeholder="Tên tài liệu / Tiêu đề tham chiếu" class="modern-input">
+              <textarea id="rag-doc-paste-input" placeholder="Hoặc dán văn bản dài trực tiếp vào đây..." class="modern-input" style="min-height:70px;resize:vertical;"></textarea>
+            </div>
+
+            <!-- PROGRESS BOX -->
+            <div id="rag-progress-box" class="rag-progress-box" style="display:none;">
+              <div id="rag-progress-status" style="font-size:0.78rem;font-weight:600;color:var(--primary);">Đang chuẩn bị...</div>
+              <div class="rag-progress-track">
+                <div id="rag-progress-fill" class="rag-progress-fill"></div>
+              </div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;">
+              <button type="button" id="btn-process-doc" class="btn primary" style="padding:6px 16px;font-size:0.82rem;gap:6px;background:linear-gradient(135deg,#10b981,#059669);">
+                <span>🚀 Phân tích & Nhúng Vector vào RAG</span>
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span style="font-weight:700;font-size:0.85rem;">📚 Thư viện Tài liệu RAG (<span id="docs-count-badge">0 tệp</span>)</span>
+            </div>
+            <div id="docs-list-container" style="display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+        </div>
+
+        <!-- TAB 3: RAG TESTER -->
+        <div id="rag-pane-test" class="rag-tab-pane" style="display:none;">
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-weight:700;font-size:0.85rem;color:var(--text-main);">
+              🧪 Kiểm thử Truy vấn Ngữ nghĩa & Trích xuất Context
+            </div>
+            <div style="font-size:0.75rem;color:var(--text-muted);">
+              Nhập câu hỏi để xem trước các mẩu tri thức hoặc đoạn tài liệu mà Jarvis sẽ tự động bốc và nạp vào câu trả lời:
+            </div>
+            <input type="text" id="rag-test-query-input" placeholder="Nhập câu hỏi kiểm tra (VD: Tôi đang làm dự án gì?)" class="modern-input">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:0.75rem;">
+              <span>Độ tương đồng tối thiểu: <b id="rag-th-val">55%</b></span>
+              <input type="range" id="rag-test-threshold" min="40" max="90" value="55" style="flex:1;max-width:200px;" oninput="document.getElementById('rag-th-val').innerText = this.value + '%'">
+              <button type="button" id="btn-run-rag-test" class="btn primary" style="padding:5px 12px;font-size:0.78rem;">
+                ⚡ Kiểm tra kết quả
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;">
+            <div style="font-weight:700;font-size:0.85rem;margin-bottom:8px;">Kết quả Trích xuất (Top Matches):</div>
+            <div id="rag-test-results" style="display:flex;flex-direction:column;gap:8px;">
+              <i style="color:var(--text-muted);font-size:0.8rem;padding:8px;">Chưa có lượt kiểm thử nào.</i>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1326,5 +1505,6 @@
   <script type="module" src="./js/arena.js"></script>
   <script type="module" src="./js/tts.js"></script>
   <script type="module" src="./js/translate.js"></script>
+  <script type="module" src="./js/rag.js"></script>
 </body>
 </html>

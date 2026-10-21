@@ -76,6 +76,28 @@
 - **Tự động xoay tua (Auto-rotate)**: Khi một Key chạm ngưỡng Rate Limit hoặc hết Quota (Mã 1008), hệ thống tự động đổi sang Key tiếp theo mà không làm gián đoạn người dùng.
 - **Bảo mật phía Client (Client-Side Privacy)**: Khóa API được mã hóa cục bộ (`JVENC_`), chỉ lưu trong trình duyệt (`localStorage`), không bao giờ gửi về máy chủ bên thứ ba.
 
+#### 7. 🧠 Kho Tri Thức Cá Nhân & Trí Nhớ Vĩnh Cửu (Second Brain / Permanent Vector Memory)
+- **Gemini Embedding 2**: Ứng dụng model nhúng đa phương thức mới nhất từ Google (`gemini-embedding-2` kết hợp fallback `gemini-embedding-001`).
+- **Không gian Vector cục bộ (IndexedDB)**: Toàn bộ vector nhúng được lưu trữ an toàn trong IndexedDB của trình duyệt, không tốn phí thuê Vector DB bên thứ ba.
+- **Bảo vệ Độ trễ (Zero-Latency Guard)**:
+  - Bỏ qua các câu chào hỏi xã giao ngắn (0ms độ trễ, không tốn API).
+  - Tích hợp bộ nhớ đệm Vector Cache RAM cho các câu hỏi phổ biến.
+  - Công tắc Bật/Tắt Trí nhớ RAG 1 chạm ngay trên thanh công cụ chat và menu Sidebar.
+
+#### 8. 📚 Chat Với Tài Liệu Lớn (PDF & Document RAG Studio)
+- **Studio nạp tài liệu thông minh**: Kéo thả file PDF, TXT, Markdown, CSV, JSON hoặc dán văn bản trực tiếp.
+- **Cắt đoạn thông minh (Text Chunking with Overlap)**: Tự động chia nhỏ tài liệu theo ngữ cảnh dấu câu và nhúng vector hàng loạt với thanh tiến trình trực quan.
+- **Trích dẫn chính xác**: AI tự động trích lọc các đoạn liên quan nhất để đưa vào câu trả lời, loại bỏ hiện tượng bịa đặt (hallucination).
+
+#### 9. 🔍 Tìm Kiếm Ngữ Nghĩa & Nâng Cấp Trải Nghiệm Tìm Kiếm (Semantic AI Search)
+- **2 Chế độ tìm kiếm linh hoạt**:
+  - **📝 Từ khóa (Keyword)**: Lọc chuỗi truyền thống siêu tốc.
+  - **🧠 Ngữ nghĩa AI (Semantic Vector)**: Nhận diện ý định câu hỏi bằng thuật toán Cosine Similarity trực tiếp trên trình duyệt, xếp hạng độ tương đồng (⭐ 95% khớp ý).
+- **Trải nghiệm tối ưu PC & Mobile**:
+  - Hỗ trợ gõ Enter trên thanh tìm kiếm Header để kích hoạt modal ngay tức thì.
+  - Tích hợp ô tìm kiếm nhanh tại đầu thanh Sidebar cho điện thoại.
+  - Thanh Header trên Mobile cuộn mượt mà, không bao giờ bị che khuất nút tìm kiếm.
+
 ---
 
 ### 📂 Cấu Trúc Dự Án
@@ -92,14 +114,16 @@ Jarvis AI/
 │   ├── live.css        # Giao diện Cuộc gọi Live Voice & Video
 │   ├── translate.css   # Giao diện Thông dịch viên đối diện 2 nửa
 │   ├── arena.css       # Giao diện Đấu trường AI Arena
-│   └── tts.css         # Giao diện Studio TTS
+│   ├── tts.css         # Giao diện Studio TTS
+│   └── rag.css         # Giao diện Kho Tri Thức, RAG & Tìm kiếm Ngữ nghĩa
 │
 ├── js/
 │   ├── app.js          # Logic ứng dụng, Chat, Markdown, Quản lý Key
 │   ├── live.js         # Multimodal Live Voice & Video WebSocket
 │   ├── translate.js    # Thông dịch viên 2 chiều Gemini 3.8 Bilateral
 │   ├── arena.js        # Đấu trường so tài song song
-│   └── tts.js          # Chuyển văn bản thành giọng nói
+│   ├── tts.js          # Chuyển văn bản thành giọng nói
+│   └── rag.js          # Động cơ RAG, Vector IndexedDB & Gemini Embedding 2
 │
 └── android/            # Mã nguồn dự án Android (Capacitor/Gradle)
 ```
@@ -191,6 +215,25 @@ Leveraging the cutting-edge **Google Gemini 3.8 Live API** via bidirectional Web
 - **Key Pool Rotation**: Store up to 10 Google API keys with automatic failover and quota recovery (Code 1008 auto-rotation).
 - **Client-Side Privacy**: Keys are encrypted locally (`JVENC_`) and stored solely within browser storage (`localStorage` / `IndexedDB`). No middleman server.
 
+#### 7. 🧠 Personal Knowledge Base & Second Brain (Permanent Vector Memory)
+- **Gemini Embedding 2 Engine**: Employs Google's latest multimodal embedding model (`gemini-embedding-2` with graceful fallback to `gemini-embedding-001`).
+- **On-Device Vector Storage**: Complete vector indices stored client-side via IndexedDB with zero cloud database fees.
+- **Zero-Latency Heuristic Guard**:
+  - Bypasses vector lookups on short greetings and trivial queries (0ms overhead).
+  - High-speed RAM caching for recent search query embeddings.
+  - One-click RAG toggle directly in the chat toolbar and sidebar.
+
+#### 8. 📚 Document & PDF RAG Studio
+- **Full Document Ingestion**: Drag-and-drop support for PDF, TXT, Markdown, CSV, and JSON files, or direct text pasting.
+- **Context-Aware Sliding Window Chunking**: Automatically segments large documents into overlapping vectors with real-time visual progress indicators.
+- **Fact-Grounded Responses**: Injects relevant knowledge chunks into prompts to ensure factual citations and eliminate hallucinations.
+
+#### 9. 🔍 Semantic AI Search & Enhanced Mobile Header
+- **Dual Search Modes**:
+  - **📝 Keyword Search**: Instant classic substring filtering.
+  - **🧠 AI Semantic Search**: Understands query intent via in-browser Cosine Similarity scoring (e.g. ⭐ 95% match) across conversations and knowledge chunks.
+  - **PC & Mobile Enhancements**: Fixed Enter-key execution in header search, added a quick search bar in the sidebar drawer, and smooth horizontal scrolling for mobile navigation.
+
 ---
 
 ### 📂 Directory Architecture
@@ -207,14 +250,16 @@ Jarvis AI/
 │   ├── live.css        # Live Voice & Video call modal styles
 │   ├── translate.css   # Dual-Screen Face-to-Face translator layout
 │   ├── arena.css       # Side-by-side AI Arena styles
-│   └── tts.css         # Studio TTS styles
+│   ├── tts.css         # Studio TTS styles
+│   └── rag.css         # Knowledge Base & Semantic Search styles
 │
 ├── js/
 │   ├── app.js          # Core app controller, chat, markdown & key pool
 │   ├── live.js         # Multimodal Live WebSockets streaming module
 │   ├── translate.js    # Gemini 3.8 bilateral translation engine
 │   ├── arena.js        # Parallel model debate & benchmark module
-│   └── tts.js          # Speech synthesis audio studio
+│   ├── tts.js          # Speech synthesis audio studio
+│   └── rag.js          # Gemini Embedding 2 RAG & Vector Engine
 │
 └── android/            # Android native project assets & Capacitor wrapper
 ```

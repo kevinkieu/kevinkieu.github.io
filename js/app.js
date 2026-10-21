@@ -923,6 +923,8 @@ import { GoogleGenAI } from "@google/genai";
       { id: 'settings', title: 'Mở Cài đặt hệ thống & 10 Keys', shortcut: '/settings', icon: '⚙️', run: () => $('btn-open-settings').click() },
       { id: 'storage', title: 'Quản lý Bộ nhớ & Trạng thái Lưu trữ (IndexedDB)', shortcut: '/storage', icon: '💾', run: () => { $('btn-open-settings').click(); setTimeout(updateStorageStatus, 150); } },
       { id: 'prompts', title: 'Mở Kho Prompt mẫu cá nhân', shortcut: '/prompts', icon: '📚', run: () => $('btn-manage-prompts').click() },
+      { id: 'rag', title: 'Mở Kho Tri Thức & RAG Studio (Gemini Embedding 2)', shortcut: '/rag', icon: '🧠', run: () => typeof openKnowledgeModal === 'function' ? openKnowledgeModal() : window.JarvisRAG?.openModal() },
+      { id: 'memory', title: 'Quản lý Trí nhớ Cá nhân (Second Brain)', shortcut: '/memory', icon: '👤', run: () => typeof openKnowledgeModal === 'function' ? openKnowledgeModal('memory') : window.JarvisRAG?.openModal('memory') },
       { id: 'search', title: 'Tìm kiếm nội dung hội thoại', shortcut: '/search', icon: '🔍', run: () => { $('search-modal').style.display = 'flex'; oLay.style.display = 'block'; } },
       { id: 'theme', title: 'Chuyển đổi giao diện Sáng / Tối', shortcut: '/theme', icon: '🌙', run: () => DOM.btnTheme.click() },
       { id: 'export', title: 'Sao lưu toàn bộ dữ liệu ra tệp JSON', shortcut: '/export', icon: '📥', run: () => exportAllSessions() },
@@ -1521,7 +1523,7 @@ import { GoogleGenAI } from "@google/genai";
     $('close-sidebar-btn').onclick = $('sidebar-overlay').onclick = () => { $('sidebar').classList.remove('active'); $('sidebar-overlay').classList.remove('active'); };
     $('btn-open-settings').onclick = () => { $('settings-modal').style.display = 'flex'; $('modal-overlay').style.display = 'block'; };
 
-    const getDynamicSI = () => {
+    const getDynamicSI = (ragSnippet = '') => {
       const cs = sessions.find(x => x.id === activeId);
       const b = DOM.sysInst?.value || "Bạn là Jarvis AI - trợ lý thông minh và chuẩn xác.",
             g = DOM.globContext?.value || ls.getItem('jarvis_global_context') || ls.getItem('huanmu_global_context') || '',
@@ -1543,7 +1545,9 @@ import { GoogleGenAI } from "@google/genai";
           pinnedMsgs.map((m, idx) => `--- [Mục ghim #${idx + 1} (${m.role === 'user' ? 'Người dùng' : 'Jarvis AI'})]:\n${m.text}`).join('\n\n') + '\n'
         : '';
 
-      return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}\n\n[MỐC THỜI GIAN THỰC TẾ]: Hiện tại chính xác là ${timeStr} (${dateStr}, Múi giờ Việt Nam GMT+7).\nQUY TẮC BẮT BUỘC: Khi người dùng hỏi bây giờ là mấy giờ, thời gian hiện tại hoặc ngày tháng, bạn PHẢI trả lời chính xác theo mốc giờ ${timeStr} và ngày ${dateStr} này.`;
+      const ragBlock = ragSnippet ? `\n\n${ragSnippet}\n` : '';
+
+      return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}${ragBlock}\n\n[MỐC THỜI GIAN THỰC TẾ]: Hiện tại chính xác là ${timeStr} (${dateStr}, Múi giờ Việt Nam GMT+7).\nQUY TẮC BẮT BUỘC: Khi người dùng hỏi bây giờ là mấy giờ, thời gian hiện tại hoặc ngày tháng, bạn PHẢI trả lời chính xác theo mốc giờ ${timeStr} và ngày ${dateStr} này.`;
     };
 
     window.exportCleanArticle = () => {
@@ -1569,6 +1573,7 @@ import { GoogleGenAI } from "@google/genai";
       }
       return t;
     }
+    window.readPDF = readPDF;
 
     async function compressImageIfNeeded(f) {
       if (!f.type.startsWith('image/') || f.type === 'image/gif' || f.type === 'image/svg+xml') return f;
@@ -2806,6 +2811,16 @@ import { GoogleGenAI } from "@google/genai";
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
+        // RAG / SECOND BRAIN CONTEXT RETRIEVAL (Gemini Embedding 2)
+        let ragSnippet = '';
+        if (window.JarvisRAG && typeof window.JarvisRAG.retrieveContext === 'function') {
+          try {
+            ragSnippet = await window.JarvisRAG.retrieveContext(fP, gKey);
+          } catch (rErr) {
+            console.warn("[RAG] Lỗi truy vấn ngữ cảnh:", rErr);
+          }
+        }
+
         const base64Files = [];
         for (const f of imgs) base64Files.push(await fileToBase64(f));
 
@@ -2830,7 +2845,7 @@ import { GoogleGenAI } from "@google/genai";
             stream: true
           };
 
-          const dynamicSI = getDynamicSI();
+          const dynamicSI = getDynamicSI(ragSnippet);
           if (dynamicSI) {
             interactionParams.system_instruction = dynamicSI;
           }
@@ -3016,7 +3031,7 @@ import { GoogleGenAI } from "@google/genai";
           contents.push({ role: 'user', parts: currentParts });
 
           const config = {
-            systemInstruction: getDynamicSI(),
+            systemInstruction: getDynamicSI(ragSnippet),
             safetySettings: SAFETY,
             maxOutputTokens: 8192
           };
@@ -3275,40 +3290,79 @@ import { GoogleGenAI } from "@google/genai";
       tTO = setTimeout(() => DOM.toast.classList.remove('show'), 3200);
     }
 
-    // --- SEARCH BAR POPUP & TRIGGER ---
+    // --- SEARCH BAR POPUP & TRIGGER (FIXED ENTER & MOBILE & SEMANTIC) ---
     const sBar = document.querySelector('.header-search-bar');
     $('btn-global-search').onclick = e => {
       e.stopPropagation();
+      const currentVal = DOM.searchInput?.value.trim() || '';
+
+      // Trên mobile hoặc nếu đã có query hoặc đang active:
+      if (window.innerWidth <= 768) {
+        if (typeof window.openSearchModalWithQuery === 'function') {
+          window.openSearchModalWithQuery(currentVal);
+        } else {
+          $('search-modal').style.display = 'flex';
+          oLay.style.display = 'block';
+        }
+        return;
+      }
+
       if (!sBar.classList.contains('active')) {
         sBar.classList.add('active');
         DOM.searchInput.focus();
+      } else if (currentVal) {
+        if (typeof window.openSearchModalWithQuery === 'function') {
+          window.openSearchModalWithQuery(currentVal);
+        } else {
+          $('search-modal').style.display = 'flex';
+          oLay.style.display = 'block';
+          $('global-search-input').value = currentVal;
+          $('global-search-input').dispatchEvent(new Event('input'));
+        }
       } else {
-        $('search-modal').style.display = 'flex';
-        oLay.style.display = 'block';
+        if (typeof window.openSearchModalWithQuery === 'function') {
+          window.openSearchModalWithQuery('');
+        } else {
+          $('search-modal').style.display = 'flex';
+          oLay.style.display = 'block';
+        }
       }
     };
+
+    DOM.searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const currentVal = DOM.searchInput.value.trim();
+        if (typeof window.openSearchModalWithQuery === 'function') {
+          window.openSearchModalWithQuery(currentVal);
+        } else {
+          $('search-modal').style.display = 'flex';
+          oLay.style.display = 'block';
+          $('global-search-input').value = currentVal;
+          $('global-search-input').dispatchEvent(new Event('input'));
+        }
+      } else if (e.key === 'Escape') {
+        sBar.classList.remove('active');
+        DOM.searchInput.blur();
+      }
+    });
+
+    const sideSearchInput = $('sidebar-search-input');
+    if (sideSearchInput) {
+      sideSearchInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const q = sideSearchInput.value.trim();
+          if (typeof window.openSearchModalWithQuery === 'function') {
+            window.openSearchModalWithQuery(q);
+          }
+        }
+      });
+    }
+
     document.addEventListener('click', e => {
       if (!sBar.contains(e.target)) sBar.classList.remove('active');
     });
-
-    $('global-search-input').oninput = e => {
-      const q = e.target.value.toLowerCase().trim(), resBox = $('search-results');
-      if (!q) return resBox.innerHTML = '';
-      const matched = [];
-      sessions.forEach(s => {
-        (s.his || []).forEach(m => {
-          if ((m.text || '').toLowerCase().includes(q)) {
-            matched.push({ session: s, text: m.text, role: m.role, time: m.time });
-          }
-        });
-      });
-      resBox.innerHTML = matched.length ? matched.slice(0, 30).map(item => `
-        <div onclick="window.switchSess('${item.session.id}'); document.querySelectorAll('.modal-box, #command-palette-modal, #ab-compare-modal').forEach(m => m.style.display='none'); document.getElementById('modal-overlay').style.display='none';" style="padding:10px;border-radius:var(--radius-sm);background:var(--bg-main);border-left:3px solid var(--primary);cursor:pointer;font-size:0.82rem;">
-          <strong style="color:var(--primary);">${item.session.name} (${item.role === 'user' ? 'Bạn' : 'AI'} - ${item.time || ''})</strong>
-          <p style="margin:4px 0 0 0;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.text.replace(/<[^>]+>/g, '').substring(0, 100)}</p>
-        </div>
-      `).join('') : '<i style="color:var(--text-muted);">Không tìm thấy kết quả phù hợp.</i>';
-    };
 
     // BOOTSTRAP APP
     loadSess();
