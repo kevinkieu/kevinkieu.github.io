@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v33 - Auto recover stream cutoffs & Gemini 3 config optimization)
-const CACHE_NAME = 'jarvis-ai-pwa-v33';
+// Jarvis AI Service Worker for PWA (v34 - Dual-Screen Gemini 3.5 Live Translate)
+const CACHE_NAME = 'jarvis-ai-pwa-v34';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
@@ -8,10 +8,12 @@ const STATIC_ASSETS = [
   './css/live.css',
   './css/tts.css',
   './css/arena.css',
+  './css/translate.css',
   './js/app.js',
   './js/live.js',
   './js/arena.js',
-  './js/tts.js'
+  './js/tts.js',
+  './js/translate.js'
 ];
 
 self.addEventListener('install', event => {
