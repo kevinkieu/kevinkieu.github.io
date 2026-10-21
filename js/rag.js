@@ -170,9 +170,29 @@
   // --- HELPER: FILE TO BASE64 FOR MULTIMODAL EMBEDDINGS ---
   function fileToBase64(file) {
     return new Promise((resolve, reject) => {
+      let mimeType = file.type || '';
+      if (!mimeType) {
+        const ext = (file.name || '').split('.').pop().toLowerCase();
+        const map = {
+          pdf: 'application/pdf',
+          jpg: 'image/jpeg',
+          jpeg: 'image/jpeg',
+          png: 'image/png',
+          webp: 'image/webp',
+          gif: 'image/gif',
+          mp3: 'audio/mp3',
+          wav: 'audio/wav',
+          m4a: 'audio/m4a',
+          ogg: 'audio/ogg',
+          mp4: 'video/mp4',
+          webm: 'video/webm',
+          mov: 'video/quicktime'
+        };
+        mimeType = map[ext] || 'application/octet-stream';
+      }
       const reader = new FileReader();
       reader.onload = () => resolve({
-        mimeType: file.type || 'application/octet-stream',
+        mimeType,
         data: reader.result.split(',')[1]
       });
       reader.onerror = e => reject(e);
@@ -293,7 +313,7 @@
   }
 
   // --- TEXT CHUNKING WITH OVERLAP ---
-  function chunkText(text, chunkSize = 750, overlap = 120) {
+  function chunkText(text, chunkSize = 750, overlap = 100) {
     if (!text || !text.trim()) return [];
     const clean = text.trim();
     if (clean.length <= chunkSize) return [clean];
@@ -305,8 +325,13 @@
       if (end < clean.length) {
         // Cắt tự nhiên tại dấu chấm câu hoặc ngắt dòng gần nhất
         const sub = clean.substring(start, end);
-        const lastBreak = Math.max(sub.lastIndexOf('\n'), sub.lastIndexOf('. '), sub.lastIndexOf('? '), sub.lastIndexOf('! '));
-        if (lastBreak > chunkSize * 0.6) {
+        const lastBreak = Math.max(
+          sub.lastIndexOf('\n'),
+          sub.lastIndexOf('. '),
+          sub.lastIndexOf('? '),
+          sub.lastIndexOf('! ')
+        );
+        if (lastBreak > chunkSize * 0.5) {
           end = start + lastBreak + 1;
         }
       } else {
@@ -314,10 +339,22 @@
       }
 
       const chunk = clean.substring(start, end).trim();
-      if (chunk.length >= 30) chunks.push(chunk);
+      if (chunk.length >= 20) {
+        chunks.push(chunk);
+      }
 
-      start = end - overlap;
-      if (start >= clean.length) break;
+      // Quan trọng: Nếu end đã chạm tới hoặc vượt qua cuối chuỗi thì dừng ngay lập tức
+      if (end >= clean.length) {
+        break;
+      }
+
+      // Tiến start lên: lùi lại overlap từ end, nhưng luôn phải lớn hơn start cũ để tránh lặp vô tận
+      const nextStart = end - overlap;
+      if (nextStart <= start) {
+        start = start + Math.max(1, Math.floor(chunkSize * 0.5));
+      } else {
+        start = nextStart;
+      }
     }
     return chunks;
   }
@@ -375,6 +412,9 @@
       };
       await saveVectorItem(item);
       completed++;
+      if (i < chunks.length - 1) {
+        await new Promise(r => setTimeout(r, 60));
+      }
     }
 
     return { docName, totalChunks: chunks.length };
@@ -916,13 +956,15 @@ Nhiệm vụ:
         const docName = (nameInput?.value || '').trim() || (file ? file.name : 'Tài liệu dán');
         let textContent = (pasteInput?.value || '').trim();
 
-        // Xử lý tệp đa phương tiện trực tiếp bằng Gemini Embedding 2 (Ảnh, Âm thanh, Video)
+        const isPdf = file && (file.type === 'application/pdf' || (file.name && file.name.toLowerCase().endsWith('.pdf')));
         const isMediaFile = file && (
           file.type.startsWith('image/') ||
           file.type.startsWith('audio/') ||
-          file.type.startsWith('video/')
+          file.type.startsWith('video/') ||
+          /\.(jpe?g|png|webp|gif|bmp|mp3|wav|m4a|ogg|mp4|webm|mov)$/i.test(file.name || '')
         );
 
+        // 1. Tệp đa phương tiện thuần túy (ảnh, audio, video) -> Nhúng trực tiếp qua Gemini Embedding 2
         if (isMediaFile) {
           const progressBox = document.getElementById('rag-progress-box');
           const progressFill = document.getElementById('rag-progress-fill');
@@ -936,7 +978,8 @@ Nhiệm vụ:
           try {
             const b64 = await fileToBase64(file);
             const vector = await getEmbedding({ inlineData: b64 }, { title: docName });
-            const mediaTypeDesc = file.type.startsWith('image/') ? 'Hình ảnh' : (file.type.startsWith('audio/') ? 'Âm thanh' : 'Video');
+            const mediaTypeDesc = file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp)$/i.test(file.name || '') ? 'Hình ảnh' : 
+              (file.type.startsWith('audio/') || /\.(mp3|wav|m4a|ogg)$/i.test(file.name || '') ? 'Âm thanh' : 'Video');
             const item = {
               id: `media_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
               type: 'doc',
@@ -944,10 +987,10 @@ Nhiệm vụ:
               chunkIndex: 0,
               totalChunks: 1,
               title: `${docName} (${mediaTypeDesc})`,
-              text: `[Tệp ${mediaTypeDesc}: ${docName} - Định dạng: ${file.type}]`,
-              mediaType: file.type,
+              text: `[Tệp ${mediaTypeDesc}: ${docName} - Định dạng: ${b64.mimeType}]`,
+              mediaType: b64.mimeType,
               vector,
-              metadata: { docName, size: file.size, mimeType: file.type },
+              metadata: { docName, size: file.size, mimeType: b64.mimeType },
               createdAt: Date.now()
             };
             await saveVectorItem(item);
@@ -971,9 +1014,10 @@ Nhiệm vụ:
           return;
         }
 
+        // 2. Tệp tài liệu (PDF, TXT, MD, CSV, ...) -> Đọc trích xuất text
         if (!textContent && file) {
           try {
-            if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+            if (isPdf) {
               if (typeof window.readPDF === 'function') {
                 textContent = await window.readPDF(file);
               } else if (window.pdfjsLib) {
@@ -984,17 +1028,63 @@ Nhiệm vụ:
                 }
                 textContent = t;
               } else {
-                throw new Error("Không thể đọc tệp PDF. pdfjs chưa sẵn sàng.");
+                console.warn("pdfjs chưa sẵn sàng trên trình duyệt.");
               }
             } else {
               textContent = await file.text();
             }
           } catch (readErr) {
-            if (typeof window.showToast === 'function') {
-              window.showToast(`Lỗi đọc tệp: ${readErr.message}`, "danger");
-            }
-            return;
+            console.warn("Không trích xuất được text tự động từ tệp:", readErr);
           }
+        }
+
+        // 3. Fallback cho PDF scan hình ảnh (không trích xuất được text hoặc < 50 ký tự)
+        // Gemini Embedding 2 hỗ trợ đọc tệp PDF đa phương thức trực tiếp nguyên bản!
+        if (isPdf && (!textContent || textContent.trim().length < 50)) {
+          const progressBox = document.getElementById('rag-progress-box');
+          const progressFill = document.getElementById('rag-progress-fill');
+          const progressStatus = document.getElementById('rag-progress-status');
+
+          if (progressBox) progressBox.style.display = 'block';
+          if (progressStatus) progressStatus.innerText = `Đang nhúng vector PDF đa phương thức (${PRIMARY_EMBEDDING_MODEL})...`;
+          if (progressFill) progressFill.style.width = '60%';
+          btnProcessDoc.disabled = true;
+
+          try {
+            const b64 = await fileToBase64(file);
+            const vector = await getEmbedding({ inlineData: b64 }, { title: docName });
+            const item = {
+              id: `pdf_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+              type: 'doc',
+              docName,
+              chunkIndex: 0,
+              totalChunks: 1,
+              title: `${docName} (PDF Đa phương thức)`,
+              text: `[Tài liệu PDF: ${docName} - Nhúng đa phương thức nguyên bản qua Gemini Embedding 2]`,
+              mediaType: 'application/pdf',
+              vector,
+              metadata: { docName, size: file.size, mimeType: 'application/pdf' },
+              createdAt: Date.now()
+            };
+            await saveVectorItem(item);
+            if (progressFill) progressFill.style.width = '100%';
+            if (progressStatus) progressStatus.innerText = 'Hoàn tất nhúng vector tài liệu PDF!';
+            if (nameInput) nameInput.value = '';
+            if (docFileInput) docFileInput.value = '';
+            await renderDocsList();
+            if (typeof window.showToast === 'function') {
+              window.showToast(`Đã nạp thành công tài liệu PDF đa phương thức: "${docName}"!`, "success");
+            }
+          } catch (mErr) {
+            console.error("Lỗi nhúng tệp PDF:", mErr);
+            if (typeof window.showToast === 'function') {
+              window.showToast(`Lỗi nhúng tệp PDF: ${mErr.message}`, "danger");
+            }
+          } finally {
+            btnProcessDoc.disabled = false;
+            setTimeout(() => { if (progressBox) progressBox.style.display = 'none'; }, 2000);
+          }
+          return;
         }
 
         if (!textContent) {
