@@ -167,19 +167,29 @@
     return '';
   }
 
-  // --- EMBEDDING API CALL WITH FALLBACK & CACHING ---
-  async function getEmbedding(text, customApiKey = null) {
+  // --- EMBEDDING API CALL WITH FALLBACK & CACHING (OFFICIAL GOOGLE GUIDELINE) ---
+  async function getEmbedding(text, options = {}) {
     const cleanText = (text || '').trim();
     if (!cleanText) return null;
 
-    // Cache hit -> 0ms latency!
-    if (embeddingCache.has(cleanText)) {
-      return embeddingCache.get(cleanText);
+    let customApiKey = null, taskType = null, title = null, outputDimensionality = 768;
+    if (typeof options === 'string') {
+      customApiKey = options;
+    } else if (options && typeof options === 'object') {
+      customApiKey = options.apiKey || null;
+      taskType = options.taskType || null;
+      title = options.title || null;
+      outputDimensionality = options.outputDimensionality || 768;
     }
 
     const apiKey = customApiKey || getActiveApiKey();
     if (!apiKey) {
       throw new Error("Cần ít nhất 1 Google API Key hợp lệ trong Cài đặt để tạo Vector Embedding.");
+    }
+
+    const cacheKey = `${taskType || 'none'}_${outputDimensionality}_${cleanText}`;
+    if (embeddingCache.has(cacheKey)) {
+      return embeddingCache.get(cacheKey);
     }
 
     if (!window.GoogleGenAI) {
@@ -189,20 +199,41 @@
     const ai = new window.GoogleGenAI({ apiKey });
     let vector = null;
 
+    const config = {
+      outputDimensionality
+    };
+    if (taskType) {
+      config.taskType = taskType;
+      if (title && taskType === 'RETRIEVAL_DOCUMENT') {
+        config.title = title;
+      }
+    }
+
     try {
-      // 1. Thử model chuẩn tốc độ cao: gemini-embedding-001
+      // 1. Thử model chuẩn tốc độ cao: gemini-embedding-001 (768 chiều theo khuyến nghị của Google)
       const res = await ai.models.embedContent({
         model: PRIMARY_EMBEDDING_MODEL,
-        contents: cleanText
+        contents: cleanText,
+        config
       });
       vector = res?.embedding?.values || res?.embeddings?.[0]?.values;
     } catch (err) {
       console.warn(`[RAG] ${PRIMARY_EMBEDDING_MODEL} không phản hồi, tự động dùng ${FALLBACK_EMBEDDING_MODEL}:`, err);
       try {
-        // 2. Dự phòng: gemini-embedding-2
+        // 2. Dự phòng: gemini-embedding-2 (dùng task prompt prefix chuẩn Google)
+        let fallbackText = cleanText;
+        if (taskType === 'RETRIEVAL_DOCUMENT') {
+          fallbackText = `title: ${title || 'none'} | text: ${cleanText}`;
+        } else if (taskType === 'RETRIEVAL_QUERY') {
+          fallbackText = `task: search result | query: ${cleanText}`;
+        } else if (taskType === 'SEMANTIC_SIMILARITY') {
+          fallbackText = `task: sentence similarity | query: ${cleanText}`;
+        }
+
         const fallbackRes = await ai.models.embedContent({
           model: FALLBACK_EMBEDDING_MODEL,
-          contents: cleanText
+          contents: fallbackText,
+          config: { outputDimensionality }
         });
         vector = fallbackRes?.embedding?.values || fallbackRes?.embeddings?.[0]?.values;
       } catch (err2) {
@@ -212,9 +243,8 @@
     }
 
     if (vector && Array.isArray(vector)) {
-      embeddingCache.set(cleanText, vector);
-      // Giữ kích thước cache tối đa 400 mục
-      if (embeddingCache.size > 400) {
+      embeddingCache.set(cacheKey, vector);
+      if (embeddingCache.size > 500) {
         const firstKey = embeddingCache.keys().next().value;
         embeddingCache.delete(firstKey);
       }
@@ -292,7 +322,7 @@
         });
       }
 
-      const vector = await getEmbedding(chunk);
+      const vector = await getEmbedding(chunk, { taskType: 'RETRIEVAL_DOCUMENT', title: docName });
       const item = {
         id: `${docId}_chk_${i}`,
         type: 'doc',
@@ -314,11 +344,11 @@
 
   // --- SIMILARITY SEARCH ACROSS KNOWLEDGE BASE ---
   async function searchSimilarVectors(query, options = {}) {
-    const { topK = 4, threshold = 0.58, type = null, apiKey = null } = options;
+    const { topK = 4, threshold = 0.58, type = null, apiKey = null, taskType = 'RETRIEVAL_QUERY' } = options;
     const cleanQuery = (query || '').trim();
     if (!cleanQuery) return [];
 
-    const queryVector = await getEmbedding(cleanQuery, apiKey);
+    const queryVector = await getEmbedding(cleanQuery, { taskType, apiKey });
     if (!queryVector) return [];
 
     const allItems = await getAllVectorItems(type);
@@ -513,7 +543,7 @@ Nhiệm vụ:
       if (parsed && (parsed.learn === true || parsed.learn === 'true') && parsed.text) {
         // Kiểm tra xem trí nhớ này đã tồn tại chưa để tránh trùng lặp
         try {
-          const duplicates = await searchSimilarVectors(parsed.text, { topK: 1, threshold: 0.90, apiKey: key });
+          const duplicates = await searchSimilarVectors(parsed.text, { topK: 1, threshold: 0.90, taskType: 'SEMANTIC_SIMILARITY', apiKey: key });
           if (duplicates && duplicates.length > 0) {
             console.log('[Auto-Memory] Đã có trí nhớ tương tự trong kho:', duplicates[0].item.title);
             if (typeof window.showToast === 'function') {
