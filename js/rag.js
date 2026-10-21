@@ -7,8 +7,8 @@
   'use strict';
 
   // --- MODEL IDENTIFIERS ---
-  const PRIMARY_EMBEDDING_MODEL = "gemini-embedding-001";
-  const FALLBACK_EMBEDDING_MODEL = "gemini-embedding-2";
+  const PRIMARY_EMBEDDING_MODEL = "gemini-embedding-2";
+  const FALLBACK_EMBEDDING_MODEL = "gemini-embedding-001";
 
   // --- DATABASE CONFIGURATION ---
   const VECTOR_DB_NAME = "Jarvis_Vector_DB";
@@ -167,10 +167,22 @@
     return '';
   }
 
-  // --- EMBEDDING API CALL WITH FALLBACK & CACHING (OFFICIAL GOOGLE GUIDELINE) ---
-  async function getEmbedding(text, options = {}) {
-    const cleanText = (text || '').trim();
-    if (!cleanText) return null;
+  // --- HELPER: FILE TO BASE64 FOR MULTIMODAL EMBEDDINGS ---
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({
+        mimeType: file.type || 'application/octet-stream',
+        data: reader.result.split(',')[1]
+      });
+      reader.onerror = e => reject(e);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // --- MULTIMODAL EMBEDDING API CALL (Gemini Embedding 2 Unified Space) ---
+  async function getEmbedding(input, options = {}) {
+    if (!input) return null;
 
     let customApiKey = null, taskType = null, title = null, outputDimensionality = 768;
     if (typeof options === 'string') {
@@ -187,66 +199,92 @@
       throw new Error("Cần ít nhất 1 Google API Key hợp lệ trong Cài đặt để tạo Vector Embedding.");
     }
 
-    const cacheKey = `${taskType || 'none'}_${outputDimensionality}_${cleanText}`;
-    if (embeddingCache.has(cacheKey)) {
-      return embeddingCache.get(cacheKey);
-    }
-
     if (!window.GoogleGenAI) {
       throw new Error("Thư viện GoogleGenAI chưa sẵn sàng.");
+    }
+
+    const isString = typeof input === 'string';
+    const cleanText = isString ? input.trim() : '';
+    if (isString && !cleanText) return null;
+
+    // Cache hit for text
+    const cacheKey = isString ? `${taskType || 'none'}_${outputDimensionality}_${cleanText}` : null;
+    if (cacheKey && embeddingCache.has(cacheKey)) {
+      return embeddingCache.get(cacheKey);
     }
 
     const ai = new window.GoogleGenAI({ apiKey });
     let vector = null;
 
-    const config = {
-      outputDimensionality
-    };
-    if (taskType) {
-      config.taskType = taskType;
-      if (title && taskType === 'RETRIEVAL_DOCUMENT') {
-        config.title = title;
+    // Chuẩn bị nội dung đầu vào cho gemini-embedding-2 (Text / Image / Audio / Video / PDF)
+    let contentsForModel2;
+    if (isString) {
+      // Định dạng tiền tố theo chuẩn tài liệu chính thức của Google cho Gemini Embedding 2
+      if (taskType === 'RETRIEVAL_QUERY') {
+        contentsForModel2 = `task: search result | query: ${cleanText}`;
+      } else if (taskType === 'RETRIEVAL_DOCUMENT') {
+        contentsForModel2 = `title: ${title || 'none'} | text: ${cleanText}`;
+      } else if (taskType === 'SEMANTIC_SIMILARITY') {
+        contentsForModel2 = `task: sentence similarity | query: ${cleanText}`;
+      } else {
+        contentsForModel2 = cleanText;
       }
+    } else if (input.inlineData) {
+      // Media part (image, audio, video, pdf)
+      contentsForModel2 = [{ inlineData: input.inlineData }];
+      if (title) {
+        contentsForModel2.push({ text: `title: ${title}` });
+      }
+    } else if (Array.isArray(input)) {
+      contentsForModel2 = input;
+    } else {
+      contentsForModel2 = input;
     }
 
+    const configModel2 = {
+      outputDimensionality
+    };
+
     try {
-      // 1. Thử model chuẩn tốc độ cao: gemini-embedding-001 (768 chiều theo khuyến nghị của Google)
+      // 1. Model thế hệ mới nhất: gemini-embedding-2 (Đa phương thức, MRL 768 chiều auto-normalized)
       const res = await ai.models.embedContent({
         model: PRIMARY_EMBEDDING_MODEL,
-        contents: cleanText,
-        config
+        contents: contentsForModel2,
+        config: configModel2
       });
       vector = res?.embedding?.values || res?.embeddings?.[0]?.values;
     } catch (err) {
-      console.warn(`[RAG] ${PRIMARY_EMBEDDING_MODEL} không phản hồi, tự động dùng ${FALLBACK_EMBEDDING_MODEL}:`, err);
+      console.warn(`[RAG] ${PRIMARY_EMBEDDING_MODEL} gặp sự cố, tự động dùng ${FALLBACK_EMBEDDING_MODEL}:`, err);
       try {
-        // 2. Dự phòng: gemini-embedding-2 (dùng task prompt prefix chuẩn Google)
-        let fallbackText = cleanText;
-        if (taskType === 'RETRIEVAL_DOCUMENT') {
-          fallbackText = `title: ${title || 'none'} | text: ${cleanText}`;
-        } else if (taskType === 'RETRIEVAL_QUERY') {
-          fallbackText = `task: search result | query: ${cleanText}`;
-        } else if (taskType === 'SEMANTIC_SIMILARITY') {
-          fallbackText = `task: sentence similarity | query: ${cleanText}`;
+        // 2. Dự phòng: gemini-embedding-001 (chỉ hỗ trợ text)
+        if (isString) {
+          const configModel1 = { outputDimensionality };
+          if (taskType) {
+            configModel1.taskType = taskType;
+            if (title && taskType === 'RETRIEVAL_DOCUMENT') configModel1.title = title;
+          }
+          const fallbackRes = await ai.models.embedContent({
+            model: FALLBACK_EMBEDDING_MODEL,
+            contents: cleanText,
+            config: configModel1
+          });
+          vector = fallbackRes?.embedding?.values || fallbackRes?.embeddings?.[0]?.values;
+        } else {
+          throw err;
         }
-
-        const fallbackRes = await ai.models.embedContent({
-          model: FALLBACK_EMBEDDING_MODEL,
-          contents: fallbackText,
-          config: { outputDimensionality }
-        });
-        vector = fallbackRes?.embedding?.values || fallbackRes?.embeddings?.[0]?.values;
       } catch (err2) {
-        console.error("[RAG] Cả 2 model embedding đều lỗi:", err2);
+        console.error("[RAG] Không thể tạo vector embedding:", err2);
         throw err2;
       }
     }
 
     if (vector && Array.isArray(vector)) {
-      embeddingCache.set(cacheKey, vector);
-      if (embeddingCache.size > 500) {
-        const firstKey = embeddingCache.keys().next().value;
-        embeddingCache.delete(firstKey);
+      if (cacheKey) {
+        embeddingCache.set(cacheKey, vector);
+        if (embeddingCache.size > 500) {
+          const firstKey = embeddingCache.keys().next().value;
+          embeddingCache.delete(firstKey);
+        }
       }
       return vector;
     }
@@ -870,13 +908,68 @@ Nhiệm vụ:
       if (nameInput) nameInput.value = file.name;
     }
 
-    if (btnProcessDoc) {
+        if (btnProcessDoc) {
       btnProcessDoc.onclick = async () => {
         const nameInput = document.getElementById('rag-doc-name-input');
         const pasteInput = document.getElementById('rag-doc-paste-input');
         const file = docFileInput?.files?.[0];
         const docName = (nameInput?.value || '').trim() || (file ? file.name : 'Tài liệu dán');
         let textContent = (pasteInput?.value || '').trim();
+
+        // Xử lý tệp đa phương tiện trực tiếp bằng Gemini Embedding 2 (Ảnh, Âm thanh, Video)
+        const isMediaFile = file && (
+          file.type.startsWith('image/') ||
+          file.type.startsWith('audio/') ||
+          file.type.startsWith('video/')
+        );
+
+        if (isMediaFile) {
+          const progressBox = document.getElementById('rag-progress-box');
+          const progressFill = document.getElementById('rag-progress-fill');
+          const progressStatus = document.getElementById('rag-progress-status');
+
+          if (progressBox) progressBox.style.display = 'block';
+          if (progressStatus) progressStatus.innerText = `Đang nhúng vector đa phương tiện (${PRIMARY_EMBEDDING_MODEL})...`;
+          if (progressFill) progressFill.style.width = '60%';
+          btnProcessDoc.disabled = true;
+
+          try {
+            const b64 = await fileToBase64(file);
+            const vector = await getEmbedding({ inlineData: b64 }, { title: docName });
+            const mediaTypeDesc = file.type.startsWith('image/') ? 'Hình ảnh' : (file.type.startsWith('audio/') ? 'Âm thanh' : 'Video');
+            const item = {
+              id: `media_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+              type: 'doc',
+              docName,
+              chunkIndex: 0,
+              totalChunks: 1,
+              title: `${docName} (${mediaTypeDesc})`,
+              text: `[Tệp ${mediaTypeDesc}: ${docName} - Định dạng: ${file.type}]`,
+              mediaType: file.type,
+              vector,
+              metadata: { docName, size: file.size, mimeType: file.type },
+              createdAt: Date.now()
+            };
+            await saveVectorItem(item);
+            if (progressFill) progressFill.style.width = '100%';
+            if (progressStatus) progressStatus.innerText = 'Hoàn tất nhúng vector tệp đa phương tiện!';
+            if (nameInput) nameInput.value = '';
+            if (docFileInput) docFileInput.value = '';
+            await renderDocsList();
+            if (typeof window.showToast === 'function') {
+              window.showToast(`Đã nhúng thành công tệp ${mediaTypeDesc.toLowerCase()}: "${docName}"!`, "success");
+            }
+          } catch (mErr) {
+            console.error("Lỗi nhúng tệp đa phương tiện:", mErr);
+            if (typeof window.showToast === 'function') {
+              window.showToast(`Lỗi nhúng tệp: ${mErr.message}`, "danger");
+            }
+          } finally {
+            btnProcessDoc.disabled = false;
+            setTimeout(() => { if (progressBox) progressBox.style.display = 'none'; }, 2000);
+          }
+          return;
+        }
 
         if (!textContent && file) {
           try {
