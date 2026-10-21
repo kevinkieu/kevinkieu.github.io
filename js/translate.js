@@ -1,13 +1,16 @@
 /* ==========================================================================
    Jarvis AI - Dual-Screen Face-to-Face Live Translator Module (js/translate.js)
-   Powered by Gemini Live Translate (gemini-3.5-live-translate-preview)
+   Powered by Gemini Live Translate & Intelligent Gemini 3.8 Live Fallback
    ========================================================================== */
 
 (function() {
   'use strict';
 
-  // --- MODEL & STATE ---
-  const TRANSLATE_MODEL = "models/gemini-3.5-live-translate-preview";
+  // --- SUPPORTED MODELS ---
+  const MODEL_35_TRANSLATE = "models/gemini-3.5-live-translate-preview";
+  const MODEL_38_LIVE = "models/gemini-3.8-live";
+
+  // --- STATE ---
   let translateWs = null;
   let translateAudioCtx = null;
   let translateMediaStream = null;
@@ -16,57 +19,119 @@
   let translateSilentGain = null;
   let translatePlaybackState = { nextPlayTime: 0, activeSources: [] };
 
-  // Current active speaker: 'user' (nói tiếng Việt -> dịch ra tiếng khách) hoặc 'guest' (khách nói tiếng nước ngoài -> dịch ra tiếng Việt)
-  let currentSpeaker = null;
+  let currentSpeaker = null; // 'user' hoặc 'guest'
   let isTranslateWsReady = false;
+  let isConnecting = false;
   let currentSessionTargetLang = 'en';
+  let activeEngineModel = MODEL_35_TRANSLATE;
+  let currentKeyIdx = 0;
+  let sentPacketCount = 0;
+  let userSpeechDetected = false;
+  let silenceTimer = null;
+  let lastCloseInfo = { code: 0, reason: '' };
 
-  // Supported languages list with BCP-47 codes & flags
+  // Local Web Speech Recognition for instant 0ms visual transcription
+  let localSpeechRec = null;
+
+  // Supported languages list with BCP-47 codes, names, flags & speech recognition locales
   const SUPPORTED_LANGS = [
-    { code: 'en', flag: '🇺🇸', name: 'English (US)' },
-    { code: 'zh-Hans', flag: '🇨🇳', name: '中文 (Giản thể)' },
-    { code: 'zh-Hant', flag: '🇹🇼', name: '繁體中文 (Phồn thể)' },
-    { code: 'ja', flag: '🇯🇵', name: '日本語 (Tiếng Nhật)' },
-    { code: 'ko', flag: '🇰🇷', name: '한국어 (Tiếng Hàn)' },
-    { code: 'fr', flag: '🇫🇷', name: 'Français (Tiếng Pháp)' },
-    { code: 'de', flag: '🇩🇪', name: 'Deutsch (Tiếng Đức)' },
-    { code: 'th', flag: '🇹🇭', name: 'ไทย (Tiếng Thái)' },
-    { code: 'ru', flag: '🇷🇺', name: 'Русский (Tiếng Nga)' },
-    { code: 'es', flag: '🇪🇸', name: 'Español (Tây Ban Nha)' },
-    { code: 'it', flag: '🇮🇹', name: 'Italiano (Tiếng Ý)' },
-    { code: 'pt-BR', flag: '🇧🇷', name: 'Português (Brazil)' },
-    { code: 'id', flag: '🇮🇩', name: 'Bahasa Indonesia' },
-    { code: 'ms', flag: '🇲🇾', name: 'Bahasa Melayu' },
-    { code: 'hi', flag: '🇮🇳', name: 'हिन्दी (Tiếng Hindi)' },
-    { code: 'ar', flag: '🇸🇦', name: 'العربية (Ả Rập)' },
-    { code: 'tr', flag: '🇹🇷', name: 'Türkçe (Thổ Nhĩ Kỳ)' },
-    { code: 'nl', flag: '🇳🇱', name: 'Nederlands (Hà Lan)' },
-    { code: 'pl', flag: '🇵🇱', name: 'Polski (Ba Lan)' }
+    { code: 'en', flag: '🇺🇸', name: 'English (US)', recLang: 'en-US' },
+    { code: 'zh-Hans', flag: '🇨🇳', name: '中文 (Giản thể)', recLang: 'zh-CN' },
+    { code: 'zh-Hant', flag: '🇹🇼', name: '繁體中文 (Phồn thể)', recLang: 'zh-TW' },
+    { code: 'ja', flag: '🇯🇵', name: '日本語 (Tiếng Nhật)', recLang: 'ja-JP' },
+    { code: 'ko', flag: '🇰🇷', name: '한국어 (Tiếng Hàn)', recLang: 'ko-KR' },
+    { code: 'fr', flag: '🇫🇷', name: 'Français (Tiếng Pháp)', recLang: 'fr-FR' },
+    { code: 'de', flag: '🇩🇪', name: 'Deutsch (Tiếng Đức)', recLang: 'de-DE' },
+    { code: 'th', flag: '🇹🇭', name: 'ไทย (Tiếng Thái)', recLang: 'th-TH' },
+    { code: 'ru', flag: '🇷🇺', name: 'Русский (Tiếng Nga)', recLang: 'ru-RU' },
+    { code: 'es', flag: '🇪🇸', name: 'Español (Tây Ban Nha)', recLang: 'es-ES' },
+    { code: 'it', flag: '🇮🇹', name: 'Italiano (Tiếng Ý)', recLang: 'it-IT' },
+    { code: 'pt-BR', flag: '🇧🇷', name: 'Português (Brazil)', recLang: 'pt-BR' },
+    { code: 'id', flag: '🇮🇩', name: 'Bahasa Indonesia', recLang: 'id-ID' },
+    { code: 'ms', flag: '🇲🇾', name: 'Bahasa Melayu', recLang: 'ms-MY' },
+    { code: 'hi', flag: '🇮🇳', name: 'हिन्दी (Tiếng Hindi)', recLang: 'hi-IN' },
+    { code: 'ar', flag: '🇸🇦', name: 'العربية (Ả Rập)', recLang: 'ar-SA' },
+    { code: 'tr', flag: '🇹🇷', name: 'Türkçe (Thổ Nhĩ Kỳ)', recLang: 'tr-TR' },
+    { code: 'nl', flag: '🇳🇱', name: 'Nederlands (Hà Lan)', recLang: 'nl-NL' },
+    { code: 'pl', flag: '🇵🇱', name: 'Polski (Ba Lan)', recLang: 'pl-PL' }
   ];
 
   function $(id) {
     return document.getElementById(id);
   }
 
-  function getApiKey() {
-    const apiKeys = window.apiKeys || [];
-    const idx = (window.liveKeyIndex || 0) % (apiKeys.length || 1);
-    if (apiKeys.length && apiKeys[idx]) {
-      let k = apiKeys[idx];
-      if (typeof k === 'string' && (k.startsWith('JVENC_') || k.startsWith('ENC_'))) {
-        if (typeof window.deobfuscateKey === 'function') k = window.deobfuscateKey(k);
+  function getLangObj(code) {
+    return SUPPORTED_LANGS.find(l => l.code === code) || { code, name: code, flag: '🌐', recLang: 'en-US' };
+  }
+
+  // Lấy danh sách API Key hợp lệ và giải mã an toàn
+  function getAllApiKeys() {
+    const keys = [];
+    if (window.apiKeys && Array.isArray(window.apiKeys) && window.apiKeys.length) {
+      for (const k of window.apiKeys) {
+        if (typeof k === 'string' && k.trim()) keys.push(k.trim());
       }
-      return k;
     }
-    const ls = window.ls || localStorage;
-    for (let i = 1; i <= 10; i++) {
-      let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || '').trim();
-      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
-        if (typeof window.deobfuscateKey === 'function') k = window.deobfuscateKey(k);
+    if (!keys.length) {
+      const ls = window.ls || localStorage;
+      for (let i = 1; i <= 10; i++) {
+        let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || '').trim();
+        if (k) {
+          if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
+            if (typeof window.deobfuscateKey === 'function') k = window.deobfuscateKey(k);
+          }
+          if (k) keys.push(k);
+        }
       }
-      if (k) return k;
     }
-    return '';
+    return keys;
+  }
+
+  function getCurrentApiKey() {
+    const keys = getAllApiKeys();
+    if (!keys.length) return { key: '', index: -1 };
+    currentKeyIdx = currentKeyIdx % keys.length;
+    return { key: keys[currentKeyIdx], index: currentKeyIdx };
+  }
+
+  function rotateApiKey() {
+    const keys = getAllApiKeys();
+    if (keys.length > 1) {
+      currentKeyIdx = (currentKeyIdx + 1) % keys.length;
+      console.log(`[Live Translate] Rotated to Google API Key #${currentKeyIdx + 1}`);
+      return true;
+    }
+    return false;
+  }
+
+  function updateModelBadge(modelName) {
+    const badge = $('translate-active-model-tag');
+    if (!badge) return;
+    if (modelName === MODEL_35_TRANSLATE) {
+      badge.innerHTML = "⚡ Gemini 3.5 Live Translate";
+      badge.style.color = "#38bdf8";
+      badge.style.borderColor = "rgba(56, 189, 248, 0.35)";
+    } else {
+      badge.innerHTML = "🔄 Gemini 3.8 Live (Thông dịch)";
+      badge.style.color = "#a78bfa";
+      badge.style.borderColor = "rgba(167, 139, 250, 0.35)";
+    }
+  }
+
+  function updateStatusPill(msg) {
+    const p1 = $('translate-user-status');
+    const p2 = $('translate-guest-status');
+    if (p1) p1.innerHTML = msg;
+    if (p2) p2.innerHTML = msg;
+  }
+
+  function updateAudioMeters(percent) {
+    const mUser = $('translate-user-meter')?.firstElementChild;
+    const mGuest = $('translate-guest-meter')?.firstElementChild;
+    const target = currentSpeaker === 'user' ? mUser : mGuest;
+    const other = currentSpeaker === 'user' ? mGuest : mUser;
+    if (target) target.style.width = `${percent}%`;
+    if (other) other.style.width = '0%';
   }
 
   function downsampleTo16k(inputData, inputSampleRate) {
@@ -82,12 +147,18 @@
   }
 
   function playPcm24kAudio(b64) {
-    if (!translateAudioCtx) return;
+    if (!translateAudioCtx) {
+      translateAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (translateAudioCtx.state === 'suspended') {
+      translateAudioCtx.resume();
+    }
+
     try {
       const bin = atob(b64);
       const b = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
-      
+
       const numSamples = Math.floor(b.length / 2);
       const f32 = new Float32Array(numSamples);
       const dataView = new DataView(b.buffer, b.byteOffset, b.byteLength);
@@ -100,15 +171,16 @@
       const src = translateAudioCtx.createBufferSource();
       src.buffer = ab;
       src.connect(translateAudioCtx.destination);
+
       translatePlaybackState.nextPlayTime = Math.max(translatePlaybackState.nextPlayTime, translateAudioCtx.currentTime);
       src.start(translatePlaybackState.nextPlayTime);
       translatePlaybackState.nextPlayTime += ab.duration;
       translatePlaybackState.activeSources.push(src);
 
-      // Indicator animation
+      // Animation phát âm thanh
       const activeMicBtn = currentSpeaker === 'user' ? $('btn-translate-user-mic') : $('btn-translate-guest-mic');
       if (activeMicBtn) activeMicBtn.className = 'translate-mic-btn speaking';
-      updateStatusPill("🔊 Đang phát âm thanh dịch...");
+      updateStatusPill("🔊 Đang phát bản dịch giọng nói...");
 
       src.onended = () => {
         translatePlaybackState.activeSources = translatePlaybackState.activeSources.filter(s => s !== src);
@@ -122,14 +194,24 @@
     }
   }
 
-  // Khởi tạo và kết nối Live Translate WebSocket
-  async function connectTranslateWs(targetLang) {
+  // Kết nối phiên dịch Live qua WebSocket
+  async function connectTranslateWs(targetLang, forceModel = null) {
     currentSessionTargetLang = targetLang;
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      if (window.showToast) window.showToast("Cần có ít nhất 1 Google API Key trong Cài đặt!", "danger");
+    const { key, index } = getCurrentApiKey();
+    if (!key) {
+      if (window.showToast) window.showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
       updateStatusPill("❌ Thiếu Google API Key");
       return false;
+    }
+
+    // Chọn model dịch
+    const selPref = $('translate-model-select')?.value || 'auto';
+    if (forceModel) {
+      activeEngineModel = forceModel;
+    } else if (selPref !== 'auto') {
+      activeEngineModel = selPref;
+    } else if (!activeEngineModel) {
+      activeEngineModel = MODEL_35_TRANSLATE;
     }
 
     try {
@@ -138,65 +220,98 @@
         translateWs = null;
       }
       isTranslateWsReady = false;
+      isConnecting = true;
 
-      updateStatusPill(`⏳ Đang kết nối máy chủ dịch [Đích: ${targetLang}]...`);
+      const targetLangObj = getLangObj(targetLang);
+      const targetName = targetLangObj.name;
+      updateStatusPill(`⏳ Đang kết nối [Key ${index + 1}] ➔ ${targetName}...`);
+      updateModelBadge(activeEngineModel);
 
-      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`;
       translateWs = new WebSocket(wsUrl);
 
       translateWs.onopen = () => {
-        console.log("Translate WS connected, sending setup...");
-        const setupMessage = {
-          setup: {
-            model: TRANSLATE_MODEL,
-            generationConfig: {
-              responseModalities: ["AUDIO"],
+        console.log(`Translate WS open with model: ${activeEngineModel}, targetLang: ${targetLang}`);
+
+        let setupMsg;
+        if (activeEngineModel === MODEL_35_TRANSLATE) {
+          // Chuẩn proto Gemini 3.5 Live Translate chính thức từ Google docs
+          setupMsg = {
+            setup: {
+              model: MODEL_35_TRANSLATE,
+              generationConfig: {
+                responseModalities: ["AUDIO"],
+                inputAudioTranscription: {},
+                outputAudioTranscription: {},
+                translationConfig: {
+                  targetLanguageCode: targetLang,
+                  echoTargetLanguage: false
+                }
+              }
+            }
+          };
+        } else {
+          // Fallback Gemini 3.8 Live Interpreter
+          const srcLangName = currentSpeaker === 'user' ? 'Tiếng Việt' : targetName;
+          const destLangName = currentSpeaker === 'user' ? targetName : 'Tiếng Việt';
+          setupMsg = {
+            setup: {
+              model: MODEL_38_LIVE,
+              generationConfig: {
+                responseModalities: ["AUDIO"],
+                temperature: 0.2
+              },
               inputAudioTranscription: {},
               outputAudioTranscription: {},
-              translationConfig: {
-                targetLanguageCode: targetLang,
-                echoTargetLanguage: true
+              systemInstruction: {
+                parts: [{
+                  text: `You are a real-time speech-to-speech interpreter.
+The speaker talks to you in ${srcLangName}.
+Immediately translate the spoken content accurately into ${destLangName} (${targetLang}).
+Rules:
+1. Output ONLY the translated audio speech in ${destLangName}.
+2. NEVER include conversational filler, greetings, comments, or explanations.
+3. Pronounce naturally and fluently.`
+                }]
               }
-            },
-            inputAudioTranscription: {},
-            outputAudioTranscription: {}
-          }
-        };
-        translateWs.send(JSON.stringify(setupMessage));
+            }
+          };
+        }
+
+        translateWs.send(JSON.stringify(setupMsg));
       };
 
       translateWs.onmessage = async (event) => {
         try {
-          // Xử lý gói tin dạng Blob hoặc Text an toàn
           let rawData = event.data;
-          if (rawData instanceof Blob) {
-            rawData = await rawData.text();
-          }
+          if (rawData instanceof Blob) rawData = await rawData.text();
           const resp = JSON.parse(rawData);
 
           if (resp.setupComplete || resp.serverContent?.setupComplete) {
             isTranslateWsReady = true;
-            console.log("Translate WS setupComplete received!");
+            isConnecting = false;
+            console.log("Translate WS setupComplete received successfully!");
+            updateModelBadge(activeEngineModel);
             updateStatusPill("🟢 Đã sẵn sàng. Hãy bấm nút micro và nói.");
             return;
           }
 
           const sc = resp.serverContent;
           if (sc) {
-            // Lấy văn bản người nói (input transcript)
+            // Nhận diện lời người nói từ máy chủ
             const inputTxt = sc.inputTranscription?.text || sc.input_transcription?.text ||
                              sc.interimInputTranscription?.text || sc.interim_input_transcription?.text;
             if (inputTxt && inputTxt.trim()) {
               renderInputTranscript(inputTxt.trim());
             }
 
-            // Lấy văn bản đã dịch (output transcript)
+            // Bản dịch văn bản
             const outputTxt = sc.outputTranscription?.text || sc.output_transcription?.text;
             if (outputTxt && outputTxt.trim()) {
               renderOutputTranscript(outputTxt.trim());
             }
 
-            // Lấy âm thanh đã dịch và phát
+            // Bản dịch âm thanh
             const parts = sc.modelTurn?.parts || sc.model_turn?.parts || [];
             for (const part of parts) {
               const b64 = part.inlineData?.data || part.inline_data?.data;
@@ -212,32 +327,44 @@
 
       translateWs.onerror = (e) => {
         console.warn("Translate WS error:", e);
-        updateStatusPill("⚠️ Lỗi kết nối dịch");
-        if (window.showToast) window.showToast("Lỗi kết nối phiên dịch!", "danger");
       };
 
-      translateWs.onclose = (e) => {
+      translateWs.onclose = async (e) => {
         console.warn("Translate WS closed:", e.code, e.reason);
+        const wasReady = isTranslateWsReady;
         isTranslateWsReady = false;
-        if (e.code === 1008 || e.code === 1011 || e.code === 1006) {
-          updateStatusPill(`⚠️ Ngắt kết nối (Mã ${e.code}): Kiểm tra API Key hoặc Quota`);
-          if (window.showToast) window.showToast(`Phiên dịch ngắt (Mã ${e.code}): Hãy đổi Key Google khác`, "warning");
+        isConnecting = false;
+        lastCloseInfo = { code: e.code, reason: e.reason || '' };
+        updateAudioMeters(0);
+
+        // NẾU Gemini 3.5 Translate đóng trước khi setupComplete (Mã 1008/1011/1006 hoặc key chưa có quyền preview)
+        if (!wasReady && activeEngineModel === MODEL_35_TRANSLATE && (e.code === 1008 || e.code === 1011 || e.code === 1006 || !e.code)) {
+          console.log("[Live Translate] Gemini 3.5 preview unavailable, seamlessly falling back to Gemini 3.8 Live...");
+          updateStatusPill("🔄 Gemini 3.5 chưa mở cho Key này ➔ Chuyển sang Gemini 3.8 Live...");
+          activeEngineModel = MODEL_38_LIVE;
+          setTimeout(() => connectTranslateWs(targetLang, MODEL_38_LIVE), 300);
+          return;
         }
+
+        // Xoay key nếu gặp quota / rate limit (Mã 1008)
+        if (e.code === 1008 && getAllApiKeys().length > 1) {
+          rotateApiKey();
+          updateStatusPill(`⚠️ Key bận (Mã 1008) ➔ Đang đổi Key ${currentKeyIdx + 1}...`);
+          setTimeout(() => connectTranslateWs(targetLang, activeEngineModel), 500);
+          return;
+        }
+
+        updateStatusPill(`⚠️ Ngắt kết nối (Mã ${e.code || 'đóng'}). Bấm nút micro để thử lại.`);
       };
 
       return true;
     } catch (err) {
       console.error("connectTranslateWs failed:", err);
+      isConnecting = false;
+      isTranslateWsReady = false;
       updateStatusPill("❌ Không thể kết nối dịch");
       return false;
     }
-  }
-
-  function updateStatusPill(msg) {
-    const p1 = $('translate-user-status');
-    const p2 = $('translate-guest-status');
-    if (p1) p1.innerHTML = msg;
-    if (p2) p2.innerHTML = msg;
   }
 
   function renderInputTranscript(txt) {
@@ -266,6 +393,53 @@
     }
   }
 
+  // Khởi động SpeechRecognition của trình duyệt để hiển thị chữ người nói tức thì (0ms latency)
+  function startLocalSpeechRec(speaker, langCode) {
+    stopLocalSpeechRec();
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) return;
+    try {
+      localSpeechRec = new SpeechRec();
+      localSpeechRec.continuous = true;
+      localSpeechRec.interimResults = true;
+      const langObj = getLangObj(langCode);
+      localSpeechRec.lang = speaker === 'user' ? 'vi-VN' : (langObj.recLang || 'en-US');
+
+      localSpeechRec.onresult = (event) => {
+        let finalTxt = '';
+        let interimTxt = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) finalTxt += event.results[i][0].transcript;
+          else interimTxt += event.results[i][0].transcript;
+        }
+        const text = (finalTxt || interimTxt).trim();
+        if (text) {
+          renderInputTranscript(text);
+        }
+      };
+
+      localSpeechRec.onerror = () => {};
+      localSpeechRec.onend = () => {
+        if (currentSpeaker === speaker && isTranslateWsReady) {
+          try { localSpeechRec.start(); } catch {}
+        }
+      };
+      localSpeechRec.start();
+    } catch (e) {
+      console.warn("SpeechRec error:", e);
+    }
+  }
+
+  function stopLocalSpeechRec() {
+    if (localSpeechRec) {
+      try {
+        localSpeechRec.onend = null;
+        localSpeechRec.stop();
+      } catch {}
+      localSpeechRec = null;
+    }
+  }
+
   // Bắt đầu thu âm micro
   async function startRecording() {
     if (!translateAudioCtx) {
@@ -287,6 +461,9 @@
     translateSilentGain = translateAudioCtx.createGain();
     translateSilentGain.gain.value = 0;
 
+    sentPacketCount = 0;
+    userSpeechDetected = false;
+
     translateScriptProcessor.onaudioprocess = e => {
       if (!isTranslateWsReady || !currentSpeaker || translateWs?.readyState !== WebSocket.OPEN) return;
       const floatData = e.inputBuffer.getChannelData(0);
@@ -296,23 +473,60 @@
       for (let i = 0; i < floatData.length; i++) sum += floatData[i] * floatData[i];
       const rms = Math.sqrt(sum / floatData.length);
       const activeBtn = currentSpeaker === 'user' ? $('btn-translate-user-mic') : $('btn-translate-guest-mic');
+
+      // Visual VU Meter
+      const meterPercent = Math.min(100, Math.round(rms * 450));
+      updateAudioMeters(meterPercent);
+
       if (activeBtn) {
         if (rms > 0.015 && !activeBtn.classList.contains('speaking')) {
-          activeBtn.style.transform = `scale(${1 + Math.min(rms * 2, 0.2)})`;
+          activeBtn.style.transform = `scale(${1 + Math.min(rms * 2.2, 0.22)})`;
         } else if (!activeBtn.classList.contains('speaking')) {
           activeBtn.style.transform = 'scale(1)';
         }
       }
 
+      // Phát hiện người dùng đã nói
+      if (rms > 0.02) {
+        userSpeechDetected = true;
+        if (silenceTimer) {
+          clearTimeout(silenceTimer);
+          silenceTimer = null;
+        }
+      } else if (userSpeechDetected) {
+        // Sau 1.3 giây im lặng sau khi nói -> gửi tín hiệu kết thúc turn nếu cần
+        if (!silenceTimer) {
+          silenceTimer = setTimeout(() => {
+            if (translateWs?.readyState === WebSocket.OPEN && userSpeechDetected) {
+              try {
+                translateWs.send(JSON.stringify({
+                  realtimeInput: { audioStreamEnd: true }
+                }));
+              } catch {}
+            }
+            userSpeechDetected = false;
+            silenceTimer = null;
+          }, 1300);
+        }
+      }
+
       const pcm16k = downsampleTo16k(floatData, actualSampleRate);
       let bin = '';
-      for (let i = 0; i < pcm16k.length; i++) bin += String.fromCharCode(pcm16k[i]);
+      const chunkSize = 0x8000;
+      for (let i = 0; i < pcm16k.length; i += chunkSize) {
+        bin += String.fromCharCode.apply(null, pcm16k.subarray(i, i + chunkSize));
+      }
 
       translateWs.send(JSON.stringify({
         realtimeInput: {
           audio: { mimeType: "audio/pcm;rate=16000", data: btoa(bin) }
         }
       }));
+
+      sentPacketCount++;
+      if (sentPacketCount % 20 === 0 && activeBtn?.classList.contains('listening')) {
+        updateStatusPill(currentSpeaker === 'user' ? `🎙️ Đang nghe Bạn (Đã gửi ${sentPacketCount} gói âm thanh)...` : `🎙️ Đang nghe Khách...`);
+      }
     };
 
     translateMicSource.connect(translateScriptProcessor);
@@ -321,9 +535,26 @@
   }
 
   function stopRecording() {
+    if (silenceTimer) {
+      clearTimeout(silenceTimer);
+      silenceTimer = null;
+    }
+    stopLocalSpeechRec();
+    updateAudioMeters(0);
+
+    // Gửi tín hiệu báo kết thúc chuỗi âm thanh cho Gemini
+    if (translateWs && translateWs.readyState === WebSocket.OPEN) {
+      try {
+        translateWs.send(JSON.stringify({
+          realtimeInput: { audioStreamEnd: true }
+        }));
+      } catch {}
+    }
+
     try { translateScriptProcessor?.disconnect(); translateScriptProcessor = null; } catch {}
     try { translateMicSource?.disconnect(); translateMicSource = null; } catch {}
     try { translateSilentGain?.disconnect(); translateSilentGain = null; } catch {}
+
     const b1 = $('btn-translate-user-mic');
     const b2 = $('btn-translate-guest-mic');
     if (b1) b1.style.transform = 'scale(1)';
@@ -337,29 +568,55 @@
       currentSpeaker = null;
       stopRecording();
       updateMicButtons();
-      updateStatusPill("⏸️ Đã ngắt micro");
+      updateStatusPill("⏸️ Đã ngắt micro. Bấm lại để tiếp tục nói.");
       return;
     }
 
     currentSpeaker = speaker;
     const targetLang = speaker === 'user' ? ($('translate-guest-lang-select')?.value || 'en') : 'vi';
 
-    updateStatusPill(`🔄 Đang chuẩn bị dịch sang ${speaker === 'user' ? 'tiếng Khách' : 'tiếng Việt'}...`);
+    // Đảm bảo AudioContext hoạt động trên tương tác người dùng
+    if (!translateAudioCtx) {
+      translateAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (translateAudioCtx.state === 'suspended') {
+      await translateAudioCtx.resume();
+    }
 
-    // Kết nối lại nếu đổi targetLanguage hoặc socket bị ngắt
+    updateMicButtons();
+
+    // Kết nối lại nếu đổi targetLanguage hoặc socket chưa sẵn sàng
     if (targetLang !== currentSessionTargetLang || !isTranslateWsReady || translateWs?.readyState !== WebSocket.OPEN) {
+      updateStatusPill(`🔄 Đang chuẩn bị dịch [Mục tiêu: ${getLangObj(targetLang).name}]...`);
       await connectTranslateWs(targetLang);
-      // Chờ WebSocket ready tối đa 2.5 giây
+
+      // Chờ WebSocket ready tối đa 3 giây
       let waitCount = 0;
-      while (!isTranslateWsReady && waitCount < 25) {
+      while (!isTranslateWsReady && waitCount < 30) {
         await new Promise(r => setTimeout(r, 100));
         waitCount++;
       }
     }
 
+    // KIỂM TRA CHÍNH XÁC: Chỉ bắt đầu thu âm nếu WebSocket THỰC SỰ SẴN SÀNG!
+    if (!isTranslateWsReady || translateWs?.readyState !== WebSocket.OPEN) {
+      currentSpeaker = null;
+      updateMicButtons();
+      const errReason = lastCloseInfo.code ? ` (Mã ${lastCloseInfo.code})` : '';
+      updateStatusPill(`❌ Chưa kết nối được máy chủ dịch${errReason}. Hãy bấm thử lại!`);
+      if (window.showToast) window.showToast(`Lỗi kết nối phiên dịch${errReason}!`, "warning");
+      return;
+    }
+
     await startRecording();
     updateMicButtons();
-    updateStatusPill(speaker === 'user' ? "🎙️ Đang nghe Bạn (Nói tiếng Việt)..." : "🎙️ Đang nghe Khách...");
+    startLocalSpeechRec(speaker, speaker === 'user' ? 'vi' : targetLang);
+
+    if (speaker === 'user') {
+      updateStatusPill("🎙️ Đang nghe Bạn... Hãy nói tiếng Việt!");
+    } else {
+      updateStatusPill(`🎙️ Listening to Guest... Please speak ${getLangObj(targetLang).name}!`);
+    }
   }
 
   function updateMicButtons() {
@@ -376,6 +633,7 @@
   function cleanupTranslate() {
     currentSpeaker = null;
     isTranslateWsReady = false;
+    isConnecting = false;
     stopRecording();
     translateMediaStream?.getTracks().forEach(t => t.stop());
     translateMediaStream = null;
@@ -386,6 +644,7 @@
       translateWs = null;
     }
     updateMicButtons();
+    updateAudioMeters(0);
   }
 
   // Mở giao diện phiên dịch
@@ -400,9 +659,12 @@
       sel.innerHTML = SUPPORTED_LANGS.map(l => `<option value="${l.code}" ${l.code === 'en' ? 'selected' : ''}>${l.flag} ${l.name}</option>`).join('');
     }
 
+    const currentTarget = sel?.value || 'en';
+    updateModelBadge(activeEngineModel);
     updateStatusPill("⏳ Đang chuẩn bị phiên dịch...");
-    // Pre-connect với tiếng Anh
-    connectTranslateWs(sel?.value || 'en');
+
+    // Tự động kết nối trước
+    connectTranslateWs(currentTarget);
   }
 
   function closeLiveTranslateModal() {
@@ -434,14 +696,30 @@
       };
     }
 
+    // Đổi mô hình thủ công từ select
+    const modelSelect = $('translate-model-select');
+    if (modelSelect) {
+      modelSelect.onchange = () => {
+        const val = modelSelect.value;
+        const targetLang = currentSpeaker === 'user' ? ($('translate-guest-lang-select')?.value || 'en') : 'vi';
+        if (val === 'auto') {
+          activeEngineModel = MODEL_35_TRANSLATE;
+        } else {
+          activeEngineModel = val;
+        }
+        connectTranslateWs(targetLang, activeEngineModel);
+      };
+    }
+
     // Khi khách đổi ngôn ngữ đích
     const guestLangSelect = $('translate-guest-lang-select');
     if (guestLangSelect) {
       guestLangSelect.onchange = () => {
+        const target = guestLangSelect.value;
         if (currentSpeaker === 'user') {
-          setSpeaker('user'); // Reconnect với ngôn ngữ mới
+          setSpeaker('user'); // Kết nối lại với ngôn ngữ đích mới
         } else {
-          connectTranslateWs(guestLangSelect.value);
+          connectTranslateWs(target, activeEngineModel);
         }
       };
     }

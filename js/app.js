@@ -833,6 +833,7 @@ import { GoogleGenAI } from "@google/genai";
     Object.defineProperty(window, 'oLay', { get: () => oLay, set: v => { oLay = v; }, configurable: true });
     Object.defineProperty(window, 'filesData', { get: () => filesData, set: v => { filesData = v; }, configurable: true });
     Object.defineProperty(window, 'txtContent', { get: () => txtContent, set: v => { txtContent = v; }, configurable: true });
+    window.deobfuscateKey = deobfuscateKey;
 
     // --- PROMPT LIBRARY SYSTEM ---
     const DEFAULT_PROMPTS = [

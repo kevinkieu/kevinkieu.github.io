@@ -1,5 +1,5 @@
 // Jarvis AI Service Worker for PWA (v35 - Dual-Screen Gemini 3.5 Live Translate)
-const CACHE_NAME = 'jarvis-ai-pwa-v35';
+const CACHE_NAME = 'jarvis-ai-pwa-v36';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
