@@ -7,8 +7,8 @@
   'use strict';
 
   // --- MODEL IDENTIFIERS ---
-  const PRIMARY_EMBEDDING_MODEL = "gemini-embedding-2";
-  const FALLBACK_EMBEDDING_MODEL = "gemini-embedding-001";
+  const PRIMARY_EMBEDDING_MODEL = "gemini-embedding-001";
+  const FALLBACK_EMBEDDING_MODEL = "gemini-embedding-2";
 
   // --- DATABASE CONFIGURATION ---
   const VECTOR_DB_NAME = "Jarvis_Vector_DB";
@@ -56,8 +56,11 @@
     return new Promise((resolve, reject) => {
       const tx = db.transaction(VECTOR_STORE_NAME, "readonly");
       const store = tx.objectStore(VECTOR_STORE_NAME);
-      const req = type ? store.index("type").getAll(type) : store.getAll();
-      req.onsuccess = () => resolve(req.result || []);
+      const req = (type && store.indexNames && store.indexNames.contains("type")) ? store.index("type").getAll(type) : store.getAll();
+      req.onsuccess = () => {
+        const list = req.result || [];
+        resolve(type ? list.filter(it => it.type === type) : list);
+      };
       req.onerror = (e) => reject(e);
     });
   }
@@ -187,7 +190,7 @@
     let vector = null;
 
     try {
-      // 1. Thử model tiên tiến nhất: gemini-embedding-2
+      // 1. Thử model chuẩn tốc độ cao: gemini-embedding-001
       const res = await ai.models.embedContent({
         model: PRIMARY_EMBEDDING_MODEL,
         contents: cleanText
@@ -196,7 +199,7 @@
     } catch (err) {
       console.warn(`[RAG] ${PRIMARY_EMBEDDING_MODEL} không phản hồi, tự động dùng ${FALLBACK_EMBEDDING_MODEL}:`, err);
       try {
-        // 2. Dự phòng chuẩn ổn định: gemini-embedding-001
+        // 2. Dự phòng: gemini-embedding-2
         const fallbackRes = await ai.models.embedContent({
           model: FALLBACK_EMBEDDING_MODEL,
           contents: cleanText
@@ -343,7 +346,7 @@
     const cleanPrompt = (userPrompt || '').trim();
     // Bỏ qua tin nhắn quá ngắn hoặc chào hỏi xã giao (0ms Latency!)
     if (cleanPrompt.length < 6) return { text: "", matches: [] };
-    if (/^(chào|hi|hello|alo|ê|ơi|chào bạn|xin chào|ok|tiếp|tóm tắt|dạ|vâng|cảm ơn|thanks|bye|tạm biệt)\b/i.test(cleanPrompt)) {
+    if (/^(chào|hi|hello|alo|ê|ơi|chào bạn|xin chào|ok|tiếp|tóm tắt|dạ|vâng|cảm ơn|thanks|bye|tạm biệt)\b/i.test(cleanPrompt) || /^(tôi thích|tôi ghét|tên tôi|tôi tên|nhà tôi|tôi sống|tôi ở|tôi làm|nghề của tôi|tôi sinh năm|sở thích của tôi|từ giờ hãy gọi tôi|hãy nhớ rằng tôi)\b/i.test(cleanPrompt)) {
       return { text: "", matches: [] };
     }
 
@@ -351,7 +354,8 @@
       const allItems = await getAllVectorItems();
       if (!allItems || allItems.length === 0) return { text: "", matches: [] }; // Không có tri thức -> 0ms
 
-      const matches = await searchSimilarVectors(cleanPrompt, { topK: 3, threshold: 0.58, apiKey });
+      const retrievalPromise = searchSimilarVectors(cleanPrompt, { topK: 3, threshold: 0.58, apiKey });
+      const matches = await Promise.race([retrievalPromise, new Promise(r => setTimeout(() => r([]), 1000))]);
       if (!matches.length) return { text: "", matches: [] };
 
       const formattedSnippets = matches.map((m, idx) => {
@@ -473,44 +477,52 @@ Nhiệm vụ:
 3. Nếu chỉ là câu chào hỏi, hỏi đáp kiến thức chung, nhờ viết văn/code/dịch thuật mà KHÔNG chứa thông tin về bản thân người dùng:
    Trả về JSON: { "learn": false }`;
 
+      const activeModel = document.getElementById('model-select')?.value || 'gemini-3.6-flash';
+      const modelsToTry = [activeModel, 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'];
+      const uniqueModels = [...new Set(modelsToTry)];
+
       let res = null;
-      try {
-        res = await ai.models.generateContent({
-          model: 'gemini-3.5-flash-lite',
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            temperature: 0.1,
-            maxOutputTokens: 300
-          }
-        });
-      } catch (fErr) {
-        console.warn("[Auto-Memory] Fallback sang gemini-2.5-flash:", fErr);
-        res = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            temperature: 0.1,
-            maxOutputTokens: 300
-          }
-        });
+      let lastExtractErr = null;
+      for (const m of uniqueModels) {
+        try {
+          res = await ai.models.generateContent({
+            model: m,
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              temperature: 0.1,
+              maxOutputTokens: 300
+            }
+          });
+          if (res) break;
+        } catch (mErr) {
+          lastExtractErr = mErr;
+          console.warn('[Auto-Memory] Model ' + m + ' không phản hồi:', mErr?.message || mErr);
+        }
       }
 
-      const raw = (res?.text || '').trim();
+      if (!res) {
+        console.error("[Auto-Memory] Không thể phân tích bằng bất kỳ model nào:", lastExtractErr);
+        return null;
+      }
+
+      const raw = (res?.text || res?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
       const parsed = safeParseJson(raw);
       console.log('[Auto-Memory] Kết quả phân tích:', parsed);
 
-      if (parsed && parsed.learn && parsed.text) {
+      if (parsed && (parsed.learn === true || parsed.learn === 'true') && parsed.text) {
         // Kiểm tra xem trí nhớ này đã tồn tại chưa để tránh trùng lặp
         try {
-          const duplicates = await searchSimilarVectors(parsed.text, { topK: 1, threshold: 0.88, apiKey: key });
+          const duplicates = await searchSimilarVectors(parsed.text, { topK: 1, threshold: 0.90, apiKey: key });
           if (duplicates && duplicates.length > 0) {
-            console.log("[Auto-Memory] Bỏ qua vì đã có trí nhớ tương tự:", duplicates[0].item.title);
-            return null;
+            console.log('[Auto-Memory] Đã có trí nhớ tương tự trong kho:', duplicates[0].item.title);
+            if (typeof window.showToast === 'function') {
+              window.showToast('🧠 Đã có trong trí nhớ: "' + duplicates[0].item.title + '"', 'info');
+            }
+            return duplicates[0].item;
           }
         } catch (simErr) {
-          console.warn("[Auto-Memory] Lỗi kiểm tra trùng lặp:", simErr);
+          console.warn("[Auto-Memory] Lỗi kiểm tra trùng lặp (tiếp tục lưu):", simErr);
         }
 
         const newItem = await addMemoryItem({
@@ -523,7 +535,7 @@ Nhiệm vụ:
 
         // Hiển thị thông báo Toast đẹp mắt
         if (typeof window.showToast === 'function') {
-          window.showToast(`🧠 Đã tự động ghi nhớ: "${newItem.title}"`, 'success');
+          window.showToast('🧠 Đã tự động ghi nhớ: "' + newItem.title + '"', 'success');
         }
 
         // Cập nhật lại danh sách nếu đang mở modal
@@ -532,7 +544,10 @@ Nhiệm vụ:
         return newItem;
       }
     } catch (e) {
-      console.warn("[Auto-Memory] Lỗi trích xuất ghi nhớ:", e);
+      console.error("[Auto-Memory] Lỗi trích xuất ghi nhớ:", e);
+      if (typeof window.showToast === 'function') {
+        window.showToast('⚠️ Lỗi ghi nhớ tự động: ' + (e.message || 'Lỗi không xác định'), 'warning');
+      }
     }
     return null;
   }
