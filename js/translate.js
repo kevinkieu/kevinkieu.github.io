@@ -23,7 +23,7 @@
   let isTranslateWsReady = false;
   let isConnecting = false;
   let currentSessionTargetLang = 'en';
-  let activeEngineModel = MODEL_35_TRANSLATE;
+  let activeEngineModel = MODEL_38_LIVE;
   let currentKeyIdx = 0;
   let sentPacketCount = 0;
   let userSpeechDetected = false;
@@ -204,14 +204,14 @@
       return false;
     }
 
-    // Chọn model dịch
-    const selPref = $('translate-model-select')?.value || 'auto';
+    // Chọn model dịch (ưu tiên 3.8 Live ổn định)
+    const selPref = $('translate-model-select')?.value || localStorage.getItem('jarvis_translate_model_pref') || MODEL_38_LIVE;
     if (forceModel) {
       activeEngineModel = forceModel;
     } else if (selPref !== 'auto') {
       activeEngineModel = selPref;
-    } else if (!activeEngineModel) {
-      activeEngineModel = MODEL_35_TRANSLATE;
+    } else {
+      activeEngineModel = MODEL_38_LIVE;
     }
 
     try {
@@ -235,18 +235,15 @@
 
         let setupMsg;
         if (activeEngineModel === MODEL_35_TRANSLATE) {
-          // Chuẩn proto Gemini 3.5 Live Translate chính thức từ Google docs
+          // Chuẩn proto Gemini 3.5 Live Translate: translationConfig đặt trực tiếp dưới setup
           setupMsg = {
             setup: {
               model: MODEL_35_TRANSLATE,
               generationConfig: {
-                responseModalities: ["AUDIO"],
-                inputAudioTranscription: {},
-                outputAudioTranscription: {},
-                translationConfig: {
-                  targetLanguageCode: targetLang,
-                  echoTargetLanguage: false
-                }
+                responseModalities: ["AUDIO"]
+              },
+              translationConfig: {
+                targetLanguageCode: targetLang
               }
             }
           };
@@ -337,11 +334,14 @@ Rules:
         lastCloseInfo = { code: e.code, reason: e.reason || '' };
         updateAudioMeters(0);
 
-        // NẾU Gemini 3.5 Translate đóng trước khi setupComplete (Mã 1008/1011/1006 hoặc key chưa có quyền preview)
-        if (!wasReady && activeEngineModel === MODEL_35_TRANSLATE && (e.code === 1008 || e.code === 1011 || e.code === 1006 || !e.code)) {
-          console.log("[Live Translate] Gemini 3.5 preview unavailable, seamlessly falling back to Gemini 3.8 Live...");
-          updateStatusPill("🔄 Gemini 3.5 chưa mở cho Key này ➔ Chuyển sang Gemini 3.8 Live...");
+        // NẾU Gemini 3.5 Translate đóng trước khi setupComplete (Mã 1007, 1008, 1011, 1006 hoặc bất kỳ lỗi nào)
+        if (!wasReady && activeEngineModel === MODEL_35_TRANSLATE && e.code !== 1000) {
+          console.log(`[Live Translate] Gemini 3.5 closed (code ${e.code}, reason: ${e.reason}), falling back to Gemini 3.8 Live...`);
+          updateStatusPill(`🔄 Gemini 3.5 (Mã ${e.code}) ➔ Đang tự động chuyển sang Gemini 3.8 Live...`);
           activeEngineModel = MODEL_38_LIVE;
+          const modelSel = $('translate-model-select');
+          if (modelSel) modelSel.value = MODEL_38_LIVE;
+          updateModelBadge(MODEL_38_LIVE);
           setTimeout(() => connectTranslateWs(targetLang, MODEL_38_LIVE), 300);
           return;
         }
@@ -699,11 +699,18 @@ Rules:
     // Đổi mô hình thủ công từ select
     const modelSelect = $('translate-model-select');
     if (modelSelect) {
+      const savedModel = localStorage.getItem('jarvis_translate_model_pref');
+      if (savedModel && ['models/gemini-3.8-live', 'models/gemini-3.5-live-translate-preview', 'auto'].includes(savedModel)) {
+        modelSelect.value = savedModel;
+        activeEngineModel = savedModel === 'auto' ? MODEL_38_LIVE : savedModel;
+      }
+
       modelSelect.onchange = () => {
         const val = modelSelect.value;
+        localStorage.setItem('jarvis_translate_model_pref', val);
         const targetLang = currentSpeaker === 'user' ? ($('translate-guest-lang-select')?.value || 'en') : 'vi';
         if (val === 'auto') {
-          activeEngineModel = MODEL_35_TRANSLATE;
+          activeEngineModel = MODEL_38_LIVE;
         } else {
           activeEngineModel = val;
         }
