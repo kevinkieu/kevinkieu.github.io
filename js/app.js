@@ -79,7 +79,7 @@ import { GoogleGenAI } from "@google/genai";
     };
 
     // CENTRAL CONSTANT FOR SECONDARY & BACKGROUND TASKS (FLASH LITE)
-    const FLASH_LITE_MODEL = 'gemini-3.6-flash';
+    const FLASH_LITE_MODEL = 'gemini-3.5-flash-lite';
 
     // Init libraries
     marked.use({ breaks: true });
@@ -1063,17 +1063,32 @@ import { GoogleGenAI } from "@google/genai";
 
       try {
         const toSummarize = chatHistory.slice(0, chatHistory.length - 10).map(m => `${m.role === 'model' ? 'AI' : 'User'}: ${m.text.slice(0, 300)}`).join('\n');
-        const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
-          model: FLASH_LITE_MODEL,
-          contents: `Hãy tóm tắt cô đọng các thông tin quan trọng, ngữ cảnh và các quyết định cốt lõi trong đoạn hội thoại sau thành 1 đoạn ngắn gọn (khoảng 3-5 gạch đầu dòng):\n\n${toSummarize}`
-        });
-        if (res.text) {
+        const prevSummary = sessionObj.summaryMemory ? `[Bối cảnh cốt lõi trước đó]:\n${sessionObj.summaryMemory}\n\n[Diễn biến mới cần cập nhật]:\n` : '';
+        const promptText = `Hãy cập nhật và cô đọng các thông tin quan trọng, ngữ cảnh và các quyết định cốt lõi trong đoạn hội thoại sau thành 1 đoạn ngắn gọn (khoảng 3-5 gạch đầu dòng):\n\n${prevSummary}${toSummarize}`;
+
+        const ai = new GoogleGenAI({ apiKey: k });
+        let res = null;
+        try {
+          res = await ai.models.generateContent({
+            model: FLASH_LITE_MODEL,
+            contents: promptText
+          });
+        } catch (mErr) {
+          console.warn('Thử lại Auto-Summary với gemini-2.5-flash:', mErr);
+          res = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: promptText
+          });
+        }
+
+        if (res && res.text) {
           sessionObj.summaryMemory = res.text.trim();
           sessionObj.lastCondensedLength = chatHistory.length;
           await saveToDB(sessionObj);
+          console.log('[Auto-Summary] Đã nén trí nhớ dài hạn thành công:', sessionObj.summaryMemory);
         }
       } catch (e) {
-        console.warn("Lỗi tóm tắt bộ nhớ dài:", e);
+        console.warn('Lỗi tóm tắt bộ nhớ dài:', e);
       }
     }
 
