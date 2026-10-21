@@ -2575,6 +2575,7 @@ import { GoogleGenAI } from "@google/genai";
       let recordedIxId = null;
       let streamFinishReason = null;
       let pS = false, lastErr = null;
+      let ragMatches = [];
       const startTime = performance.now();
 
       const saveTurn = async (suffix = '') => {
@@ -2594,7 +2595,20 @@ import { GoogleGenAI } from "@google/genai";
         if (bD?.querySelector('.bot-message')) {
           bD.querySelector('.bot-message').setAttribute('data-raw', finalResp);
           const ixBadge = recordedIxId ? `<span class="interaction-id-badge" title="ID: ${recordedIxId}">⚡ ID: ${recordedIxId.slice(0, 8)}... [🔒 Key ${keyIndexNum}]</span>` : '';
-          bD.querySelector('.message-header').innerHTML = `<span>✨ Jarvis AI</span><span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}</span>${ixBadge}`;
+          let ragBadge = '';
+          if (ragMatches && ragMatches.length > 0) {
+            const topMatch = ragMatches[0];
+            const topPct = Math.round(topMatch.similarity * 100);
+            const topTitle = topMatch.item?.title || topMatch.item?.docName || 'Tri thức';
+            const payload = encodeURIComponent(JSON.stringify(ragMatches.map(m => ({
+              title: m.item?.title || m.item?.docName || 'Tri thức',
+              type: m.item?.type || 'memory',
+              similarity: m.similarity,
+              text: m.item?.text || ''
+            }))));
+            ragBadge = `<span class="rag-status-badge" onclick="window.JarvisRAG.showRetrievedDetails('${payload}')" title="Trích xuất từ: ${escapeHtml(topTitle)} (${topPct}% khớp). Bấm để xem chi tiết!">🧠 Trí nhớ RAG (${ragMatches.length} mục · ${topPct}%)</span>`;
+          }
+          bD.querySelector('.message-header').innerHTML = `<span>✨ Jarvis AI</span><span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}</span>${ixBadge}${ragBadge}`;
           const currentBotIdx = chatHistory.length - 1, aDiv = document.createElement('div');
           aDiv.className = 'msg-actions';
           const continueBtn = (streamFinishReason === 'MAX_TOKENS' || (lastErr && pS)) 
@@ -2628,6 +2642,11 @@ import { GoogleGenAI } from "@google/genai";
         // AUTO-SUMMARY BỘ NHỚ DÀI HẠN
         if (chatHistory.length > 16 && cs) {
           condenseSessionMemory(cs);
+        }
+
+        // CHATGPT-STYLE AUTO-LEARN MEMORY
+        if (fP && fP.length >= 10 && window.JarvisRAG && typeof window.JarvisRAG.extractAndLearnMemory === 'function') {
+          setTimeout(() => window.JarvisRAG.extractAndLearnMemory(fP, gKey), 400);
         }
       };
 
@@ -2815,7 +2834,13 @@ import { GoogleGenAI } from "@google/genai";
         let ragSnippet = '';
         if (window.JarvisRAG && typeof window.JarvisRAG.retrieveContext === 'function') {
           try {
-            ragSnippet = await window.JarvisRAG.retrieveContext(fP, gKey);
+            const ragRes = await window.JarvisRAG.retrieveContext(fP, gKey);
+            if (typeof ragRes === 'string') {
+              ragSnippet = ragRes;
+            } else if (ragRes) {
+              ragSnippet = ragRes.text || '';
+              ragMatches = ragRes.matches || [];
+            }
           } catch (rErr) {
             console.warn("[RAG] Lỗi truy vấn ngữ cảnh:", rErr);
           }

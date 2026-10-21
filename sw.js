@@ -1,5 +1,5 @@
 // Jarvis AI Service Worker for PWA (v41 - Gemini Embedding 2 RAG & Vector Memory)
-const CACHE_NAME = 'jarvis-ai-pwa-v41';
+const CACHE_NAME = 'jarvis-ai-pwa-v42';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',

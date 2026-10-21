@@ -999,8 +999,12 @@
           </div>
 
           <div style="margin-top:14px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
               <span style="font-weight:700;font-size:0.85rem;">📋 Danh sách Trí nhớ Đã lưu (<span id="memory-count-badge">0 mục</span>)</span>
+              <label style="cursor:pointer;font-size:0.75rem;font-weight:600;color:var(--primary);display:flex;align-items:center;gap:6px;" title="Tự động nhận diện và ghi nhớ thông tin cá nhân trong lúc chat">
+                <input type="checkbox" id="toggle-auto-learn-memory" checked>
+                🤖 Tự động học & ghi nhớ (ChatGPT Memory)
+              </label>
             </div>
             <div id="memory-list-container" class="memory-grid"></div>
           </div>
@@ -1072,6 +1076,23 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- MODAL RETRIEVED RAG DETAILS -->
+    <div id="rag-details-modal" class="modal-box" style="max-width:580px;width:92%;">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <h3 style="margin:0;font-size:1.05rem;">🧠 Dữ liệu Trí nhớ RAG Đã Trích Xuất</h3>
+          <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.7rem;padding:2px 8px;border-radius:10px;">Đã nạp vào Context</span>
+        </div>
+        <button class="close-btn icon-btn">&times;</button>
+      </div>
+      <div style="padding:16px;max-height:65vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:0.78rem;color:var(--text-muted);">
+          Dưới đây là các mẩu tri thức cá nhân hoặc đoạn trích tài liệu được <b>gemini-embedding-2</b> tính toán độ tương đồng và nạp vào câu trả lời:
+        </div>
+        <div id="rag-details-list" style="display:flex;flex-direction:column;gap:10px;"></div>
       </div>
     </div>
 
