@@ -327,14 +327,19 @@ import { GoogleGenAI } from "@google/genai";
     async function fetchTavilySearch(q) {
       const cached = getSearchCache(q, 'tavily');
       if (cached) return cached;
-      const k = ls.getItem('tavily_api_key') || '';
+      let k = (ls.getItem('tavily_api_key') || '').trim();
+      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
       if (!k) throw new Error("Chưa nhập Tavily API Key trong cài đặt!");
       const r = await fetch("https://api.tavily.com/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ api_key: k, query: q, max_results: 5, include_answer: true })
       });
-      if (!r.ok) throw new Error(`Tavily HTTP ${r.status}`);
+      if (!r.ok) {
+        let errDetail = "";
+        try { const errJson = await r.json(); errDetail = errJson.message || errJson.error || ""; } catch {}
+        throw new Error(`Tavily HTTP ${r.status}${errDetail ? ': ' + errDetail : ''}`);
+      }
       const d = await r.json();
       const res = [
         ...(d.answer ? [`💡 **Tóm tắt Tavily**: ${d.answer}`] : []),
@@ -347,10 +352,11 @@ import { GoogleGenAI } from "@google/genai";
     async function fetchJinaSearch(q) {
       const cached = getSearchCache(q, 'jina');
       if (cached) return cached;
-      const k = ls.getItem('jina_api_key') || '',
-            r = await fetch(`https://s.jina.ai/${encodeURIComponent(q)}`, {
-              headers: { Accept: "application/json", ...(k ? { Authorization: `Bearer ${k}` } : {}) }
-            });
+      let k = (ls.getItem('jina_api_key') || '').trim();
+      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
+      const r = await fetch(`https://s.jina.ai/${encodeURIComponent(q)}`, {
+        headers: { Accept: "application/json", ...(k ? { Authorization: `Bearer ${k}` } : {}) }
+      });
       if (!r.ok) throw new Error(`Jina HTTP ${r.status}`);
       const res = ((await r.json()).data || []).slice(0, 5).map(x => `- **${x.title || 'Tin'}**\n  *Nội dung*: ${(x.content || x.description || '').substring(0, 800)}\n  *Nguồn*: ${x.url}`).join('\n\n');
       setSearchCache(q, 'jina', res);
@@ -360,7 +366,8 @@ import { GoogleGenAI } from "@google/genai";
     async function fetchSerperSearch(q) {
       const cached = getSearchCache(q, 'serper');
       if (cached) return cached;
-      const k = ls.getItem('serper_api_key') || '';
+      let k = (ls.getItem('serper_api_key') || '').trim();
+      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
       if (!k) throw new Error("Chưa có Serper Key!");
       const r = await fetch("https://google.serper.dev/search", {
         method: "POST",
@@ -380,10 +387,12 @@ import { GoogleGenAI } from "@google/genai";
     async function fetchBraveSearch(q) {
       const cached = getSearchCache(q, 'brave');
       if (cached) return cached;
-      const k = ls.getItem('brave_api_key') || '';
+      let k = (ls.getItem('brave_api_key') || '').trim();
+      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
       if (!k) throw new Error("Chưa có Brave Key!");
-      const w = (ls.getItem('brave_worker_url') || '').replace(/\/+$/, ''),
-            ep = `${w || 'https://api.search.brave.com/res/v1/web/search'}?q=${encodeURIComponent(q)}&count=5`;
+      let w = (ls.getItem('brave_worker_url') || '').replace(/\/+$/, '');
+      if (w.startsWith('JVENC_') || w.startsWith('ENC_')) w = deobfuscateKey(w);
+      const ep = `${w || 'https://api.search.brave.com/res/v1/web/search'}?q=${encodeURIComponent(q)}&count=5`;
       const r = await fetch(ep, { headers: { Accept: "application/json", "X-Subscription-Token": k } });
       if (!r.ok) throw new Error(`Brave HTTP ${r.status}`);
       const res = ((await r.json()).web?.results || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.description}\n  *Nguồn*: ${x.url}`).join('\n\n');
@@ -392,13 +401,20 @@ import { GoogleGenAI } from "@google/genai";
     }
 
     async function executeLiveSearch(query) {
+      const now = new Date();
+      const dateStr = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+      let q = (query || '').trim();
+      if (/hôm nay|mới nhất|hiện nay|hiện tại|giá|tin tức|thời tiết|hôm qua|vừa qua|tháng này|năm nay/i.test(q) && !q.includes(String(now.getFullYear()))) {
+        q = `${q} ngày ${dateStr}`;
+      }
       try {
-        return await fetchTavilySearch(query);
+        return await fetchTavilySearch(q);
       } catch (tavErr) {
         console.warn("Tavily search lỗi, chạy fallback:", tavErr);
         try {
           const eng = ls.getItem('auto_search_default_engine') || 'jina';
-          return await ({ jina: fetchJinaSearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[eng] || fetchJinaSearch)(query);
+          const fallbackFn = { jina: fetchJinaSearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[eng] || fetchJinaSearch;
+          return await fallbackFn(q);
         } catch (fbErr) {
           return `Không thể lấy dữ liệu: ${tavErr.message}`;
         }
@@ -406,9 +422,11 @@ import { GoogleGenAI } from "@google/genai";
     }
 
     async function extractWebPageContent(url) {
-      const mode = ls.getItem('web_extract_engine') || 'auto',
-            jk = ls.getItem('jina_api_key') || '',
-            tk = ls.getItem('tavily_api_key') || '';
+      const mode = ls.getItem('web_extract_engine') || 'auto';
+      let jk = (ls.getItem('jina_api_key') || '').trim(),
+          tk = (ls.getItem('tavily_api_key') || '').trim();
+      if (jk.startsWith('JVENC_') || jk.startsWith('ENC_')) jk = deobfuscateKey(jk);
+      if (tk.startsWith('JVENC_') || tk.startsWith('ENC_')) tk = deobfuscateKey(tk);
       const isBlocked = t => !t || t.trim().length < 60 || /(just a moment|security verification|verify you are human|cloudflare|ddos protection|challenge-platform|enable javascript|access denied|403 forbidden)/i.test(t);
 
       const tavily = async () => {
@@ -519,7 +537,11 @@ import { GoogleGenAI } from "@google/genai";
     function initExternalConfigs() {
       cfgMap.forEach(([id, k, def = '']) => {
         if ($(id)) {
-          $(id).value = ls.getItem(k) || (k === 'jarvis_global_context' ? (ls.getItem('huanmu_global_context') || ls.getItem('javiss_global_context') || '') : '') || def;
+          let val = ls.getItem(k) || (k === 'jarvis_global_context' ? (ls.getItem('huanmu_global_context') || ls.getItem('javiss_global_context') || '') : '') || def;
+          if (typeof val === 'string' && (val.startsWith('JVENC_') || val.startsWith('ENC_'))) {
+            val = deobfuscateKey(val);
+          }
+          $(id).value = val;
         }
       });
       if ($('live-temp-val')) $('live-temp-val').innerText = ls.getItem('live_temperature') || '0.7';
@@ -785,6 +807,7 @@ import { GoogleGenAI } from "@google/genai";
     window.getNowTime24h = () => getNowTime24h();
     window.formatGoogleApiError = err => formatGoogleApiError(err);
     window.extractWebPageContent = url => extractWebPageContent(url);
+    window.executeLiveSearch = q => executeLiveSearch(q);
     window.fetchTavilySearch = q => fetchTavilySearch(q);
     window.fetchJinaSearch = q => fetchJinaSearch(q);
     window.fetchSerperSearch = q => fetchSerperSearch(q);
@@ -2668,7 +2691,14 @@ import { GoogleGenAI } from "@google/genai";
             const tgtEng = selEng === 'auto' ? (ls.getItem('auto_search_default_engine') || 'tavily') : selEng;
             const searchFn = { tavily: fetchTavilySearch, jina: fetchJinaSearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[tgtEng] || fetchTavilySearch;
 
-            const searchPromises = subQueries.map(q => searchFn(q).catch(() => ''));
+            const searchPromises = subQueries.map(async q => {
+              try {
+                return await searchFn(q);
+              } catch (e) {
+                console.warn(`Deep research lỗi ${tgtEng}:`, e);
+                try { return await fetchJinaSearch(q); } catch { return ''; }
+              }
+            });
             const searchResults = await Promise.all(searchPromises);
 
             if (s2) {
@@ -2698,13 +2728,63 @@ import { GoogleGenAI } from "@google/genai";
         }
 
         const quoted = extractQuotedKeywords(fnP);
-        if (quoted && DOM.toggleSearch.checked && !isDeepResearch) {
+        const shouldSearch = (quoted || DOM.toggleSearch.checked) && !isDeepResearch;
+        if (shouldSearch) {
           const sel = DOM.searchEngineSel.value,
                 tgt = sel === 'auto' ? (ls.getItem('auto_search_default_engine') || 'tavily') : sel;
+
+          let rawQuery = quoted || fnP.replace(/https?:\/\/[^\s]+/g, '').replace(/\n+/g, ' ').trim().slice(0, 150);
+          const now = new Date();
+          const dateStr = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+          let actualSearchQuery = rawQuery;
+          if (/hôm nay|mới nhất|hiện nay|hiện tại|giá|tin tức|thời tiết|hôm qua|vừa qua|tháng này|năm nay/i.test(rawQuery) && !rawQuery.includes(String(now.getFullYear()))) {
+            actualSearchQuery = `${rawQuery} ngày ${dateStr}`;
+          }
+
+          let searchBadge = null;
+          const msgHdr = bD?.querySelector('.message-header');
+          if (msgHdr) {
+            searchBadge = document.createElement('span');
+            searchBadge.className = 'search-status-badge';
+            searchBadge.style.cssText = 'font-size:0.75rem;padding:2px 8px;border-radius:12px;background:rgba(59,130,246,0.15);color:#3b82f6;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin-left:8px;';
+            searchBadge.innerHTML = `🌐 Đang tìm kiếm (${tgt}): <em>"${escapeHtml(rawQuery.slice(0, 30))}"</em>...`;
+            msgHdr.appendChild(searchBadge);
+          }
+
+          let sText = '';
+          const engineMap = { tavily: fetchTavilySearch, jina: fetchJinaSearch, serper: fetchSerperSearch, brave: fetchBraveSearch };
+          const primaryFn = engineMap[tgt] || fetchTavilySearch;
+
           try {
-            const sText = await ({ tavily: fetchTavilySearch, jina: fetchJinaSearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[tgt] || fetchTavilySearch)(quoted);
-            if (sText) fnP = `[DỮ LIỆU TÌM ĐƯỢC CHO "${quoted}"]: \n${sText}\n\n[YÊU CẦU]: ${fnP}`;
-          } catch (e) {}
+            sText = await primaryFn(actualSearchQuery);
+          } catch (sErr) {
+            console.warn(`Lỗi tìm kiếm ${tgt}:`, sErr);
+            showToast(`⚠️ Lỗi ${tgt}: ${sErr.message || 'Không kết nối được'}. Thử fallback Jina Search...`, 'warning');
+            if (tgt !== 'jina') {
+              try {
+                if (searchBadge) searchBadge.innerHTML = `🌐 Đang thử fallback Jina Search...`;
+                sText = await fetchJinaSearch(actualSearchQuery);
+              } catch (jinaErr) {
+                console.warn("Jina fallback cũng lỗi:", jinaErr);
+                showToast(`❌ Không thể tìm kiếm web: ${jinaErr.message || sErr.message}`, 'danger');
+              }
+            }
+          }
+
+          if (sText) {
+            if (searchBadge) {
+              searchBadge.style.background = 'rgba(16,185,129,0.15)';
+              searchBadge.style.color = '#10b981';
+              searchBadge.innerHTML = `✓ Đã cập nhật dữ liệu Web (${dateStr})`;
+              setTimeout(() => { if (searchBadge) searchBadge.remove(); }, 5000);
+            }
+            fnP = `[DỮ LIỆU TÌM KIẾM WEB THỰC TẾ TRỰC TUYẾN NGÀY ${dateStr} CHO TRUY VẤN "${actualSearchQuery}"]:\n${sText}\n\n[CHỈ THỊ CẬP NHẬT THỜI GIAN THỰC]: Dữ liệu trên được lấy trực tiếp từ Internet vào ngày hôm nay (${dateStr}). BẮT BUỘC sử dụng các số liệu và thông tin mới nhất này để trả lời người dùng, không sử dụng kiến thức cũ đã lỗi thời.\n\n[CÂU HỎI CỦA NGƯỜI DÙNG]: ${fnP}`;
+          } else if (searchBadge) {
+            searchBadge.style.background = 'rgba(239,68,68,0.15)';
+            searchBadge.style.color = '#ef4444';
+            searchBadge.innerHTML = `⚠️ Không lấy được dữ liệu web`;
+            setTimeout(() => { if (searchBadge) searchBadge.remove(); }, 4000);
+          }
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
