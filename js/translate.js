@@ -1,14 +1,14 @@
 /* ==========================================================================
    Jarvis AI - Dual-Screen Face-to-Face Live Translator Module (js/translate.js)
-   Powered by Gemini Live Translate & Intelligent Gemini 3.8 Live Fallback
+   Powered by Gemini 3.8 Bilateral Real-Time Voice Interpreter
    ========================================================================== */
 
 (function() {
   'use strict';
 
   // --- SUPPORTED MODELS ---
-  const MODEL_35_TRANSLATE = "models/gemini-3.5-live-translate-preview";
   const MODEL_38_LIVE = "models/gemini-3.8-live";
+  const MODEL_35_TRANSLATE = "models/gemini-3.5-live-translate-preview";
 
   // --- STATE ---
   let translateWs = null;
@@ -19,15 +19,13 @@
   let translateSilentGain = null;
   let translatePlaybackState = { nextPlayTime: 0, activeSources: [] };
 
-  let currentSpeaker = null; // 'user' hoặc 'guest'
+  let currentSpeaker = null; // 'user' (Việt) hoặc 'guest' (Khách)
   let isTranslateWsReady = false;
   let isConnecting = false;
-  let currentSessionTargetLang = 'en';
+  let currentGuestLangCode = 'en';
   let activeEngineModel = MODEL_38_LIVE;
   let currentKeyIdx = 0;
   let sentPacketCount = 0;
-  let userSpeechDetected = false;
-  let silenceTimer = null;
   let lastCloseInfo = { code: 0, reason: '' };
 
   // Local Web Speech Recognition for instant 0ms visual transcription
@@ -61,6 +59,9 @@
   }
 
   function getLangObj(code) {
+    if (code === 'vi' || code === 'vi-VN') {
+      return { code: 'vi', flag: '🇻🇳', name: 'Tiếng Việt', recLang: 'vi-VN' };
+    }
     return SUPPORTED_LANGS.find(l => l.code === code) || { code, name: code, flag: '🌐', recLang: 'en-US' };
   }
 
@@ -107,12 +108,12 @@
   function updateModelBadge(modelName) {
     const badge = $('translate-active-model-tag');
     if (!badge) return;
-    if (modelName === MODEL_35_TRANSLATE) {
-      badge.innerHTML = "⚡ Gemini 3.5 Live Translate";
+    if (modelName === MODEL_38_LIVE) {
+      badge.innerHTML = "⚡ Gemini 3.8 Live (Song song)";
       badge.style.color = "#38bdf8";
       badge.style.borderColor = "rgba(56, 189, 248, 0.35)";
     } else {
-      badge.innerHTML = "🔄 Gemini 3.8 Live (Thông dịch)";
+      badge.innerHTML = "🧪 Gemini 3.5 Translate";
       badge.style.color = "#a78bfa";
       badge.style.borderColor = "rgba(167, 139, 250, 0.35)";
     }
@@ -186,7 +187,7 @@
         translatePlaybackState.activeSources = translatePlaybackState.activeSources.filter(s => s !== src);
         if (!translatePlaybackState.activeSources.length && activeMicBtn) {
           activeMicBtn.className = currentSpeaker ? 'translate-mic-btn listening' : 'translate-mic-btn';
-          updateStatusPill(currentSpeaker === 'user' ? "🎙️ Đang nghe Bạn (Tiếng Việt)..." : "🎙️ Đang nghe Khách...");
+          updateStatusPill(currentSpeaker === 'user' ? "🎙️ Đang nghe Bạn (Tiếng Việt)..." : `🎙️ Đang nghe Khách (${getLangObj(currentGuestLangCode).name})...`);
         }
       };
     } catch (e) {
@@ -195,8 +196,8 @@
   }
 
   // Kết nối phiên dịch Live qua WebSocket
-  async function connectTranslateWs(targetLang, forceModel = null) {
-    currentSessionTargetLang = targetLang;
+  async function connectTranslateWs(guestLangCode, forceModel = null) {
+    currentGuestLangCode = guestLangCode || currentGuestLangCode || 'en';
     const { key, index } = getCurrentApiKey();
     if (!key) {
       if (window.showToast) window.showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
@@ -204,14 +205,11 @@
       return false;
     }
 
-    // Chọn model dịch (ưu tiên 3.8 Live ổn định)
-    const selPref = $('translate-model-select')?.value || localStorage.getItem('jarvis_translate_model_pref') || MODEL_38_LIVE;
     if (forceModel) {
       activeEngineModel = forceModel;
-    } else if (selPref !== 'auto') {
-      activeEngineModel = selPref;
     } else {
-      activeEngineModel = MODEL_38_LIVE;
+      const selPref = $('translate-model-select')?.value || localStorage.getItem('jarvis_translate_model_pref') || MODEL_38_LIVE;
+      activeEngineModel = selPref;
     }
 
     try {
@@ -222,54 +220,52 @@
       isTranslateWsReady = false;
       isConnecting = true;
 
-      const targetLangObj = getLangObj(targetLang);
-      const targetName = targetLangObj.name;
-      updateStatusPill(`⏳ Đang kết nối [Key ${index + 1}] ➔ ${targetName}...`);
+      const guestLang = getLangObj(currentGuestLangCode);
+      const guestName = guestLang.name;
+      const guestCode = guestLang.code;
+
+      updateStatusPill(`⏳ Đang kết nối [Key ${index + 1}] ➔ ${guestName}...`);
       updateModelBadge(activeEngineModel);
 
       const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`;
       translateWs = new WebSocket(wsUrl);
 
       translateWs.onopen = () => {
-        console.log(`Translate WS open with model: ${activeEngineModel}, targetLang: ${targetLang}`);
+        console.log(`Translate WS open: ${activeEngineModel}, guestLang: ${guestCode}`);
 
         let setupMsg;
         if (activeEngineModel === MODEL_35_TRANSLATE) {
-          // Cấu hình chuẩn của google-genai SDK cho gemini-3.5-live-translate-preview
           setupMsg = {
             setup: {
               model: MODEL_35_TRANSLATE,
               generationConfig: {
                 responseModalities: ["AUDIO"],
                 translationConfig: {
-                  targetLanguageCode: targetLang,
+                  targetLanguageCode: guestCode,
                   echoTargetLanguage: false
                 }
               }
             }
           };
         } else {
-          // Fallback Gemini 3.8 Live Interpreter
-          const srcLangName = currentSpeaker === 'user' ? 'Tiếng Việt' : targetName;
-          const destLangName = currentSpeaker === 'user' ? targetName : 'Tiếng Việt';
+          // Gemini 3.8 Live: THÔNG DỊCH VIÊN 2 CHIỀU SONG SONG (TIẾNG VIỆT ⇄ TIẾNG KHÁCH)
           setupMsg = {
             setup: {
               model: MODEL_38_LIVE,
               generationConfig: {
                 responseModalities: ["AUDIO"],
-                temperature: 0.2
+                temperature: 0.1
               },
               inputAudioTranscription: {},
               outputAudioTranscription: {},
               systemInstruction: {
                 parts: [{
-                  text: `You are a real-time speech-to-speech interpreter.
-The speaker talks to you in ${srcLangName}.
-Immediately translate the spoken content accurately into ${destLangName} (${targetLang}).
-Rules:
-1. Output ONLY the translated audio speech in ${destLangName}.
-2. NEVER include conversational filler, greetings, comments, or explanations.
-3. Pronounce naturally and fluently.`
+                  text: `You are an expert real-time bilateral voice interpreter between Vietnamese and ${guestName} (${guestCode}).
+YOUR STRICT RULES:
+1. When you hear Vietnamese spoken: translate it directly into natural ${guestName} and speak ONLY the translation in ${guestName}.
+2. When you hear ${guestName} (or foreign language) spoken: translate it directly into Vietnamese and speak ONLY the translation in Vietnamese.
+3. Output ONLY the translated speech. NEVER add conversational filler, greetings, comments, or explanations.
+4. Speak fluently, clearly, and with authentic pronunciation.`
                 }]
               }
             }
@@ -290,31 +286,41 @@ Rules:
             isConnecting = false;
             console.log("Translate WS setupComplete received successfully!");
             updateModelBadge(activeEngineModel);
-            updateStatusPill("🟢 Đã sẵn sàng. Hãy bấm nút micro và nói.");
+            updateStatusPill("🟢 Đã sẵn sàng. Bấm micro để trò chuyện 2 chiều.");
             return;
           }
 
           const sc = resp.serverContent;
           if (sc) {
+            if (sc.interrupted) {
+              translatePlaybackState.activeSources.forEach(s => { try { s.stop(); } catch {} });
+              translatePlaybackState = { nextPlayTime: translateAudioCtx?.currentTime || 0, activeSources: [] };
+            }
+
             // Nhận diện lời người nói từ máy chủ
             const inputTxt = sc.inputTranscription?.text || sc.input_transcription?.text ||
+                             sc.inputAudioTranscription?.text || sc.input_audio_transcription?.text ||
                              sc.interimInputTranscription?.text || sc.interim_input_transcription?.text;
             if (inputTxt && inputTxt.trim()) {
               renderInputTranscript(inputTxt.trim());
             }
 
             // Bản dịch văn bản
-            const outputTxt = sc.outputTranscription?.text || sc.output_transcription?.text;
+            const outputTxt = sc.outputTranscription?.text || sc.output_transcription?.text ||
+                              sc.outputAudioTranscription?.text || sc.output_audio_transcription?.text;
             if (outputTxt && outputTxt.trim()) {
               renderOutputTranscript(outputTxt.trim());
             }
 
-            // Bản dịch âm thanh
+            // Âm thanh dịch
             const parts = sc.modelTurn?.parts || sc.model_turn?.parts || [];
             for (const part of parts) {
               const b64 = part.inlineData?.data || part.inline_data?.data;
               if (b64) {
                 playPcm24kAudio(b64);
+              }
+              if (part.text && !outputTxt) {
+                renderOutputTranscript(part.text.trim());
               }
             }
           }
@@ -335,15 +341,16 @@ Rules:
         lastCloseInfo = { code: e.code, reason: e.reason || '' };
         updateAudioMeters(0);
 
-        // NẾU Gemini 3.5 đóng trước khi setupComplete (BẤT KỂ mã lỗi nào: 1000, 1007, 1008, 1011, 1006)
+        // NẾU Gemini 3.5 đóng trước khi sẵn sàng -> Lập tức tự chuyển sang Gemini 3.8 Live
         if (!wasReady && activeEngineModel === MODEL_35_TRANSLATE) {
-          console.log(`[Live Translate] Gemini 3.5 closed (code ${e.code}, reason: ${e.reason}), falling back to Gemini 3.8 Live...`);
-          updateStatusPill(`🔄 Gemini 3.5 ngắt kết nối (Mã ${e.code}) ➔ Tự động chuyển sang Gemini 3.8 Live...`);
+          console.log(`[Live Translate] Gemini 3.5 closed (code ${e.code}), falling back to Gemini 3.8 Live...`);
+          updateStatusPill(`🔄 Gemini 3.5 ngắt (Mã ${e.code}) ➔ Tự động chuyển sang Gemini 3.8 Live...`);
           activeEngineModel = MODEL_38_LIVE;
           const modelSel = $('translate-model-select');
           if (modelSel) modelSel.value = MODEL_38_LIVE;
+          localStorage.setItem('jarvis_translate_model_pref', MODEL_38_LIVE);
           updateModelBadge(MODEL_38_LIVE);
-          setTimeout(() => connectTranslateWs(targetLang, MODEL_38_LIVE), 250);
+          setTimeout(() => connectTranslateWs(currentGuestLangCode, MODEL_38_LIVE), 250);
           return;
         }
 
@@ -351,7 +358,7 @@ Rules:
         if (e.code === 1008 && getAllApiKeys().length > 1) {
           rotateApiKey();
           updateStatusPill(`⚠️ Key bận (Mã 1008) ➔ Đang đổi Key ${currentKeyIdx + 1}...`);
-          setTimeout(() => connectTranslateWs(targetLang, activeEngineModel), 500);
+          setTimeout(() => connectTranslateWs(currentGuestLangCode, activeEngineModel), 500);
           return;
         }
 
@@ -441,7 +448,7 @@ Rules:
     }
   }
 
-  // Bắt đầu thu âm micro
+  // Bắt đầu thu âm micro và stream audio liên tục
   async function startRecording() {
     if (!translateAudioCtx) {
       translateAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -463,7 +470,6 @@ Rules:
     translateSilentGain.gain.value = 0;
 
     sentPacketCount = 0;
-    userSpeechDetected = false;
 
     translateScriptProcessor.onaudioprocess = e => {
       if (!isTranslateWsReady || !currentSpeaker || translateWs?.readyState !== WebSocket.OPEN) return;
@@ -487,36 +493,9 @@ Rules:
         }
       }
 
-      // Phát hiện người dùng đã nói
-      if (rms > 0.02) {
-        userSpeechDetected = true;
-        if (silenceTimer) {
-          clearTimeout(silenceTimer);
-          silenceTimer = null;
-        }
-      } else if (userSpeechDetected) {
-        // Sau 1.3 giây im lặng sau khi nói -> gửi tín hiệu kết thúc turn nếu cần
-        if (!silenceTimer) {
-          silenceTimer = setTimeout(() => {
-            if (translateWs?.readyState === WebSocket.OPEN && userSpeechDetected) {
-              try {
-                translateWs.send(JSON.stringify({
-                  realtimeInput: { audioStreamEnd: true }
-                }));
-              } catch {}
-            }
-            userSpeechDetected = false;
-            silenceTimer = null;
-          }, 1300);
-        }
-      }
-
       const pcm16k = downsampleTo16k(floatData, actualSampleRate);
       let bin = '';
-      const chunkSize = 0x8000;
-      for (let i = 0; i < pcm16k.length; i += chunkSize) {
-        bin += String.fromCharCode.apply(null, pcm16k.subarray(i, i + chunkSize));
-      }
+      for (let i = 0; i < pcm16k.length; i++) bin += String.fromCharCode(pcm16k[i]);
 
       translateWs.send(JSON.stringify({
         realtimeInput: {
@@ -536,21 +515,8 @@ Rules:
   }
 
   function stopRecording() {
-    if (silenceTimer) {
-      clearTimeout(silenceTimer);
-      silenceTimer = null;
-    }
     stopLocalSpeechRec();
     updateAudioMeters(0);
-
-    // Gửi tín hiệu báo kết thúc chuỗi âm thanh cho Gemini
-    if (translateWs && translateWs.readyState === WebSocket.OPEN) {
-      try {
-        translateWs.send(JSON.stringify({
-          realtimeInput: { audioStreamEnd: true }
-        }));
-      } catch {}
-    }
 
     try { translateScriptProcessor?.disconnect(); translateScriptProcessor = null; } catch {}
     try { translateMicSource?.disconnect(); translateMicSource = null; } catch {}
@@ -574,7 +540,7 @@ Rules:
     }
 
     currentSpeaker = speaker;
-    const targetLang = speaker === 'user' ? ($('translate-guest-lang-select')?.value || 'en') : 'vi';
+    const guestLangCode = $('translate-guest-lang-select')?.value || 'en';
 
     // Đảm bảo AudioContext hoạt động trên tương tác người dùng
     if (!translateAudioCtx) {
@@ -586,20 +552,20 @@ Rules:
 
     updateMicButtons();
 
-    // Kết nối lại nếu đổi targetLanguage hoặc socket chưa sẵn sàng
-    if (targetLang !== currentSessionTargetLang || !isTranslateWsReady || translateWs?.readyState !== WebSocket.OPEN) {
-      updateStatusPill(`🔄 Đang chuẩn bị dịch [Mục tiêu: ${getLangObj(targetLang).name}]...`);
-      await connectTranslateWs(targetLang);
+    // Kết nối WebSocket nếu chưa kết nối
+    if (!isTranslateWsReady || translateWs?.readyState !== WebSocket.OPEN) {
+      updateStatusPill(`🔄 Đang kết nối máy chủ dịch...`);
+      await connectTranslateWs(guestLangCode);
 
-      // Chờ WebSocket ready tối đa 3 giây
+      // Chờ WebSocket ready tối đa 3.5 giây
       let waitCount = 0;
-      while (!isTranslateWsReady && waitCount < 30) {
+      while (!isTranslateWsReady && waitCount < 35) {
         await new Promise(r => setTimeout(r, 100));
         waitCount++;
       }
     }
 
-    // KIỂM TRA CHÍNH XÁC: Chỉ bắt đầu thu âm nếu WebSocket THỰC SỰ SẴN SÀNG!
+    // Chỉ bắt đầu thu âm nếu WebSocket THỰC SỰ SẴN SÀNG!
     if (!isTranslateWsReady || translateWs?.readyState !== WebSocket.OPEN) {
       currentSpeaker = null;
       updateMicButtons();
@@ -611,12 +577,12 @@ Rules:
 
     await startRecording();
     updateMicButtons();
-    startLocalSpeechRec(speaker, speaker === 'user' ? 'vi' : targetLang);
+    startLocalSpeechRec(speaker, speaker === 'user' ? 'vi' : guestLangCode);
 
     if (speaker === 'user') {
       updateStatusPill("🎙️ Đang nghe Bạn... Hãy nói tiếng Việt!");
     } else {
-      updateStatusPill(`🎙️ Listening to Guest... Please speak ${getLangObj(targetLang).name}!`);
+      updateStatusPill(`🎙️ Listening to Guest... Please speak ${getLangObj(guestLangCode).name}!`);
     }
   }
 
@@ -664,7 +630,7 @@ Rules:
     updateModelBadge(activeEngineModel);
     updateStatusPill("⏳ Đang chuẩn bị phiên dịch...");
 
-    // Tự động kết nối trước
+    // Tự động kết nối sẵn sàng trước
     connectTranslateWs(currentTarget);
   }
 
@@ -701,7 +667,7 @@ Rules:
     const modelSelect = $('translate-model-select');
     if (modelSelect) {
       const savedModel = localStorage.getItem('jarvis_translate_model_pref');
-      if (savedModel && ['models/gemini-3.8-live', 'models/gemini-3.5-live-translate-preview'].includes(savedModel)) {
+      if (savedModel && [MODEL_38_LIVE, MODEL_35_TRANSLATE].includes(savedModel)) {
         modelSelect.value = savedModel;
         activeEngineModel = savedModel;
       } else {
@@ -713,21 +679,17 @@ Rules:
         const val = modelSelect.value;
         localStorage.setItem('jarvis_translate_model_pref', val);
         activeEngineModel = val;
-        const targetLang = currentSpeaker === 'user' ? ($('translate-guest-lang-select')?.value || 'en') : 'vi';
-        connectTranslateWs(targetLang, activeEngineModel);
+        const guestLang = $('translate-guest-lang-select')?.value || 'en';
+        connectTranslateWs(guestLang, activeEngineModel);
       };
     }
 
-    // Khi khách đổi ngôn ngữ đích
+    // Khi khách đổi ngôn ngữ đích -> kết nối lại với ngôn ngữ mới
     const guestLangSelect = $('translate-guest-lang-select');
     if (guestLangSelect) {
       guestLangSelect.onchange = () => {
-        const target = guestLangSelect.value;
-        if (currentSpeaker === 'user') {
-          setSpeaker('user'); // Kết nối lại với ngôn ngữ đích mới
-        } else {
-          connectTranslateWs(target, activeEngineModel);
-        }
+        const newGuestLang = guestLangSelect.value;
+        connectTranslateWs(newGuestLang, activeEngineModel);
       };
     }
   }
