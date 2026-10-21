@@ -199,7 +199,13 @@
       }
       .header-right {
         gap: 4px;
-        flex-shrink: 0;
+        flex-shrink: 1;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .header-right::-webkit-scrollbar {
+        display: none;
       }
       .header-right .btn {
         padding: 5px 8px !important;
@@ -209,6 +215,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
       }
       #btn-live-call-open {
         width: 36px !important;

@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v35 - Dual-Screen Gemini 3.5 Live Translate)
-const CACHE_NAME = 'jarvis-ai-pwa-v40';
+// Jarvis AI Service Worker for PWA (v41 - Gemini Embedding 2 RAG & Vector Memory)
+const CACHE_NAME = 'jarvis-ai-pwa-v41';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
@@ -9,11 +9,13 @@ const STATIC_ASSETS = [
   './css/tts.css',
   './css/arena.css',
   './css/translate.css',
+  './css/rag.css',
   './js/app.js',
   './js/live.js',
   './js/arena.js',
   './js/tts.js',
-  './js/translate.js'
+  './js/translate.js',
+  './js/rag.js'
 ];
 
 self.addEventListener('install', event => {
