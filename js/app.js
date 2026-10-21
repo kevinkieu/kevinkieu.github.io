@@ -820,6 +820,7 @@ import { GoogleGenAI } from "@google/genai";
     window.renderSel = () => renderSel();
     window.updateTokenCount = () => updateTokenCount();
     window.newSess = () => newSess();
+    window.reRenderHistory = () => reRenderHistory();
 
     Object.defineProperty(window, 'sessions', { get: () => sessions, set: v => { sessions = v; }, configurable: true });
     Object.defineProperty(window, 'activeId', { get: () => activeId, set: v => { activeId = v; }, configurable: true });
@@ -2434,6 +2435,7 @@ import { GoogleGenAI } from "@google/genai";
         await appendMsg(chatHistory[j].role === 'model' ? 'bot' : 'user', chatHistory[j].text, j, true);
       }
     }
+    window.reRenderHistory = reRenderHistory;
 
     window.copy = b => {
       const c = b.closest('.message-container').querySelector('.user-message, .bot-message');

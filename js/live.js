@@ -205,28 +205,40 @@
       try { liveWs?.close(); } catch {}
       liveWs = null;
       cleanupLive();
-      $('live-call-modal').style.display = 'none';
+      const modal = $('live-call-modal');
+      if (modal) modal.style.display = 'none';
 
       // Chuyển toàn bộ hội thoại cuộc gọi Live vào khung chat chính
       if (liveCallHistory.length > 0) {
-        const cs = sessions.find(x => x.id === activeId);
+        const curSessions = window.sessions || sessions || [];
+        const curActiveId = window.activeId || activeId;
+        const cs = curSessions.find(x => x.id === curActiveId);
         const validItems = liveCallHistory.filter(item => item.text && item.text.trim().length > 0);
         if (validItems.length > 0) {
+          const targetHistory = window.chatHistory || chatHistory;
           for (const item of validItems) {
-            chatHistory.push({
+            targetHistory.push({
               role: item.role,
               text: item.text.trim(),
-              time: item.time || getNowTime24h(),
+              time: item.time || (window.getNowTime24h ? window.getNowTime24h() : getNowTime24h()),
               isLiveCall: true
             });
           }
           if (cs) {
-            cs.his = chatHistory;
-            await saveToDB(cs);
-            renderSel();
+            cs.his = targetHistory;
+            if (typeof window.saveToDB === 'function') await window.saveToDB(cs);
+            else if (typeof saveToDB === 'function') await saveToDB(cs);
+
+            if (typeof window.renderSel === 'function') window.renderSel();
+            else if (typeof renderSel === 'function') renderSel();
           }
-          await reRenderHistory();
-          if (DOM.chat) DOM.chat.scrollTop = DOM.chat.scrollHeight;
+          if (typeof window.reRenderHistory === 'function') {
+            await window.reRenderHistory();
+          } else if (typeof reRenderHistory === 'function') {
+            await reRenderHistory();
+          }
+          if (window.DOM?.chat) window.DOM.chat.scrollTop = window.DOM.chat.scrollHeight;
+          else if (DOM.chat) DOM.chat.scrollTop = DOM.chat.scrollHeight;
           showToast(reasonNotice || "Đã lưu toàn bộ nội dung cuộc gọi vào hội thoại!", "info");
         } else if (reasonNotice) {
           showToast(reasonNotice, "info");
@@ -508,19 +520,23 @@
               }
 
               // Nhận dạng giọng nói người dùng (cả inputTranscription và inputAudioTranscription)
-              const userTxt = sc.inputTranscription?.text || sc.inputAudioTranscription?.text || sc.interimInputTranscription?.text || sc.interimTranscript;
+              const userTxt = sc.inputTranscription?.text || sc.input_transcription?.text || 
+                              sc.inputAudioTranscription?.text || sc.input_audio_transcription?.text || 
+                              sc.interimInputTranscription?.text || sc.interim_input_transcription?.text || 
+                              sc.interimTranscript;
               if (userTxt) {
                 appendLiveUserText(userTxt);
               }
 
               // Audio & Text parts từ model
-              for (const p of (sc.modelTurn?.parts || [])) {
-                if (p.inlineData?.data) playPcm24k(p.inlineData.data, liveAudioCtx, livePlaybackState);
+              for (const p of (sc.modelTurn?.parts || sc.model_turn?.parts || [])) {
+                if (p.inlineData?.data || p.inline_data?.data) playPcm24k(p.inlineData?.data || p.inline_data?.data, liveAudioCtx, livePlaybackState);
                 if (p.text) appendLiveAiText(p.text);
               }
 
               // Nhận dạng câu nói AI (cả outputTranscription và outputAudioTranscription)
-              const aiTxt = sc.outputTranscription?.text || sc.outputAudioTranscription?.text;
+              const aiTxt = sc.outputTranscription?.text || sc.output_transcription?.text || 
+                            sc.outputAudioTranscription?.text || sc.output_audio_transcription?.text;
               if (aiTxt) {
                 appendLiveAiText(aiTxt);
               }
