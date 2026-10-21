@@ -650,12 +650,20 @@
           <button id="btn-translate-guest-mic" class="translate-mic-btn" title="Guest: Tap to Speak / Dành cho Khách">
             🎙️
           </button>
+          <div id="translate-guest-meter" class="translate-audio-meter"><div class="meter-bar"></div></div>
         </div>
       </div>
 
       <!-- CENTER DIVIDER BAR -->
       <div class="translate-divider">
-        <span class="translate-model-tag">⚡ Gemini 3.5 Live Translate</span>
+        <div style="display:flex;align-items:center;gap:6px;overflow:hidden;">
+          <select id="translate-model-select" class="translate-model-select" title="Chọn mô hình dịch">
+            <option value="auto" selected>✨ Tự động (Gemini 3.5 ➔ 3.8)</option>
+            <option value="models/gemini-3.5-live-translate-preview">⚡ Gemini 3.5 Live Translate</option>
+            <option value="models/gemini-3.8-live">🔄 Gemini 3.8 Live (Thông dịch)</option>
+          </select>
+          <span id="translate-active-model-tag" class="translate-model-tag">⚡ Chuẩn bị...</span>
+        </div>
         <button id="btn-close-live-translate" class="translate-close-btn">✕ Đóng</button>
       </div>
 
@@ -682,6 +690,7 @@
           <button id="btn-translate-user-mic" class="translate-mic-btn" title="Bấm để nói tiếng Việt">
             🎙️
           </button>
+          <div id="translate-user-meter" class="translate-audio-meter"><div class="meter-bar"></div></div>
         </div>
       </div>
     </div>
