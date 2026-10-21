@@ -2645,7 +2645,7 @@ import { GoogleGenAI } from "@google/genai";
         }
 
         // CHATGPT-STYLE AUTO-LEARN MEMORY
-        if (fP && fP.length >= 10 && window.JarvisRAG && typeof window.JarvisRAG.extractAndLearnMemory === 'function') {
+        if (fP && fP.length >= 8 && window.JarvisRAG && typeof window.JarvisRAG.extractAndLearnMemory === 'function') {
           setTimeout(() => window.JarvisRAG.extractAndLearnMemory(fP, gKey), 400);
         }
       };

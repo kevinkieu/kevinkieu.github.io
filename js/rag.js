@@ -252,9 +252,9 @@
   }
 
   // --- KNOWLEDGE BASE: ADD PERSONAL MEMORY (SECOND BRAIN) ---
-  async function addMemoryItem({ title, text, category = 'personal' }) {
+  async function addMemoryItem({ title, text, category = 'personal' }, customApiKey = null) {
     if (!text || !text.trim()) throw new Error("Nội dung không được để trống.");
-    const embedding = await getEmbedding(text.trim());
+    const embedding = await getEmbedding(text.trim(), customApiKey);
     const id = `mem_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     const item = {
       id,
@@ -414,24 +414,43 @@
     if (overlay) overlay.style.display = 'block';
   }
 
+  // --- HELPER SAFE JSON PARSER ---
+  function safeParseJson(str) {
+    if (!str) return null;
+    const cleaned = str.replace(/```json/gi, '').replace(/```/g, '').trim();
+    try { return JSON.parse(cleaned); } catch (e) {}
+    const start = str.indexOf('{');
+    const end = str.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+      try { return JSON.parse(str.substring(start, end + 1)); } catch (e2) {}
+    }
+    return null;
+  }
+
   // --- CHATGPT-STYLE AUTO-LEARN MEMORY ---
   async function extractAndLearnMemory(userPrompt, apiKey = null) {
     const ls = window.ls || localStorage;
     const isAutoLearn = ls.getItem('jarvis_auto_learn_memory') !== 'false';
-    if (!isAutoLearn) return null;
+    if (!isAutoLearn) {
+      console.log("[Auto-Memory] Tính năng tự động học đang bị tắt trong cài đặt.");
+      return null;
+    }
 
     const txt = (userPrompt || '').trim();
-    if (txt.length < 12) return null;
+    if (txt.length < 8) return null;
 
-    // Lọc nhanh: nếu là câu hỏi thuần túy và không chứa đại từ nhân xưng sở hữu thì bỏ qua
-    if (/^(viết|tạo|vẽ|code|dịch|giải thích|phân tích|sửa|tìm kiếm|cho tôi biết|hãy|tại sao|như thế nào|là gì|mấy giờ|thời tiết)\b/i.test(txt)) {
-      if (!/(tôi tên|tên tôi|nhà tôi|tôi ở|tôi sống|tôi thích|sở thích của tôi|tôi làm việc|công ty của tôi|nghề của tôi|tôi bị dị ứng|từ giờ gọi tôi|hãy nhớ rằng tôi|tôi mới|tôi có nuôi|tôi sinh năm)/i.test(txt)) {
-        return null;
-      }
+    // Lọc nhanh: nếu là câu chào hỏi quá ngắn thuần túy thì bỏ qua
+    if (/^(hi|hello|alo|chào|xin chào|ê|ơi|chào bạn|ok|vâng|dạ|bye|tạm biệt)$/i.test(txt)) {
+      return null;
     }
 
     const key = apiKey || getActiveApiKey();
-    if (!key || !window.GoogleGenAI) return null;
+    if (!key || !window.GoogleGenAI) {
+      console.warn("[Auto-Memory] Thiếu Google API Key hợp lệ.");
+      return null;
+    }
+
+    console.log('[Auto-Memory] Đang phân tích tin nhắn để học:', txt);
 
     try {
       const ai = new window.GoogleGenAI({ apiKey: key });
@@ -440,17 +459,19 @@ Phân tích câu nói sau đây của người dùng:
 """${txt}"""
 
 Nhiệm vụ:
-1. Xác định xem người dùng có chia sẻ hoặc yêu cầu ghi nhớ một THÔNG TIN CÁ NHÂN BỀN VỮNG (tên, tuổi, nơi sống, nghề nghiệp, dự án cá nhân, sở thích, người thân/thú cưng, quy tắc phản hồi riêng, thói quen ăn uống/sinh hoạt) hay không.
-2. Nếu chỉ là câu chào hỏi, hỏi đáp kiến thức chung, nhờ viết văn/code/dịch thuật mà KHÔNG chứa thông tin về bản thân người dùng:
-   Trả về JSON: { "learn": false }
-3. Nếu CÓ thông tin cá nhân quan trọng cần ghi nhớ cho các phiên sau:
-   Trả về duy nhất định dạng JSON (không markdown, không bọc \`\`\`json):
+1. Xác định xem người dùng có chia sẻ hoặc yêu cầu ghi nhớ một THÔNG TIN CÁ NHÂN BỀN VỮNG (tên, tuổi, nơi sống, nghề nghiệp, dự án cá nhân, sở thích ăn uống/âm nhạc/giải trí, thói quen, người thân/thú cưng, quy tắc phản hồi riêng) hay không.
+   Ví dụ: "tôi thích uống cà phê đá ít đường", "tôi mới chuyển nhà sang Quận 1", "tôi làm lập trình viên", "từ giờ gọi tôi là anh Hai".
+2. Nếu câu nói chứa thông tin cá nhân/sở thích/thói quen đáng lưu:
+   Trả về JSON:
    {
      "learn": true,
-     "title": "Tiêu đề ngắn 3-5 từ (VD: Nơi sinh sống, Sở thích âm nhạc, Quy tắc trả lời)",
-     "text": "Nội dung ghi nhớ khách quan ở ngôi thứ ba (VD: Người dùng mới chuyển nhà sang Quận 1, TP.HCM)",
-     "category": "personal"
-   }`;
+     "title": "Tiêu đề ngắn 3-5 từ (VD: Sở thích uống cà phê, Nơi sinh sống, Nghề nghiệp)",
+     "text": "Nội dung ghi nhớ khách quan ở ngôi thứ ba (VD: Người dùng thích uống cà phê đá ít đường)",
+     "category": "hobbies"
+   }
+   (category chọn trong: "personal", "work", "project", "hobbies", "rules")
+3. Nếu chỉ là câu chào hỏi, hỏi đáp kiến thức chung, nhờ viết văn/code/dịch thuật mà KHÔNG chứa thông tin về bản thân người dùng:
+   Trả về JSON: { "learn": false }`;
 
       let res = null;
       try {
@@ -458,35 +479,47 @@ Nhiệm vụ:
           model: 'gemini-3.5-flash-lite',
           contents: prompt,
           config: {
-            temperature: 0.2,
-            maxOutputTokens: 250
+            responseMimeType: "application/json",
+            temperature: 0.1,
+            maxOutputTokens: 300
           }
         });
       } catch (fErr) {
+        console.warn("[Auto-Memory] Fallback sang gemini-2.5-flash:", fErr);
         res = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
           contents: prompt,
-          config: { temperature: 0.2, maxOutputTokens: 250 }
+          config: {
+            responseMimeType: "application/json",
+            temperature: 0.1,
+            maxOutputTokens: 300
+          }
         });
       }
 
       const raw = (res?.text || '').trim();
-      const cleanJson = raw.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
-      const parsed = JSON.parse(cleanJson);
+      const parsed = safeParseJson(raw);
+      console.log('[Auto-Memory] Kết quả phân tích:', parsed);
 
       if (parsed && parsed.learn && parsed.text) {
         // Kiểm tra xem trí nhớ này đã tồn tại chưa để tránh trùng lặp
-        const duplicates = await searchSimilarVectors(parsed.text, { topK: 1, threshold: 0.88, apiKey: key });
-        if (duplicates && duplicates.length > 0) {
-          console.log("[Auto-Memory] Bỏ qua vì đã có trí nhớ tương tự:", duplicates[0].item.title);
-          return null;
+        try {
+          const duplicates = await searchSimilarVectors(parsed.text, { topK: 1, threshold: 0.88, apiKey: key });
+          if (duplicates && duplicates.length > 0) {
+            console.log("[Auto-Memory] Bỏ qua vì đã có trí nhớ tương tự:", duplicates[0].item.title);
+            return null;
+          }
+        } catch (simErr) {
+          console.warn("[Auto-Memory] Lỗi kiểm tra trùng lặp:", simErr);
         }
 
         const newItem = await addMemoryItem({
           title: parsed.title || 'Thông tin cá nhân',
           text: parsed.text,
           category: parsed.category || 'personal'
-        });
+        }, key);
+
+        console.log('[Auto-Memory] Đã lưu thành công vào Kho Tri Thức:', newItem);
 
         // Hiển thị thông báo Toast đẹp mắt
         if (typeof window.showToast === 'function') {
@@ -499,7 +532,7 @@ Nhiệm vụ:
         return newItem;
       }
     } catch (e) {
-      console.warn("[Auto-Memory] Bỏ qua lỗi trích xuất ghi nhớ:", e);
+      console.warn("[Auto-Memory] Lỗi trích xuất ghi nhớ:", e);
     }
     return null;
   }
@@ -1224,8 +1257,12 @@ Nhiệm vụ:
     openSearch: openSearchModalWithQuery,
     getAllKnowledge: getAllVectorItems,
     importKnowledge: importKnowledgeItems,
-    clearAll: clearAllVectorDB
+    clearAll: clearAllVectorDB,
+    extractAndLearnMemory,
+    showRetrievedDetails
   };
+
+  window.showRetrievedRagDetails = showRetrievedDetails;
 
   // Global functions for inline DOM onclick handlers
   window.openKnowledgeModal = openKnowledgeModal;
