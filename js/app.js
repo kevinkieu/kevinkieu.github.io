@@ -699,6 +699,9 @@ import { GoogleGenAI } from "@google/genai";
         t.objectStore(STORE_NAME).put(s);
         t.oncomplete = () => {
           syncSessionsToNative();
+          if (typeof scheduleAutoSync === 'function') {
+            scheduleAutoSync(10000);
+          }
           resolve();
         };
         t.onerror = err => reject(err);
@@ -726,6 +729,9 @@ import { GoogleGenAI } from "@google/genai";
         t.oncomplete = () => {
           recordDeletedSessionId(i);
           syncSessionsToNative();
+          if (typeof scheduleAutoSync === 'function') {
+            scheduleAutoSync(6000);
+          }
           resolve();
         };
         t.onerror = err => reject(err);
@@ -2664,6 +2670,11 @@ import { GoogleGenAI } from "@google/genai";
         if (fP && fP.length >= 8 && window.JarvisRAG && typeof window.JarvisRAG.extractAndLearnMemory === 'function') {
           setTimeout(() => window.JarvisRAG.extractAndLearnMemory(fP, gKey), 400);
         }
+
+        // TỰ ĐỘNG ĐỒNG BỘ NGẦM LÊN CLOUD SAU KHI CHAT XONG (DEBOUNCE 10 GIÂY)
+        if (typeof scheduleAutoSync === 'function') {
+          scheduleAutoSync(10000);
+        }
       };
 
       try {
@@ -3765,10 +3776,16 @@ import { GoogleGenAI } from "@google/genai";
 
       _isSyncing = true;
       const syncBtn = $('btn-gist-sync');
+      const headerSyncBtn = $('btn-cloud-sync-header');
       const oldBtnHtml = syncBtn ? syncBtn.innerHTML : '';
       if (syncBtn && !silent) {
         syncBtn.innerHTML = `<span>Đang đồng bộ 2 chiều...</span> ⏳`;
         syncBtn.disabled = true;
+      }
+      if (headerSyncBtn && silent) {
+        headerSyncBtn.classList.add('syncing-pulse');
+        const span = headerSyncBtn.querySelector('span');
+        if (span) span.innerText = 'Đang đồng bộ...';
       }
 
       try {
@@ -3907,8 +3924,50 @@ import { GoogleGenAI } from "@google/genai";
           }
         }
 
-        // Kiểm tra xem máy cục bộ có dữ liệu gì mới chưa được đẩy lên Cloud không
-        const isLocalAhead = !hasRemoteData || localSessions.length !== finalSessions.length || localKnowledge.length !== finalKnowledge.length;
+        // Kiểm tra chi tiết xem máy cục bộ có dữ liệu gì mới hơn hoặc khác biệt so với Cloud không
+        let isLocalAhead = !hasRemoteData;
+        if (!isLocalAhead && cloudData) {
+          const remoteSessions = Array.isArray(cloudData.sessions) ? cloudData.sessions : [];
+          const remoteKnowledge = Array.isArray(cloudData.knowledgeBase) ? cloudData.knowledgeBase : [];
+
+          // 1. So sánh số lượng phiên và số lượng tri thức
+          if (localSessions.length !== remoteSessions.length || localKnowledge.length !== remoteKnowledge.length) {
+            isLocalAhead = true;
+          }
+
+          // 2. So sánh chi tiết từng phiên: tin nhắn mới, thời gian cập nhật, tên phiên, pinned
+          if (!isLocalAhead) {
+            const remoteMap = new Map();
+            remoteSessions.forEach(cs => { if (cs && cs.id) remoteMap.set(cs.id, cs); });
+
+            for (const lsess of localSessions) {
+              if (!lsess || !lsess.id) continue;
+              const csess = remoteMap.get(lsess.id);
+              if (!csess) {
+                isLocalAhead = true; // Phiên mới tạo ở máy này
+                break;
+              }
+              const lCount = (lsess.his || []).length;
+              const cCount = (csess.his || []).length;
+              const lTime = lsess.updatedAt || lsess.timestamp || 0;
+              const cTime = csess.updatedAt || csess.timestamp || 0;
+
+              if (lCount > cCount || lTime > cTime || lsess.name !== csess.name || lsess.pinned !== csess.pinned || lsess.folder !== csess.folder) {
+                isLocalAhead = true; // Có tin nhắn mới, đổi tên hoặc vừa ghim phiên
+                break;
+              }
+            }
+          }
+
+          // 3. Kiểm tra xem có phiên hoặc vector nào đã xóa ở máy này mà Cloud vẫn còn lưu không
+          if (!isLocalAhead) {
+            if (deletedSessionIds.size > 0 && remoteSessions.some(cs => deletedSessionIds.has(cs.id))) {
+              isLocalAhead = true;
+            } else if (deletedVectorIds.size > 0 && remoteKnowledge.some(ck => deletedVectorIds.has(ck.id))) {
+              isLocalAhead = true;
+            }
+          }
+        }
 
         // Chỉ lưu xuống IndexedDB khi thực sự có thay đổi từ Cloud
         if (hasChanges) {
@@ -4009,6 +4068,10 @@ import { GoogleGenAI } from "@google/genai";
           gistStatusText.innerText = `Đã hợp nhất (${finalSessions.length} phiên${kCount})`;
           gistStatusText.style.color = '#10b981';
         }
+        const lastSyncDisplay = ls.getItem('jarvis_gist_last_sync') || new Date().toLocaleTimeString('vi-VN');
+        if (headerSyncBtn) {
+          headerSyncBtn.title = `Đồng bộ Cloud Gist (Lần cuối: ${lastSyncDisplay})`;
+        }
 
         if (!silent) {
           showToast(`🔄 Đồng bộ 2 chiều thành công! Đã gộp ${finalSessions.length} phiên & ${finalKnowledge.length} mẩu tri thức.`, "success");
@@ -4026,13 +4089,21 @@ import { GoogleGenAI } from "@google/genai";
           syncBtn.innerHTML = oldBtnHtml || `🔄 Đồng bộ 2 chiều (Smart Sync & Merge)`;
           syncBtn.disabled = false;
         }
+        if (headerSyncBtn && silent) {
+          headerSyncBtn.classList.remove('syncing-pulse');
+          const span = headerSyncBtn.querySelector('span');
+          if (span) span.innerText = 'Đồng bộ';
+        }
       }
     }
 
     // Tự động lên lịch đồng bộ ngầm (Debounced Auto-Sync)
-    function scheduleAutoSync(delay = 15000) {
+    function scheduleAutoSync(delay = 10000) {
       if (_isSyncing) return;
       if (_gistRateLimitedUntil && Date.now() < _gistRateLimitedUntil) return;
+      if (_gistRateLimitedUntil && Date.now() >= _gistRateLimitedUntil) {
+        _gistRateLimitedUntil = 0;
+      }
       if (ls.getItem('jarvis_auto_sync_cloud') === 'false') return;
       const pat = (ls.getItem('jarvis_gist_pat') || '').trim();
       const gistId = (ls.getItem('jarvis_gist_id') || '').trim();
