@@ -83,15 +83,16 @@
       if (!fileObj) throw new Error("Không tìm thấy tệp dữ liệu sao lưu hợp lệ trong Gist này!");
 
       let contentStr = fileObj.content || '';
-      if (fileObj.truncated || !contentStr || fileObj.raw_url) {
-        try {
-          let rawRes = await fetch(fileObj.raw_url, {
-            headers: { 'Authorization': "Bearer " + pat }
-          });
-          if (!rawRes.ok) rawRes = await fetch(fileObj.raw_url);
-          if (rawRes.ok) contentStr = await rawRes.text();
-        } catch (rawErr) {
-          console.warn("[Gist] Lỗi fetch raw_url, dùng inline content:", rawErr);
+      // Chỉ fetch raw_url nếu GitHub báo file quá lớn bị cắt ngắn (truncated) hoặc contentStr bị rỗng
+      if (fileObj.truncated || !contentStr) {
+        if (fileObj.raw_url) {
+          try {
+            const rawUrlWithBuster = fileObj.raw_url + (fileObj.raw_url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+            let rawRes = await fetch(rawUrlWithBuster, { cache: 'no-store' });
+            if (rawRes.ok) contentStr = await rawRes.text();
+          } catch (rawErr) {
+            console.warn("[Gist] Lỗi fetch raw_url, dùng inline content:", rawErr);
+          }
         }
       }
       if (!contentStr) throw new Error("Nội dung tệp sao lưu trên Gist bị trống!");
@@ -218,16 +219,18 @@
                   const cTime = csess.updatedAt || csess.timestamp || 0;
                   if (cCount > lCount || (cCount === lCount && cTime > lTime)) {
                     sessionMap.set(csess.id, csess);
-                    if (cCount !== lCount) hasChanges = true;
+                    hasChanges = true;
                   }
                 }
               }
               finalSessions = Array.from(sessionMap.values());
               finalSessions.sort((a, b) => {
-                const tA = a.updatedAt || a.timestamp || 0;
-                const tB = b.updatedAt || b.timestamp || 0;
+                if (a.pinned !== b.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
+                const tA = a.updatedAt || a.orderIndex || 0;
+                const tB = b.updatedAt || b.orderIndex || 0;
                 return tB - tA;
               });
+              finalSessions.forEach((s, idx) => { s.orderIndex = idx; });
             }
 
             // B. HỢP NHẤT KHO TRI THỨC & TRÍ NHỚ VECTƠ (KNOWLEDGE BASE & RAG)
@@ -311,7 +314,7 @@
           const remoteKnowledge = Array.isArray(cloudData.knowledgeBase) ? cloudData.knowledgeBase : [];
 
           // 1. So sánh số lượng phiên và số lượng tri thức
-          if (localSessions.length !== remoteSessions.length || localKnowledge.length !== remoteKnowledge.length) {
+          if (localSessions.length > remoteSessions.length || localKnowledge.length > remoteKnowledge.length) {
             isLocalAhead = true;
           }
 
@@ -329,8 +332,8 @@
               }
               const lCount = (lsess.his || []).length;
               const cCount = (csess.his || []).length;
-              const lTime = lsess.updatedAt || lsess.timestamp || 0;
-              const cTime = csess.updatedAt || csess.timestamp || 0;
+              const lTime = lsess.updatedAt || lsess.orderIndex || 0;
+              const cTime = csess.updatedAt || csess.orderIndex || 0;
 
               if (lCount > cCount || lTime > cTime || lsess.name !== csess.name || lsess.pinned !== csess.pinned || lsess.folder !== csess.folder) {
                 isLocalAhead = true; // Có tin nhắn mới, đổi tên hoặc vừa ghim phiên
@@ -360,15 +363,10 @@
             tx.oncomplete = () => res();
             tx.onerror = e => rej(e);
           });
-          window.sessions = await getAllFromDB();
-
-          if (!sessions.some(s => s.id === activeId) && sessions.length > 0) {
-            window.activeId = (window.sessions[0]?.id || null);
-            ls.setItem('jarvis_active_id', activeId);
-          }
+          window.sessions = (await getAllFromDB()).sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
 
           window.folders = finalFolders;
-          ls.setItem('jarvis_folders', JSON.stringify(folders));
+          ls.setItem('jarvis_folders', JSON.stringify(finalFolders));
           ls.setItem('jarvis_custom_prompts', JSON.stringify(finalPrompts));
 
           if (window.JarvisRAG && typeof window.JarvisRAG.importKnowledge === 'function') {
@@ -376,8 +374,30 @@
           }
         }
 
-        // Đóng gói và đẩy lên Gist nếu có thay đổi hoặc lần đầu tiên, hoặc người dùng bấm thủ công
-        if (!gistId || hasChanges || isLocalAhead || !silent) {
+        // Xác định phiên hoạt động (activeId) chính xác sau khi đồng bộ
+        let targetActiveId = window.activeId;
+        if (cloudData && cloudData.activeId && window.sessions.some(s => s.id === cloudData.activeId)) {
+          const remoteSess = window.sessions.find(s => s.id === cloudData.activeId);
+          const localSess = window.sessions.find(s => s.id === window.activeId);
+          const remoteTime = remoteSess ? (remoteSess.updatedAt || remoteSess.orderIndex || 0) : 0;
+          const localTime = localSess ? (localSess.updatedAt || localSess.orderIndex || 0) : 0;
+
+          // Nếu phiên remote có cập nhật mới hơn phiên local, hoặc khi bấm thủ công: chuyển sang phiên remote
+          if (!localSess || remoteTime > localTime || (!silent && remoteTime >= localTime)) {
+            targetActiveId = cloudData.activeId;
+          }
+        }
+        if (!window.sessions.some(s => s.id === targetActiveId) && window.sessions.length > 0) {
+          targetActiveId = window.sessions[0].id;
+        }
+        if (targetActiveId) {
+          window.activeId = targetActiveId;
+          ls.setItem('jarvis_active_id', targetActiveId);
+          ls.setItem('huanmu_active_id', targetActiveId);
+        }
+
+        // Đóng gói và đẩy lên Gist nếu máy này có dữ liệu mới hơn (isLocalAhead) hoặc chưa có Gist ID
+        if (!gistId || isLocalAhead) {
           const backupData = {
             version: 2,
             app: "Jarvis AI",
@@ -416,6 +436,13 @@
           ls.setItem('jarvis_gist_id', gistId);
           ls.setItem('jarvis_gist_last_sync', timeStr);
           if (gistLastTime) gistLastTime.innerText = `Lần cuối: ${timeStr}`;
+        } else {
+          // Khi không cần push vì máy này không có gì mới hơn Cloud, vẫn ghi nhận thời gian kiểm tra
+          const timeStr = new Date().toLocaleString('vi-VN');
+          ls.setItem('jarvis_gist_pat', pat);
+          ls.setItem('jarvis_gist_id', gistId);
+          ls.setItem('jarvis_gist_last_sync', timeStr);
+          if (gistLastTime) gistLastTime.innerText = `Lần cuối: ${timeStr}`;
         }
 
         // CẬP NHẬT GIAO DIỆN MÀ KHÔNG GÂY CHỚP MÀN HÌNH:
@@ -427,10 +454,10 @@
         // TUYỆT ĐỐI KHÔNG GỌI switchSess TRONG CHẾ ĐỘ CHẠY NGẦM (SILENT)
         // Vì switchSess sẽ xóa trắng getDOM().chat và vẽ lại từ đầu, gây chớp màn hình khi đang đọc tin nhắn!
         if (!silent) {
-          await switchSess(activeId);
+          await switchSess(window.activeId);
         } else if (hasChanges) {
           // Nếu có phiên hiện tại nhận được tin nhắn mới từ thiết bị kia, chỉ append thêm vào cuối nhẹ nhàng
-          const currentVisible = finalSessions.find(s => s.id === activeId);
+          const currentVisible = window.sessions.find(s => s.id === window.activeId);
           const currentCount = (window.chatHistory || []).length;
           const newCount = (currentVisible?.his || []).length;
           if (currentVisible && newCount > currentCount) {
@@ -653,13 +680,13 @@
           }
         }
 
-        window.sessions = await getAllFromDB();
-        if (parsed.activeId && sessions.some(s => s.id === parsed.activeId)) {
-          activeId = parsed.activeId;
-        } else if (sessions.length > 0) {
+        window.sessions = (await getAllFromDB()).sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+        if (parsed.activeId && window.sessions.some(s => s.id === parsed.activeId)) {
+          window.activeId = parsed.activeId;
+        } else if (window.sessions.length > 0) {
           window.activeId = (window.sessions[0]?.id || null);
         }
-        ls.setItem('jarvis_active_id', activeId);
+        ls.setItem('jarvis_active_id', window.activeId);
 
         if (parsed.folders && Array.isArray(parsed.folders)) {
           folders = parsed.folders;
@@ -705,22 +732,22 @@
         ls.setItem('jarvis_gist_last_sync', timeStr);
 
         if (window.JarvisNativeBridge) {
-          saveToNativeBridge('jarvis_sessions_backup', JSON.stringify(sessions));
+          saveToNativeBridge('jarvis_sessions_backup', JSON.stringify(window.sessions));
           if (typeof window.JarvisNativeBridge.commit === 'function') {
             window.JarvisNativeBridge.commit();
           }
         }
 
         const kPullStatus = importedKCount ? `, ${importedKCount} tri thức` : '';
-        gistStatusText.innerText = `Đã ghi đè (${sessions.length} phiên${kPullStatus})`;
+        gistStatusText.innerText = `Đã ghi đè (${window.sessions.length} phiên${kPullStatus})`;
         gistStatusText.style.color = '#10b981';
         gistLastTime.innerText = `Lần cuối: ${timeStr}`;
 
         renderFolders();
         renderSnippets();
-        await switchSess(activeId);
+        await switchSess(window.activeId);
 
-        showToast(`Đã khôi phục thành công ${sessions.length} phiên${importedKCount ? ' & ' + importedKCount + ' mẩu tri thức' : ''} từ Cloud!`, "success");
+        showToast(`Đã khôi phục thành công ${window.sessions.length} phiên${importedKCount ? ' & ' + importedKCount + ' mẩu tri thức' : ''} từ Cloud!`, "success");
       } catch (err) {
         showToast(`Lỗi tải về từ Cloud: ${err.message}`, "danger");
       } finally {
