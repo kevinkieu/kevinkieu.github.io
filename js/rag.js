@@ -40,13 +40,32 @@
     });
   }
 
+  // Helper ghi nhớ ID tri thức đã xóa để tránh bị hồi sinh khi sync 2 chiều
+  function recordDeletedVectorId(id) {
+    if (!id) return;
+    try {
+      const ls = window.ls || localStorage;
+      const list = JSON.parse(ls.getItem('jarvis_deleted_vector_ids') || '[]');
+      if (!list.includes(id)) {
+        list.push(id);
+        if (list.length > 500) list.shift();
+        ls.setItem('jarvis_deleted_vector_ids', JSON.stringify(list));
+      }
+    } catch (e) {}
+  }
+
   // --- DB CRUD HELPERS ---
   async function saveVectorItem(item) {
     const db = await initVectorDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(VECTOR_STORE_NAME, "readwrite");
       tx.objectStore(VECTOR_STORE_NAME).put(item);
-      tx.oncomplete = () => resolve(item);
+      tx.oncomplete = () => {
+        if (window.JarvisSync && typeof window.JarvisSync.scheduleAutoSync === 'function') {
+          window.JarvisSync.scheduleAutoSync();
+        }
+        resolve(item);
+      };
       tx.onerror = (e) => reject(e);
     });
   }
@@ -66,11 +85,17 @@
   }
 
   async function deleteVectorItem(id) {
+    recordDeletedVectorId(id);
     const db = await initVectorDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(VECTOR_STORE_NAME, "readwrite");
       tx.objectStore(VECTOR_STORE_NAME).delete(id);
-      tx.oncomplete = () => resolve(true);
+      tx.oncomplete = () => {
+        if (window.JarvisSync && typeof window.JarvisSync.scheduleAutoSync === 'function') {
+          window.JarvisSync.scheduleAutoSync();
+        }
+        resolve(true);
+      };
       tx.onerror = (e) => reject(e);
     });
   }
@@ -85,11 +110,17 @@
         const items = req.result || [];
         items.forEach((item) => {
           if (item.docName === docName || item.metadata?.docName === docName) {
+            recordDeletedVectorId(item.id);
             store.delete(item.id);
           }
         });
       };
-      tx.oncomplete = () => resolve(true);
+      tx.oncomplete = () => {
+        if (window.JarvisSync && typeof window.JarvisSync.scheduleAutoSync === 'function') {
+          window.JarvisSync.scheduleAutoSync();
+        }
+        resolve(true);
+      };
       tx.onerror = (e) => reject(e);
     });
   }
@@ -110,6 +141,8 @@
     if (clearExisting) {
       await clearAllVectorDB();
     }
+    const ls = window.ls || localStorage;
+    const deletedIds = new Set(JSON.parse(ls.getItem('jarvis_deleted_vector_ids') || '[]'));
     return new Promise((resolve, reject) => {
       if (!items.length) {
         renderMemoryList();
@@ -120,7 +153,7 @@
       const store = tx.objectStore(VECTOR_STORE_NAME);
       let count = 0;
       items.forEach(it => {
-        if (it && it.id) {
+        if (it && it.id && !deletedIds.has(it.id)) {
           store.put(it);
           count++;
         }

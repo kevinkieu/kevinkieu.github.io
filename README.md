@@ -98,6 +98,16 @@
   - Tích hợp ô tìm kiếm nhanh tại đầu thanh Sidebar cho điện thoại.
   - Thanh Header trên Mobile cuộn mượt mà, không bao giờ bị che khuất nút tìm kiếm.
 
+#### 10. ☁️ Đồng Bộ Cloud 2 Chiều & Tự Động Hóa Đa Thiết Bị (2-Way Smart Merge & GitHub Gist Auto-Sync)
+- **Hợp nhất 2 chiều thông minh (Smart Merge)**: Dành riêng cho người dùng kết hợp linh hoạt giữa **Điện thoại** và **Máy tính**:
+  - **Không bao giờ mất dữ liệu**: Tự động gộp hội thoại mới và toàn bộ Trí nhớ Vectơ ("ChatGPT Memory") của cả hai thiết bị vào làm một thay vì ghi đè thô bạo.
+  - **Khử trùng lặp thông minh**: Loại bỏ các mẩu trí nhớ trùng ý và bảo lưu toàn bộ vector nhúng `gemini-embedding-2` đã tính toán sẵn.
+  - **Cơ chế Tombstone**: Xóa phiên chat hoặc trí nhớ ở máy này sẽ đồng bộ xóa sạch ở máy còn lại, không lo bị "hồi sinh" dữ liệu đã xóa.
+- **Tự động đồng bộ ngầm (Background Auto-Sync)**:
+  - **Khi mở App**: Tự động kiểm tra và kéo dữ liệu mới từ Cloud về ngầm trong nền.
+  - **Khi AI học trí nhớ mới**: Tự động hẹn giờ đẩy ngầm (Debounce) lên Cloud mà bạn không cần phải bấm tay mỗi lần chat xong.
+  - **Bảo mật tuyệt đối**: Khóa API Google được mã hóa Salted XOR phía Client trước khi lưu lên Secret Gist, ngăn chặn hoàn toàn Secret Scanner của GitHub quét trúng.
+
 ---
 
 ### 📂 Cấu Trúc Dự Án
@@ -233,6 +243,16 @@ Leveraging the cutting-edge **Google Gemini 3.8 Live API** via bidirectional Web
   - **📝 Keyword Search**: Instant classic substring filtering.
   - **🧠 AI Semantic Search**: Understands query intent via in-browser Cosine Similarity scoring (e.g. ⭐ 95% match) across conversations and knowledge chunks.
   - **PC & Mobile Enhancements**: Fixed Enter-key execution in header search, added a quick search bar in the sidebar drawer, and smooth horizontal scrolling for mobile navigation.
+
+#### 10. ☁️ 2-Way Smart Merge Cloud Sync & Background Auto-Sync (GitHub Gist)
+- **2-Way Smart Merge (Multi-Device Harmony)**: Designed for users who switch seamlessly between **Mobile** and **Desktop**:
+  - **Zero Data Loss**: Automatically merges chat sessions and personal Vector Memory ("ChatGPT Memory") across devices without destructive overwriting.
+  - **Smart Deduplication**: Eliminates duplicate memory statements and preserves pre-computed `gemini-embedding-2` vectors without consuming extra API quota.
+  - **Tombstone Deletion Propagation**: Deleting sessions or knowledge items on one device reliably propagates deletions across all synced devices.
+- **Autonomous Background Auto-Sync**:
+  - **On Startup**: Silently checks and pulls remote changes from Gist a few seconds after opening the app.
+  - **On Learning New Memory**: Automatically triggers debounced background sync whenever AI extracts new memory facts or finishes conversations.
+  - **Client-Side Obfuscation**: All Google API Keys are salted with XOR obfuscation before uploading to personal Secret Gists, safely bypassing GitHub Secret Scanners.
 
 ---
 
