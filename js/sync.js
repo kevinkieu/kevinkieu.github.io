@@ -374,26 +374,13 @@
           }
         }
 
-        // Xác định phiên hoạt động (activeId) chính xác sau khi đồng bộ
-        let targetActiveId = window.activeId;
-        if (cloudData && cloudData.activeId && window.sessions.some(s => s.id === cloudData.activeId)) {
-          const remoteSess = window.sessions.find(s => s.id === cloudData.activeId);
-          const localSess = window.sessions.find(s => s.id === window.activeId);
-          const remoteTime = remoteSess ? (remoteSess.updatedAt || remoteSess.orderIndex || 0) : 0;
-          const localTime = localSess ? (localSess.updatedAt || localSess.orderIndex || 0) : 0;
-
-          // Nếu phiên remote có cập nhật mới hơn phiên local, hoặc khi bấm thủ công: chuyển sang phiên remote
-          if (!localSess || remoteTime > localTime || (!silent && remoteTime >= localTime)) {
-            targetActiveId = cloudData.activeId;
-          }
-        }
-        if (!window.sessions.some(s => s.id === targetActiveId) && window.sessions.length > 0) {
-          targetActiveId = window.sessions[0].id;
-        }
-        if (targetActiveId) {
-          window.activeId = targetActiveId;
-          ls.setItem('jarvis_active_id', targetActiveId);
-          ls.setItem('huanmu_active_id', targetActiveId);
+        // TUYỆT ĐỐI GIỮ NGUYÊN phiên hoạt động hiện tại (activeId) của máy này!
+        // Đồng bộ chỉ gộp dữ liệu, KHÔNG BAO GIỜ tự tiện tráo đổi phiên của người dùng sang phiên khác.
+        if (!window.sessions.some(s => s.id === window.activeId) && window.sessions.length > 0) {
+          // Chỉ fallback sang phiên đầu tiên nếu phiên hiện tại thực sự đã bị xóa khỏi cơ sở dữ liệu
+          window.activeId = window.sessions[0].id;
+          ls.setItem('jarvis_active_id', window.activeId);
+          ls.setItem('huanmu_active_id', window.activeId);
         }
 
         // Đóng gói và đẩy lên Gist nếu máy này có dữ liệu mới hơn (isLocalAhead) hoặc chưa có Gist ID
@@ -454,18 +441,33 @@
         // TUYỆT ĐỐI KHÔNG GỌI switchSess TRONG CHẾ ĐỘ CHẠY NGẦM (SILENT)
         // Vì switchSess sẽ xóa trắng getDOM().chat và vẽ lại từ đầu, gây chớp màn hình khi đang đọc tin nhắn!
         if (!silent) {
+          // Khi bấm thủ công: vẽ lại chính xác phiên hiện tại của máy này từ dữ liệu đã hợp nhất
           await switchSess(window.activeId);
         } else if (hasChanges) {
-          // Nếu có phiên hiện tại nhận được tin nhắn mới từ thiết bị kia, chỉ append thêm vào cuối nhẹ nhàng
+          // Khi đồng bộ ngầm: CHỈ append thêm tin nhắn NẾU VÀ CHỈ NẾU chính phiên đang mở trên màn hình có tin mới
           const currentVisible = window.sessions.find(s => s.id === window.activeId);
-          const currentCount = (window.chatHistory || []).length;
-          const newCount = (currentVisible?.his || []).length;
-          if (currentVisible && newCount > currentCount) {
-            const addedMsgs = currentVisible.his.slice(currentCount);
-            window.chatHistory = [...currentVisible.his];
-            for (let idx = 0; idx < addedMsgs.length; idx++) {
-              const msg = addedMsgs[idx];
-              await appendMsg(msg.role === 'model' ? 'bot' : 'user', msg.text || '', currentCount + idx, false);
+          if (currentVisible && Array.isArray(currentVisible.his)) {
+            const domCount = (window.chatHistory || []).length;
+            const newCount = currentVisible.his.length;
+            if (newCount > domCount) {
+              // Kiểm tra an toàn: các tin cũ trên màn hình phải khớp 100% với lịch sử của chính phiên này
+              let isPrefixMatch = true;
+              for (let i = 0; i < domCount; i++) {
+                if (window.chatHistory[i]?.text !== currentVisible.his[i]?.text || window.chatHistory[i]?.role !== currentVisible.his[i]?.role) {
+                  isPrefixMatch = false;
+                  break;
+                }
+              }
+              // CHỈ append khi và chỉ khi đúng là các tin tiếp theo của chính phiên này, tuyệt đối không nhảy phiên!
+              if (isPrefixMatch) {
+                const addedMsgs = currentVisible.his.slice(domCount);
+                window.chatHistory = [...currentVisible.his];
+                for (let idx = 0; idx < addedMsgs.length; idx++) {
+                  const msg = addedMsgs[idx];
+                  await appendMsg(msg.role === 'model' ? 'bot' : 'user', msg.text || '', domCount + idx, false);
+                }
+                if (getDOM().chat) getDOM().chat.scrollTop = getDOM().chat.scrollHeight;
+              }
             }
           }
         }
