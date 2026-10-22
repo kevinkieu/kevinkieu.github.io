@@ -1177,21 +1177,39 @@
           <span id="gist-last-time" style="font-size:0.75rem;color:var(--text-muted);">--:--</span>
         </div>
 
+        <!-- AUTO SYNC TOGGLE -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--input-bg);border-radius:var(--radius-md);border:1px solid var(--border);">
+          <div>
+            <label for="gist-auto-sync-toggle" style="font-weight:600;font-size:0.85rem;cursor:pointer;display:block;">⚡ Tự động đồng bộ ngầm 2 chiều (Auto Sync)</label>
+            <span style="font-size:0.72rem;color:var(--text-muted);">Tự động gộp dữ liệu khi mở app và khi AI học trí nhớ mới trên mọi thiết bị</span>
+          </div>
+          <input type="checkbox" id="gist-auto-sync-toggle" style="cursor:pointer;width:18px;height:18px;accent-color:var(--primary);">
+        </div>
+
+        <!-- PRIMARY BUTTON: 2-WAY SMART SYNC & MERGE -->
+        <button id="btn-gist-sync" class="btn primary" style="padding:12px;font-weight:700;font-size:0.95rem;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg, #10b981, #059669);box-shadow:0 4px 12px rgba(16,185,129,0.3);border:none;color:#fff;border-radius:var(--radius-md);cursor:pointer;">
+          🔄 Đồng bộ 2 chiều (Smart Sync & Merge)
+        </button>
+
+        <!-- SECONDARY BUTTONS FOR MANUAL OVERWRITE -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <button id="btn-gist-push" class="btn primary" style="padding:10px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;">
-            ☁️ Đẩy lên Cloud (Backup)
+          <button id="btn-gist-push" class="btn" style="padding:8px 12px;font-size:0.8rem;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:6px;" title="Ghi đè Cloud bằng toàn bộ dữ liệu máy hiện tại">
+            ☁️ Ghi đè Cloud (Backup)
           </button>
-          <button id="btn-gist-pull" class="btn" style="padding:10px;font-weight:600;border:1px solid var(--primary);color:var(--primary);display:flex;align-items:center;justify-content:center;gap:6px;">
-            📥 Tải về từ Cloud (Restore)
+          <button id="btn-gist-pull" class="btn" style="padding:8px 12px;font-size:0.8rem;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:6px;" title="Ghi đè máy hiện tại bằng toàn bộ dữ liệu Cloud">
+            📥 Ghi đè Máy (Restore)
           </button>
         </div>
 
         <details style="font-size:0.82rem;color:var(--text-muted);margin-top:6px;cursor:pointer;">
-          <summary style="font-weight:600;color:var(--primary);">📖 Hướng dẫn chi tiết 3 bước đồng bộ</summary>
+          <summary style="font-weight:600;color:var(--primary);">📖 Hướng dẫn sử dụng đa thiết bị (PC + Điện thoại)</summary>
           <ol style="margin-left:18px;margin-top:8px;line-height:1.6;">
-            <li><strong>Bước 1 (Lấy Token):</strong> Bấm vào link tạo token ở trên, đặt tên bất kỳ, tích chọn ô <code>gist</code>, kéo xuống cuối bấm <strong>Generate token</strong> rồi sao chép dán vào ô PAT bên trên.</li>
-            <li><strong>Bước 2 (Máy đang có dữ liệu - Đẩy lên):</strong> Bấm <strong>"☁️ Đẩy lên Cloud (Backup)"</strong>. Hệ thống sẽ tự tạo 1 Secret Gist riêng tư, điền Gist ID và báo thành công. Bấm nút <strong>📋 Chép</strong> để sao chép Gist ID.</li>
-            <li><strong>Bước 3 (Máy còn lại - Tải về):</strong> Mở app trên điện thoại/máy tính khác, dán cùng Token và Gist ID đó vào, bấm <strong>"📥 Tải về từ Cloud (Restore)"</strong>. Toàn bộ lịch sử trò chuyện và thiết lập sẽ xuất hiện ngay!</li>
+            <li><strong>Bước 1 (Lấy Token):</strong> Bấm link trên, tích chọn ô <code>gist</code>, bấm <strong>Generate token</strong> rồi dán vào ô PAT.</li>
+            <li><strong>Bước 2 (Kết nối 2 thiết bị):</strong> 
+              <br>• Trên máy thứ nhất (ví dụ PC): Nhập PAT, bấm <strong>"🔄 Đồng bộ 2 chiều (Smart Sync & Merge)"</strong>. Hệ thống sẽ tự tạo Gist riêng tư và điền Gist ID. Bấm nút <strong>📋 Chép</strong> để sao chép Gist ID.
+              <br>• Trên máy thứ hai (ví dụ Điện thoại): Dán cùng PAT và Gist ID đó vào, bấm <strong>"🔄 Đồng bộ 2 chiều"</strong>.
+            </li>
+            <li><strong>Bước 3 (Thảnh thơi sử dụng):</strong> Hãy bật <strong>⚡ Tự động đồng bộ ngầm 2 chiều (Auto Sync)</strong>. Từ nay về sau, khi bạn nhắn tin ở điện thoại hay PC, hệ thống sẽ tự động gộp (merge) toàn bộ tin nhắn và Trí nhớ Vectơ ("ChatGPT Memory") lại với nhau mà không bao giờ lo mất hay đè dữ liệu của máy nào!</li>
           </ol>
         </details>
       </div>
@@ -1521,11 +1539,11 @@
   <button id="scroll-to-top" title="Cuộn lên đầu trang">▲</button>
 
   <!-- JAVASCRIPT APPLICATION MODULES -->
-  <script type="module" src="./js/app.js?v=47"></script>
-  <script type="module" src="./js/live.js?v=47"></script>
-  <script type="module" src="./js/arena.js?v=47"></script>
-  <script type="module" src="./js/tts.js?v=47"></script>
-  <script type="module" src="./js/translate.js?v=47"></script>
-  <script type="module" src="./js/rag.js?v=47"></script>
+  <script type="module" src="./js/app.js?v=48"></script>
+  <script type="module" src="./js/live.js?v=48"></script>
+  <script type="module" src="./js/arena.js?v=48"></script>
+  <script type="module" src="./js/tts.js?v=48"></script>
+  <script type="module" src="./js/translate.js?v=48"></script>
+  <script type="module" src="./js/rag.js?v=48"></script>
 </body>
 </html>

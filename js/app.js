@@ -681,6 +681,9 @@ import { GoogleGenAI } from "@google/genai";
 
     let _nativeSyncTimer = null;
     function syncSessionsToNative() {
+      if (typeof scheduleAutoSync === 'function') {
+        scheduleAutoSync();
+      }
       if (!window.JarvisNativeBridge) return;
       clearTimeout(_nativeSyncTimer);
       _nativeSyncTimer = setTimeout(async () => {
@@ -707,11 +710,24 @@ import { GoogleGenAI } from "@google/genai";
       }
     });
 
+    function recordDeletedSessionId(id) {
+      if (!id) return;
+      try {
+        const list = JSON.parse(ls.getItem('jarvis_deleted_session_ids') || '[]');
+        if (!list.includes(id)) {
+          list.push(id);
+          if (list.length > 200) list.shift();
+          ls.setItem('jarvis_deleted_session_ids', JSON.stringify(list));
+        }
+      } catch (e) {}
+    }
+
     const deleteFromDB = i => new Promise((resolve, reject) => {
       try {
         const t = db.transaction(STORE_NAME, "readwrite");
         t.objectStore(STORE_NAME).delete(i);
         t.oncomplete = () => {
+          recordDeletedSessionId(i);
           syncSessionsToNative();
           resolve();
         };
@@ -3627,18 +3643,347 @@ import { GoogleGenAI } from "@google/genai";
       initExternalConfigs();
     }
 
-    // --- GITHUB GIST CLOUD SYNC CONTROLLER ---
+    // --- GITHUB GIST CLOUD SYNC CONTROLLER (2-WAY SMART MERGE & AUTO SYNC) ---
     const cloudSyncModal = $('cloud-sync-modal');
     const gistPatInput = $('gist-pat-input');
     const gistIdInput = $('gist-id-input');
     const gistStatusText = $('gist-status-text');
     const gistLastTime = $('gist-last-time');
+    const gistAutoSyncToggle = $('gist-auto-sync-toggle');
 
+    let _isSyncing = false;
+    let _autoSyncTimer = null;
+
+    // Helper fetch file content from GitHub Gist (supporting large files with raw_url)
+    async function fetchGistData(pat, gistId) {
+      const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+        headers: {
+          'Authorization': `Bearer ${pat}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || `Lỗi HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const fileObj = data.files?.["jarvis_sync_data.json"] || Object.values(data.files || {})[0];
+      if (!fileObj) throw new Error("Không tìm thấy tệp dữ liệu sao lưu hợp lệ trong Gist này!");
+
+      let contentStr = fileObj.content || '';
+      if (fileObj.truncated || !contentStr || fileObj.raw_url) {
+        try {
+          let rawRes = await fetch(fileObj.raw_url, {
+            headers: { 'Authorization': `Bearer ${pat}` }
+          });
+          if (!rawRes.ok) rawRes = await fetch(fileObj.raw_url);
+          if (rawRes.ok) contentStr = await rawRes.text();
+        } catch (rawErr) {
+          console.warn("[Gist] Lỗi fetch raw_url, dùng inline content:", rawErr);
+        }
+      }
+      if (!contentStr) throw new Error("Nội dung tệp sao lưu trên Gist bị trống!");
+      return JSON.parse(contentStr);
+    }
+
+    // Helper push backupData to GitHub Gist
+    async function pushGistData(pat, gistId, backupData) {
+      const payload = {
+        description: "Jarvis AI - Cloud Sync Personal Backup",
+        public: false,
+        files: {
+          "jarvis_sync_data.json": {
+            content: JSON.stringify(backupData)
+          }
+        }
+      };
+      const url = gistId ? `https://api.github.com/gists/${gistId}` : `https://api.github.com/gists`;
+      const method = gistId ? 'PATCH' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${pat}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || `Lỗi HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      return data.id || gistId;
+    }
+
+    // 2-WAY SMART MERGE (HỢP NHẤT DỮ LIỆU ĐA THIẾT BỊ)
+    async function performSmartSync({ silent = false } = {}) {
+      if (_isSyncing) return;
+      const pat = (gistPatInput?.value || ls.getItem('jarvis_gist_pat') || '').trim();
+      let gistId = (gistIdInput?.value || ls.getItem('jarvis_gist_id') || '').trim();
+
+      if (!pat) {
+        if (!silent) showToast("Vui lòng nhập GitHub Personal Access Token (PAT)!", "warning");
+        return;
+      }
+
+      _isSyncing = true;
+      const syncBtn = $('btn-gist-sync');
+      const oldBtnHtml = syncBtn ? syncBtn.innerHTML : '';
+      if (syncBtn && !silent) {
+        syncBtn.innerHTML = `<span>Đang đồng bộ 2 chiều...</span> ⏳`;
+        syncBtn.disabled = true;
+      }
+
+      try {
+        // 1. Thu thập dữ liệu cục bộ hiện tại trên thiết bị này
+        const localSessions = (await getAllFromDB()).map(sanitizeSessionForBackup);
+        let localKnowledge = [];
+        if (window.JarvisRAG && typeof window.JarvisRAG.getAllKnowledge === 'function') {
+          try {
+            localKnowledge = await window.JarvisRAG.getAllKnowledge();
+          } catch (kErr) {
+            console.warn("[SmartSync] Lỗi đọc Kho tri thức:", kErr);
+          }
+        }
+
+        let finalSessions = localSessions;
+        let finalKnowledge = localKnowledge;
+        let finalFolders = JSON.parse(ls.getItem('jarvis_folders') || '["Mặc định"]');
+        let finalPrompts = JSON.parse(ls.getItem('jarvis_custom_prompts') || '[]');
+
+        const deletedSessionIds = new Set(JSON.parse(ls.getItem('jarvis_deleted_session_ids') || '[]'));
+        const deletedVectorIds = new Set(JSON.parse(ls.getItem('jarvis_deleted_vector_ids') || '[]'));
+
+        // 2. Nếu đã có Gist ID, tải dữ liệu từ Cloud về để HỢP NHẤT (Merge)
+        if (gistId) {
+          try {
+            const cloudData = await fetchGistData(pat, gistId);
+
+            // A. HỢP NHẤT LỊCH SỬ PHIÊN CHAT (SESSIONS)
+            if (Array.isArray(cloudData.sessions)) {
+              const sessionMap = new Map();
+              // Đưa các phiên cục bộ vào map (loại trừ phiên đã xóa)
+              for (const lsess of localSessions) {
+                if (lsess && lsess.id && !deletedSessionIds.has(lsess.id)) {
+                  sessionMap.set(lsess.id, lsess);
+                }
+              }
+              // Gộp các phiên từ Cloud
+              for (const csess of cloudData.sessions) {
+                if (!csess || !csess.id || deletedSessionIds.has(csess.id)) continue;
+                if (!sessionMap.has(csess.id)) {
+                  sessionMap.set(csess.id, csess);
+                } else {
+                  const existing = sessionMap.get(csess.id);
+                  const lCount = (existing.his || []).length;
+                  const cCount = (csess.his || []).length;
+                  const lTime = existing.updatedAt || existing.timestamp || 0;
+                  const cTime = csess.updatedAt || csess.timestamp || 0;
+                  // Phiên nào có nhiều tin nhắn hơn, hoặc bằng tin nhắn nhưng mốc cập nhật mới hơn thì ưu tiên
+                  if (cCount > lCount || (cCount === lCount && cTime > lTime)) {
+                    sessionMap.set(csess.id, csess);
+                  }
+                }
+              }
+              finalSessions = Array.from(sessionMap.values());
+              finalSessions.sort((a, b) => {
+                const tA = a.updatedAt || a.timestamp || 0;
+                const tB = b.updatedAt || b.timestamp || 0;
+                return tB - tA;
+              });
+
+              // Lưu danh sách phiên chat đã hợp nhất vào IndexedDB của máy
+              await clearAllDB();
+              for (const s of finalSessions) {
+                await saveToDB(s);
+              }
+              sessions = await getAllFromDB();
+              if (!sessions.some(s => s.id === activeId) && sessions.length > 0) {
+                activeId = sessions[0].id;
+                ls.setItem('jarvis_active_id', activeId);
+              }
+            }
+
+            // B. HỢP NHẤT KHO TRI THỨC & TRÍ NHỚ VECTƠ (KNOWLEDGE BASE & RAG)
+            if (Array.isArray(cloudData.knowledgeBase)) {
+              const kMap = new Map();
+              for (const lk of localKnowledge) {
+                if (lk && lk.id && !deletedVectorIds.has(lk.id)) {
+                  kMap.set(lk.id, lk);
+                }
+              }
+              for (const ck of cloudData.knowledgeBase) {
+                if (!ck || !ck.id || deletedVectorIds.has(ck.id)) continue;
+                if (!kMap.has(ck.id)) {
+                  kMap.set(ck.id, ck);
+                } else {
+                  const ex = kMap.get(ck.id);
+                  const exTime = ex.createdAt || 0;
+                  const ckTime = ck.createdAt || 0;
+                  if (ckTime > exTime || (!ex.vector && ck.vector)) {
+                    kMap.set(ck.id, ck);
+                  }
+                }
+              }
+              const allMergedK = Array.from(kMap.values());
+              // Khử trùng lặp nội dung văn bản cho các trí nhớ cá nhân
+              const seenMemTexts = new Set();
+              finalKnowledge = [];
+              for (const it of allMergedK) {
+                if (it.type === 'memory') {
+                  const tKey = (it.text || '').trim().toLowerCase();
+                  if (seenMemTexts.has(tKey)) continue;
+                  seenMemTexts.add(tKey);
+                }
+                finalKnowledge.push(it);
+              }
+
+              // Lưu danh sách tri thức đã gộp vào Vector IndexedDB của máy
+              if (window.JarvisRAG && typeof window.JarvisRAG.importKnowledge === 'function') {
+                await window.JarvisRAG.importKnowledge(finalKnowledge, true);
+              }
+            }
+
+            // C. HỢP NHẤT THƯ MỤC & PROMPTS MẪU
+            if (Array.isArray(cloudData.folders)) {
+              finalFolders = Array.from(new Set([...finalFolders, ...cloudData.folders]));
+              folders = finalFolders;
+              ls.setItem('jarvis_folders', JSON.stringify(folders));
+            }
+
+            if (Array.isArray(cloudData.customPrompts)) {
+              const pMap = new Map();
+              finalPrompts.forEach(p => { if (p && p.title) pMap.set(p.title, p); });
+              cloudData.customPrompts.forEach(p => { if (p && p.title && !pMap.has(p.title)) pMap.set(p.title, p); });
+              finalPrompts = Array.from(pMap.values());
+              ls.setItem('jarvis_custom_prompts', JSON.stringify(finalPrompts));
+            }
+
+            // D. HỢP NHẤT KHÓA GOOGLE API (Bổ sung vào các slot còn trống)
+            if (cloudData.settings?.keys && Array.isArray(cloudData.settings.keys)) {
+              const localKeys = getGoogleKeysList();
+              const remoteKeys = cloudData.settings.keys;
+              const mergedKeys = [];
+              for (let i = 0; i < 10; i++) {
+                let rKey = remoteKeys[i] || '';
+                if (rKey.startsWith('JVENC_') || rKey.startsWith('ENC_')) rKey = deobfuscateKey(rKey);
+                mergedKeys[i] = localKeys[i] || rKey || '';
+              }
+              setGoogleKeysList(mergedKeys);
+            }
+
+          } catch (fetchErr) {
+            console.warn("[SmartSync] Không thể tải dữ liệu cũ từ Cloud để merge, sẽ đẩy dữ liệu hiện tại lên:", fetchErr);
+          }
+        }
+
+        // 3. Đóng gói bản tổng hợp (Merged Super-Set) và Đẩy lên Gist
+        const backupData = {
+          version: 2,
+          app: "Jarvis AI",
+          timestamp: new Date().toISOString(),
+          timeReadable: new Date().toLocaleString('vi-VN'),
+          device: ('ontouchstart' in window) ? 'Mobile' : 'Desktop',
+          sessions: finalSessions,
+          activeId,
+          customPrompts: finalPrompts,
+          folders: finalFolders,
+          knowledgeBase: finalKnowledge,
+          settings: {
+            keys: getGoogleKeysList(true),
+            keyNames: getGoogleKeyNamesList(),
+            externalConfigs: getExternalConfigsObj(true),
+            model: DOM.model.value,
+            temperature: DOM.temp.value,
+            searchEngine: DOM.searchEngineSel.value,
+            globalContext: DOM.globContext.value,
+            systemInstruction: DOM.sysInst.value,
+            theme: ls.getItem('jarvis_theme') || 'auto',
+            autoLearnMemory: ls.getItem('jarvis_auto_learn_memory') || 'true',
+            ragEnabled: ls.getItem('jarvis_rag_enabled') || 'true',
+            autoSyncCloud: ls.getItem('jarvis_auto_sync_cloud') || 'true'
+          }
+        };
+
+        const newGistId = await pushGistData(pat, gistId, backupData);
+        if (!gistId && newGistId) {
+          gistId = newGistId;
+          if (gistIdInput) gistIdInput.value = gistId;
+        }
+
+        const timeStr = new Date().toLocaleString('vi-VN');
+        ls.setItem('jarvis_gist_pat', pat);
+        ls.setItem('jarvis_gist_id', gistId);
+        ls.setItem('jarvis_gist_last_sync', timeStr);
+
+        renderFolders();
+        renderSnippets();
+        await switchSess(activeId);
+
+        const kCount = finalKnowledge.length ? `, ${finalKnowledge.length} tri thức` : '';
+        if (gistStatusText) {
+          gistStatusText.innerText = `Đã hợp nhất (${finalSessions.length} phiên${kCount})`;
+          gistStatusText.style.color = '#10b981';
+        }
+        if (gistLastTime) gistLastTime.innerText = `Lần cuối: ${timeStr}`;
+
+        if (!silent) {
+          showToast(`🔄 Đồng bộ 2 chiều thành công! Đã gộp ${finalSessions.length} phiên & ${finalKnowledge.length} mẩu tri thức.`, "success");
+        } else {
+          console.log(`[Auto-Sync] Đã đồng bộ ngầm 2 chiều: ${finalSessions.length} phiên, ${finalKnowledge.length} tri thức`);
+        }
+      } catch (err) {
+        console.error("[SmartSync] Lỗi đồng bộ:", err);
+        if (!silent) {
+          showToast(`Lỗi đồng bộ 2 chiều: ${err.message}`, "danger");
+        }
+      } finally {
+        _isSyncing = false;
+        if (syncBtn && !silent) {
+          syncBtn.innerHTML = oldBtnHtml || `🔄 Đồng bộ 2 chiều (Smart Sync & Merge)`;
+          syncBtn.disabled = false;
+        }
+      }
+    }
+
+    // Tự động lên lịch đồng bộ ngầm (Debounced Auto-Sync)
+    function scheduleAutoSync() {
+      if (ls.getItem('jarvis_auto_sync_cloud') === 'false') return;
+      const pat = (ls.getItem('jarvis_gist_pat') || '').trim();
+      const gistId = (ls.getItem('jarvis_gist_id') || '').trim();
+      if (!pat || !gistId) return;
+
+      clearTimeout(_autoSyncTimer);
+      _autoSyncTimer = setTimeout(() => {
+        console.log("[Auto-Sync] Đang tự động đồng bộ ngầm dữ liệu mới lên Cloud...");
+        performSmartSync({ silent: true }).catch(() => {});
+      }, 6000);
+    }
+
+    // Expose cho module khác (như rag.js) gọi đồng bộ ngầm
+    window.JarvisSync = {
+      performSmartSync,
+      scheduleAutoSync
+    };
+
+    // Khởi tạo trạng thái modal Cloud Sync
     const openCloudSyncModal = () => {
       cloudSyncModal.style.display = 'flex';
       oLay.style.display = 'block';
       gistPatInput.value = ls.getItem('jarvis_gist_pat') || '';
       gistIdInput.value = ls.getItem('jarvis_gist_id') || '';
+
+      if (gistAutoSyncToggle) {
+        gistAutoSyncToggle.checked = ls.getItem('jarvis_auto_sync_cloud') !== 'false';
+        gistAutoSyncToggle.onchange = () => {
+          ls.setItem('jarvis_auto_sync_cloud', gistAutoSyncToggle.checked ? 'true' : 'false');
+          showToast(gistAutoSyncToggle.checked ? "Đã bật tự động đồng bộ 2 chiều ngầm!" : "Đã tắt tự động đồng bộ ngầm", "info");
+          if (gistAutoSyncToggle.checked) scheduleAutoSync();
+        };
+      }
+
       const last = ls.getItem('jarvis_gist_last_sync');
       if (last) {
         gistStatusText.innerText = 'Đã kết nối Gist';
@@ -3659,23 +4004,6 @@ import { GoogleGenAI } from "@google/genai";
       openCloudSyncModal();
     };
 
-    const _origCloudSyncUnused = () => {
-      cloudSyncModal.style.display = 'flex';
-      oLay.style.display = 'block';
-      gistPatInput.value = ls.getItem('jarvis_gist_pat') || '';
-      gistIdInput.value = ls.getItem('jarvis_gist_id') || '';
-      const last = ls.getItem('jarvis_gist_last_sync');
-      if (last) {
-        gistStatusText.innerText = 'Đã kết nối Gist';
-        gistStatusText.style.color = '#10b981';
-        gistLastTime.innerText = `Lần cuối: ${last}`;
-      } else {
-        gistStatusText.innerText = 'Chưa đồng bộ';
-        gistStatusText.style.color = 'var(--text-muted)';
-        gistLastTime.innerText = '--:--';
-      }
-    };
-
     $('btn-toggle-pat-eye').onclick = () => {
       gistPatInput.type = gistPatInput.type === 'password' ? 'text' : 'password';
     };
@@ -3687,7 +4015,14 @@ import { GoogleGenAI } from "@google/genai";
       showToast("Đã sao chép Gist ID!");
     };
 
-    // PUSH TO GIST (BACKUP)
+    // NÚT CHÍNH: ĐỒNG BỘ 2 CHIỀU (SMART SYNC & MERGE)
+    if ($('btn-gist-sync')) {
+      $('btn-gist-sync').onclick = async () => {
+        await performSmartSync({ silent: false });
+      };
+    }
+
+    // PUSH TO GIST (GHI ĐÈ CLOUD - BACKUP THỦ CÔNG)
     $('btn-gist-push').onclick = async () => {
       const pat = gistPatInput.value.trim();
       if (!pat) return showToast("Vui lòng nhập GitHub Personal Access Token (PAT)!", "warning");
@@ -3706,7 +4041,7 @@ import { GoogleGenAI } from "@google/genai";
           try {
             allKnowledge = await window.JarvisRAG.getAllKnowledge();
           } catch (kErr) {
-            console.warn("Lỗi trích xuất Kho tri thức cho Gist sync:", kErr);
+            console.warn("Lỗi trích xuất Kho tri thức:", kErr);
           }
         }
 
@@ -3722,7 +4057,7 @@ import { GoogleGenAI } from "@google/genai";
           folders: JSON.parse(ls.getItem('jarvis_folders') || '["Mặc định"]'),
           knowledgeBase: allKnowledge,
           settings: {
-            keys: getGoogleKeysList(true), // Mã hóa Salted XOR để Secret Scanner không quét được
+            keys: getGoogleKeysList(true),
             keyNames: getGoogleKeyNamesList(),
             externalConfigs: getExternalConfigsObj(true),
             model: DOM.model.value,
@@ -3732,40 +4067,12 @@ import { GoogleGenAI } from "@google/genai";
             systemInstruction: DOM.sysInst.value,
             theme: ls.getItem('jarvis_theme') || 'auto',
             autoLearnMemory: ls.getItem('jarvis_auto_learn_memory') || 'true',
-            ragEnabled: ls.getItem('jarvis_rag_enabled') || 'true'
+            ragEnabled: ls.getItem('jarvis_rag_enabled') || 'true',
+            autoSyncCloud: ls.getItem('jarvis_auto_sync_cloud') || 'true'
           }
         };
 
-        const payload = {
-          description: "Jarvis AI - Cloud Sync Personal Backup",
-          public: false,
-          files: {
-            "jarvis_sync_data.json": {
-              content: JSON.stringify(backupData)
-            }
-          }
-        };
-
-        const url = gistId ? `https://api.github.com/gists/${gistId}` : `https://api.github.com/gists`;
-        const method = gistId ? 'PATCH' : 'POST';
-
-        const res = await fetch(url, {
-          method,
-          headers: {
-            'Authorization': `Bearer ${pat}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.message || `Lỗi HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-        gistId = data.id;
+        gistId = await pushGistData(pat, gistId, backupData);
         gistIdInput.value = gistId;
 
         const timeStr = new Date().toLocaleString('vi-VN');
@@ -3773,90 +4080,35 @@ import { GoogleGenAI } from "@google/genai";
         ls.setItem('jarvis_gist_id', gistId);
         ls.setItem('jarvis_gist_last_sync', timeStr);
 
-        const kCount = (allKnowledge && allKnowledge.length) ? `, ${allKnowledge.length} tri thức` : '';
+        const kCount = allKnowledge.length ? `, ${allKnowledge.length} tri thức` : '';
         gistStatusText.innerText = `Đã sao lưu (${allSessions.length} phiên${kCount})`;
         gistStatusText.style.color = '#10b981';
         gistLastTime.innerText = `Lần cuối: ${timeStr}`;
 
-        showToast(`Đã đồng bộ lên Cloud thành công! Gist ID: ${gistId}`, "success");
+        showToast(`Đã ghi đè Cloud thành công! Gist ID: ${gistId}`, "success");
       } catch (err) {
         showToast(`Lỗi đẩy lên Cloud: ${err.message}`, "danger");
       } finally {
-        btn.innerHTML = `☁️ Đẩy lên Cloud (Backup)`;
+        btn.innerHTML = `☁️ Ghi đè Cloud (Backup)`;
         btn.disabled = false;
       }
     };
 
-    // PULL FROM GIST (RESTORE)
+    // PULL FROM GIST (GHI ĐÈ MÁY - RESTORE THỦ CÔNG)
     $('btn-gist-pull').onclick = async () => {
       const pat = gistPatInput.value.trim();
       const gistId = gistIdInput.value.trim();
       if (!pat) return showToast("Vui lòng nhập GitHub PAT!", "warning");
       if (!gistId) return showToast("Vui lòng nhập Gist ID cần tải về!", "warning");
 
-      if (!confirm("Tải về từ Cloud sẽ cập nhật toàn bộ lịch sử trò chuyện và cài đặt trên máy này. Bạn có muốn tiếp tục?")) return;
+      if (!confirm("Thao tác này sẽ GHI ĐÈ toàn bộ lịch sử và cài đặt máy này bằng dữ liệu trên Cloud. Bạn có muốn tiếp tục? (Để gộp cả hai bên mà không mất dữ liệu, hãy dùng nút 'Đồng bộ 2 chiều')")) return;
 
       const btn = $('btn-gist-pull');
       btn.innerHTML = `<span>Đang tải về...</span> ⏳`;
       btn.disabled = true;
 
       try {
-        const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-          headers: {
-            'Authorization': `Bearer ${pat}`,
-            'Accept': 'application/vnd.github.v3+json'
-          }
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.message || `Lỗi HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-        const fileObj = data.files?.["jarvis_sync_data.json"] || Object.values(data.files || {})[0];
-        if (!fileObj) throw new Error("Không tìm thấy tệp dữ liệu sao lưu hợp lệ trong Gist này!");
-
-        let contentStr = fileObj.content || '';
-
-        // XỬ LÝ LỖI TRUNCATED CỦA GITHUB GIST KHI DỮ LIỆU LỚN (>750KB)
-        // Khi file lớn, GitHub Gist tự động cắt ngang chuỗi và đặt truncated: true.
-        // Ta cần fetch trực tiếp từ fileObj.raw_url để lấy nguyên vẹn 100% dữ liệu gốc!
-        if (fileObj.truncated || !contentStr || fileObj.raw_url) {
-          try {
-            let rawRes = await fetch(fileObj.raw_url, {
-              headers: { 'Authorization': `Bearer ${pat}` }
-            });
-            if (!rawRes.ok) {
-              rawRes = await fetch(fileObj.raw_url);
-            }
-            if (rawRes.ok) {
-              contentStr = await rawRes.text();
-            }
-          } catch (rawErr) {
-            console.warn("Lỗi fetch raw_url, thử dùng inline content:", rawErr);
-          }
-        }
-
-        if (!contentStr) throw new Error("Nội dung tệp sao lưu trên Gist bị trống!");
-
-        let parsed;
-        try {
-          parsed = JSON.parse(contentStr);
-        } catch (jsonErr) {
-          // Thử lại lần cuối với raw_url trực tiếp nếu parse lỗi
-          if (fileObj.raw_url) {
-            const fallbackRes = await fetch(fileObj.raw_url);
-            if (fallbackRes.ok) {
-              contentStr = await fallbackRes.text();
-              parsed = JSON.parse(contentStr);
-            } else {
-              throw jsonErr;
-            }
-          } else {
-            throw jsonErr;
-          }
-        }
+        const parsed = await fetchGistData(pat, gistId);
         if (!parsed.sessions || !Array.isArray(parsed.sessions)) throw new Error("Cấu trúc dữ liệu không hợp lệ!");
 
         if (parsed.sessions && parsed.sessions.length > 0) {
@@ -3917,7 +4169,6 @@ import { GoogleGenAI } from "@google/genai";
         ls.setItem('jarvis_gist_id', gistId);
         ls.setItem('jarvis_gist_last_sync', timeStr);
 
-        // Đảm bảo đồng bộ ngay xuống Native Bridge trên Android nếu có
         if (window.JarvisNativeBridge) {
           saveToNativeBridge('jarvis_sessions_backup', JSON.stringify(sessions));
           if (typeof window.JarvisNativeBridge.commit === 'function') {
@@ -3926,7 +4177,7 @@ import { GoogleGenAI } from "@google/genai";
         }
 
         const kPullStatus = importedKCount ? `, ${importedKCount} tri thức` : '';
-        gistStatusText.innerText = `Đã đồng bộ (${sessions.length} phiên${kPullStatus})`;
+        gistStatusText.innerText = `Đã ghi đè (${sessions.length} phiên${kPullStatus})`;
         gistStatusText.style.color = '#10b981';
         gistLastTime.innerText = `Lần cuối: ${timeStr}`;
 
@@ -3934,14 +4185,22 @@ import { GoogleGenAI } from "@google/genai";
         renderSnippets();
         await switchSess(activeId);
 
-        showToast(`Đã đồng bộ thành công ${sessions.length} phiên${importedKCount ? ' & ' + importedKCount + ' mẩu tri thức' : ''} từ Cloud!`, "success");
+        showToast(`Đã khôi phục thành công ${sessions.length} phiên${importedKCount ? ' & ' + importedKCount + ' mẩu tri thức' : ''} từ Cloud!`, "success");
       } catch (err) {
         showToast(`Lỗi tải về từ Cloud: ${err.message}`, "danger");
       } finally {
-        btn.innerHTML = `📥 Tải về từ Cloud (Restore)`;
+        btn.innerHTML = `📥 Ghi đè Máy (Restore)`;
         btn.disabled = false;
       }
     };
+
+    // Tự động kiểm tra & đồng bộ 2 chiều ngầm khi khởi động ứng dụng (Startup Sync)
+    setTimeout(() => {
+      if (ls.getItem('jarvis_auto_sync_cloud') !== 'false' && ls.getItem('jarvis_gist_pat') && ls.getItem('jarvis_gist_id')) {
+        console.log("[Auto-Sync] Đang tự động kiểm tra và đồng bộ 2 chiều khi mở app...");
+        performSmartSync({ silent: true }).catch(() => {});
+      }
+    }, 3500);
 
 
 // --- [GEMINI TTS STUDIO PRO MODULE MOVED TO js/tts.js] ---
