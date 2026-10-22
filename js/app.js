@@ -695,6 +695,9 @@ import { GoogleGenAI } from "@google/genai";
 
     const saveToDB = s => new Promise((resolve, reject) => {
       try {
+        if (s && typeof s === 'object') {
+          s.updatedAt = Date.now();
+        }
         const t = db.transaction(STORE_NAME, "readwrite");
         t.objectStore(STORE_NAME).put(s);
         t.oncomplete = () => {
@@ -1953,8 +1956,10 @@ import { GoogleGenAI } from "@google/genai";
         schEngine: 'tavily',
         mem: true,
         useGlob: true,
-        orderIndex: Date.now()
+        updatedAt: Date.now(),
+        orderIndex: 0
       };
+      sessions.forEach(sess => { if (typeof sess.orderIndex === 'number') sess.orderIndex++; });
       sessions.unshift(s);
       await saveToDB(s);
       await switchSess(id);
@@ -1970,6 +1975,11 @@ import { GoogleGenAI } from "@google/genai";
       ls.setItem('jarvis_active_id', id);
       ls.setItem('huanmu_active_id', id);
       const s = sessions.find(x => x.id === id);
+      if (s && activeFolder !== 'All' && s.folder && s.folder !== activeFolder) {
+        activeFolder = 'All';
+        ls.setItem('jarvis_active_folder', activeFolder);
+        renderFolders();
+      }
       chatHistory = (s && Array.isArray(s.his)) ? [...s.his] : [];
 
       if (s) {
@@ -2014,6 +2024,7 @@ import { GoogleGenAI } from "@google/genai";
         const dot = s.color ? '● ' : '';
         return `<option value="${s.id}" ${s.id === activeId ? 'selected' : ''}>${dot}${activeFolder === "All" ? `[${s.folder}] ` : ''}${s.name}</option>`;
       }).join('');
+      if (activeId) DOM.selSession.value = activeId;
       const curS = sessions.find(x => x.id === activeId);
       const kInfo = (curS?.engine === 'interactions' && curS?.assignedApiKey) ? ` • 🔒 Ghim Key ${apiKeys.indexOf(curS.assignedApiKey) + 1}` : '';
       $('session-msg-count').innerText = `${chatHistory.length} tin nhắn${kInfo}`;
@@ -2609,6 +2620,7 @@ import { GoogleGenAI } from "@google/genai";
 
         if (cs) {
           cs.his = chatHistory;
+          cs.updatedAt = Date.now();
           if (recordedIxId) cs.lastInteractionId = recordedIxId;
           await saveToDB(cs);
           renderSel();
@@ -3667,6 +3679,7 @@ import { GoogleGenAI } from "@google/genai";
       Object.defineProperty(window, 'activeId', { get: () => activeId, set: v => { activeId = v; }, configurable: true });
       Object.defineProperty(window, 'chatHistory', { get: () => chatHistory, set: v => { chatHistory = v; }, configurable: true });
       Object.defineProperty(window, 'folders', { get: () => folders, set: v => { folders = v; }, configurable: true });
+      Object.defineProperty(window, 'activeFolder', { get: () => activeFolder, set: v => { activeFolder = v; }, configurable: true });
       Object.defineProperty(window, 'customPrompts', { get: () => customPrompts, set: v => { customPrompts = v; }, configurable: true });
     } catch (e) {
       console.warn("Property definition error:", e);
