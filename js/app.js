@@ -797,6 +797,11 @@ import { GoogleGenAI } from "@google/genai";
       searchEngineSel: $('search-engine-select'),
       toggleMemory: $('toggle-memory'),
       toggleAutoSummary: $('toggle-auto-summary'),
+      toggleRagEmbedding: $('toggle-rag-embedding'),
+      btnToggleSessionMem: $('btn-toggle-session-memory'),
+      sessionMemState: $('session-memory-state'),
+      btnToggleRag: $('btn-toggle-rag-memory'),
+      ragMemoryState: $('rag-memory-state'),
       temp: $('temperature'),
       tempVal: $('temp-val'),
       topP: $('top-p'),
@@ -1955,6 +1960,7 @@ import { GoogleGenAI } from "@google/genai";
         sch: false,
         schEngine: 'tavily',
         mem: true,
+        rag: true,
         useGlob: true,
         updatedAt: Date.now(),
         orderIndex: 0
@@ -1998,7 +2004,21 @@ import { GoogleGenAI } from "@google/genai";
         DOM.toggleSearch.checked = s.sch || false;
         DOM.searchEngineBox.style.display = s.sch ? 'block' : 'none';
         DOM.searchEngineSel.value = s.schEngine || 'tavily';
-        DOM.toggleMemory.checked = s.mem !== false;
+        const isMem = s.mem !== false;
+        const isRag = s.rag !== false;
+        DOM.toggleMemory.checked = isMem;
+        if (DOM.sessionMemState) {
+          DOM.sessionMemState.innerText = isMem ? 'BẬT' : 'TẮT';
+          DOM.sessionMemState.style.color = isMem ? 'var(--success)' : 'var(--text-muted)';
+        }
+        if (DOM.toggleRagEmbedding) DOM.toggleRagEmbedding.checked = isRag;
+        if (DOM.ragMemoryState) {
+          DOM.ragMemoryState.innerText = isRag ? 'BẬT' : 'TẮT';
+          DOM.ragMemoryState.style.color = isRag ? 'var(--success)' : 'var(--text-muted)';
+        }
+        if (window.JarvisRAG && typeof window.JarvisRAG.updateRagUI === 'function') {
+          window.JarvisRAG.updateRagUI(isRag);
+        }
         updateColorPickerUI();
       }
 
@@ -2169,7 +2189,8 @@ import { GoogleGenAI } from "@google/genai";
           useGlob: DOM.toggleGlob.checked,
           sch: DOM.toggleSearch.checked,
           schEngine: DOM.searchEngineSel.value,
-          mem: DOM.toggleMemory.checked
+          mem: DOM.toggleMemory.checked,
+          rag: DOM.toggleRagEmbedding ? DOM.toggleRagEmbedding.checked : true
         });
         if (DOM.engineSel.value === 'stream') {
           s.assignedApiKey = null;
@@ -2189,7 +2210,35 @@ import { GoogleGenAI } from "@google/genai";
 
     DOM.model.addEventListener('change', () => { updateThinkingVisibility(); updateConfig(); });
     DOM.engineSel.addEventListener('change', updateConfig);
-    [DOM.sysInst, DOM.apiKeySel, DOM.toggleGlob, DOM.toggleSearch, DOM.searchEngineSel, DOM.toggleMemory, DOM.topK, DOM.thinking].forEach(el => el?.addEventListener('change', updateConfig));
+    [DOM.sysInst, DOM.apiKeySel, DOM.toggleGlob, DOM.toggleSearch, DOM.searchEngineSel, DOM.topK, DOM.thinking].forEach(el => el?.addEventListener('change', updateConfig));
+
+    if (DOM.btnToggleSessionMem) {
+      DOM.btnToggleSessionMem.onclick = () => {
+        const s = sessions.find(x => x.id === activeId);
+        const cur = s ? (s.mem !== false) : DOM.toggleMemory.checked;
+        const next = !cur;
+        DOM.toggleMemory.checked = next;
+        if (DOM.sessionMemState) {
+          DOM.sessionMemState.innerText = next ? 'BẬT' : 'TẮT';
+          DOM.sessionMemState.style.color = next ? 'var(--success)' : 'var(--text-muted)';
+        }
+        if (s) {
+          s.mem = next;
+          saveToDB(s);
+        }
+        showToast(`Ngữ cảnh trò chuyện [Phiên này]: ${next ? 'ĐÃ BẬT' : 'ĐÃ TẮT'}`, next ? 'success' : 'warning');
+      };
+    }
+
+    DOM.toggleMemory?.addEventListener('change', () => {
+      const next = DOM.toggleMemory.checked;
+      if (DOM.sessionMemState) {
+        DOM.sessionMemState.innerText = next ? 'BẬT' : 'TẮT';
+        DOM.sessionMemState.style.color = next ? 'var(--success)' : 'var(--text-muted)';
+      }
+      updateConfig();
+      showToast(`Ngữ cảnh trò chuyện [Phiên này]: ${next ? 'ĐÃ BẬT' : 'ĐÃ TẮT'}`, next ? 'success' : 'warning');
+    });
     DOM.temp.addEventListener('input', () => { DOM.tempVal.innerText = DOM.temp.value; updateConfig(); });
     DOM.topP.addEventListener('input', () => { DOM.toppVal.innerText = DOM.topP.value; updateConfig(); });
 
@@ -2678,8 +2727,9 @@ import { GoogleGenAI } from "@google/genai";
           condenseSessionMemory(cs);
         }
 
-        // CHATGPT-STYLE AUTO-LEARN MEMORY
-        if (fP && fP.length >= 8 && window.JarvisRAG && typeof window.JarvisRAG.extractAndLearnMemory === 'function') {
+        // CHATGPT-STYLE AUTO-LEARN MEMORY (Chỉ kích hoạt khi phiên này đang BẬT Trí nhớ RAG)
+        const isRagSessionForLearn = cs ? (cs.rag !== false) : (DOM.toggleRagEmbedding ? DOM.toggleRagEmbedding.checked : true);
+        if (isRagSessionForLearn && fP && fP.length >= 8 && window.JarvisRAG && typeof window.JarvisRAG.extractAndLearnMemory === 'function') {
           setTimeout(() => window.JarvisRAG.extractAndLearnMemory(fP, gKey), 400);
         }
 
@@ -2869,9 +2919,10 @@ import { GoogleGenAI } from "@google/genai";
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
-        // RAG / SECOND BRAIN CONTEXT RETRIEVAL (Gemini Embedding 2)
+        // RAG / SECOND BRAIN CONTEXT RETRIEVAL (Gemini Embedding 2 - Chỉ kích hoạt khi phiên này đang BẬT Trí nhớ RAG)
         let ragSnippet = '';
-        if (window.JarvisRAG && typeof window.JarvisRAG.retrieveContext === 'function') {
+        const isRagSessionForQuery = cs ? (cs.rag !== false) : (DOM.toggleRagEmbedding ? DOM.toggleRagEmbedding.checked : true);
+        if (isRagSessionForQuery && window.JarvisRAG && typeof window.JarvisRAG.retrieveContext === 'function') {
           try {
             const ragRes = await window.JarvisRAG.retrieveContext(fP, gKey);
             if (typeof ragRes === 'string') {
