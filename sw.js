@@ -11,6 +11,7 @@ const STATIC_ASSETS = [
   './css/translate.css',
   './css/rag.css',
   './js/app.js',
+  './js/sync.js',
   './js/live.js',
   './js/arena.js',
   './js/tts.js',
