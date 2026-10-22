@@ -1299,7 +1299,7 @@ Nhiệm vụ:
       };
     }
 
-    // 5. Tool-chip toggle trên thanh chat
+    // 5. Tool-chip toggle trên thanh chat (Điều khiển Trí nhớ Vector RAG cho TỪNG PHIÊN)
     const btnToggleRag = document.getElementById('btn-toggle-rag-memory');
     const ragStateEl = document.getElementById('rag-memory-state');
     const toggleRagSidebar = document.getElementById('toggle-rag-embedding');
@@ -1310,26 +1310,30 @@ Nhiệm vụ:
         ragStateEl.style.color = enabled ? 'var(--success)' : 'var(--text-muted)';
       }
       if (toggleRagSidebar) toggleRagSidebar.checked = enabled;
-      localStorage.setItem('jarvis_rag_enabled', enabled ? 'true' : 'false');
     };
 
-    const initialRagState = localStorage.getItem('jarvis_rag_enabled') !== 'false';
-    updateRagUI(initialRagState);
+    const toggleRagForCurrentSession = (forceVal) => {
+      const activeId = window.activeId;
+      const sessions = window.sessions || [];
+      const s = sessions.find(x => x.id === activeId);
+      const cur = s ? (s.rag !== false) : (toggleRagSidebar ? toggleRagSidebar.checked : true);
+      const next = (typeof forceVal === 'boolean') ? forceVal : !cur;
+      if (s) {
+        s.rag = next;
+        if (typeof window.saveToDB === 'function') window.saveToDB(s);
+      }
+      updateRagUI(next);
+      if (typeof window.showToast === 'function') {
+        window.showToast(`Trí nhớ Vector RAG [Phiên này]: ${next ? 'ĐÃ BẬT' : 'ĐÃ TẮT'}`, next ? 'success' : 'warning');
+      }
+    };
 
     if (btnToggleRag) {
-      btnToggleRag.onclick = () => {
-        const cur = localStorage.getItem('jarvis_rag_enabled') !== 'false';
-        updateRagUI(!cur);
-        if (typeof window.showToast === 'function') {
-          window.showToast(`Trí nhớ Vector RAG: ${!cur ? 'ĐÃ BẬT' : 'ĐÃ TẮT'}`, !cur ? 'success' : 'warning');
-        }
-      };
+      btnToggleRag.onclick = () => toggleRagForCurrentSession();
     }
 
     if (toggleRagSidebar) {
-      toggleRagSidebar.onchange = () => {
-        updateRagUI(toggleRagSidebar.checked);
-      };
+      toggleRagSidebar.onchange = () => toggleRagForCurrentSession(toggleRagSidebar.checked);
     }
 
     const toggleAutoLearn = document.getElementById('toggle-auto-learn-memory');
@@ -1594,6 +1598,7 @@ Nhiệm vụ:
     indexDocument,
     searchSimilar: searchSimilarVectors,
     retrieveContext: retrieveContextForPrompt,
+    updateRagUI,
     searchChatSemantic: searchChatHistorySemantic,
     openModal: openKnowledgeModal,
     closeModal: closeKnowledgeModal,
