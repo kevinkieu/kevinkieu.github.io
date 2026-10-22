@@ -190,9 +190,11 @@
         let hasChanges = false;
 
         // 2. Nếu đã có Gist ID, tải dữ liệu từ Cloud về để HỢP NHẤT (Merge)
+        let cloudData = null;
+
         if (gistId) {
           try {
-            const cloudData = await fetchGistData(pat, gistId);
+            cloudData = await fetchGistData(pat, gistId);
             hasRemoteData = true;
 
             // A. HỢP NHẤT LỊCH SỬ PHIÊN CHAT (SESSIONS)
