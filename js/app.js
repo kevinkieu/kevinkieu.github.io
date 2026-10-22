@@ -681,9 +681,6 @@ import { GoogleGenAI } from "@google/genai";
 
     let _nativeSyncTimer = null;
     function syncSessionsToNative() {
-      if (typeof scheduleAutoSync === 'function') {
-        scheduleAutoSync();
-      }
       if (!window.JarvisNativeBridge) return;
       clearTimeout(_nativeSyncTimer);
       _nativeSyncTimer = setTimeout(async () => {
@@ -2556,6 +2553,9 @@ import { GoogleGenAI } from "@google/genai";
           cs.assignedApiKey = gKey;
           await saveToDB(cs);
           renderSel();
+          if (typeof scheduleAutoSync === 'function') {
+            scheduleAutoSync(15000);
+          }
         }
       } else if (currentEngine === 'interactions') {
         if (!cs?.assignedApiKey || !apiKeys.includes(cs.assignedApiKey)) {
@@ -3717,7 +3717,7 @@ import { GoogleGenAI } from "@google/genai";
       return data.id || gistId;
     }
 
-    // 2-WAY SMART MERGE (HỢP NHẤT DỮ LIỆU ĐA THIẾT BỊ)
+    // 2-WAY SMART MERGE (HỢP NHẤT DỮ LIỆU ĐA THIẾT BỊ - KHÔNG CHỚP MÀN HÌNH)
     async function performSmartSync({ silent = false } = {}) {
       if (_isSyncing) return;
       const pat = (gistPatInput?.value || ls.getItem('jarvis_gist_pat') || '').trim();
@@ -3756,34 +3756,37 @@ import { GoogleGenAI } from "@google/genai";
         const deletedSessionIds = new Set(JSON.parse(ls.getItem('jarvis_deleted_session_ids') || '[]'));
         const deletedVectorIds = new Set(JSON.parse(ls.getItem('jarvis_deleted_vector_ids') || '[]'));
 
+        let hasRemoteData = false;
+        let hasChanges = false;
+
         // 2. Nếu đã có Gist ID, tải dữ liệu từ Cloud về để HỢP NHẤT (Merge)
         if (gistId) {
           try {
             const cloudData = await fetchGistData(pat, gistId);
+            hasRemoteData = true;
 
             // A. HỢP NHẤT LỊCH SỬ PHIÊN CHAT (SESSIONS)
             if (Array.isArray(cloudData.sessions)) {
               const sessionMap = new Map();
-              // Đưa các phiên cục bộ vào map (loại trừ phiên đã xóa)
               for (const lsess of localSessions) {
                 if (lsess && lsess.id && !deletedSessionIds.has(lsess.id)) {
                   sessionMap.set(lsess.id, lsess);
                 }
               }
-              // Gộp các phiên từ Cloud
               for (const csess of cloudData.sessions) {
                 if (!csess || !csess.id || deletedSessionIds.has(csess.id)) continue;
                 if (!sessionMap.has(csess.id)) {
                   sessionMap.set(csess.id, csess);
+                  hasChanges = true;
                 } else {
                   const existing = sessionMap.get(csess.id);
                   const lCount = (existing.his || []).length;
                   const cCount = (csess.his || []).length;
                   const lTime = existing.updatedAt || existing.timestamp || 0;
                   const cTime = csess.updatedAt || csess.timestamp || 0;
-                  // Phiên nào có nhiều tin nhắn hơn, hoặc bằng tin nhắn nhưng mốc cập nhật mới hơn thì ưu tiên
                   if (cCount > lCount || (cCount === lCount && cTime > lTime)) {
                     sessionMap.set(csess.id, csess);
+                    if (cCount !== lCount) hasChanges = true;
                   }
                 }
               }
@@ -3793,17 +3796,6 @@ import { GoogleGenAI } from "@google/genai";
                 const tB = b.updatedAt || b.timestamp || 0;
                 return tB - tA;
               });
-
-              // Lưu danh sách phiên chat đã hợp nhất vào IndexedDB của máy
-              await clearAllDB();
-              for (const s of finalSessions) {
-                await saveToDB(s);
-              }
-              sessions = await getAllFromDB();
-              if (!sessions.some(s => s.id === activeId) && sessions.length > 0) {
-                activeId = sessions[0].id;
-                ls.setItem('jarvis_active_id', activeId);
-              }
             }
 
             // B. HỢP NHẤT KHO TRI THỨC & TRÍ NHỚ VECTƠ (KNOWLEDGE BASE & RAG)
@@ -3818,6 +3810,7 @@ import { GoogleGenAI } from "@google/genai";
                 if (!ck || !ck.id || deletedVectorIds.has(ck.id)) continue;
                 if (!kMap.has(ck.id)) {
                   kMap.set(ck.id, ck);
+                  hasChanges = true;
                 } else {
                   const ex = kMap.get(ck.id);
                   const exTime = ex.createdAt || 0;
@@ -3828,7 +3821,6 @@ import { GoogleGenAI } from "@google/genai";
                 }
               }
               const allMergedK = Array.from(kMap.values());
-              // Khử trùng lặp nội dung văn bản cho các trí nhớ cá nhân
               const seenMemTexts = new Set();
               finalKnowledge = [];
               for (const it of allMergedK) {
@@ -3839,26 +3831,23 @@ import { GoogleGenAI } from "@google/genai";
                 }
                 finalKnowledge.push(it);
               }
-
-              // Lưu danh sách tri thức đã gộp vào Vector IndexedDB của máy
-              if (window.JarvisRAG && typeof window.JarvisRAG.importKnowledge === 'function') {
-                await window.JarvisRAG.importKnowledge(finalKnowledge, true);
+              if (finalKnowledge.length !== localKnowledge.length) {
+                hasChanges = true;
               }
             }
 
             // C. HỢP NHẤT THƯ MỤC & PROMPTS MẪU
             if (Array.isArray(cloudData.folders)) {
+              const origFoldersLen = finalFolders.length;
               finalFolders = Array.from(new Set([...finalFolders, ...cloudData.folders]));
-              folders = finalFolders;
-              ls.setItem('jarvis_folders', JSON.stringify(folders));
+              if (finalFolders.length !== origFoldersLen) hasChanges = true;
             }
 
             if (Array.isArray(cloudData.customPrompts)) {
               const pMap = new Map();
               finalPrompts.forEach(p => { if (p && p.title) pMap.set(p.title, p); });
-              cloudData.customPrompts.forEach(p => { if (p && p.title && !pMap.has(p.title)) pMap.set(p.title, p); });
+              cloudData.customPrompts.forEach(p => { if (p && p.title && !pMap.has(p.title)) { pMap.set(p.title, p); hasChanges = true; } });
               finalPrompts = Array.from(pMap.values());
-              ls.setItem('jarvis_custom_prompts', JSON.stringify(finalPrompts));
             }
 
             // D. HỢP NHẤT KHÓA GOOGLE API (Bổ sung vào các slot còn trống)
@@ -3866,73 +3855,130 @@ import { GoogleGenAI } from "@google/genai";
               const localKeys = getGoogleKeysList();
               const remoteKeys = cloudData.settings.keys;
               const mergedKeys = [];
+              let keyChanged = false;
               for (let i = 0; i < 10; i++) {
                 let rKey = remoteKeys[i] || '';
                 if (rKey.startsWith('JVENC_') || rKey.startsWith('ENC_')) rKey = deobfuscateKey(rKey);
                 mergedKeys[i] = localKeys[i] || rKey || '';
+                if (!localKeys[i] && rKey) keyChanged = true;
               }
-              setGoogleKeysList(mergedKeys);
+              if (keyChanged) {
+                setGoogleKeysList(mergedKeys);
+              }
             }
 
           } catch (fetchErr) {
-            console.warn("[SmartSync] Không thể tải dữ liệu cũ từ Cloud để merge, sẽ đẩy dữ liệu hiện tại lên:", fetchErr);
+            console.warn("[SmartSync] Không thể tải dữ liệu cũ từ Cloud để merge:", fetchErr);
           }
         }
 
-        // 3. Đóng gói bản tổng hợp (Merged Super-Set) và Đẩy lên Gist
-        const backupData = {
-          version: 2,
-          app: "Jarvis AI",
-          timestamp: new Date().toISOString(),
-          timeReadable: new Date().toLocaleString('vi-VN'),
-          device: ('ontouchstart' in window) ? 'Mobile' : 'Desktop',
-          sessions: finalSessions,
-          activeId,
-          customPrompts: finalPrompts,
-          folders: finalFolders,
-          knowledgeBase: finalKnowledge,
-          settings: {
-            keys: getGoogleKeysList(true),
-            keyNames: getGoogleKeyNamesList(),
-            externalConfigs: getExternalConfigsObj(true),
-            model: DOM.model.value,
-            temperature: DOM.temp.value,
-            searchEngine: DOM.searchEngineSel.value,
-            globalContext: DOM.globContext.value,
-            systemInstruction: DOM.sysInst.value,
-            theme: ls.getItem('jarvis_theme') || 'auto',
-            autoLearnMemory: ls.getItem('jarvis_auto_learn_memory') || 'true',
-            ragEnabled: ls.getItem('jarvis_rag_enabled') || 'true',
-            autoSyncCloud: ls.getItem('jarvis_auto_sync_cloud') || 'true'
-          }
-        };
+        // Kiểm tra xem máy cục bộ có dữ liệu gì mới chưa được đẩy lên Cloud không
+        const isLocalAhead = !hasRemoteData || localSessions.length !== finalSessions.length || localKnowledge.length !== finalKnowledge.length;
 
-        const newGistId = await pushGistData(pat, gistId, backupData);
-        if (!gistId && newGistId) {
-          gistId = newGistId;
-          if (gistIdInput) gistIdInput.value = gistId;
+        // Chỉ lưu xuống IndexedDB khi thực sự có thay đổi từ Cloud
+        if (hasChanges) {
+          // Lưu bằng transaction trực tiếp, KHÔNG gọi saveToDB để triệt tiêu đệ quy!
+          await clearAllDB();
+          const tx = db.transaction(STORE_NAME, "readwrite");
+          const store = tx.objectStore(STORE_NAME);
+          finalSessions.forEach(s => store.put(s));
+          await new Promise((res, rej) => {
+            tx.oncomplete = () => res();
+            tx.onerror = e => rej(e);
+          });
+          sessions = await getAllFromDB();
+
+          if (!sessions.some(s => s.id === activeId) && sessions.length > 0) {
+            activeId = sessions[0].id;
+            ls.setItem('jarvis_active_id', activeId);
+          }
+
+          folders = finalFolders;
+          ls.setItem('jarvis_folders', JSON.stringify(folders));
+          ls.setItem('jarvis_custom_prompts', JSON.stringify(finalPrompts));
+
+          if (window.JarvisRAG && typeof window.JarvisRAG.importKnowledge === 'function') {
+            await window.JarvisRAG.importKnowledge(finalKnowledge, true);
+          }
         }
 
-        const timeStr = new Date().toLocaleString('vi-VN');
-        ls.setItem('jarvis_gist_pat', pat);
-        ls.setItem('jarvis_gist_id', gistId);
-        ls.setItem('jarvis_gist_last_sync', timeStr);
+        // Đóng gói và đẩy lên Gist nếu có thay đổi hoặc lần đầu tiên, hoặc người dùng bấm thủ công
+        if (!gistId || hasChanges || isLocalAhead || !silent) {
+          const backupData = {
+            version: 2,
+            app: "Jarvis AI",
+            timestamp: new Date().toISOString(),
+            timeReadable: new Date().toLocaleString('vi-VN'),
+            device: ('ontouchstart' in window) ? 'Mobile' : 'Desktop',
+            sessions: finalSessions,
+            activeId,
+            customPrompts: finalPrompts,
+            folders: finalFolders,
+            knowledgeBase: finalKnowledge,
+            settings: {
+              keys: getGoogleKeysList(true),
+              keyNames: getGoogleKeyNamesList(),
+              externalConfigs: getExternalConfigsObj(true),
+              model: DOM.model.value,
+              temperature: DOM.temp.value,
+              searchEngine: DOM.searchEngineSel.value,
+              globalContext: DOM.globContext.value,
+              systemInstruction: DOM.sysInst.value,
+              theme: ls.getItem('jarvis_theme') || 'auto',
+              autoLearnMemory: ls.getItem('jarvis_auto_learn_memory') || 'true',
+              ragEnabled: ls.getItem('jarvis_rag_enabled') || 'true',
+              autoSyncCloud: ls.getItem('jarvis_auto_sync_cloud') || 'true'
+            }
+          };
 
+          const newGistId = await pushGistData(pat, gistId, backupData);
+          if (!gistId && newGistId) {
+            gistId = newGistId;
+            if (gistIdInput) gistIdInput.value = gistId;
+          }
+
+          const timeStr = new Date().toLocaleString('vi-VN');
+          ls.setItem('jarvis_gist_pat', pat);
+          ls.setItem('jarvis_gist_id', gistId);
+          ls.setItem('jarvis_gist_last_sync', timeStr);
+          if (gistLastTime) gistLastTime.innerText = `Lần cuối: ${timeStr}`;
+        }
+
+        // CẬP NHẬT GIAO DIỆN MÀ KHÔNG GÂY CHỚP MÀN HÌNH:
         renderFolders();
         renderSnippets();
-        await switchSess(activeId);
+        renderSel();
+        renderTabs();
+
+        // TUYỆT ĐỐI KHÔNG GỌI switchSess TRONG CHẾ ĐỘ CHẠY NGẦM (SILENT)
+        // Vì switchSess sẽ xóa trắng DOM.chat và vẽ lại từ đầu, gây chớp màn hình khi đang đọc tin nhắn!
+        if (!silent) {
+          await switchSess(activeId);
+        } else if (hasChanges) {
+          // Nếu có phiên hiện tại nhận được tin nhắn mới từ thiết bị kia, chỉ append thêm vào cuối nhẹ nhàng
+          const currentVisible = finalSessions.find(s => s.id === activeId);
+          const currentCount = (chatHistory || []).length;
+          const newCount = (currentVisible?.his || []).length;
+          if (currentVisible && newCount > currentCount) {
+            const addedMsgs = currentVisible.his.slice(currentCount);
+            chatHistory = [...currentVisible.his];
+            for (let idx = 0; idx < addedMsgs.length; idx++) {
+              const msg = addedMsgs[idx];
+              await appendMsg(msg.role === 'model' ? 'bot' : 'user', msg.text || '', currentCount + idx, false);
+            }
+          }
+        }
 
         const kCount = finalKnowledge.length ? `, ${finalKnowledge.length} tri thức` : '';
         if (gistStatusText) {
           gistStatusText.innerText = `Đã hợp nhất (${finalSessions.length} phiên${kCount})`;
           gistStatusText.style.color = '#10b981';
         }
-        if (gistLastTime) gistLastTime.innerText = `Lần cuối: ${timeStr}`;
 
         if (!silent) {
           showToast(`🔄 Đồng bộ 2 chiều thành công! Đã gộp ${finalSessions.length} phiên & ${finalKnowledge.length} mẩu tri thức.`, "success");
         } else {
-          console.log(`[Auto-Sync] Đã đồng bộ ngầm 2 chiều: ${finalSessions.length} phiên, ${finalKnowledge.length} tri thức`);
+          console.log(`[Auto-Sync] Đã kiểm tra đồng bộ ngầm 2 chiều (${finalSessions.length} phiên, ${finalKnowledge.length} tri thức)`);
         }
       } catch (err) {
         console.error("[SmartSync] Lỗi đồng bộ:", err);
@@ -3949,7 +3995,8 @@ import { GoogleGenAI } from "@google/genai";
     }
 
     // Tự động lên lịch đồng bộ ngầm (Debounced Auto-Sync)
-    function scheduleAutoSync() {
+    function scheduleAutoSync(delay = 15000) {
+      if (_isSyncing) return;
       if (ls.getItem('jarvis_auto_sync_cloud') === 'false') return;
       const pat = (ls.getItem('jarvis_gist_pat') || '').trim();
       const gistId = (ls.getItem('jarvis_gist_id') || '').trim();
@@ -3957,9 +4004,10 @@ import { GoogleGenAI } from "@google/genai";
 
       clearTimeout(_autoSyncTimer);
       _autoSyncTimer = setTimeout(() => {
+        if (_isSyncing) return;
         console.log("[Auto-Sync] Đang tự động đồng bộ ngầm dữ liệu mới lên Cloud...");
         performSmartSync({ silent: true }).catch(() => {});
-      }, 6000);
+      }, delay);
     }
 
     // Expose cho module khác (như rag.js) gọi đồng bộ ngầm
@@ -3980,7 +4028,7 @@ import { GoogleGenAI } from "@google/genai";
         gistAutoSyncToggle.onchange = () => {
           ls.setItem('jarvis_auto_sync_cloud', gistAutoSyncToggle.checked ? 'true' : 'false');
           showToast(gistAutoSyncToggle.checked ? "Đã bật tự động đồng bộ 2 chiều ngầm!" : "Đã tắt tự động đồng bộ ngầm", "info");
-          if (gistAutoSyncToggle.checked) scheduleAutoSync();
+          if (gistAutoSyncToggle.checked) scheduleAutoSync(5000);
         };
       }
 
@@ -4194,13 +4242,13 @@ import { GoogleGenAI } from "@google/genai";
       }
     };
 
-    // Tự động kiểm tra & đồng bộ 2 chiều ngầm khi khởi động ứng dụng (Startup Sync)
+    // Tự động kiểm tra & đồng bộ 2 chiều ngầm khi khởi động ứng dụng (Startup Sync - 1 lần duy nhất sau 5 giây)
     setTimeout(() => {
       if (ls.getItem('jarvis_auto_sync_cloud') !== 'false' && ls.getItem('jarvis_gist_pat') && ls.getItem('jarvis_gist_id')) {
-        console.log("[Auto-Sync] Đang tự động kiểm tra và đồng bộ 2 chiều khi mở app...");
+        console.log("[Auto-Sync] Kiểm tra và đồng bộ ngầm khi mở app...");
         performSmartSync({ silent: true }).catch(() => {});
       }
-    }, 3500);
+    }, 5000);
 
 
 // --- [GEMINI TTS STUDIO PRO MODULE MOVED TO js/tts.js] ---
