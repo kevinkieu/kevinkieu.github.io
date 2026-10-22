@@ -134,6 +134,7 @@ Jarvis AI/
 │
 ├── js/
 │   ├── app.js          # Logic ứng dụng, Chat, Markdown, Quản lý Key
+│   ├── sync.js         # Đồng bộ Cloud 2 chiều & Tự động hợp nhất GitHub Gist
 │   ├── live.js         # Multimodal Live Voice & Video WebSocket
 │   ├── translate.js    # Thông dịch viên 2 chiều Gemini 3.8 Bilateral
 │   ├── arena.js        # Đấu trường so tài song song
