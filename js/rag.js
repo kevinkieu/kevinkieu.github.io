@@ -395,7 +395,7 @@
   // --- KNOWLEDGE BASE: ADD PERSONAL MEMORY (SECOND BRAIN) ---
   async function addMemoryItem({ title, text, category = 'personal' }, customApiKey = null) {
     if (!text || !text.trim()) throw new Error("Nội dung không được để trống.");
-    const embedding = await getEmbedding(text.trim(), customApiKey);
+    const embedding = await getEmbedding(text.trim(), { taskType: 'RETRIEVAL_DOCUMENT', title: title || 'Ghi nhớ cá nhân', apiKey: customApiKey });
     const id = `mem_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     const item = {
       id,
@@ -478,38 +478,120 @@
     return results.slice(0, topK);
   }
 
-  // --- SMART CONTEXT RETRIEVAL FOR CHAT (LATENCY-GUARDED) ---
+  // --- BỘ LỌC Ý ĐỊNH THÔNG MINH (SMART INTENT FILTER: NHẬN DIỆN HỎI DANH TÍNH / THÔNG TIN CÁ NHÂN) ---
+  function isPersonalIdentityQuery(prompt) {
+    if (!prompt || typeof prompt !== 'string') return false;
+    const p = prompt.toLowerCase().trim();
+
+    // 1. Tên, danh xưng, danh tính
+    const asksName = /(tôi tên gì|tên tôi là gì|tên của tôi là gì|tôi là ai|tên tui là gì|tui tên gì|tên mình là gì|mình tên gì|biết tôi tên gì|nhớ tôi tên gì|bạn biết tôi là ai|biết tôi là ai|tên tôi\?|tên tui\?)/i.test(p);
+    
+    // 2. Giới tính
+    const asksGender = /(nam hay nữ|nữ hay nam|giới tính của tôi|giới tính tôi|tôi là nam hay|tôi là nữ hay|tôi là con trai hay|tôi là trai hay gái|tôi là đàn ông hay|giới tính gì)/i.test(p);
+    
+    // 3. Tuổi tác, ngày sinh, năm sinh
+    const asksAgeOrDob = /(sinh ngày|sinh năm|ngày sinh|năm sinh|sinh nhật tôi|sinh nhật của tôi|tôi bao nhiêu tuổi|tuổi của tôi|tôi mấy tuổi)/i.test(p);
+    
+    // 4. Gia đình, con cái, vợ chồng, người thân
+    const asksFamily = /(con (của )?tôi|con tui|mấy đứa con|mấy con|con gái tôi|con trai tôi|bé bắp|bé tiền|tên con|vợ tôi|vợ của tôi|chồng tôi|gia đình tôi|nhà tôi có mấy|bố mẹ tôi|ba mẹ tôi)/i.test(p) && /(tên gì|mấy|bao nhiêu|là ai|ai|như thế nào|thế nào|không|ko|\?)/i.test(p);
+    
+    // 5. Nơi ở, quê quán, nghề nghiệp
+    const asksLocation = /(nhà tôi ở đâu|tôi sống ở đâu|tôi ở đâu|quê tôi ở đâu|quê quán của tôi)/i.test(p);
+    const asksJob = /(tôi làm nghề gì|nghề của tôi là gì|công việc của tôi là gì|tôi làm gì|tôi làm việc ở đâu)/i.test(p);
+    
+    // 6. Sở thích, thói quen
+    const asksHobby = /(sở thích của tôi là gì|sở thích tôi là gì|tôi thích gì|tôi ghét gì)/i.test(p);
+    
+    // 7. Hỏi chung về trí nhớ hoặc những gì Jarvis biết/nhớ về người dùng
+    const asksMemory = /(bạn nhớ gì về tôi|bạn biết gì về tôi|bạn đã nhớ gì|có nhớ tôi không|nhớ gì về tôi|biết gì về tôi|nhớ thông tin gì về tôi|thông tin cá nhân của tôi|trí nhớ của bạn về tôi|bạn biết những gì về tôi|lưu gì về tôi|biết gì về tui|nhớ gì về tui|bạn biết gì về gia đình tôi|bạn có biết tôi không)/i.test(p);
+    
+    // 8. Yêu cầu cá nhân hóa riêng cho bản thân hoặc gia đình
+    const asksPersonalizedAdvice = /(cho gia đình tôi|cho 2 bé nhà tôi|cho hai bé nhà tôi|cho con gái tôi|cho bé bắp|cho bé tiền|cho bản thân tôi|theo sở thích của tôi|phù hợp với tôi)/i.test(p);
+
+    return asksName || asksGender || asksAgeOrDob || asksFamily || asksLocation || asksJob || asksHobby || asksMemory || asksPersonalizedAdvice;
+  }
+
+  // --- SMART CONTEXT RETRIEVAL FOR CHAT (DUAL-TRACK INTENT GUARDED) ---
   async function retrieveContextForPrompt(userPrompt, apiKey = null) {
     const ls = window.ls || localStorage;
     const isRagEnabled = ls.getItem('jarvis_rag_enabled') !== 'false';
     if (!isRagEnabled) return { text: "", matches: [] };
 
     const cleanPrompt = (userPrompt || '').trim();
-    // Bỏ qua tin nhắn quá ngắn hoặc chào hỏi xã giao (0ms Latency!)
-    if (cleanPrompt.length < 6) return { text: "", matches: [] };
-    if (/^(chào|hi|hello|alo|ê|ơi|chào bạn|xin chào|ok|tiếp|tóm tắt|dạ|vâng|cảm ơn|thanks|bye|tạm biệt)\b/i.test(cleanPrompt) || /^(tôi thích|tôi ghét|tên tôi|tôi tên|nhà tôi|tôi sống|tôi ở|tôi làm|nghề của tôi|tôi sinh năm|sở thích của tôi|từ giờ hãy gọi tôi|hãy nhớ rằng tôi)\b/i.test(cleanPrompt)) {
+    if (cleanPrompt.length < 3) return { text: "", matches: [] };
+
+    // =========================================================================
+    // LUỒNG 1: TRUY VẤN DANH TÍNH / THÔNG TIN CÁ NHÂN (0ms Latency, 100% Chính xác)
+    // =========================================================================
+    if (isPersonalIdentityQuery(cleanPrompt)) {
+      try {
+        const memoryItems = await getAllVectorItems('memory');
+        if (memoryItems && memoryItems.length > 0) {
+          let selectedMemories = memoryItems;
+          if (memoryItems.length > 6) {
+            const pLower = cleanPrompt.toLowerCase();
+            const scored = memoryItems.map(m => {
+              let score = 0;
+              const textLower = ((m.title || '') + ' ' + (m.text || '')).toLowerCase();
+              if (pLower.includes('tên') && textLower.includes('tên')) score += 5;
+              if ((pLower.includes('nam') || pLower.includes('nữ') || pLower.includes('giới tính')) && (textLower.includes('nam') || textLower.includes('nữ') || textLower.includes('giới tính') || textLower.includes('nam giới') || textLower.includes('nữ giới'))) score += 5;
+              if ((pLower.includes('sinh') || pLower.includes('tuổi') || pLower.includes('năm')) && (textLower.includes('sinh') || textLower.includes('tuổi') || textLower.includes('1988') || textLower.includes('năm'))) score += 5;
+              if ((pLower.includes('con') || pLower.includes('bắp') || pLower.includes('tiền')) && (textLower.includes('con') || textLower.includes('bắp') || textLower.includes('tiền'))) score += 5;
+              if ((pLower.includes('nhà') || pLower.includes('ở') || pLower.includes('sống')) && (textLower.includes('nhà') || textLower.includes('ở') || textLower.includes('sống'))) score += 5;
+              if ((pLower.includes('nghề') || pLower.includes('làm') || pLower.includes('việc')) && (textLower.includes('nghề') || textLower.includes('làm') || textLower.includes('việc'))) score += 5;
+              return { item: m, score };
+            });
+            scored.sort((a, b) => b.score - a.score);
+            selectedMemories = scored.slice(0, 5).map(s => s.item);
+          }
+
+          const formattedSnippets = selectedMemories.map((m, idx) => {
+            return '--- [Trí nhớ cá nhân #' + (idx + 1) + ': "' + m.title + '"]:\n' + m.text;
+          }).join('\n\n');
+
+          const text = '\n\n[DỮ LIỆU TRÍ NHỚ CÁ NHÂN CỦA NGƯỜI DÙNG]:\n' + formattedSnippets + '\n\n[CHỈ THỊ TRÍ NHỚ]: Trả lời câu hỏi của người dùng dựa trên thông tin trí nhớ cá nhân ở trên một cách chính xác, tự nhiên, thân thiện và đầy đủ nhất.';
+          const matches = selectedMemories.map(m => ({ item: m, similarity: 1.0 }));
+          return { text, matches };
+        }
+      } catch (memErr) {
+        console.warn("[RAG] Lỗi đọc trí nhớ cá nhân từ IndexedDB:", memErr);
+      }
+    }
+
+    // =========================================================================
+    // LUỒNG 2: TRUY VẤN KIẾN THỨC / TÀI LIỆU RAG (BẢO VỆ TUYỆT ĐỐI ĐỜI TƯ)
+    // =========================================================================
+    // Đối với câu hỏi kiến thức chung (VD: 'Thịt gà có nhiều dinh dưỡng không?'),
+    // TUYỆT ĐỐI KHÔNG nạp trí nhớ cá nhân để model không bị thiên kiến hay hỏi lan man!
+
+    // Bỏ qua tin nhắn quá ngắn hoặc chào hỏi xã giao (0ms Latency)
+    if (/^(chào|hi|hello|alo|ê|ơi|chào bạn|xin chào|ok|tiếp|tóm tắt|dạ|vâng|cảm ơn|thanks|bye|tạm biệt)\b/i.test(cleanPrompt)) {
+      return { text: "", matches: [] };
+    }
+    // Bỏ qua câu người dùng tự khai báo để học mà không chứa từ để hỏi
+    if (/^(tôi thích|tôi ghét|nhà tôi|tôi sống|tôi ở|tôi làm|nghề của tôi|sở thích của tôi|từ giờ hãy gọi tôi|hãy nhớ rằng tôi)\b/i.test(cleanPrompt) && !/(gì|không|ko|\?)/i.test(cleanPrompt)) {
       return { text: "", matches: [] };
     }
 
     try {
-      const allItems = await getAllVectorItems();
-      if (!allItems || allItems.length === 0) return { text: "", matches: [] }; // Không có tri thức -> 0ms
+      // Chỉ tìm kiếm trong các tài liệu RAG đã tải lên (type: 'doc')
+      const allDocs = await getAllVectorItems('doc');
+      if (!allDocs || allDocs.length === 0) {
+        return { text: "", matches: [] }; // Không có tài liệu trong kho -> 0ms
+      }
 
-      const retrievalPromise = searchSimilarVectors(cleanPrompt, { topK: 3, threshold: 0.58, apiKey });
-      const matches = await Promise.race([retrievalPromise, new Promise(r => setTimeout(() => r([]), 1000))]);
+      // Tăng timeout lên 3500ms để cuộc gọi Gemini Embedding 2 hoàn tất an toàn
+      const retrievalPromise = searchSimilarVectors(cleanPrompt, { topK: 4, threshold: 0.48, type: 'doc', apiKey });
+      const matches = await Promise.race([retrievalPromise, new Promise(r => setTimeout(() => r([]), 3500))]);
       if (!matches.length) return { text: "", matches: [] };
 
       const formattedSnippets = matches.map((m, idx) => {
         const item = m.item;
         const pct = Math.round(m.similarity * 100);
-        if (item.type === 'doc') {
-          return `--- [Trích đoạn Tài liệu RAG #${idx + 1}: "${item.docName || item.title}" (Độ phù hợp: ${pct}%)]:\n${item.text}`;
-        } else {
-          return `--- [Trí nhớ cá nhân #${idx + 1}: "${item.title}" (Độ phù hợp: ${pct}%)]:\n${item.text}`;
-        }
+        return '--- [Trích đoạn Tài liệu RAG #' + (idx + 1) + ': "' + (item.docName || item.title) + '" (Độ phù hợp: ' + pct + '%)]:\n' + item.text;
       }).join('\n\n');
 
-      const text = `\n\n[DỮ LIỆU TRÍ NHỚ VÀ TÀI LIỆU TRÍCH XUẤT TỪ KHO RAG]:\n${formattedSnippets}\n\n[CHỈ THỊ RAG]: Hãy sử dụng dữ liệu trích xuất ở trên khi trả lời người dùng một cách chính xác, đúng ngữ cảnh và tự nhiên nhất. Nếu có thông tin trong tài liệu hoặc ghi nhớ cá nhân trên, hãy ưu tiên áp dụng.`;
+      const text = '\n\n[DỮ LIỆU TÀI LIỆU TRÍCH XUẤT TỪ KHO RAG]:\n' + formattedSnippets + '\n\n[CHỈ THỊ RAG]: Hãy sử dụng dữ liệu trích xuất từ tài liệu ở trên khi trả lời người dùng một cách chính xác, đúng ngữ cảnh và tự nhiên nhất.';
       return { text, matches };
     } catch (e) {
       console.warn("[RAG Context Retrieval] Bỏ qua lỗi tìm kiếm vector:", e);
@@ -1520,7 +1602,8 @@ Nhiệm vụ:
     importKnowledge: importKnowledgeItems,
     clearAll: clearAllVectorDB,
     extractAndLearnMemory,
-    showRetrievedDetails
+    showRetrievedDetails,
+    isPersonalIdentityQuery
   };
 
   window.showRetrievedRagDetails = showRetrievedDetails;

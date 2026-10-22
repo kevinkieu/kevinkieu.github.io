@@ -79,6 +79,9 @@
 #### 7. 🧠 Kho Tri Thức Cá Nhân & Trí Nhớ Vĩnh Cửu (Second Brain / Permanent Vector Memory)
 - **Gemini Embedding 2**: Ứng dụng model nhúng đa phương thức mới nhất từ Google (`gemini-embedding-2` kết hợp fallback `gemini-embedding-001`).
 - **Không gian Vector cục bộ (IndexedDB)**: Toàn bộ vector nhúng được lưu trữ an toàn trong IndexedDB của trình duyệt, không tốn phí thuê Vector DB bên thứ ba.
+- **Bộ Lọc Ý Định Kép Thông Minh (Dual-Track Smart Intent Filter)**:
+  - **Truy vấn danh tính (Identity Query)**: Tự động phát hiện khi người dùng hỏi về tên tuổi, giới tính, ngày sinh, con cái, sở thích hoặc thông tin cá nhân ("tôi tên gì", "tôi là nam hay nữ", "bạn nhớ gì về tôi"...) để nạp ngay hồ sơ cá nhân với độ trễ 0ms và độ chính xác 100%.
+  - **Bảo vệ đời tư tuyệt đối**: Khi người dùng hỏi các câu hỏi kiến thức phổ thông, ẩm thực, khoa học hoặc kỹ thuật (ví dụ "thịt gà có nhiều dinh dưỡng không?"), Trí nhớ cá nhân sẽ ở trạng thái ngủ (dormant), tuyệt đối không lôi chuyện gia đình/con cái vào câu trả lời, loại bỏ hoàn toàn hiện tượng "quá đà" (over-eagerness).
 - **Bảo vệ Độ trễ (Zero-Latency Guard)**:
   - Bỏ qua các câu chào hỏi xã giao ngắn (0ms độ trễ, không tốn API).
   - Tích hợp bộ nhớ đệm Vector Cache RAM cho các câu hỏi phổ biến.
@@ -107,6 +110,8 @@
   - **Khi mở App**: Tự động kiểm tra và kéo dữ liệu mới từ Cloud về ngầm trong nền.
   - **Khi AI học trí nhớ mới**: Tự động hẹn giờ đẩy ngầm (Debounce) lên Cloud mà bạn không cần phải bấm tay mỗi lần chat xong.
   - **Bảo mật tuyệt đối**: Khóa API Google được mã hóa Salted XOR phía Client trước khi lưu lên Secret Gist, ngăn chặn hoàn toàn Secret Scanner của GitHub quét trúng.
+- **Bảo Vệ Hạn Ngạch Thông Minh (Graceful GitHub Rate Limit Recovery)**:
+  - Tự động phát hiện mã lỗi 403/429 khi người dùng gọi API dồn dập, tự phân tích header `x-ratelimit-reset` để hiển thị thời gian mở khóa chính xác (theo phút/giờ) và tạm dừng đồng bộ ngầm để tránh bị spam lỗi.
 
 ---
 

@@ -1560,7 +1560,7 @@ import { GoogleGenAI } from "@google/genai";
 
       const ragBlock = ragSnippet ? `\n\n${ragSnippet}\n` : '';
 
-      return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}${ragBlock}\n\n[MỐC THỜI GIAN THỰC TẾ]: Hiện tại chính xác là ${timeStr} (${dateStr}, Múi giờ Việt Nam GMT+7).\nQUY TẮC BẮT BUỘC: Khi người dùng hỏi bây giờ là mấy giờ, thời gian hiện tại hoặc ngày tháng, bạn PHẢI trả lời chính xác theo mốc giờ ${timeStr} và ngày ${dateStr} này.`;
+      return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}${ragBlock}\n\n[QUY TẮC ỨNG XỬ TẾ NHỊ]: Khi người dùng hỏi các câu hỏi kiến thức khoa học, nấu ăn, công nghệ, học tập hoặc câu hỏi phổ thông (như thịt gà, kỹ thuật, thời tiết...), TUYỆT ĐỐI KHÔNG tự tiện nhắc đến thông tin gia đình, đời tư, con cái (như bé Bắp, bé Tiền) nếu người dùng không chủ động hỏi hay yêu cầu.\n\n[MỐC THỜI GIAN THỰC TẾ]: Hiện tại chính xác là ${timeStr} (${dateStr}, Múi giờ Việt Nam GMT+7).\nQUY TẮC BẮT BUỘC: Khi người dùng hỏi bây giờ là mấy giờ, thời gian hiện tại hoặc ngày tháng, bạn PHẢI trả lời chính xác theo mốc giờ ${timeStr} và ngày ${dateStr} này.`;
     };
 
     window.exportCleanArticle = () => {
@@ -3653,28 +3653,51 @@ import { GoogleGenAI } from "@google/genai";
 
     let _isSyncing = false;
     let _autoSyncTimer = null;
+    let _gistRateLimitedUntil = 0;
+
+    // Helper xử lý lỗi HTTP của GitHub Gist (Đặc biệt phát hiện và cảnh báo Rate Limit thông minh)
+    function handleGistHttpError(res, errData) {
+      if (res.status === 403 || res.status === 429 || (errData && errData.message && /rate limit/i.test(errData.message))) {
+        const resetHeader = res.headers ? res.headers.get('x-ratelimit-reset') : null;
+        let resetTimestamp;
+        if (resetHeader && !isNaN(parseInt(resetHeader, 10))) {
+          resetTimestamp = parseInt(resetHeader, 10) * 1000;
+        } else {
+          resetTimestamp = Date.now() + 30 * 60 * 1000;
+        }
+        _gistRateLimitedUntil = resetTimestamp;
+
+        const resetDate = new Date(resetTimestamp);
+        const minsLeft = Math.max(1, Math.round((resetTimestamp - Date.now()) / 60000));
+        const hh = String(resetDate.getHours()).padStart(2, '0');
+        const mm = String(resetDate.getMinutes()).padStart(2, '0');
+        const timeStr = hh + ':' + mm;
+        return new Error("GitHub tạm thời giới hạn tần suất gọi API (do đợt trước đồng bộ liên tục). Sẽ tự động mở lại vào lúc " + timeStr + " (khoảng " + minsLeft + " phút nữa).");
+      }
+      return new Error((errData && errData.message) || ("Lỗi HTTP " + res.status));
+    }
 
     // Helper fetch file content from GitHub Gist (supporting large files with raw_url)
     async function fetchGistData(pat, gistId) {
-      const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+      const res = await fetch("https://api.github.com/gists/" + gistId, {
         headers: {
-          'Authorization': `Bearer ${pat}`,
+          'Authorization': "Bearer " + pat,
           'Accept': 'application/vnd.github.v3+json'
         }
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || `Lỗi HTTP ${res.status}`);
+        throw handleGistHttpError(res, errData);
       }
       const data = await res.json();
-      const fileObj = data.files?.["jarvis_sync_data.json"] || Object.values(data.files || {})[0];
+      const fileObj = data.files && (data.files["jarvis_sync_data.json"] || Object.values(data.files)[0]);
       if (!fileObj) throw new Error("Không tìm thấy tệp dữ liệu sao lưu hợp lệ trong Gist này!");
 
       let contentStr = fileObj.content || '';
       if (fileObj.truncated || !contentStr || fileObj.raw_url) {
         try {
           let rawRes = await fetch(fileObj.raw_url, {
-            headers: { 'Authorization': `Bearer ${pat}` }
+            headers: { 'Authorization': "Bearer " + pat }
           });
           if (!rawRes.ok) rawRes = await fetch(fileObj.raw_url);
           if (rawRes.ok) contentStr = await rawRes.text();
@@ -3697,13 +3720,13 @@ import { GoogleGenAI } from "@google/genai";
           }
         }
       };
-      const url = gistId ? `https://api.github.com/gists/${gistId}` : `https://api.github.com/gists`;
+      const url = gistId ? ("https://api.github.com/gists/" + gistId) : "https://api.github.com/gists";
       const method = gistId ? 'PATCH' : 'POST';
 
       const res = await fetch(url, {
         method,
         headers: {
-          'Authorization': `Bearer ${pat}`,
+          'Authorization': "Bearer " + pat,
           'Accept': 'application/vnd.github.v3+json',
           'Content-Type': 'application/json'
         },
@@ -3711,7 +3734,7 @@ import { GoogleGenAI } from "@google/genai";
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || `Lỗi HTTP ${res.status}`);
+        throw handleGistHttpError(res, errData);
       }
       const data = await res.json();
       return data.id || gistId;
@@ -3720,6 +3743,18 @@ import { GoogleGenAI } from "@google/genai";
     // 2-WAY SMART MERGE (HỢP NHẤT DỮ LIỆU ĐA THIẾT BỊ - KHÔNG CHỚP MÀN HÌNH)
     async function performSmartSync({ silent = false } = {}) {
       if (_isSyncing) return;
+      if (_gistRateLimitedUntil && Date.now() < _gistRateLimitedUntil) {
+        const minsLeft = Math.max(1, Math.round((_gistRateLimitedUntil - Date.now()) / 60000));
+        const resetDate = new Date(_gistRateLimitedUntil);
+        const hh = String(resetDate.getHours()).padStart(2, '0');
+        const mm = String(resetDate.getMinutes()).padStart(2, '0');
+        const msg = "GitHub đang tạm giới hạn API do đợt đồng bộ trước. Tự động mở lại lúc " + hh + ":" + mm + " (còn ~" + minsLeft + " phút).";
+        if (!silent) showToast(msg, "warning");
+        return;
+      }
+      if (_gistRateLimitedUntil && Date.now() >= _gistRateLimitedUntil) {
+        _gistRateLimitedUntil = 0;
+      }
       const pat = (gistPatInput?.value || ls.getItem('jarvis_gist_pat') || '').trim();
       let gistId = (gistIdInput?.value || ls.getItem('jarvis_gist_id') || '').trim();
 
@@ -3997,6 +4032,7 @@ import { GoogleGenAI } from "@google/genai";
     // Tự động lên lịch đồng bộ ngầm (Debounced Auto-Sync)
     function scheduleAutoSync(delay = 15000) {
       if (_isSyncing) return;
+      if (_gistRateLimitedUntil && Date.now() < _gistRateLimitedUntil) return;
       if (ls.getItem('jarvis_auto_sync_cloud') === 'false') return;
       const pat = (ls.getItem('jarvis_gist_pat') || '').trim();
       const gistId = (ls.getItem('jarvis_gist_id') || '').trim();
