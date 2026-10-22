@@ -987,6 +987,16 @@ Nhiệm vụ:
     }[tag] || tag));
   }
 
+  function updateRagUI(enabled) {
+    const ragStateEl = document.getElementById('rag-memory-state');
+    const toggleRagSidebar = document.getElementById('toggle-rag-embedding');
+    if (ragStateEl) {
+      ragStateEl.innerText = enabled ? 'BẬT' : 'TẮT';
+      ragStateEl.style.color = enabled ? 'var(--success)' : 'var(--text-muted)';
+    }
+    if (toggleRagSidebar) toggleRagSidebar.checked = enabled;
+  }
+
   // --- INITIALIZE UI & EVENT LISTENERS ---
   function setupRAGListeners() {
     // 1. Chuyển đổi tab trong RAG Modal
@@ -1301,16 +1311,7 @@ Nhiệm vụ:
 
     // 5. Tool-chip toggle trên thanh chat (Điều khiển Trí nhớ Vector RAG cho TỪNG PHIÊN)
     const btnToggleRag = document.getElementById('btn-toggle-rag-memory');
-    const ragStateEl = document.getElementById('rag-memory-state');
     const toggleRagSidebar = document.getElementById('toggle-rag-embedding');
-
-    const updateRagUI = (enabled) => {
-      if (ragStateEl) {
-        ragStateEl.innerText = enabled ? 'BẬT' : 'TẮT';
-        ragStateEl.style.color = enabled ? 'var(--success)' : 'var(--text-muted)';
-      }
-      if (toggleRagSidebar) toggleRagSidebar.checked = enabled;
-    };
 
     const toggleRagForCurrentSession = (forceVal) => {
       const activeId = window.activeId;
