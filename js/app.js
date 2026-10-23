@@ -484,8 +484,9 @@ import { GoogleGenAI } from "@google/genai";
     $('api-keys-container').innerHTML = Array.from({ length: 10 }, (_, i) => `
       <div class="api-key-row" style="display:flex;gap:6px;align-items:center;">
         <span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);min-width:30px;text-align:center;background:rgba(255,255,255,0.05);padding:6px 0;border-radius:var(--radius-sm);border:1px solid var(--border);">#${i+1}</span>
-        <input type="text" id="api-key-name-${i+1}" placeholder="Tên gợi nhớ ${i+1}" class="modern-input" style="width:125px;flex:0 0 125px;font-size:0.8rem;padding:7px 10px;" title="Tên gợi nhớ cho Key ${i+1} (Ví dụ: Gmail A, Key chính, Dự phòng...)">
-        <input type="password" id="api-key-${i+1}" placeholder="Google API Key ${i+1} (AIzaSy...)" class="modern-input" style="flex:1;min-width:130px;font-size:0.8rem;padding:7px 10px;" title="Dán Google AI Studio API Key vào đây">
+        <input type="text" id="api-key-name-${i+1}" placeholder="Tên gợi nhớ ${i+1}" class="modern-input" style="width:115px;flex:0 0 115px;font-size:0.8rem;padding:7px 10px;" title="Tên gợi nhớ cho Key ${i+1} (Ví dụ: Gmail A, Key chính, Dự phòng...)">
+        <input type="password" id="api-key-${i+1}" placeholder="Google API Key ${i+1} (AIzaSy...)" class="modern-input" style="flex:1;min-width:110px;font-size:0.8rem;padding:7px 10px;" title="Dán Google AI Studio API Key vào đây">
+        <span id="api-key-badge-${i+1}" style="font-size:0.72rem;font-weight:700;padding:5px 8px;border-radius:var(--radius-sm);background:rgba(16,185,129,0.12);color:#10b981;white-space:nowrap;border:1px solid rgba(16,185,129,0.3);flex-shrink:0;" title="Số lượt gọi 3.6/3.8 Flash hôm nay (20 RPD)">[ 0 / 20 ]</span>
       </div>
     `).join('');
 
@@ -534,6 +535,7 @@ import { GoogleGenAI } from "@google/genai";
         }
         if ([...d.options].some(o => o.value === cur)) d.value = cur;
       });
+      if (typeof updateKeyQuotaUI === 'function') updateKeyQuotaUI();
     }
 
     function initExternalConfigs() {
@@ -940,7 +942,7 @@ import { GoogleGenAI } from "@google/genai";
     const cmdList = $('cmd-palette-list');
 
     const COMMANDS = [
-      { id: 'arena', title: 'Đấu trường Tranh biện AI (Multi-Agent Arena)', shortcut: '/arena', icon: '⚔️', run: () => openArenaModal() },
+      { id: 'quota', title: 'Xem hạn ngạch 10 Key (20 RPD cho 3.6/3.8 Flash)', shortcut: '/quota', icon: '🔑', run: () => $('btn-key-quota-header')?.click() },
       { id: 'cloud', title: 'Đồng bộ Cloud đa thiết bị (GitHub Gist)', shortcut: '/cloud', icon: '☁️', run: () => $('btn-open-cloud-sync').click() },
       { id: 'deep', title: 'Bật/Tắt Chế độ Nghiên cứu Sâu (Deep Research)', shortcut: '/deep', icon: '🔬', run: () => $('btn-toggle-deep-research').click() },
       { id: 'new', title: 'Tạo phiên hội thoại mới', shortcut: '/new', icon: '➕', run: () => newSess() },
@@ -1103,9 +1105,9 @@ import { GoogleGenAI } from "@google/genai";
             contents: promptText
           });
         } catch (mErr) {
-          console.warn('Thử lại Auto-Summary với gemini-2.5-flash:', mErr);
+          console.warn('Thử lại Auto-Summary với gemini-3.1-flash-lite:', mErr);
           res = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.1-flash-lite',
             contents: promptText
           });
         }
@@ -1195,8 +1197,7 @@ import { GoogleGenAI } from "@google/genai";
       const urlTxt = $('share-detected-url');
       const btnExtract = $('btn-share-extract-now');
       const btnInsert = $('btn-share-insert-input');
-      const btnArena = $('btn-share-arena');
-
+      
       if (!modal) return;
       prevBox.innerText = content;
 
@@ -1222,12 +1223,7 @@ import { GoogleGenAI } from "@google/genai";
         showToast("💬 Đã đưa nội dung vào ô nhập liệu!");
       };
 
-      btnArena.onclick = () => {
-        modal.style.display = 'none';
-        if (oLay) oLay.style.display = 'none';
-        openArenaModal();
-        setArenaTopic(content);
-      };
+      
 
       modal.style.display = 'block';
       if (oLay) oLay.style.display = 'block';
@@ -1264,11 +1260,7 @@ import { GoogleGenAI } from "@google/genai";
       const params = new URLSearchParams(window.location.search);
       const action = params.get('action');
 
-      if (action === 'arena') {
-        window.history.replaceState({}, document.title, window.location.pathname);
-        setTimeout(() => openArenaModal(), 300);
-        return;
-      }
+      
       if (action === 'live') {
         window.history.replaceState({}, document.title, window.location.pathname);
         setTimeout(() => startLiveVoiceCall(), 300);
@@ -1410,6 +1402,276 @@ import { GoogleGenAI } from "@google/genai";
       });
     }
 
+    
+    // ==========================================================================
+    // DISTRIBUTED KEY QUOTA TRACKER (10 GOOGLE FREE KEYS • 20 RPD • 4 DEVICES)
+    // ==========================================================================
+
+    function getMyDeviceId() {
+      let devId = ls.getItem('jarvis_device_id');
+      if (!devId) {
+        const prefix = ('ontouchstart' in window) ? 'mob_' : 'pc_';
+        devId = prefix + Math.random().toString(36).substring(2, 8);
+        ls.setItem('jarvis_device_id', devId);
+      }
+      return devId;
+    }
+
+    // 14:00 giờ Việt Nam (UTC+7) làm mốc chuyển giao chu kỳ 24h của Google AI Studio (00:00 Pacific Time)
+    function getCurrentQuotaCycle() {
+      const now = new Date();
+      const vnTimeMs = now.getTime() + (now.getTimezoneOffset() * 60000) + (7 * 3600000);
+      const shifted = new Date(vnTimeMs - 14 * 3600000);
+      const y = shifted.getFullYear();
+      const m = String(shifted.getMonth() + 1).padStart(2, '0');
+      const d = String(shifted.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function loadKeyUsageData() {
+      const curCycle = getCurrentQuotaCycle();
+      try {
+        const raw = ls.getItem('jarvis_key_usage_flash');
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (data && data.cycle === curCycle && data.keys) {
+            return data;
+          }
+        }
+      } catch (_) {}
+      const fresh = { cycle: curCycle, keys: {} };
+      ls.setItem('jarvis_key_usage_flash', JSON.stringify(fresh));
+      return fresh;
+    }
+
+    function saveKeyUsageData(data) {
+      try {
+        ls.setItem('jarvis_key_usage_flash', JSON.stringify(data));
+      } catch (_) {}
+    }
+
+    function getKeyUsageCount(slotIndex) {
+      const data = loadKeyUsageData();
+      const slotObj = data.keys[String(slotIndex)] || {};
+      return Object.values(slotObj).reduce((sum, v) => sum + (Number(v) || 0), 0);
+    }
+
+    function isLocalKeyUsageAhead(remoteUsage) {
+      if (!remoteUsage || !remoteUsage.keys) return true;
+      const curCycle = getCurrentQuotaCycle();
+      if (remoteUsage.cycle !== curCycle) return false;
+      const localData = loadKeyUsageData();
+      for (const [slotKey, devMap] of Object.entries(localData.keys)) {
+        for (const [devId, count] of Object.entries(devMap || {})) {
+          const remoteCount = remoteUsage.keys?.[slotKey]?.[devId] || 0;
+          if (count > remoteCount) return true;
+        }
+      }
+      return false;
+    }
+
+    function mergeRemoteKeyUsage(remoteUsage) {
+      if (!remoteUsage || !remoteUsage.cycle || !remoteUsage.keys) return false;
+      const curCycle = getCurrentQuotaCycle();
+      let localData = loadKeyUsageData();
+      let changed = false;
+
+      if (remoteUsage.cycle === curCycle) {
+        for (const [slotKey, remoteDevMap] of Object.entries(remoteUsage.keys)) {
+          if (!localData.keys[slotKey]) localData.keys[slotKey] = {};
+          for (const [devId, remoteCount] of Object.entries(remoteDevMap || {})) {
+            const localCount = localData.keys[slotKey][devId] || 0;
+            if (remoteCount > localCount) {
+              localData.keys[slotKey][devId] = remoteCount;
+              changed = true;
+            }
+          }
+        }
+      }
+      if (changed) {
+        saveKeyUsageData(localData);
+        updateKeyQuotaUI();
+      }
+      return changed;
+    }
+
+    function recordKeyRequest(slotIndex, model) {
+      if (!/3.[68]-flash/i.test(model || '')) return; // Chỉ tính model 3.6 và 3.8 Flash (20 RPD)
+      const data = loadKeyUsageData();
+      const devId = getMyDeviceId();
+      const slotKey = String(slotIndex);
+      if (!data.keys[slotKey]) data.keys[slotKey] = {};
+      data.keys[slotKey][devId] = (data.keys[slotKey][devId] || 0) + 1;
+      saveKeyUsageData(data);
+      updateKeyQuotaUI();
+      if (typeof window.JarvisSync?.scheduleAutoSync === 'function') {
+        window.JarvisSync.scheduleAutoSync(5000);
+      }
+    }
+
+    function resetKeyUsageToday() {
+      const curCycle = getCurrentQuotaCycle();
+      const fresh = { cycle: curCycle, keys: {} };
+      saveKeyUsageData(fresh);
+      updateKeyQuotaUI();
+      if (typeof window.JarvisSync?.scheduleAutoSync === 'function') {
+        window.JarvisSync.scheduleAutoSync(2000);
+      }
+    }
+
+    function findSlotIndexForKey(key) {
+      if (!key) return 1;
+      for (let i = 1; i <= 10; i++) {
+        let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || "").trim();
+        if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
+        if (k === key) return i;
+      }
+      return 1;
+    }
+
+    function getActiveKeySlot() {
+      const sel = DOM.apiKeySel?.value || 'auto';
+      if (sel !== 'auto') {
+        return parseInt(sel, 10) + 1;
+      }
+      const cs = sessions.find(x => x.id === activeId);
+      if (cs?.assignedApiKey) {
+        return findSlotIndexForKey(cs.assignedApiKey);
+      }
+      return 1;
+    }
+
+    function updateKeyQuotaUI() {
+      const curSlot = getActiveKeySlot();
+      const count = getKeyUsageCount(curSlot);
+      const name = (ls.getItem(`jarvis_api_name_${curSlot}`) || ls.getItem(`huanmu_api_name_${curSlot}`) || `Key ${curSlot}`).trim();
+
+      // 1. Cập nhật Chip trên Header
+      const quotaLabel = $('key-quota-label');
+      const quotaDot = $('key-quota-dot');
+      const quotaBtn = $('btn-key-quota-header');
+
+      if (quotaLabel && quotaDot && quotaBtn) {
+        quotaLabel.innerText = `🔑 ${name.length > 8 ? name.slice(0, 8) + '..' : name}: ${count}/20`;
+        if (count < 15) {
+          quotaDot.style.background = '#10b981';
+          quotaBtn.style.borderColor = 'var(--border)';
+        } else if (count < 20) {
+          quotaDot.style.background = '#f59e0b';
+          quotaBtn.style.borderColor = 'rgba(245,158,11,0.5)';
+        } else {
+          quotaDot.style.background = '#ef4444';
+          quotaBtn.style.borderColor = 'rgba(239,68,68,0.5)';
+        }
+      }
+
+      // 2. Cập nhật các badge trong modal Cấu hình (api-key-badge-1..10)
+      for (let i = 1; i <= 10; i++) {
+        const badge = $(`api-key-badge-${i}`);
+        if (badge) {
+          const u = getKeyUsageCount(i);
+          badge.innerText = `[ ${u} / 20 ]`;
+          if (u < 15) {
+            badge.style.background = 'rgba(16,185,129,0.12)';
+            badge.style.color = '#10b981';
+            badge.style.borderColor = 'rgba(16,185,129,0.3)';
+          } else if (u < 20) {
+            badge.style.background = 'rgba(245,158,11,0.12)';
+            badge.style.color = '#f59e0b';
+            badge.style.borderColor = 'rgba(245,158,11,0.3)';
+          } else {
+            badge.style.background = 'rgba(239,68,68,0.15)';
+            badge.style.color = '#ef4444';
+            badge.style.borderColor = 'rgba(239,68,68,0.4)';
+          }
+        }
+      }
+
+      // 3. Nếu Popover đang mở, re-render danh sách 10 Key
+      renderKeyQuotaPopoverList();
+    }
+
+    function renderKeyQuotaPopoverList() {
+      const listEl = $('key-quota-list');
+      if (!listEl) return;
+      const curSlot = getActiveKeySlot();
+
+      let html = '';
+      let hasAnyKey = false;
+
+      for (let i = 1; i <= 10; i++) {
+        let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || "").trim();
+        if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
+        const n = (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || `Key ${i}`).trim();
+        if (!k) continue;
+
+        hasAnyKey = true;
+        const u = getKeyUsageCount(i);
+        const isCurrent = (i === curSlot);
+
+        let badgeBg = 'rgba(16,185,129,0.15)', badgeCol = '#10b981', badgeBorder = 'rgba(16,185,129,0.3)';
+        let statusText = `${u}/20`;
+        if (u >= 20) {
+          badgeBg = 'rgba(239,68,68,0.15)'; badgeCol = '#ef4444'; badgeBorder = 'rgba(239,68,68,0.4)';
+          statusText = `${u}/20 (Hết)`;
+        } else if (u >= 15) {
+          badgeBg = 'rgba(245,158,11,0.15)'; badgeCol = '#f59e0b'; badgeBorder = 'rgba(245,158,11,0.4)';
+        }
+
+        const activeBorder = isCurrent ? 'border:1.5px solid var(--primary);background:rgba(59,130,246,0.08);' : 'border:1px solid var(--border);background:var(--bg-card);';
+
+        html += `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border-radius:var(--radius-sm);${activeBorder}font-size:0.78rem;">
+            <div style="display:flex;align-items:center;gap:6px;overflow:hidden;flex:1;min-width:0;">
+              <span style="font-weight:700;color:${isCurrent ? 'var(--primary)' : 'var(--text-muted)'};min-width:20px;">#${i}</span>
+              <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                <strong style="color:var(--text-main);">${escapeHtml(n)}</strong>
+                <span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">(${k.slice(0, 5)}...)</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+              <span style="font-size:0.7rem;font-weight:700;padding:2px 6px;border-radius:var(--radius-full);background:${badgeBg};color:${badgeCol};border:1px solid ${badgeBorder};">
+                ${statusText}
+              </span>
+              ${isCurrent ? '<span style="font-size:0.7rem;color:var(--primary);font-weight:700;">Đang dùng</span>' : `<button class="btn" onclick="window.selectKeySlotQuick(${i})" style="padding:2px 7px;font-size:0.7rem;">Chọn</button>`}
+            </div>
+          </div>
+        `;
+      }
+
+      if (!hasAnyKey) {
+        html = '<div style="font-size:0.75rem;color:var(--text-muted);text-align:center;padding:12px;">Chưa có Google API Key nào được cấu hình.</div>';
+      }
+
+      listEl.innerHTML = html;
+    }
+
+    window.selectKeySlotQuick = (slotIndex) => {
+      if (DOM.apiKeySel) {
+        DOM.apiKeySel.value = String(slotIndex - 1);
+        DOM.apiKeySel.dispatchEvent(new Event('change'));
+      }
+      const cs = sessions.find(x => x.id === activeId);
+      if (cs) {
+        let manualKey = (ls.getItem(`jarvis_api_${slotIndex}`) || ls.getItem(`huanmu_api_${slotIndex}`) || "").trim();
+        if (manualKey.startsWith('JVENC_') || manualKey.startsWith('ENC_')) manualKey = deobfuscateKey(manualKey);
+        cs.assignedApiKey = manualKey;
+        cs.keySel = String(slotIndex - 1);
+        saveToDB(cs);
+      }
+      updateKeyQuotaUI();
+      showToast(`🔑 Đã chuyển sang Key #${slotIndex}!`, "info");
+    };
+
+    // Expose to window for sync.js and global bindings
+    window.loadKeyUsageData = loadKeyUsageData;
+    window.saveKeyUsageData = saveKeyUsageData;
+    window.getKeyUsageCount = getKeyUsageCount;
+    window.recordKeyRequest = recordKeyRequest;
+    window.mergeRemoteKeyUsage = mergeRemoteKeyUsage;
+    window.isLocalKeyUsageAhead = isLocalKeyUsageAhead;
+    window.updateKeyQuotaUI = updateKeyQuotaUI;
+
     const getSessionApiKey = (cs, forceRotate = false) => {
       const sel = DOM.apiKeySel?.value || 'auto';
       if (sel !== 'auto') {
@@ -1417,10 +1679,42 @@ import { GoogleGenAI } from "@google/genai";
         if (manualKey.startsWith('JVENC_') || manualKey.startsWith('ENC_')) manualKey = deobfuscateKey(manualKey);
         return manualKey;
       }
+
+      // Kiểm tra chế độ Tự động né key đã hết hạn ngạch (20/20) cho 3.6/3.8 Flash
+      const activeMod = DOM.model?.value || 'gemini-3.6-flash';
+      const isFlash20Rpd = /3.[68]-flash/i.test(activeMod);
+      const shouldAvoidExhausted = ls.getItem('jarvis_skip_exhausted_keys') !== 'false';
+
       if (!forceRotate && cs?.assignedApiKey && apiKeys.includes(cs.assignedApiKey)) {
-        return cs.assignedApiKey;
+        if (!isFlash20Rpd || !shouldAvoidExhausted) {
+          return cs.assignedApiKey;
+        }
+        const assignedSlot = findSlotIndexForKey(cs.assignedApiKey);
+        if (getKeyUsageCount(assignedSlot) < 20) {
+          return cs.assignedApiKey;
+        }
       }
+
       if (apiKeys.length) {
+        if (isFlash20Rpd && shouldAvoidExhausted) {
+          // Lọc danh sách các key còn dưới 20 lượt gọi
+          const availableIndices = [];
+          for (let i = 0; i < apiKeys.length; i++) {
+            const slot = findSlotIndexForKey(apiKeys[i]);
+            if (getKeyUsageCount(slot) < 20) {
+              availableIndices.push(i);
+            }
+          }
+          if (availableIndices.length > 0) {
+            const chosenIdx = availableIndices[globalKeyIndex++ % availableIndices.length];
+            const k = apiKeys[chosenIdx];
+            if (cs && !forceRotate) cs.assignedApiKey = k;
+            return k;
+          } else {
+            showToast("⚠️ Tất cả các Google Key đều đã đạt 20/20 RPD hôm nay! Vẫn đang gửi thử...", "warning");
+          }
+        }
+
         const k = apiKeys[globalKeyIndex++ % apiKeys.length];
         if (cs && !forceRotate) cs.assignedApiKey = k;
         return k;
@@ -1728,7 +2022,6 @@ import { GoogleGenAI } from "@google/genai";
       document.querySelectorAll('.modal-box, #command-palette-modal, #ab-compare-modal, #arena-modal, #share-target-modal').forEach(m => m.style.display = 'none');
       if (oLay) oLay.style.display = 'none';
       if (typeof window.closeTTSStudioModal === 'function') window.closeTTSStudioModal();
-      if (typeof window.closeArenaModal === 'function') window.closeArenaModal();
     };
     document.querySelectorAll('.close-btn').forEach(b => b.onclick = closeModals);
     oLay.onclick = closeModals;
@@ -2634,10 +2927,10 @@ import { GoogleGenAI } from "@google/genai";
         } else {
           gKey = cs.assignedApiKey;
         }
-        keyIndexNum = Math.max(1, apiKeys.indexOf(gKey) + 1);
+        keyIndexNum = findSlotIndexForKey(gKey);
       } else {
         gKey = getSessionApiKey(cs, true);
-        keyIndexNum = Math.max(1, apiKeys.indexOf(gKey) + 1);
+        keyIndexNum = findSlotIndexForKey(gKey);
       }
 
       if (!gKey) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
@@ -2645,6 +2938,7 @@ import { GoogleGenAI } from "@google/genai";
       ls.removeItem('jarvis_draft');
       isProcessing = true;
       abortController = new AbortController();
+      recordKeyRequest(keyIndexNum, am);
 
       DOM.sendBtn.innerHTML = `<span>Dừng</span> 🛑`;
       DOM.sendBtn.style.background = 'var(--danger)';
@@ -3217,6 +3511,8 @@ import { GoogleGenAI } from "@google/genai";
 
                 if (apiKeys.length > 1) {
                   gKey = getSessionApiKey(cs, true);
+                  keyIndexNum = findSlotIndexForKey(gKey);
+                  recordKeyRequest(keyIndexNum, am);
                 }
 
                 const lastTail = finalResp.trim().slice(-150);
@@ -3586,7 +3882,7 @@ import { GoogleGenAI } from "@google/genai";
         const k = getSessionApiKey(cs) || (apiKeys.length ? apiKeys[0] : '');
         if (!k) return;
         const ai = new GoogleGenAI({ apiKey: k });
-        const targetModel = 'gemini-3.6-flash';
+        const targetModel = FLASH_LITE_MODEL; // Tiết kiệm quota 20 RPD của 3.6 Flash, dùng Flash-Lite (500 RPD)
         const res = await ai.models.generateContent({
           model: targetModel,
           contents: `Bạn là trợ lý AI thông minh. Dựa vào đối thoại vừa rồi:\nNgười dùng: "${(userPrompt || '').slice(0, 150)}"\nAI: "${botReply.slice(0, 250)}"\nHãy gợi ý đúng 3 câu hỏi tiếp theo thật ngắn gọn bằng tiếng Việt (mỗi câu tối đa 8 từ, mỗi câu trên 1 dòng, không đánh số, không gạch đầu dòng, không giải thích gì thêm) để người dùng có thể bấm vào hỏi tiếp:`,

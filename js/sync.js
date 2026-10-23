@@ -302,6 +302,12 @@
               }
             }
 
+            // E. HỢP NHẤT BỘ ĐẾM HẠN NGẠCH KEY FLASH (DISTRIBUTED G-COUNTER)
+            if (cloudData.keyUsageFlash && typeof window.mergeRemoteKeyUsage === 'function') {
+              const usageChanged = window.mergeRemoteKeyUsage(cloudData.keyUsageFlash);
+              if (usageChanged) hasChanges = true;
+            }
+
           } catch (fetchErr) {
             console.warn("[SmartSync] Không thể tải dữ liệu cũ từ Cloud để merge:", fetchErr);
           }
@@ -347,6 +353,13 @@
             if (deletedSessionIds.size > 0 && remoteSessions.some(cs => deletedSessionIds.has(cs.id))) {
               isLocalAhead = true;
             } else if (deletedVectorIds.size > 0 && remoteKnowledge.some(ck => deletedVectorIds.has(ck.id))) {
+              isLocalAhead = true;
+            }
+          }
+
+          // 4. Kiểm tra xem bộ đếm Key Flash của máy này có lượt gọi mới hơn Cloud không
+          if (!isLocalAhead && cloudData && cloudData.keyUsageFlash && typeof window.isLocalKeyUsageAhead === 'function') {
+            if (window.isLocalKeyUsageAhead(cloudData.keyUsageFlash)) {
               isLocalAhead = true;
             }
           }
@@ -396,6 +409,7 @@
             customPrompts: finalPrompts,
             folders: finalFolders,
             knowledgeBase: finalKnowledge,
+            keyUsageFlash: (typeof window.loadKeyUsageData === 'function') ? window.loadKeyUsageData() : null,
             settings: {
               keys: getGoogleKeysList(true),
               keyNames: getGoogleKeyNamesList(),
@@ -422,6 +436,7 @@
           ls.setItem('jarvis_gist_pat', pat);
           ls.setItem('jarvis_gist_id', gistId);
           ls.setItem('jarvis_gist_last_sync', timeStr);
+          ls.setItem('jarvis_gist_last_sync_timestamp', String(Date.now()));
           if (gistLastTime) gistLastTime.innerText = `Lần cuối: ${timeStr}`;
         } else {
           // Khi không cần push vì máy này không có gì mới hơn Cloud, vẫn ghi nhận thời gian kiểm tra
@@ -429,6 +444,7 @@
           ls.setItem('jarvis_gist_pat', pat);
           ls.setItem('jarvis_gist_id', gistId);
           ls.setItem('jarvis_gist_last_sync', timeStr);
+          ls.setItem('jarvis_gist_last_sync_timestamp', String(Date.now()));
           if (gistLastTime) gistLastTime.innerText = `Lần cuối: ${timeStr}`;
         }
 
@@ -620,6 +636,7 @@
           customPrompts: JSON.parse(ls.getItem('jarvis_custom_prompts') || '[]'),
           folders: JSON.parse(ls.getItem('jarvis_folders') || '["Mặc định"]'),
           knowledgeBase: allKnowledge,
+          keyUsageFlash: (typeof window.loadKeyUsageData === 'function') ? window.loadKeyUsageData() : null,
           settings: {
             keys: getGoogleKeysList(true),
             keyNames: getGoogleKeyNamesList(),
@@ -643,6 +660,7 @@
         ls.setItem('jarvis_gist_pat', pat);
         ls.setItem('jarvis_gist_id', gistId);
         ls.setItem('jarvis_gist_last_sync', timeStr);
+          ls.setItem('jarvis_gist_last_sync_timestamp', String(Date.now()));
 
         const kCount = allKnowledge.length ? `, ${allKnowledge.length} tri thức` : '';
         gistStatusText.innerText = `Đã sao lưu (${allSessions.length} phiên${kCount})`;
@@ -732,6 +750,7 @@
         ls.setItem('jarvis_gist_pat', pat);
         ls.setItem('jarvis_gist_id', gistId);
         ls.setItem('jarvis_gist_last_sync', timeStr);
+          ls.setItem('jarvis_gist_last_sync_timestamp', String(Date.now()));
 
         if (window.JarvisNativeBridge) {
           saveToNativeBridge('jarvis_sessions_backup', JSON.stringify(window.sessions));
