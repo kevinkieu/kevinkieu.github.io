@@ -1701,6 +1701,7 @@ import { GoogleGenAI } from "@google/genai";
       const isFlash20Rpd = /3.[68]-flash/i.test(activeMod);
       const shouldAvoidExhausted = ls.getItem('jarvis_skip_exhausted_keys') !== 'false';
 
+      // Nếu không forceRotate và phiên đã gán key (Interactions API cần giữ key cố định cho interactionId):
       if (!forceRotate && cs?.assignedApiKey && apiKeys.includes(cs.assignedApiKey)) {
         if (!isFlash20Rpd || !shouldAvoidExhausted) {
           return cs.assignedApiKey;
@@ -1712,26 +1713,37 @@ import { GoogleGenAI } from "@google/genai";
       }
 
       if (apiKeys.length) {
+        // 1. Lọc danh sách các key hợp lệ (loại bỏ key đã chạm mốc 20/20 nếu bật chế độ né key)
+        let candidates = [...apiKeys];
         if (isFlash20Rpd && shouldAvoidExhausted) {
-          // Lọc danh sách các key còn dưới 20 lượt gọi
-          const availableIndices = [];
-          for (let i = 0; i < apiKeys.length; i++) {
-            const slot = findSlotIndexForKey(apiKeys[i]);
-            if (getKeyUsageCount(slot) < 20) {
-              availableIndices.push(i);
-            }
-          }
-          if (availableIndices.length > 0) {
-            const chosenIdx = availableIndices[globalKeyIndex++ % availableIndices.length];
-            const k = apiKeys[chosenIdx];
-            if (cs && !forceRotate) cs.assignedApiKey = k;
-            return k;
+          const notExhausted = apiKeys.filter(k => {
+            const slot = findSlotIndexForKey(k);
+            return getKeyUsageCount(slot) < 20;
+          });
+          if (notExhausted.length > 0) {
+            candidates = notExhausted;
           } else {
-            showToast("⚠️ Tất cả các Google Key đều đã đạt 20/20 RPD hôm nay! Vẫn đang gửi thử...", "warning");
+            showToast("⚠️ Tất cả các Google Key đều đã đạt 20/20 RPD hôm nay! Đang dùng tạm key ít lượt nhất...", "warning");
           }
         }
 
-        const k = apiKeys[globalKeyIndex++ % apiKeys.length];
+        // 2. THUẬT TOÁN CÂN BẰNG TẢI TRẢI ĐỀU (LEAST-USED LOAD BALANCING)
+        // Tìm số lượt gọi hôm nay của từng key ứng viên
+        const usageList = candidates.map(k => {
+          const slot = findSlotIndexForKey(k);
+          return { key: k, slot, usage: getKeyUsageCount(slot) };
+        });
+
+        // Tìm mức lượt dùng nhỏ nhất hiện tại
+        const minUsage = Math.min(...usageList.map(u => u.usage));
+
+        // Lọc ra tất cả các key đang có cùng số lượt dùng nhỏ nhất đó
+        const leastUsed = usageList.filter(u => u.usage === minUsage);
+
+        // Bốc ngẫu nhiên trong nhóm các key ít dùng nhất đó để dàn đều 100%
+        const chosen = leastUsed[Math.floor(Math.random() * leastUsed.length)];
+        const k = chosen.key;
+
         if (cs && !forceRotate) cs.assignedApiKey = k;
         return k;
       }
