@@ -1596,6 +1596,15 @@ import { GoogleGenAI } from "@google/genai";
       renderKeyQuotaPopoverList();
     }
 
+    function getKeyBadgeHtml(keyNum) {
+      if (!keyNum) return '';
+      const n = (ls.getItem(`jarvis_api_name_${keyNum}`) || ls.getItem(`huanmu_api_name_${keyNum}`) || '').trim();
+      const label = n ? `Key #${keyNum} (${n})` : `Key #${keyNum}`;
+      return `<span class="key-indicator-badge" title="Tin nhắn này được phản hồi bằng Google ${escapeHtml(label)}" style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:rgba(59,130,246,0.12);color:#3b82f6;font-weight:600;margin-left:6px;border:1px solid rgba(59,130,246,0.3);display:inline-flex;align-items:center;gap:3px;vertical-align:middle;cursor:default;">🔑 ${escapeHtml(label)}</span>`;
+    }
+    window.getKeyBadgeHtml = getKeyBadgeHtml;
+
+
     function renderKeyQuotaPopoverList() {
       const listEl = $('key-quota-list');
       if (!listEl) return;
@@ -2791,8 +2800,9 @@ import { GoogleGenAI } from "@google/genai";
       m.setAttribute('data-raw', t);
 
       const ixId = chatHistory[i]?.interactionId;
-      const kNum = chatHistory[i]?.pinnedKey;
-      const ixBadge = ((sd !== 'user') && ixId) ? `<span class="interaction-id-badge" title="Interaction ID: ${ixId}">⚡ ID: ${ixId.slice(0, 8)}...${kNum ? ` [🔒 Key ${kNum}]` : ''}</span>` : '';
+      const kNum = chatHistory[i]?.keyIndex || chatHistory[i]?.pinnedKey;
+      const keyBadge = (sd !== 'user' && kNum) ? getKeyBadgeHtml(kNum) : '';
+      const ixBadge = ((sd !== 'user') && ixId) ? `<span class="interaction-id-badge" title="Interaction ID: ${ixId}">⚡ ID: ${ixId.slice(0, 8)}...</span>` : '';
       const pinnedBadge = isPinned ? `<span class="pinned-tag">📌 ĐÃ GHIM</span>` : '';
       const liveBadge = chatHistory[i]?.isLiveCall ? `<span style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:rgba(16,185,129,0.15);color:#10b981;font-weight:600;margin-left:4px;border:1px solid rgba(16,185,129,0.3);">📞 Thoại Live</span>` : '';
 
@@ -2800,6 +2810,7 @@ import { GoogleGenAI } from "@google/genai";
         <div class="message-header">
           <span>${sd === 'user' ? '👤 Bạn' : '✨ Jarvis AI'}</span>
           <span style="font-size:0.72rem;opacity:0.75;margin-left:4px;">🕒 ${chatHistory[i]?.time || getNowTime24h()}</span>
+          ${keyBadge}
           ${liveBadge}
           ${pinnedBadge}
           ${ixBadge}
@@ -2965,7 +2976,7 @@ import { GoogleGenAI } from "@google/genai";
         if (!finalResp.trim()) return bD?.remove();
         chatHistory.push(
           { role: 'user', text: fP },
-          { role: 'model', text: finalResp, time: botTime, interactionId: recordedIxId, pinnedKey: currentEngine === 'interactions' ? keyIndexNum : null }
+          { role: 'model', text: finalResp, time: botTime, interactionId: recordedIxId, keyIndex: keyIndexNum, pinnedKey: keyIndexNum }
         );
 
         if (cs) {
@@ -2992,7 +3003,8 @@ import { GoogleGenAI } from "@google/genai";
             }))));
             ragBadge = `<span class="rag-status-badge" onclick="window.JarvisRAG.showRetrievedDetails('${payload}')" title="Trích xuất từ: ${escapeHtml(topTitle)} (${topPct}% khớp). Bấm để xem chi tiết!">🧠 Trí nhớ RAG (${ragMatches.length} mục · ${topPct}%)</span>`;
           }
-          bD.querySelector('.message-header').innerHTML = `<span>✨ Jarvis AI</span><span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}</span>${ixBadge}${ragBadge}`;
+          const keyBadge = getKeyBadgeHtml(keyIndexNum);
+          bD.querySelector('.message-header').innerHTML = `<span>✨ Jarvis AI</span><span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}</span>${keyBadge}${ixBadge}${ragBadge}`;
           const currentBotIdx = chatHistory.length - 1, aDiv = document.createElement('div');
           aDiv.className = 'msg-actions';
           const continueBtn = (streamFinishReason === 'MAX_TOKENS' || (lastErr && pS)) 
@@ -3049,6 +3061,7 @@ import { GoogleGenAI } from "@google/genai";
         DOM.clearFilesBtn.click();
 
         // TYPING INDICATOR BUBBLE
+        const currentKeyBadge = getKeyBadgeHtml(keyIndexNum);
         bD = document.createElement('div');
         bD.className = 'message-container';
         bD.innerHTML = `
@@ -3056,6 +3069,7 @@ import { GoogleGenAI } from "@google/genai";
             <div class="message-header">
               <span>✨ Jarvis AI</span>
               <span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span>
+              ${currentKeyBadge}
               <div class="typing-bubble">
                 <span class="typing-dot"></span>
                 <span class="typing-dot"></span>
@@ -3520,6 +3534,12 @@ import { GoogleGenAI } from "@google/genai";
                   gKey = getSessionApiKey(cs, true);
                   keyIndexNum = findSlotIndexForKey(gKey);
                   recordKeyRequest(keyIndexNum, am);
+                  const updatedBadge = getKeyBadgeHtml(keyIndexNum);
+                  const headerEl = bD?.querySelector('.message-header');
+                  if (headerEl) {
+                    const oldKeyBadge = headerEl.querySelector('.key-indicator-badge');
+                    if (oldKeyBadge) oldKeyBadge.outerHTML = updatedBadge;
+                  }
                 }
 
                 const lastTail = finalResp.trim().slice(-150);
