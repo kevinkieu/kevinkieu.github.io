@@ -1530,14 +1530,19 @@ import { GoogleGenAI } from "@google/genai";
     }
 
     function getActiveKeySlot() {
-      const sel = DOM.apiKeySel?.value || 'auto';
-      if (sel !== 'auto') {
-        return parseInt(sel, 10) + 1;
-      }
-      const cs = sessions.find(x => x.id === activeId);
-      if (cs?.assignedApiKey) {
-        return findSlotIndexForKey(cs.assignedApiKey);
-      }
+      try {
+        const selEl = $('api-key-select');
+        const sel = selEl ? selEl.value : 'auto';
+        if (sel !== 'auto') {
+          return parseInt(sel, 10) + 1;
+        }
+        if (typeof sessions !== 'undefined' && Array.isArray(sessions) && typeof activeId !== 'undefined') {
+          const cs = sessions.find(x => x.id === activeId);
+          if (cs?.assignedApiKey) {
+            return findSlotIndexForKey(cs.assignedApiKey);
+          }
+        }
+      } catch (_) {}
       return 1;
     }
 
@@ -1673,7 +1678,8 @@ import { GoogleGenAI } from "@google/genai";
     window.updateKeyQuotaUI = updateKeyQuotaUI;
 
     const getSessionApiKey = (cs, forceRotate = false) => {
-      const sel = DOM.apiKeySel?.value || 'auto';
+      const selEl = $('api-key-select');
+      const sel = selEl ? selEl.value : 'auto';
       if (sel !== 'auto') {
         let manualKey = (ls.getItem(`jarvis_api_${parseInt(sel)+1}`) || ls.getItem(`huanmu_api_${parseInt(sel)+1}`) || "").trim();
         if (manualKey.startsWith('JVENC_') || manualKey.startsWith('ENC_')) manualKey = deobfuscateKey(manualKey);
@@ -1681,7 +1687,8 @@ import { GoogleGenAI } from "@google/genai";
       }
 
       // Kiểm tra chế độ Tự động né key đã hết hạn ngạch (20/20) cho 3.6/3.8 Flash
-      const activeMod = DOM.model?.value || 'gemini-3.6-flash';
+      const activeModEl = $('model-select');
+      const activeMod = activeModEl ? activeModEl.value : 'gemini-3.6-flash';
       const isFlash20Rpd = /3.[68]-flash/i.test(activeMod);
       const shouldAvoidExhausted = ls.getItem('jarvis_skip_exhausted_keys') !== 'false';
 
@@ -4055,3 +4062,65 @@ import { GoogleGenAI } from "@google/genai";
     // Init Web Share Target & Shortcuts listener and Storage estimation
     handleIncomingWebShare();
     updateStorageStatus();
+
+
+    // --- KEY QUOTA POPOVER & EVENT HANDLERS ---
+    const quotaBtn = $('btn-key-quota-header');
+    const quotaPopover = $('key-quota-popover');
+    if (quotaBtn && quotaPopover) {
+      quotaBtn.onclick = (e) => {
+        e.stopPropagation();
+        const isOpen = quotaPopover.style.display === 'block';
+        quotaPopover.style.display = isOpen ? 'none' : 'block';
+        if (!isOpen) {
+          updateKeyQuotaUI();
+        }
+      };
+      $('btn-close-quota-popover')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        quotaPopover.style.display = 'none';
+      });
+      quotaPopover.addEventListener('click', (e) => e.stopPropagation());
+      document.addEventListener('click', (e) => {
+        if (quotaPopover.style.display === 'block' && !quotaPopover.contains(e.target) && e.target !== quotaBtn) {
+          quotaPopover.style.display = 'none';
+        }
+      });
+    }
+
+    const toggleSkipExhausted = $('toggle-skip-exhausted-keys');
+    if (toggleSkipExhausted) {
+      toggleSkipExhausted.checked = ls.getItem('jarvis_skip_exhausted_keys') !== 'false';
+      toggleSkipExhausted.onchange = () => {
+        ls.setItem('jarvis_skip_exhausted_keys', toggleSkipExhausted.checked ? 'true' : 'false');
+        showToast(toggleSkipExhausted.checked ? "Đã bật tự động né key đạt 20/20 RPD!" : "Đã tắt tự động né key", "info");
+      };
+    }
+
+    $('btn-reset-quota-manual')?.addEventListener('click', () => {
+      if (confirm("Bạn có chắc chắn muốn reset bộ đếm hôm nay của tất cả các key về 0/20 không?")) {
+        resetKeyUsageToday();
+        showToast("🔄 Đã reset bộ đếm hôm nay về 0/20!", "success");
+      }
+    });
+
+    $('btn-open-settings-keys')?.addEventListener('click', () => {
+      if (quotaPopover) quotaPopover.style.display = 'none';
+      $('btn-open-settings')?.click();
+      setTimeout(() => {
+        $('api-keys-container')?.scrollIntoView({ behavior: 'smooth' });
+      }, 200);
+    });
+
+    // Auto-sync & refresh quota when switching back to tab (Mobile / Desktop)
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        updateKeyQuotaUI();
+        const lastSync = Number(ls.getItem('jarvis_gist_last_sync_timestamp') || 0);
+        if (Date.now() - lastSync > 30000 && ls.getItem('jarvis_auto_sync_cloud') !== 'false') {
+          if (typeof window.JarvisSync?.performSmartSync === 'function') {
+            window.JarvisSync.performSmartSync({ silent: true }).catch(() => {});
+          }
+        }
+      }
+    });
