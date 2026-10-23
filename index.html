@@ -39,7 +39,6 @@
   <link rel="stylesheet" href="./css/live.css">
   <link rel="stylesheet" href="./css/tts.css">
   <link rel="stylesheet" href="./css/translate.css">
-  <link rel="stylesheet" href="./css/arena.css">
   <link rel="stylesheet" href="./css/rag.css">
 </head>
 <body>
@@ -247,10 +246,47 @@
             ⚖️ <span class="mobile-hidden">So sánh</span>
           </button>
 
-          <!-- MULTI-AGENT ARENA BUTTON -->
-          <button id="btn-arena-header" class="btn" onclick="openArenaModal()" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(245,158,11,0.3);display:flex;align-items:center;gap:5px;" title="Đấu trường Tranh biện AI Đa góc nhìn (Multi-Agent Arena)">
-            ⚔️ <span class="mobile-hidden">Tranh biện</span>
-          </button>
+          <!-- KEY QUOTA INDICATOR (DISTRIBUTED G-COUNTER) -->
+          <div style="position:relative;display:inline-block;">
+            <button id="btn-key-quota-header" class="btn" style="background:var(--bg-main);border:1px solid var(--border);border-radius:var(--radius-full);padding:5px 11px;font-weight:600;font-size:0.78rem;display:flex;align-items:center;gap:6px;cursor:pointer;transition:all 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.05);" title="Hạn ngạch Google AI Studio (20 RPD cho 3.6/3.8 Flash) • Bấm để xem chi tiết 10 Key">
+              <span id="key-quota-dot" style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;"></span>
+              <span id="key-quota-label" style="color:var(--text-main);">🔑 Key 1: 0/20</span>
+            </button>
+
+            <!-- MINI FLOATING POPOVER -->
+            <div id="key-quota-popover" style="display:none;position:absolute;top:calc(100% + 8px);right:0;width:320px;max-width:90vw;background:var(--modal-bg, var(--bg-card));border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:0 12px 32px rgba(0,0,0,0.25);z-index:99999;padding:14px;box-sizing:border-box;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:8px;">
+                <div style="font-weight:700;font-size:0.88rem;color:var(--text-main);display:flex;align-items:center;gap:6px;">
+                  <span>🔑 Hạn ngạch 10 Key (20 RPD)</span>
+                </div>
+                <button id="btn-close-quota-popover" class="icon-btn" style="width:24px;height:24px;font-size:1rem;line-height:1;">&times;</button>
+              </div>
+
+              <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:10px;line-height:1.4;">
+                Áp dụng cho <strong>3.6 &amp; 3.8 Flash</strong>. Tự động reset lúc <strong>14:00</strong> VN hàng ngày • Đồng bộ 4 máy qua Cloud Gist.
+              </div>
+
+              <!-- KEY LIST CONTAINER -->
+              <div id="key-quota-list" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;margin-bottom:12px;padding-right:2px;">
+                <!-- Rendered dynamically -->
+              </div>
+
+              <!-- TOGGLE AUTO AVOID EXHAUSTED KEYS -->
+              <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;align-items:center;justify-content:space-between;font-size:0.78rem;">
+                <span style="color:var(--text-main);font-weight:600;">Tự động né key đã 20/20:</span>
+                <input type="checkbox" id="toggle-skip-exhausted-keys" checked style="cursor:pointer;accent-color:var(--primary);">
+              </div>
+
+              <div style="margin-top:10px;display:flex;gap:6px;justify-content:space-between;">
+                <button id="btn-reset-quota-manual" class="btn" style="flex:1;font-size:0.72rem;padding:6px 8px;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);" title="Chỉ reset số đếm trong chu kỳ hiện tại">
+                  🔄 Reset bộ đếm hôm nay
+                </button>
+                <button id="btn-open-settings-keys" class="btn" style="font-size:0.72rem;padding:6px 8px;">
+                  ⚙️ Quản lý Key
+                </button>
+              </div>
+            </div>
+          </div>
 
           <!-- QUICK COMMAND PALETTE BUTTON -->
           <button id="btn-trigger-cmd" class="btn" style="padding:5px 9px;font-size:0.78rem;gap:4px;" title="Mở bảng lệnh nhanh (Ctrl+K)">
@@ -312,9 +348,6 @@
           <input type="file" id="file-upload" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;">
           <button id="btn-open-tts-studio" class="tool-chip" onclick="openTTSStudioModal()" style="border-color:#8b5cf6;color:#8b5cf6;font-weight:600;" title="Mở Gemini TTS Studio Pro (Chuyển văn bản thành giọng nói, xuất MP3)">
             🎙️ Studio TTS
-          </button>
-          <button id="btn-open-arena-chip" class="tool-chip" onclick="openArenaModal()" style="border-color:#f59e0b;color:#f59e0b;font-weight:600;" title="Mở Đấu trường Tranh biện AI Đa góc nhìn">
-            ⚔️ Tranh biện AI
           </button>
 
                     <button id="btn-toggle-deep-research" class="tool-chip" title="Bật/Tắt chế độ Nghiên cứu Sâu đa tầng (Deep Research)">
@@ -411,55 +444,6 @@
         </div>
       </div>
     </div>
-
-    <!-- MODAL MULTI-AGENT ARENA -->
-    <div id="arena-modal" class="modal-box arena-modal">
-      <div class="modal-header" style="background:linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.1));border-bottom:1px solid var(--border);">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:1.4rem;">⚔️</span>
-          <div>
-            <h3 style="margin:0;font-size:1.05rem;color:var(--text-main);">Multi-Agent Arena</h3>
-            <span style="font-size:0.75rem;color:var(--text-muted);">Đấu trường Tranh biện Đa góc nhìn & Phán quyết Khách quan</span>
-          </div>
-        </div>
-        <button class="close-btn icon-btn" onclick="closeArenaModal()">&times;</button>
-      </div>
-
-      <div class="arena-body" id="arena-body">
-        <!-- SETUP VIEW -->
-        <div id="arena-setup-view" class="arena-view active">
-          <div class="arena-section">
-            <label class="field-label" style="font-weight:700;">🎯 Chủ đề hoặc Vấn đề cần ra quyết định:</label>
-            <textarea id="arena-topic-input" class="modern-textarea" rows="2" placeholder="Ví dụ: Có nên chuyển sang Microservices thay vì Monolith cho startup?"></textarea>
-            
-            <div class="arena-topic-suggestions">
-              <span class="arena-suggestion-tag" onclick="window.setArenaTopic('Có nên chuyển kiến trúc hệ thống sang Microservices hay giữ Monolith?')">💡 Microservices vs Monolith</span>
-              <span class="arena-suggestion-tag" onclick="window.setArenaTopic('Nên đầu tư vào Vàng hay Bất động sản trong bối cảnh lạm phát hiện nay?')">💡 Vàng vs Bất động sản</span>
-              <span class="arena-suggestion-tag" onclick="window.setArenaTopic('AI có thay thế hoàn toàn lập trình viên trong vòng 5 năm tới không?')">💡 AI vs Lập trình viên</span>
-              <span class="arena-suggestion-tag" onclick="window.setArenaTopic('Khởi nghiệp ngay sau đại học hay đi làm tích lũy kinh nghiệm 3-5 năm?')">💡 Khởi nghiệp vs Đi làm</span>
-            </div>
-          </div>
-
-          <div class="arena-section">
-            <label class="field-label" style="font-weight:700;">🎭 Kịch bản / Phong cách Tranh biện:</label>
-            <div class="arena-preset-grid">
-              <div class="arena-preset-card active" data-preset="pro-con" onclick="window.selectArenaPreset('pro-con')">
-                <div class="preset-title">🔵 Ủng hộ vs 🔴 Phản biện</div>
-                <div class="preset-desc">Bên A tìm kiếm mọi lợi ích & cơ hội, bên B vạch trần mọi rủi ro & chi phí ẩn.</div>
-              </div>
-              <div class="arena-preset-card" data-preset="tech-biz" onclick="window.selectArenaPreset('tech-biz')">
-                <div class="preset-title">💻 Kỹ thuật vs 💼 Kinh doanh</div>
-                <div class="preset-desc">Chuyên gia Công nghệ tối ưu kiến trúc vs Giám đốc Kinh doanh tối ưu chi phí & ROI.</div>
-              </div>
-              <div class="arena-preset-card" data-preset="vision-pragmatic" onclick="window.selectArenaPreset('vision-pragmatic')">
-                <div class="preset-title">🚀 Táo bạo vs 🛡️ Thực tế</div>
-                <div class="preset-desc">Tư duy đột phá đón đầu tương lai vs Tư duy thực dụng an toàn, chắc chắn.</div>
-              </div>
-              <div class="arena-preset-card" data-preset="custom" onclick="window.selectArenaPreset('custom')">
-                <div class="preset-title">⚙️ Tự do tùy chỉnh</div>
-                <div class="preset-desc">Tự thiết lập danh tính và lập trường cho 2 Agent theo ý bạn.</div>
-              </div>
-            </div>
           </div>
 
           <!-- CUSTOM AGENTS CONFIG (SHOWN WHEN 'custom' IS ACTIVE) -->
@@ -552,9 +536,6 @@
           </button>
           <button id="btn-share-insert-input" class="btn" style="padding:10px;font-weight:600;">
             💬 Đưa vào ô nhập Chat để hỏi tiếp
-          </button>
-          <button id="btn-share-arena" class="btn" style="padding:10px;font-weight:600;background:rgba(245,158,11,0.15);color:#d97706;border:1px solid rgba(245,158,11,0.4);">
-            ⚔️ Đưa vào Đấu trường Tranh biện AI
           </button>
         </div>
       </div>
@@ -1542,12 +1523,11 @@
   <button id="scroll-to-top" title="Cuộn lên đầu trang">▲</button>
 
   <!-- JAVASCRIPT APPLICATION MODULES -->
-  <script type="module" src="./js/app.js?v=55"></script>
-  <script type="module" src="./js/sync.js?v=55"></script>
-  <script type="module" src="./js/live.js?v=55"></script>
-  <script type="module" src="./js/arena.js?v=55"></script>
-  <script type="module" src="./js/tts.js?v=55"></script>
-  <script type="module" src="./js/translate.js?v=55"></script>
-  <script type="module" src="./js/rag.js?v=55"></script>
+  <script type="module" src="./js/app.js?v=56"></script>
+  <script type="module" src="./js/sync.js?v=56"></script>
+  <script type="module" src="./js/live.js?v=56"></script>
+  <script type="module" src="./js/tts.js?v=56"></script>
+  <script type="module" src="./js/translate.js?v=56"></script>
+  <script type="module" src="./js/rag.js?v=56"></script>
 </body>
 </html>

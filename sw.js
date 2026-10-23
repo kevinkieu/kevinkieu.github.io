@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v55 - 2-Way Smart Merge Cloud Sync & Vector Memory)
-const CACHE_NAME = 'jarvis-ai-pwa-v55';
+// Jarvis AI Service Worker for PWA (v56 - Distributed Key Quota & Optimized Auxiliary Models)
+const CACHE_NAME = 'jarvis-ai-pwa-v56';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
@@ -7,13 +7,11 @@ const STATIC_ASSETS = [
   './css/style.css',
   './css/live.css',
   './css/tts.css',
-  './css/arena.css',
   './css/translate.css',
   './css/rag.css',
   './js/app.js',
   './js/sync.js',
   './js/live.js',
-  './js/arena.js',
   './js/tts.js',
   './js/translate.js',
   './js/rag.js'

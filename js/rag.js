@@ -700,9 +700,8 @@ Nhiệm vụ:
 3. Nếu chỉ là câu chào hỏi, hỏi đáp kiến thức chung, nhờ viết văn/code/dịch thuật mà KHÔNG chứa thông tin về bản thân người dùng:
    Trả về JSON: { "learn": false }`;
 
-      const activeModel = document.getElementById('model-select')?.value || 'gemini-3.6-flash';
-      const modelsToTry = [activeModel, 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'];
-      const uniqueModels = [...new Set(modelsToTry)];
+      // Tác vụ phụ trích xuất tri thức nền: Luôn dùng Flash-Lite (500 RPD) để không tốn quota của 3.6/3.8 Flash (20 RPD)
+      const uniqueModels = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
 
       let res = null;
       let lastExtractErr = null;
