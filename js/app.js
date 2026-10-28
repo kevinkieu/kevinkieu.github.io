@@ -941,8 +941,28 @@ import { GoogleGenAI } from "@google/genai";
     const cmdInput = $('cmd-palette-input');
     const cmdList = $('cmd-palette-list');
 
+    function openKeyQuotaModal() {
+      const quotaModal = $('key-quota-modal') || $('key-quota-popover');
+      if (!quotaModal) return;
+      if (typeof closeModals === 'function') closeModals();
+      if (typeof updateKeyQuotaUI === 'function') updateKeyQuotaUI();
+      if (typeof renderKeyQuotaPopoverList === 'function') renderKeyQuotaPopoverList();
+      quotaModal.style.display = 'flex';
+      const overlay = $('modal-overlay');
+      if (overlay) overlay.style.display = 'block';
+    }
+    window.openKeyQuotaModal = openKeyQuotaModal;
+
+    function closeKeyQuotaModal() {
+      const quotaModal = $('key-quota-modal') || $('key-quota-popover');
+      if (quotaModal) quotaModal.style.display = 'none';
+      const overlay = $('modal-overlay');
+      if (overlay) overlay.style.display = 'none';
+    }
+    window.closeKeyQuotaModal = closeKeyQuotaModal;
+
     const COMMANDS = [
-      { id: 'quota', title: 'Xem hạn ngạch 10 Key (20 RPD cho 3.6/3.8 Flash)', shortcut: '/quota', icon: '🔑', run: () => $('btn-key-quota-header')?.click() },
+      { id: 'quota', title: 'Xem hạn ngạch 10 Key (20 RPD cho 3.6/3.8 Flash)', shortcut: '/quota', icon: '🔑', run: () => openKeyQuotaModal() },
       { id: 'cloud', title: 'Đồng bộ Cloud đa thiết bị (GitHub Gist)', shortcut: '/cloud', icon: '☁️', run: () => $('btn-open-cloud-sync').click() },
       { id: 'deep', title: 'Bật/Tắt Chế độ Nghiên cứu Sâu (Deep Research)', shortcut: '/deep', icon: '🔬', run: () => $('btn-toggle-deep-research').click() },
       { id: 'new', title: 'Tạo phiên hội thoại mới', shortcut: '/new', icon: '➕', run: () => newSess() },
@@ -973,6 +993,45 @@ import { GoogleGenAI } from "@google/genai";
       cmdModal.style.display = 'none';
       oLay.style.display = 'none';
     }
+
+    function executeChatSlashCommand(rawText) {
+      const text = (rawText || '').trim();
+      if (!text.startsWith('/')) return false;
+
+      const parts = text.split(/\s+/);
+      const cmdWord = parts[0].toLowerCase();
+
+      // 1. Direct aliases for quota & keys
+      if (cmdWord === '/quota' || cmdWord === '/key' || cmdWord === '/keys') {
+        openKeyQuotaModal();
+        return true;
+      }
+      if (cmdWord === '/help' || cmdWord === '/cmd' || cmdWord === '/commands') {
+        openCommandPalette();
+        return true;
+      }
+      if (cmdWord === '/sync') {
+        $('btn-open-cloud-sync')?.click();
+        return true;
+      }
+
+      // 2. Check COMMANDS array
+      const matched = COMMANDS.find(c => c.shortcut.toLowerCase() === cmdWord);
+      if (matched && typeof matched.run === 'function') {
+        matched.run();
+        return true;
+      }
+
+      // 3. Single-word command that is unknown -> show helpful warning & don't ask AI
+      if (parts.length === 1) {
+        showToast(`Không tìm thấy lệnh "${cmdWord}". Gõ /help hoặc nhấn Ctrl+K để xem danh sách lệnh!`, "warning");
+        return true;
+      }
+
+      // 4. Multi-word prompt starting with slash -> pass through to AI
+      return false;
+    }
+    window.executeChatSlashCommand = executeChatSlashCommand;
 
     function renderCommandItems(filterText) {
       const q = filterText.toLowerCase().trim();
@@ -1857,9 +1916,20 @@ import { GoogleGenAI } from "@google/genai";
         updateTokenCount();
       };
       DOM.input.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-          e.preventDefault();
-          DOM.sendBtn.click();
+        if (e.key === 'Enter') {
+          const val = DOM.input.value.trim();
+          if (val.startsWith('/') && executeChatSlashCommand(val)) {
+            e.preventDefault();
+            DOM.input.value = '';
+            DOM.input.style.height = 'auto';
+            ls.removeItem('jarvis_draft');
+            updateTokenCount();
+            return;
+          }
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            DOM.sendBtn.click();
+          }
         }
       });
     }
@@ -2970,8 +3040,16 @@ import { GoogleGenAI } from "@google/genai";
     // --- SEND MESSAGE (STREAM / INTERACTIONS) ---
     DOM.sendBtn.onclick = async () => {
       if (isProcessing) return abortController?.abort();
+      const rawMsg = DOM.input.value.trim();
+      if (rawMsg.startsWith('/') && executeChatSlashCommand(rawMsg)) {
+        DOM.input.value = '';
+        DOM.input.style.height = 'auto';
+        ls.removeItem('jarvis_draft');
+        updateTokenCount();
+        return;
+      }
       const am = DOM.model.value || 'gemini-3.6-flash';
-      const msg = DOM.input.value.trim();
+      const msg = rawMsg;
       if (!msg && !filesData.length && !txtContent) return;
       document.querySelectorAll('.follow-up-container').forEach(el => el.remove());
 
@@ -4146,29 +4224,22 @@ import { GoogleGenAI } from "@google/genai";
     updateStorageStatus();
 
 
-    // --- KEY QUOTA POPOVER & EVENT HANDLERS ---
+    // --- KEY QUOTA MODAL & EVENT HANDLERS ---
     const quotaBtn = $('btn-key-quota-header');
-    const quotaPopover = $('key-quota-popover');
-    if (quotaBtn && quotaPopover) {
+    if (quotaBtn) {
       quotaBtn.onclick = (e) => {
         e.stopPropagation();
-        const isOpen = quotaPopover.style.display === 'block';
-        quotaPopover.style.display = isOpen ? 'none' : 'block';
-        if (!isOpen) {
-          updateKeyQuotaUI();
-        }
+        openKeyQuotaModal();
       };
-      $('btn-close-quota-popover')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        quotaPopover.style.display = 'none';
-      });
-      quotaPopover.addEventListener('click', (e) => e.stopPropagation());
-      document.addEventListener('click', (e) => {
-        if (quotaPopover.style.display === 'block' && !quotaPopover.contains(e.target) && e.target !== quotaBtn) {
-          quotaPopover.style.display = 'none';
-        }
-      });
     }
+    $('btn-close-quota-modal')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeKeyQuotaModal();
+    });
+    $('btn-close-quota-popover')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeKeyQuotaModal();
+    });
 
     const toggleSkipExhausted = $('toggle-skip-exhausted-keys');
     if (toggleSkipExhausted) {
@@ -4182,12 +4253,13 @@ import { GoogleGenAI } from "@google/genai";
     $('btn-reset-quota-manual')?.addEventListener('click', () => {
       if (confirm("Bạn có chắc chắn muốn reset bộ đếm hôm nay của tất cả các key về 0/20 không?")) {
         resetKeyUsageToday();
+        updateKeyQuotaUI();
         showToast("🔄 Đã reset bộ đếm hôm nay về 0/20!", "success");
       }
     });
 
     $('btn-open-settings-keys')?.addEventListener('click', () => {
-      if (quotaPopover) quotaPopover.style.display = 'none';
+      closeKeyQuotaModal();
       $('btn-open-settings')?.click();
       setTimeout(() => {
         $('api-keys-container')?.scrollIntoView({ behavior: 'smooth' });
