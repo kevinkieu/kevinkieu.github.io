@@ -486,7 +486,7 @@ import { GoogleGenAI } from "@google/genai";
         <span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);min-width:30px;text-align:center;background:rgba(255,255,255,0.05);padding:6px 0;border-radius:var(--radius-sm);border:1px solid var(--border);">#${i+1}</span>
         <input type="text" id="api-key-name-${i+1}" placeholder="Tên gợi nhớ ${i+1}" class="modern-input" style="width:115px;flex:0 0 115px;font-size:0.8rem;padding:7px 10px;" title="Tên gợi nhớ cho Key ${i+1} (Ví dụ: Gmail A, Key chính, Dự phòng...)">
         <input type="password" id="api-key-${i+1}" placeholder="Google API Key ${i+1} (AIzaSy...)" class="modern-input" style="flex:1;min-width:110px;font-size:0.8rem;padding:7px 10px;" title="Dán Google AI Studio API Key vào đây">
-        <span id="api-key-badge-${i+1}" style="font-size:0.72rem;font-weight:700;padding:5px 8px;border-radius:var(--radius-sm);background:rgba(16,185,129,0.12);color:#10b981;white-space:nowrap;border:1px solid rgba(16,185,129,0.3);flex-shrink:0;" title="Số lượt gọi 3.6/3.8 Flash hôm nay (20 RPD)">[ 0 / 20 ]</span>
+        <span id="api-key-badge-${i+1}" style="font-size:0.7rem;font-weight:700;padding:4px 7px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.05);white-space:nowrap;border:1px solid var(--border);flex-shrink:0;" title="Hạn ngạch hôm nay (20 RPD mỗi model)"><span style="color:#10b981;">3.6: 0/20</span> | <span style="color:#3b82f6;">3.8: 0/20</span></span>
       </div>
     `).join('');
 
@@ -1404,7 +1404,7 @@ import { GoogleGenAI } from "@google/genai";
 
     
     // ==========================================================================
-    // DISTRIBUTED KEY QUOTA TRACKER (10 GOOGLE FREE KEYS • 20 RPD • 4 DEVICES)
+    // DISTRIBUTED KEY QUOTA TRACKER (10 GOOGLE FREE KEYS • 20 RPD EACH FOR 3.6 & 3.8 • 4 DEVICES)
     // ==========================================================================
 
     function getMyDeviceId() {
@@ -1426,6 +1426,39 @@ import { GoogleGenAI } from "@google/genai";
       const m = String(shifted.getMonth() + 1).padStart(2, '0');
       const d = String(shifted.getDate()).padStart(2, '0');
       return `${y}-${m}-${d}`;
+    }
+
+    function getFlashModelBucket(modelName) {
+      const m = (modelName || '').toLowerCase();
+      if (m.includes('3.8-flash') || m.includes('3.8')) return '3.8';
+      if (m.includes('3.6-flash') || m.includes('3.6')) return '3.6';
+      return null;
+    }
+
+    function getSelectedFlashModelBucket() {
+      try {
+        const modEl = $('model-select');
+        const modVal = modEl ? modEl.value : 'gemini-3.8-flash';
+        return getFlashModelBucket(modVal) || '3.8';
+      } catch (_) {
+        return '3.8';
+      }
+    }
+
+    function normalizeSlotData(slotObj) {
+      if (!slotObj || typeof slotObj !== 'object') return { '3.6': {}, '3.8': {} };
+      if (slotObj['3.6'] || slotObj['3.8']) {
+        return {
+          '3.6': (typeof slotObj['3.6'] === 'object' && slotObj['3.6']) ? slotObj['3.6'] : {},
+          '3.8': (typeof slotObj['3.8'] === 'object' && slotObj['3.8']) ? slotObj['3.8'] : {}
+        };
+      }
+      // Khả năng tương thích ngược (legacy flat structure): gán về 3.8
+      const legacyMap = {};
+      for (const [k, v] of Object.entries(slotObj)) {
+        if (typeof v === 'number') legacyMap[k] = v;
+      }
+      return { '3.6': {}, '3.8': legacyMap };
     }
 
     function loadKeyUsageData() {
@@ -1450,10 +1483,13 @@ import { GoogleGenAI } from "@google/genai";
       } catch (_) {}
     }
 
-    function getKeyUsageCount(slotIndex) {
+    function getKeyUsageCount(slotIndex, specificModelBucket = null) {
       const data = loadKeyUsageData();
-      const slotObj = data.keys[String(slotIndex)] || {};
-      return Object.values(slotObj).reduce((sum, v) => sum + (Number(v) || 0), 0);
+      const rawSlot = data.keys[String(slotIndex)];
+      const normSlot = normalizeSlotData(rawSlot);
+      const targetBucket = specificModelBucket || getSelectedFlashModelBucket();
+      const bucketObj = normSlot[targetBucket] || {};
+      return Object.values(bucketObj).reduce((sum, v) => sum + (Number(v) || 0), 0);
     }
 
     function isLocalKeyUsageAhead(remoteUsage) {
@@ -1461,10 +1497,14 @@ import { GoogleGenAI } from "@google/genai";
       const curCycle = getCurrentQuotaCycle();
       if (remoteUsage.cycle !== curCycle) return false;
       const localData = loadKeyUsageData();
-      for (const [slotKey, devMap] of Object.entries(localData.keys)) {
-        for (const [devId, count] of Object.entries(devMap || {})) {
-          const remoteCount = remoteUsage.keys?.[slotKey]?.[devId] || 0;
-          if (count > remoteCount) return true;
+      for (const [slotKey, localSlotRaw] of Object.entries(localData.keys)) {
+        const localNorm = normalizeSlotData(localSlotRaw);
+        const remoteNorm = normalizeSlotData(remoteUsage.keys?.[slotKey]);
+        for (const b of ['3.6', '3.8']) {
+          for (const [devId, count] of Object.entries(localNorm[b] || {})) {
+            const remoteCount = remoteNorm[b]?.[devId] || 0;
+            if (count > remoteCount) return true;
+          }
         }
       }
       return false;
@@ -1477,13 +1517,19 @@ import { GoogleGenAI } from "@google/genai";
       let changed = false;
 
       if (remoteUsage.cycle === curCycle) {
-        for (const [slotKey, remoteDevMap] of Object.entries(remoteUsage.keys)) {
-          if (!localData.keys[slotKey]) localData.keys[slotKey] = {};
-          for (const [devId, remoteCount] of Object.entries(remoteDevMap || {})) {
-            const localCount = localData.keys[slotKey][devId] || 0;
-            if (remoteCount > localCount) {
-              localData.keys[slotKey][devId] = remoteCount;
-              changed = true;
+        for (const [slotKey, remoteSlotRaw] of Object.entries(remoteUsage.keys)) {
+          if (!localData.keys[slotKey]) localData.keys[slotKey] = { '3.6': {}, '3.8': {} };
+          else localData.keys[slotKey] = normalizeSlotData(localData.keys[slotKey]);
+
+          const remoteNorm = normalizeSlotData(remoteSlotRaw);
+          for (const b of ['3.6', '3.8']) {
+            if (!localData.keys[slotKey][b]) localData.keys[slotKey][b] = {};
+            for (const [devId, remoteCount] of Object.entries(remoteNorm[b] || {})) {
+              const localCount = localData.keys[slotKey][b][devId] || 0;
+              if (remoteCount > localCount) {
+                localData.keys[slotKey][b][devId] = remoteCount;
+                changed = true;
+              }
             }
           }
         }
@@ -1496,12 +1542,18 @@ import { GoogleGenAI } from "@google/genai";
     }
 
     function recordKeyRequest(slotIndex, model) {
-      if (!/3.[68]-flash/i.test(model || '')) return; // Chỉ tính model 3.6 và 3.8 Flash (20 RPD)
+      const bucket = getFlashModelBucket(model);
+      if (!bucket) return; // Chỉ tính model 3.6 và 3.8 Flash (20 RPD mỗi con)
+
       const data = loadKeyUsageData();
       const devId = getMyDeviceId();
       const slotKey = String(slotIndex);
-      if (!data.keys[slotKey]) data.keys[slotKey] = {};
-      data.keys[slotKey][devId] = (data.keys[slotKey][devId] || 0) + 1;
+      if (!data.keys[slotKey]) data.keys[slotKey] = { '3.6': {}, '3.8': {} };
+      else data.keys[slotKey] = normalizeSlotData(data.keys[slotKey]);
+
+      if (!data.keys[slotKey][bucket]) data.keys[slotKey][bucket] = {};
+      data.keys[slotKey][bucket][devId] = (data.keys[slotKey][bucket][devId] || 0) + 1;
+
       saveKeyUsageData(data);
       updateKeyQuotaUI();
       if (typeof window.JarvisSync?.scheduleAutoSync === 'function') {
@@ -1548,16 +1600,18 @@ import { GoogleGenAI } from "@google/genai";
 
     function updateKeyQuotaUI() {
       const curSlot = getActiveKeySlot();
-      const count = getKeyUsageCount(curSlot);
+      const curBucket = getSelectedFlashModelBucket(); // '3.8' | '3.6'
+      const count = getKeyUsageCount(curSlot, curBucket);
       const name = (ls.getItem(`jarvis_api_name_${curSlot}`) || ls.getItem(`huanmu_api_name_${curSlot}`) || `Key ${curSlot}`).trim();
 
-      // 1. Cập nhật Chip trên Header
+      // 1. Cập nhật Chip trên Header: Hiển thị rõ model đang active (3.6 hay 3.8)
       const quotaLabel = $('key-quota-label');
       const quotaDot = $('key-quota-dot');
       const quotaBtn = $('btn-key-quota-header');
 
       if (quotaLabel && quotaDot && quotaBtn) {
-        quotaLabel.innerText = `🔑 ${name.length > 8 ? name.slice(0, 8) + '..' : name}: ${count}/20`;
+        const shortName = name.length > 7 ? name.slice(0, 7) + '..' : name;
+        quotaLabel.innerText = `🔑 ${shortName}: ${count}/20 (${curBucket})`;
         if (count < 15) {
           quotaDot.style.background = '#10b981';
           quotaBtn.style.borderColor = 'var(--border)';
@@ -1570,25 +1624,13 @@ import { GoogleGenAI } from "@google/genai";
         }
       }
 
-      // 2. Cập nhật các badge trong modal Cấu hình (api-key-badge-1..10)
+      // 2. Cập nhật các badge trong modal Cấu hình (api-key-badge-1..10): Hiển thị cả 3.6 và 3.8
       for (let i = 1; i <= 10; i++) {
         const badge = $(`api-key-badge-${i}`);
         if (badge) {
-          const u = getKeyUsageCount(i);
-          badge.innerText = `[ ${u} / 20 ]`;
-          if (u < 15) {
-            badge.style.background = 'rgba(16,185,129,0.12)';
-            badge.style.color = '#10b981';
-            badge.style.borderColor = 'rgba(16,185,129,0.3)';
-          } else if (u < 20) {
-            badge.style.background = 'rgba(245,158,11,0.12)';
-            badge.style.color = '#f59e0b';
-            badge.style.borderColor = 'rgba(245,158,11,0.3)';
-          } else {
-            badge.style.background = 'rgba(239,68,68,0.15)';
-            badge.style.color = '#ef4444';
-            badge.style.borderColor = 'rgba(239,68,68,0.4)';
-          }
+          const u36 = getKeyUsageCount(i, '3.6');
+          const u38 = getKeyUsageCount(i, '3.8');
+          badge.innerHTML = `<span style="color:${u36 >= 20 ? '#ef4444' : u36 >= 15 ? '#f59e0b' : '#10b981'}">3.6: ${u36}/20</span> | <span style="color:${u38 >= 20 ? '#ef4444' : u38 >= 15 ? '#f59e0b' : '#3b82f6'}">3.8: ${u38}/20</span>`;
         }
       }
 
@@ -1596,19 +1638,21 @@ import { GoogleGenAI } from "@google/genai";
       renderKeyQuotaPopoverList();
     }
 
-    function getKeyBadgeHtml(keyNum) {
+    function getKeyBadgeHtml(keyNum, modelName = null) {
       if (!keyNum) return '';
       const n = (ls.getItem(`jarvis_api_name_${keyNum}`) || ls.getItem(`huanmu_api_name_${keyNum}`) || '').trim();
       const label = n ? `Key #${keyNum} (${n})` : `Key #${keyNum}`;
-      return `<span class="key-indicator-badge" title="Tin nhắn này được phản hồi bằng Google ${escapeHtml(label)}" style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:rgba(59,130,246,0.12);color:#3b82f6;font-weight:600;margin-left:6px;border:1px solid rgba(59,130,246,0.3);display:inline-flex;align-items:center;gap:3px;vertical-align:middle;cursor:default;">🔑 ${escapeHtml(label)}</span>`;
+      const bucket = modelName ? getFlashModelBucket(modelName) : getSelectedFlashModelBucket();
+      const bucketTag = bucket ? ` · ${bucket}` : '';
+      return `<span class="key-indicator-badge" title="Tin nhắn này được phản hồi bằng Google ${escapeHtml(label)}${bucketTag}" style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:rgba(59,130,246,0.12);color:#3b82f6;font-weight:600;margin-left:6px;border:1px solid rgba(59,130,246,0.3);display:inline-flex;align-items:center;gap:3px;vertical-align:middle;cursor:default;">🔑 ${escapeHtml(label)}${bucketTag}</span>`;
     }
     window.getKeyBadgeHtml = getKeyBadgeHtml;
-
 
     function renderKeyQuotaPopoverList() {
       const listEl = $('key-quota-list');
       if (!listEl) return;
       const curSlot = getActiveKeySlot();
+      const curBucket = getSelectedFlashModelBucket(); // '3.8' | '3.6'
 
       let html = '';
       let hasAnyKey = false;
@@ -1620,17 +1664,18 @@ import { GoogleGenAI } from "@google/genai";
         if (!k) continue;
 
         hasAnyKey = true;
-        const u = getKeyUsageCount(i);
+        const u36 = getKeyUsageCount(i, '3.6');
+        const u38 = getKeyUsageCount(i, '3.8');
         const isCurrent = (i === curSlot);
 
-        let badgeBg = 'rgba(16,185,129,0.15)', badgeCol = '#10b981', badgeBorder = 'rgba(16,185,129,0.3)';
-        let statusText = `${u}/20`;
-        if (u >= 20) {
-          badgeBg = 'rgba(239,68,68,0.15)'; badgeCol = '#ef4444'; badgeBorder = 'rgba(239,68,68,0.4)';
-          statusText = `${u}/20 (Hết)`;
-        } else if (u >= 15) {
-          badgeBg = 'rgba(245,158,11,0.15)'; badgeCol = '#f59e0b'; badgeBorder = 'rgba(245,158,11,0.4)';
-        }
+        // Highlight badge của model đang chọn
+        const badge36Style = curBucket === '3.6' 
+          ? `background:${u36 >= 20 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)'};color:${u36 >= 20 ? '#ef4444' : '#10b981'};font-weight:800;border:1.5px solid ${u36 >= 20 ? '#ef4444' : '#10b981'}`
+          : `background:rgba(255,255,255,0.06);color:var(--text-muted);border:1px solid var(--border)`;
+
+        const badge38Style = curBucket === '3.8'
+          ? `background:${u38 >= 20 ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.2)'};color:${u38 >= 20 ? '#ef4444' : '#3b82f6'};font-weight:800;border:1.5px solid ${u38 >= 20 ? '#ef4444' : '#3b82f6'}`
+          : `background:rgba(255,255,255,0.06);color:var(--text-muted);border:1px solid var(--border)`;
 
         const activeBorder = isCurrent ? 'border:1.5px solid var(--primary);background:rgba(59,130,246,0.08);' : 'border:1px solid var(--border);background:var(--bg-card);';
 
@@ -1643,11 +1688,14 @@ import { GoogleGenAI } from "@google/genai";
                 <span style="font-size:0.7rem;color:var(--text-muted);margin-left:4px;">(${k.slice(0, 5)}...)</span>
               </div>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-              <span style="font-size:0.7rem;font-weight:700;padding:2px 6px;border-radius:var(--radius-full);background:${badgeBg};color:${badgeCol};border:1px solid ${badgeBorder};">
-                ${statusText}
+            <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+              <span title="Hạn ngạch 3.6 Flash (20 RPD)" style="font-size:0.68rem;padding:2px 5px;border-radius:4px;${badge36Style}">
+                3.6: ${u36}/20
               </span>
-              ${isCurrent ? '<span style="font-size:0.7rem;color:var(--primary);font-weight:700;">Đang dùng</span>' : `<button class="btn" onclick="window.selectKeySlotQuick(${i})" style="padding:2px 7px;font-size:0.7rem;">Chọn</button>`}
+              <span title="Hạn ngạch 3.8 Flash (20 RPD)" style="font-size:0.68rem;padding:2px 5px;border-radius:4px;${badge38Style}">
+                3.8: ${u38}/20
+              </span>
+              ${isCurrent ? '<span style="font-size:0.7rem;color:var(--primary);font-weight:700;margin-left:2px;">●</span>' : `<button class="btn" onclick="window.selectKeySlotQuick(${i})" style="padding:2px 6px;font-size:0.7rem;margin-left:2px;">Chọn</button>`}
             </div>
           </div>
         `;
@@ -1685,6 +1733,7 @@ import { GoogleGenAI } from "@google/genai";
     window.mergeRemoteKeyUsage = mergeRemoteKeyUsage;
     window.isLocalKeyUsageAhead = isLocalKeyUsageAhead;
     window.updateKeyQuotaUI = updateKeyQuotaUI;
+    window.getFlashModelBucket = getFlashModelBucket;
 
     const getSessionApiKey = (cs, forceRotate = false) => {
       const selEl = $('api-key-select');
@@ -1695,46 +1744,46 @@ import { GoogleGenAI } from "@google/genai";
         return manualKey;
       }
 
-      // Kiểm tra chế độ Tự động né key đã hết hạn ngạch (20/20) cho 3.6/3.8 Flash
+      // Kiểm tra model đang sử dụng có phải 20 RPD (3.6 hoặc 3.8 Flash) không:
       const activeModEl = $('model-select');
-      const activeMod = activeModEl ? activeModEl.value : 'gemini-3.6-flash';
-      const isFlash20Rpd = /3.[68]-flash/i.test(activeMod);
+      const activeMod = activeModEl ? activeModEl.value : 'gemini-3.8-flash';
+      const flashBucket = getFlashModelBucket(activeMod); // '3.8' | '3.6' | null
       const shouldAvoidExhausted = ls.getItem('jarvis_skip_exhausted_keys') !== 'false';
 
       // Nếu không forceRotate và phiên đã gán key (Interactions API cần giữ key cố định cho interactionId):
       if (!forceRotate && cs?.assignedApiKey && apiKeys.includes(cs.assignedApiKey)) {
-        if (!isFlash20Rpd || !shouldAvoidExhausted) {
+        if (!flashBucket || !shouldAvoidExhausted) {
           return cs.assignedApiKey;
         }
         const assignedSlot = findSlotIndexForKey(cs.assignedApiKey);
-        if (getKeyUsageCount(assignedSlot) < 20) {
+        if (getKeyUsageCount(assignedSlot, flashBucket) < 20) {
           return cs.assignedApiKey;
         }
       }
 
       if (apiKeys.length) {
-        // 1. Lọc danh sách các key hợp lệ (loại bỏ key đã chạm mốc 20/20 nếu bật chế độ né key)
+        // 1. Lọc danh sách các key hợp lệ cho riêng model này
         let candidates = [...apiKeys];
-        if (isFlash20Rpd && shouldAvoidExhausted) {
+        if (flashBucket && shouldAvoidExhausted) {
           const notExhausted = apiKeys.filter(k => {
             const slot = findSlotIndexForKey(k);
-            return getKeyUsageCount(slot) < 20;
+            return getKeyUsageCount(slot, flashBucket) < 20;
           });
           if (notExhausted.length > 0) {
             candidates = notExhausted;
           } else {
-            showToast("⚠️ Tất cả các Google Key đều đã đạt 20/20 RPD hôm nay! Đang dùng tạm key ít lượt nhất...", "warning");
+            showToast(`⚠️ Tất cả các Google Key đều đã đạt 20/20 RPD cho Gemini ${flashBucket} Flash hôm nay!`, "warning");
           }
         }
 
-        // 2. THUẬT TOÁN CÂN BẰNG TẢI TRẢI ĐỀU (LEAST-USED LOAD BALANCING)
-        // Tìm số lượt gọi hôm nay của từng key ứng viên
+        // 2. THUẬT TOÁN CÂN BẰNG TẢI TRẢI ĐỀU (LEAST-USED FIRST):
+        // Tìm số lượt gọi của model này trên từng key ứng viên
         const usageList = candidates.map(k => {
           const slot = findSlotIndexForKey(k);
-          return { key: k, slot, usage: getKeyUsageCount(slot) };
+          return { key: k, slot, usage: flashBucket ? getKeyUsageCount(slot, flashBucket) : 0 };
         });
 
-        // Tìm mức lượt dùng nhỏ nhất hiện tại
+        // Tìm mức lượt dùng nhỏ nhất hiện tại của model này
         const minUsage = Math.min(...usageList.map(u => u.usage));
 
         // Lọc ra tất cả các key đang có cùng số lượt dùng nhỏ nhất đó
@@ -2529,7 +2578,7 @@ import { GoogleGenAI } from "@google/genai";
       DOM.searchEngineBox.style.display = DOM.toggleSearch.checked ? 'block' : 'none';
     }
 
-    DOM.model.addEventListener('change', () => { updateThinkingVisibility(); updateConfig(); });
+    DOM.model.addEventListener('change', () => { updateThinkingVisibility(); updateConfig(); updateKeyQuotaUI(); });
     DOM.engineSel.addEventListener('change', updateConfig);
     [DOM.sysInst, DOM.apiKeySel, DOM.toggleGlob, DOM.toggleSearch, DOM.searchEngineSel, DOM.topK, DOM.thinking].forEach(el => el?.addEventListener('change', updateConfig));
 
@@ -2813,7 +2862,8 @@ import { GoogleGenAI } from "@google/genai";
 
       const ixId = chatHistory[i]?.interactionId;
       const kNum = chatHistory[i]?.keyIndex || chatHistory[i]?.pinnedKey;
-      const keyBadge = (sd !== 'user' && kNum) ? getKeyBadgeHtml(kNum) : '';
+      const msgModel = chatHistory[i]?.model;
+      const keyBadge = (sd !== 'user' && kNum) ? getKeyBadgeHtml(kNum, msgModel) : '';
       const ixBadge = ((sd !== 'user') && ixId) ? `<span class="interaction-id-badge" title="Interaction ID: ${ixId}">⚡ ID: ${ixId.slice(0, 8)}...</span>` : '';
       const pinnedBadge = isPinned ? `<span class="pinned-tag">📌 ĐÃ GHIM</span>` : '';
       const liveBadge = chatHistory[i]?.isLiveCall ? `<span style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:rgba(16,185,129,0.15);color:#10b981;font-weight:600;margin-left:4px;border:1px solid rgba(16,185,129,0.3);">📞 Thoại Live</span>` : '';
@@ -2988,7 +3038,7 @@ import { GoogleGenAI } from "@google/genai";
         if (!finalResp.trim()) return bD?.remove();
         chatHistory.push(
           { role: 'user', text: fP },
-          { role: 'model', text: finalResp, time: botTime, interactionId: recordedIxId, keyIndex: keyIndexNum, pinnedKey: keyIndexNum }
+          { role: 'model', text: finalResp, time: botTime, interactionId: recordedIxId, keyIndex: keyIndexNum, model: am, pinnedKey: keyIndexNum }
         );
 
         if (cs) {
@@ -3015,7 +3065,7 @@ import { GoogleGenAI } from "@google/genai";
             }))));
             ragBadge = `<span class="rag-status-badge" onclick="window.JarvisRAG.showRetrievedDetails('${payload}')" title="Trích xuất từ: ${escapeHtml(topTitle)} (${topPct}% khớp). Bấm để xem chi tiết!">🧠 Trí nhớ RAG (${ragMatches.length} mục · ${topPct}%)</span>`;
           }
-          const keyBadge = getKeyBadgeHtml(keyIndexNum);
+          const keyBadge = getKeyBadgeHtml(keyIndexNum, am);
           bD.querySelector('.message-header').innerHTML = `<span>✨ Jarvis AI</span><span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}</span>${keyBadge}${ixBadge}${ragBadge}`;
           const currentBotIdx = chatHistory.length - 1, aDiv = document.createElement('div');
           aDiv.className = 'msg-actions';
@@ -3073,7 +3123,7 @@ import { GoogleGenAI } from "@google/genai";
         DOM.clearFilesBtn.click();
 
         // TYPING INDICATOR BUBBLE
-        const currentKeyBadge = getKeyBadgeHtml(keyIndexNum);
+        const currentKeyBadge = getKeyBadgeHtml(keyIndexNum, am);
         bD = document.createElement('div');
         bD.className = 'message-container';
         bD.innerHTML = `
@@ -3546,7 +3596,7 @@ import { GoogleGenAI } from "@google/genai";
                   gKey = getSessionApiKey(cs, true);
                   keyIndexNum = findSlotIndexForKey(gKey);
                   recordKeyRequest(keyIndexNum, am);
-                  const updatedBadge = getKeyBadgeHtml(keyIndexNum);
+                  const updatedBadge = getKeyBadgeHtml(keyIndexNum, am);
                   const headerEl = bD?.querySelector('.message-header');
                   if (headerEl) {
                     const oldKeyBadge = headerEl.querySelector('.key-indicator-badge');
