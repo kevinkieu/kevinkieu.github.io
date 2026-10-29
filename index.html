@@ -429,6 +429,19 @@
           </div>
         </div>
 
+        <!-- LOCATION & PREFERENCES BAR -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--bg-main);border:1px solid var(--border);border-radius:var(--radius-md);font-size:0.78rem;gap:8px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span>📍</span>
+            <span style="color:var(--text-muted);">Vị trí dự báo:</span>
+            <strong id="briefing-location-label" style="color:var(--primary);">Đang xác định...</strong>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button type="button" id="btn-change-location" class="btn" style="padding:4px 9px;font-size:0.74rem;" title="Nhập thành phố của bạn">✏️ Đổi thành phố</button>
+            <button type="button" id="btn-gps-location" class="btn" style="padding:4px 9px;font-size:0.74rem;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);" title="Tự động lấy toạ độ GPS chính xác">🎯 Định vị GPS</button>
+          </div>
+        </div>
+
         <!-- BRIEFING LOADING STATE -->
         <div id="briefing-loading-state" style="text-align:center;padding:36px 16px;color:var(--text-muted);display:none;">
           <div class="pulse-dot" style="width:12px;height:12px;margin:0 auto 12px;background:#f59e0b;"></div>
@@ -1518,11 +1531,11 @@
   <button id="scroll-to-top" title="Cuộn lên đầu trang">▲</button>
 
   <!-- JAVASCRIPT APPLICATION MODULES -->
-  <script type="module" src="./js/app.js?v=61"></script>
-  <script type="module" src="./js/sync.js?v=61"></script>
-  <script type="module" src="./js/live.js?v=61"></script>
-  <script type="module" src="./js/tts.js?v=61"></script>
-  <script type="module" src="./js/translate.js?v=61"></script>
-  <script type="module" src="./js/rag.js?v=61"></script>
+  <script type="module" src="./js/app.js?v=62"></script>
+  <script type="module" src="./js/sync.js?v=62"></script>
+  <script type="module" src="./js/live.js?v=62"></script>
+  <script type="module" src="./js/tts.js?v=62"></script>
+  <script type="module" src="./js/translate.js?v=62"></script>
+  <script type="module" src="./js/rag.js?v=62"></script>
 </body>
 </html>

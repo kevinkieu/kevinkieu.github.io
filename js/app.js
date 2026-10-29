@@ -1277,6 +1277,151 @@ import { GoogleGenAI } from "@google/genai";
     // --- FEATURE 2: DAILY BRIEFING & MORNING ASSISTANT CONTROLLER ---
     let currentDailyBriefingMarkdown = '';
 
+    const VIETNAM_CITIES = [
+      'Hà Nội', 'TP. Hồ Chí Minh', 'TP.HCM', 'Hồ Chí Minh', 'Sài Gòn',
+      'Đà Nẵng', 'Hải Phòng', 'Cần Thơ', 'Nha Trang', 'Huế',
+      'Vũng Tàu', 'Đà Lạt', 'Biên Hòa', 'Bình Dương', 'Đồng Nai',
+      'Buôn Ma Thuột', 'Quy Nhơn', 'Long Xuyên', 'Thái Nguyên',
+      'Nam Định', 'Rạch Giá', 'Bắc Ninh', 'Bắc Giang', 'Quảng Ninh',
+      'Hạ Long', 'Vinh', 'Phan Thiết', 'Thanh Hóa', 'Bến Tre', 'Tiền Giang'
+    ];
+
+    async function detectUserCityFromSecondBrain() {
+      if (!window.JarvisRAG || typeof window.JarvisRAG.getAllKnowledge !== 'function') return null;
+      try {
+        const mems = await window.JarvisRAG.getAllKnowledge('memory');
+        if (!mems || !mems.length) return null;
+
+        for (const m of mems) {
+          const fullText = `${m.title || ''} ${m.text || ''}`.toLowerCase();
+          for (const city of VIETNAM_CITIES) {
+            if (fullText.includes(city.toLowerCase())) {
+              return (city === 'Sài Gòn' || city === 'TP.HCM') ? 'TP. Hồ Chí Minh' : city;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Lỗi đọc vị trí từ Second Brain:", e);
+      }
+      return null;
+    }
+
+    async function resolveUserLocation() {
+      // 1. Vị trí đã lưu trong cài đặt
+      const savedCity = ls.getItem('jarvis_user_city');
+      const savedLat = ls.getItem('jarvis_user_lat');
+      const savedLon = ls.getItem('jarvis_user_lon');
+      if (savedCity && savedCity.trim()) {
+        return { city: savedCity.trim(), lat: savedLat, lon: savedLon, source: 'saved' };
+      }
+
+      // 2. Tự động nhận diện từ Trí nhớ cá nhân (Second Brain)
+      const brainCity = await detectUserCityFromSecondBrain();
+      if (brainCity) {
+        ls.setItem('jarvis_user_city', brainCity);
+        return { city: brainCity, source: 'brain' };
+      }
+
+      // 3. Tự động nhận diện nhanh qua IP Geolocation
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 1800);
+        const ipRes = await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?localityLanguage=vi', { signal: controller.signal });
+        clearTimeout(timer);
+        if (ipRes.ok) {
+          const ipData = await ipRes.json();
+          const detected = ipData.city || ipData.principalSubdivision;
+          if (detected) {
+            const cleanCity = detected.replace(/Tỉnh |Thành phố /g, '').trim();
+            ls.setItem('jarvis_user_city', cleanCity);
+            if (ipData.latitude && ipData.longitude) {
+              ls.setItem('jarvis_user_lat', ipData.latitude);
+              ls.setItem('jarvis_user_lon', ipData.longitude);
+            }
+            return { city: cleanCity, lat: ipData.latitude, lon: ipData.longitude, source: 'ip' };
+          }
+        }
+      } catch (e) {
+        console.warn("IP Location fallback failed:", e);
+      }
+
+      // 4. Mặc định
+      return { city: 'Hà Nội', source: 'default' };
+    }
+
+    async function fetchWeatherForLocation(loc) {
+      let lat = loc.lat;
+      let lon = loc.lon;
+      let cityName = loc.city || 'Hà Nội';
+
+      if (!lat || !lon) {
+        try {
+          const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=vi&format=json`;
+          const geoRes = await fetch(geoUrl);
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            if (geoData.results && geoData.results[0]) {
+              lat = geoData.results[0].latitude;
+              lon = geoData.results[0].longitude;
+              cityName = geoData.results[0].name || cityName;
+            }
+          }
+        } catch (gErr) {
+          console.warn("Geocoding failed:", gErr);
+        }
+      }
+
+      if (!lat || !lon) {
+        lat = 21.0245;
+        lon = 105.8412;
+      }
+
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`;
+      const wRes = await fetch(weatherUrl);
+      if (!wRes.ok) throw new Error("Open-Meteo HTTP " + wRes.status);
+      const wData = await wRes.json();
+
+      const cur = wData.current || {};
+      const daily = wData.daily || {};
+
+      const weatherCodeMap = {
+        0: 'Trời quang đãng, nắng đẹp ☀️',
+        1: 'Quang đãng, ít mây 🌤️',
+        2: 'Mây rải rác ⛅',
+        3: 'Nhiều mây, âm u ☁️',
+        45: 'Có sương mù 🌫️',
+        48: 'Sương mù đọng sương 🌫️',
+        51: 'Mưa phùn nhẹ 🌦️',
+        53: 'Mưa phùn vừa 🌦️',
+        55: 'Mưa phùn dày hạt 🌧️',
+        61: 'Mưa nhỏ rải rác 🌧️',
+        63: 'Mưa vừa 🌧️',
+        65: 'Mưa to 🌧️',
+        71: 'Có tuyết rơi nhẹ 🌨️',
+        80: 'Mưa rào nhẹ 🌦️',
+        81: 'Mưa rào vừa 🌦️',
+        82: 'Mưa rào rất to ⛈️',
+        95: 'Dông sét rải rác ⛈️',
+        96: 'Dông sét kèm mưa đá ⛈️',
+        99: 'Dông bão mạnh ⛈️'
+      };
+
+      const condition = weatherCodeMap[cur.weather_code] || 'Trời nhiều mây, nắng ráo ⛅';
+      const temp = cur.temperature_2m !== undefined ? Math.round(cur.temperature_2m) : 29;
+      const feel = cur.apparent_temperature !== undefined ? Math.round(cur.apparent_temperature) : temp;
+      const humidity = cur.relative_humidity_2m !== undefined ? cur.relative_humidity_2m : 65;
+      const wind = cur.wind_speed_10m !== undefined ? Math.round(cur.wind_speed_10m) : 5;
+      const minTemp = daily.temperature_2m_min?.[0] !== undefined ? Math.round(daily.temperature_2m_min[0]) : temp - 4;
+      const maxTemp = daily.temperature_2m_max?.[0] !== undefined ? Math.round(daily.temperature_2m_max[0]) : temp + 4;
+
+      return {
+        cityName,
+        lat,
+        lon,
+        text: `Thời tiết tại ${cityName} hôm nay: ${condition}. Nhiệt độ hiện tại: ${temp}°C (cảm nhận như ${feel}°C). Biên độ nhiệt trong ngày: ${minTemp}°C - ${maxTemp}°C. Độ ẩm: ${humidity}%, sức gió: ${wind} km/h.`
+      };
+    }
+
     async function generateDailyBriefing(forceRefresh = false) {
       const loadingEl = $('briefing-loading-state');
       const contentEl = $('briefing-content-body');
@@ -1292,6 +1437,10 @@ import { GoogleGenAI } from "@google/genai";
 
       const dateLabel = $('briefing-date-label');
       if (dateLabel) dateLabel.innerText = `${dateStr} · Báo cáo tổng hợp tự động`;
+
+      const userCity = ls.getItem('jarvis_user_city');
+      const locationLabel = $('briefing-location-label');
+      if (locationLabel && userCity) locationLabel.innerText = userCity;
 
       // 1. Kiểm tra cache hôm nay nếu không yêu cầu làm mới
       if (!forceRefresh) {
@@ -1323,24 +1472,23 @@ import { GoogleGenAI } from "@google/genai";
           throw new Error("Cần có Google API Key để tổng hợp Bản tin Ngày mới!");
         }
 
-        // Bước A: Thu thập Thời tiết & Tin tức thời gian thực
-        if (statusEl) statusEl.innerText = "Đang kiểm tra thời tiết & điểm tin AI/Tech nổi bật hôm nay...";
-        
-        let weatherInfo = "Thời tiết hôm nay tại Việt Nam: Nắng ráo, nhiệt độ dao động 26°C - 33°C, thuận lợi cho các hoạt động công việc.";
+        // Bước A: Xác định vị trí thông minh & Lấy thời tiết chuẩn xác
+        if (statusEl) statusEl.innerText = "Đang xác định vị trí & tra cứu thời tiết chính xác...";
+        const loc = await resolveUserLocation();
+        if (locationLabel) locationLabel.innerText = loc.city;
+
+        let weatherInfo = `Thời tiết hôm nay tại ${loc.city}: Nắng ráo, nhiệt độ dao động 25°C - 32°C.`;
         try {
-          const wRes = await fetch("https://api.open-meteo.com/v1/forecast?latitude=10.8231&longitude=106.6297&current_weather=true");
-          if (wRes.ok) {
-            const wData = await wRes.json();
-            if (wData.current_weather) {
-              weatherInfo = `Nhiệt độ hiện tại khoảng ${wData.current_weather.temperature}°C, tốc độ gió ${wData.current_weather.windspeed} km/h.`;
-            }
-          }
+          const wRes = await fetchWeatherForLocation(loc);
+          weatherInfo = wRes.text;
+          if (locationLabel) locationLabel.innerText = wRes.cityName;
         } catch (wErr) {
-          console.warn("Không lấy được thời tiết Open-Meteo:", wErr);
+          console.warn("Lỗi tra cứu thời tiết chi tiết:", wErr);
         }
 
         let newsInfo = "";
         try {
+          if (statusEl) statusEl.innerText = "Đang quét tin tức AI & Công nghệ nổi bật hôm nay...";
           if (typeof fetchTavilySearch === 'function' && ls.getItem('tavily_api_key')) {
             newsInfo = await fetchTavilySearch("tin tức AI trí tuệ nhân tạo công nghệ mới nhất hôm nay");
           } else if (typeof fetchJinaSearch === 'function') {
@@ -1367,10 +1515,12 @@ import { GoogleGenAI } from "@google/genai";
         // Bước C: Biên soạn bản tin bằng mô hình Flash tối ưu tốc độ: gemini-3.6-flash (fallback gemini-3.5-flash-lite)
         if (statusEl) statusEl.innerText = "Jarvis (Gemini 3.6 Flash) đang biên soạn bản tin hoàn chỉnh...";
 
+        const currentCityName = locationLabel ? locationLabel.innerText : loc.city;
         const synthesisPrompt = `Bạn là Jarvis - Trợ lý AI cá nhân cao cấp.
 Hôm nay là: ${dateStr}.
+Vị trí của người dùng: ${currentCityName}.
 
-Thông tin thời tiết:
+Thông tin thời tiết thực tế tại ${currentCityName}:
 ${weatherInfo}
 
 Thông tin tin tức công nghệ / AI thời gian thực thu thập được:
@@ -1381,7 +1531,7 @@ ${memoryContext ? memoryContext : "Người dùng là một chuyên gia/kỹ sư
 
 Nhiệm vụ:
 Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền cảm hứng, ngắn gọn, súc tích, mang tính thực tế cao cho người dùng:
-1. ☀️ **Chào buổi sáng & Thời tiết:** Lời chào tràn đầy năng lượng, cập nhật ngắn gọn thời tiết và lưu ý trang phục/sức khỏe.
+1. ☀️ **Chào buổi sáng & Thời tiết tại ${currentCityName}:** Lời chào tràn đầy năng lượng, cập nhật ngắn gọn thời tiết và lưu ý trang phục/sức khỏe khi ra ngoài.
 2. 🚀 **Điểm tin Công nghệ & AI nóng:** Chọn lọc 2-3 điểm tin công nghệ/AI đáng chú ý nhất.
 3. 🎯 **Mục tiêu & Trọng tâm của bạn:** Dựa trên trí nhớ Second Brain, nhắc nhở và đề xuất 1-2 việc ưu tiên cần hoàn thành hôm nay.
 4. 💡 **Châm ngôn & Gợi ý hành động:** 1 câu danh ngôn đắt giá và 1 mẹo nhỏ tăng năng suất hôm nay.
@@ -1505,6 +1655,70 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         DOM.input.value = "Tôi vừa xem Bản Tin Ngày Mới. Hãy cùng tôi phân tích sâu hơn về các mục tiêu công việc hôm nay: ";
         DOM.input.dispatchEvent(new Event('input'));
         DOM.input.focus();
+      };
+    }
+
+    // Location configuration buttons
+    const btnChangeLocation = $('btn-change-location');
+    if (btnChangeLocation) {
+      btnChangeLocation.onclick = () => {
+        const currentCity = ls.getItem('jarvis_user_city') || 'Hà Nội';
+        const newCity = prompt("Nhập tên thành phố / tỉnh của bạn để nhận dự báo thời tiết chính xác:\n(Ví dụ: Hà Nội, TP. Hồ Chí Minh, Đà Nẵng, Cần Thơ, Hải Phòng, Nha Trang, Huế...)", currentCity);
+        if (newCity && newCity.trim() && newCity.trim() !== currentCity) {
+          ls.setItem('jarvis_user_city', newCity.trim());
+          ls.removeItem('jarvis_user_lat');
+          ls.removeItem('jarvis_user_lon');
+          const todayKey = new Date().toISOString().slice(0, 10);
+          ls.removeItem('jarvis_briefing_' + todayKey);
+          showToast(`📍 Đã đổi vị trí sang: ${newCity.trim()}`, "success");
+          generateDailyBriefing(true);
+        }
+      };
+    }
+
+    const btnGpsLocation = $('btn-gps-location');
+    if (btnGpsLocation) {
+      btnGpsLocation.onclick = () => {
+        if (!navigator.geolocation) {
+          return showToast("Trình duyệt không hỗ trợ Geolocation!", "warning");
+        }
+        btnGpsLocation.disabled = true;
+        btnGpsLocation.innerText = "⏳ Đang định vị...";
+        showToast("Đang xin quyền định vị GPS từ trình duyệt...", "info");
+
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            btnGpsLocation.disabled = false;
+            btnGpsLocation.innerText = "🎯 Định vị GPS";
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            ls.setItem('jarvis_user_lat', lat);
+            ls.setItem('jarvis_user_lon', lon);
+
+            let detectedCity = 'Vị trí hiện tại';
+            try {
+              const r = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=vi`);
+              if (r.ok) {
+                const d = await r.json();
+                detectedCity = d.city || d.principalSubdivision || d.locality || detectedCity;
+                detectedCity = detectedCity.replace(/Tỉnh |Thành phố /g, '').trim();
+              }
+            } catch (e) {}
+
+            ls.setItem('jarvis_user_city', detectedCity);
+            const todayKey = new Date().toISOString().slice(0, 10);
+            ls.removeItem('jarvis_briefing_' + todayKey);
+            showToast(`🎯 Định vị GPS thành công: ${detectedCity}!`, "success");
+            generateDailyBriefing(true);
+          },
+          (err) => {
+            btnGpsLocation.disabled = false;
+            btnGpsLocation.innerText = "🎯 Định vị GPS";
+            console.warn("GPS error:", err);
+            showToast("Không thể lấy toạ độ GPS: " + (err.message || "Bị từ chối quyền"), "warning");
+          },
+          { timeout: 10000, enableHighAccuracy: true }
+        );
       };
     }
 
