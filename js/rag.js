@@ -453,9 +453,9 @@
     return { docName, totalChunks: chunks.length };
   }
 
-  // --- SIMILARITY SEARCH ACROSS KNOWLEDGE BASE ---
+  // --- SIMILARITY SEARCH ACROSS KNOWLEDGE BASE (HYBRID VECTOR + LEXICAL BOOST) ---
   async function searchSimilarVectors(query, options = {}) {
-    const { topK = 4, threshold = 0.58, type = null, apiKey = null, taskType = 'RETRIEVAL_QUERY' } = options;
+    const { topK = 4, threshold = 0.40, type = null, apiKey = null, taskType = 'RETRIEVAL_QUERY' } = options;
     const cleanQuery = (query || '').trim();
     if (!cleanQuery) return [];
 
@@ -465,12 +465,46 @@
     const allItems = await getAllVectorItems(type);
     if (!allItems.length) return [];
 
+    const qLower = cleanQuery.toLowerCase();
+    // Danh sách stop words tiếng Việt và tiếng Anh phổ biến để lọc ra từ khóa thực chất
+    const stopWords = new Set(['và', 'là', 'của', 'có', 'cho', 'với', 'nhé', 'nha', 'ạ', 'ơi', 'hãy', 'các', 'những', 'được', 'trong', 'về', 'khi', 'nào', 'gì', 'sao', 'thế', 'thì', 'ở', 'tại', 'the', 'a', 'an', 'is', 'of', 'in', 'and', 'to', 'for', 'with', 'on', 'at']);
+    const qTokens = qLower.split(/[\s,.;:!?\-+()/\[\]{}'"]+/).filter(t => t.length >= 2 && !stopWords.has(t));
+
     const results = [];
     for (const item of allItems) {
       if (!item.vector || !Array.isArray(item.vector)) continue;
-      const sim = cosineSimilarity(queryVector, item.vector);
-      if (sim >= threshold) {
-        results.push({ item, similarity: sim });
+      const rawSim = cosineSimilarity(queryVector, item.vector);
+
+      // HYBRID SEARCH: Vector Semantic Similarity + Lexical / Keyword Overlap Boost
+      let boost = 0;
+      const titleLower = ((item.title || '') + ' ' + (item.docName || '')).toLowerCase();
+      const textLower = (item.text || '').toLowerCase();
+
+      // A. Khớp nguyên cụm từ tìm kiếm trong Tiêu đề hoặc Nội dung
+      if (titleLower.includes(qLower) || qLower.includes(titleLower.trim())) {
+        boost += 0.25;
+      } else if (textLower.includes(qLower)) {
+        boost += 0.15;
+      }
+
+      // B. Khớp từng token từ khóa quan trọng
+      if (qTokens.length > 0) {
+        let titleTokenMatches = 0;
+        let textTokenMatches = 0;
+        for (const t of qTokens) {
+          if (titleLower.includes(t)) titleTokenMatches++;
+          if (textLower.includes(t)) textTokenMatches++;
+        }
+        const titleOverlap = titleTokenMatches / qTokens.length;
+        const textOverlap = textTokenMatches / qTokens.length;
+
+        boost += (titleOverlap * 0.15) + (textOverlap * 0.08);
+      }
+
+      const finalSim = Math.min(1.0, rawSim + boost);
+
+      if (finalSim >= threshold) {
+        results.push({ item, similarity: finalSim, rawSimilarity: rawSim });
       }
     }
 
@@ -574,24 +608,27 @@
     }
 
     try {
-      // Chỉ tìm kiếm trong các tài liệu RAG đã tải lên (type: 'doc')
-      const allDocs = await getAllVectorItems('doc');
-      if (!allDocs || allDocs.length === 0) {
-        return { text: "", matches: [] }; // Không có tài liệu trong kho -> 0ms
+      // Tìm kiếm trong toàn bộ kho tri thức (Second Brain 'memory' lẫn Tài liệu RAG Studio 'doc')
+      const allKnowledge = await getAllVectorItems(null);
+      const eligibleItems = allKnowledge.filter(it => it && (it.type === 'memory' || it.type === 'doc' || !it.type));
+      if (!eligibleItems || eligibleItems.length === 0) {
+        return { text: "", matches: [] };
       }
 
-      // Tăng timeout lên 3500ms để cuộc gọi Gemini Embedding 2 hoàn tất an toàn
-      const retrievalPromise = searchSimilarVectors(cleanPrompt, { topK: 4, threshold: 0.48, type: 'doc', apiKey });
-      const matches = await Promise.race([retrievalPromise, new Promise(r => setTimeout(() => r([]), 3500))]);
-      if (!matches.length) return { text: "", matches: [] };
+      // Tăng timeout lên 4000ms để cuộc gọi Gemini Embedding 2 hoàn tất an toàn
+      const retrievalPromise = searchSimilarVectors(cleanPrompt, { topK: 4, threshold: 0.40, type: null, apiKey });
+      const matches = await Promise.race([retrievalPromise, new Promise(r => setTimeout(() => r([]), 4000))]);
+      if (!matches || !matches.length) return { text: "", matches: [] };
 
       const formattedSnippets = matches.map((m, idx) => {
         const item = m.item;
         const pct = Math.round(m.similarity * 100);
-        return '--- [Trích đoạn Tài liệu RAG #' + (idx + 1) + ': "' + (item.docName || item.title) + '" (Độ phù hợp: ' + pct + '%)]:\n' + item.text;
+        const sourceLabel = item.type === 'memory' ? 'Trí nhớ Second Brain / Kho tri thức' : 'Tài liệu RAG Studio';
+        const titleLabel = item.title || item.docName || 'Ghi nhớ tri thức';
+        return '--- [' + sourceLabel + ' #' + (idx + 1) + ': "' + titleLabel + '" (Độ phù hợp: ' + pct + '%)]:\n' + item.text;
       }).join('\n\n');
 
-      const text = '\n\n[DỮ LIỆU TÀI LIỆU TRÍCH XUẤT TỪ KHO RAG]:\n' + formattedSnippets + '\n\n[CHỈ THỊ RAG]: Hãy sử dụng dữ liệu trích xuất từ tài liệu ở trên khi trả lời người dùng một cách chính xác, đúng ngữ cảnh và tự nhiên nhất.';
+      const text = '\n\n[DỮ LIỆU TRI THỨC ĐƯỢC TRÍCH XUẤT TỪ KHO KIẾN THỨC / SECOND BRAIN CỦA BẠN]:\n' + formattedSnippets + '\n\n[CHỈ THỊ QUAN TRỌNG - BẮT BUỘC TUÂN THỦ]: Dữ liệu trên là thông tin CHÍNH XÁC NHẤT do người dùng cung cấp và lưu trong kho tri thức của mình. Bạn PHẢI TUYỆT ĐỐI ƯU TIÊN dữ liệu này để trả lời câu hỏi của người dùng, KHÔNG ĐƯỢC dùng kiến thức mặc định cũ để phản bác hay bỏ qua thông tin trên!';
       return { text, matches };
     } catch (e) {
       console.warn("[RAG Context Retrieval] Bỏ qua lỗi tìm kiếm vector:", e);

@@ -4058,6 +4058,21 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           }
         }
 
+        // BẮT BUỘC TIÊM TRÍ NHỚ RAG TRỰC TIẾP VÀO PROMPT ĐỂ ĐẢM BẢO MODEL LUÔN NHÌN THẤY VÀ ƯU TIÊN TUYỆT ĐỐI
+        if (ragSnippet) {
+          fnP = `${ragSnippet}\n\n[CÂU HỎI CỦA NGƯỜI DÙNG]:\n${fnP}`;
+          if (ragMatches && ragMatches.length > 0) {
+            const msgHdr = bD?.querySelector('.message-header');
+            if (msgHdr && !msgHdr.querySelector('.rag-live-badge')) {
+              const liveBadge = document.createElement('span');
+              liveBadge.className = 'rag-live-badge';
+              liveBadge.style.cssText = 'font-size:0.75rem;padding:2px 8px;border-radius:12px;background:rgba(139,92,246,0.15);color:#8b5cf6;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin-left:6px;';
+              liveBadge.innerHTML = `🧠 Đã nạp ${ragMatches.length} mục tri thức (${Math.round(ragMatches[0].similarity * 100)}%)`;
+              msgHdr.appendChild(liveBadge);
+            }
+          }
+        }
+
         const base64Files = [];
         for (const f of imgs) base64Files.push(await fileToBase64(f));
 
@@ -4082,7 +4097,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         if (currentEngine === 'interactions') {
           const interactionParams = {
             model: am,
-            input: imgs.length ? interactionInput : fnP,
+            input: imgs.length ? interactionInput : promptWithTime,
             stream: true
           };
 
