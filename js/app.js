@@ -2618,8 +2618,11 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       const hh = String(now.getHours()).padStart(2, '0'),
             mm = String(now.getMinutes()).padStart(2, '0'),
             ss = String(now.getSeconds()).padStart(2, '0');
-      const timeStr = `${hh}:${mm}:${ss}`,
-            dateStr = `${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+      const timeStr = `${hh}:${mm}:${ss}`;
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const day = now.getDate();
+      const dateStr = `${days[now.getDay()]}, ngày ${day}/${month}/${year}`;
       
       const memorySnippet = (cs?.summaryMemory && DOM.toggleAutoSummary?.checked !== false) 
         ? `\n\n[BỐI CẢNH DÀI HẠN ĐÃ TÓM TẮT TỪ CÁC TIN CŨ]:\n${cs.summaryMemory}\n` 
@@ -2633,7 +2636,14 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
       const ragBlock = ragSnippet ? `\n\n${ragSnippet}\n` : '';
 
-      return `[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}${ragBlock}\n\n[QUY TẮC ỨNG XỬ TẾ NHỊ]: Khi người dùng hỏi các câu hỏi kiến thức khoa học, nấu ăn, công nghệ, học tập hoặc câu hỏi phổ thông (như thịt gà, kỹ thuật, thời tiết...), TUYỆT ĐỐI KHÔNG tự tiện nhắc đến thông tin gia đình, đời tư, con cái (như bé Bắp, bé Tiền) nếu người dùng không chủ động hỏi hay yêu cầu.\n\n[MỐC THỜI GIAN THỰC TẾ]: Hiện tại chính xác là ${timeStr} (${dateStr}, Múi giờ Việt Nam GMT+7).\nQUY TẮC BẮT BUỘC: Khi người dùng hỏi bây giờ là mấy giờ, thời gian hiện tại hoặc ngày tháng, bạn PHẢI trả lời chính xác theo mốc giờ ${timeStr} và ngày ${dateStr} này.`;
+      const timeInstruction = `[MỐC THỜI GIAN THỰC TẾ & NGUYÊN TẮC SUY LUẬN THỜI GIAN BẮT BUỘC]:
+- Hôm nay là: ${dateStr}. Bây giờ là: ${timeStr} (Múi giờ Việt Nam GMT+7).
+- NĂM HIỆN TẠI BẮT BUỘC LÀ NĂM ${year}. TUYỆT ĐỐI KHÔNG coi năm nay là năm 2024 hay 2025 (đó chỉ là thời điểm dữ liệu huấn luyện cũ).
+- NGUYÊN TẮC SUY LUẬN THỜI GIAN & TÍNH TUỔI:
+  + Mọi phép tính toán số tuổi, thời gian đã trôi qua kể từ một mốc quá khứ (ví dụ: mốc sinh năm 2024, các sự kiện trong quá khứ) hay tính thời gian đến tương lai ĐỀU BẮT BUỘC PHẢI lấy mốc thời điểm HIỆN TẠI LÀ THÁNG ${month}/${year} (NĂM ${year}).
+  + Ví dụ: Một người hoặc đứa trẻ sinh vào tháng 01/2024, tính đến thời điểm hiện tại tháng ${month}/${year} đã là ${(year - 2024)} năm ${(month - 1)} tháng (khoảng ${((year - 2024) * 12 + month - 1)} tháng tuổi), TUYỆT ĐỐI KHÔNG được tính nhầm là 10 tháng tuổi!`;
+
+      return `${timeInstruction}\n\n[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}${ragBlock}\n\n[QUY TẮC ỨNG XỬ TẾ NHỊ]: Khi người dùng hỏi các câu hỏi kiến thức khoa học, nấu ăn, công nghệ, học tập hoặc câu hỏi phổ thông (như thịt gà, kỹ thuật, thời tiết...), TUYỆT ĐỐI KHÔNG tự tiện nhắc đến thông tin gia đình, đời tư, con cái (như bé Bắp, bé Tiền) nếu người dùng không chủ động hỏi hay yêu cầu.`;
     };
 
     window.exportCleanArticle = () => {
@@ -4051,13 +4061,17 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         const base64Files = [];
         for (const f of imgs) base64Files.push(await fileToBase64(f));
 
-        const currentParts = [{ text: fnP }];
+        const nowForTurn = new Date();
+        const curDateText = `${nowForTurn.getDate()}/${nowForTurn.getMonth() + 1}/${nowForTurn.getFullYear()}`;
+        const promptWithTime = `[Mốc thời gian gửi tin: ${curDateText} (Năm ${nowForTurn.getFullYear()})]\n${fnP}`;
+
+        const currentParts = [{ text: promptWithTime }];
         base64Files.forEach(({ mimeType, data }) => {
           currentParts.push({ inlineData: { mimeType, data } });
         });
 
         const interactionInput = [];
-        if (fnP) interactionInput.push({ type: 'text', text: fnP });
+        if (fnP) interactionInput.push({ type: 'text', text: promptWithTime });
         base64Files.forEach(({ mimeType, data }) => {
           interactionInput.push({ type: 'image', data, mime_type: mimeType });
         });
