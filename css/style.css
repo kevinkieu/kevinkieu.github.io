@@ -368,60 +368,7 @@
       gap: 10px;
     }
 
-    /* A/B MODEL COMPARE MODAL */
-    #ab-compare-modal {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 95%;
-      max-width: 960px;
-      height: 85vh;
-      background: var(--bg-card);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-lg);
-      border: 1px solid var(--border);
-      z-index: 2005;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .ab-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      flex: 1;
-      padding: 14px;
-      overflow-y: auto;
-    }
-    @media (max-width: 768px) {
-      .ab-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-    .ab-column {
-      display: flex;
-      flex-direction: column;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      background: var(--bg-main);
-      overflow: hidden;
-    }
-    .ab-col-header {
-      padding: 10px 14px;
-      background: var(--bg-card);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .ab-col-body {
-      flex: 1;
-      padding: 14px;
-      overflow-y: auto;
-      font-size: 0.9rem;
-      line-height: 1.6;
-    }
+    /* A/B Compare Removed */
 
 
     /* APP LAYOUT */
@@ -1123,3 +1070,127 @@
   color: #10b981 !important;
   box-shadow: 0 0 10px rgba(16, 185, 129, 0.4) !important;
 }
+
+    /* --- HANDS-FREE VOICE FLOW STYLING --- */
+    .hands-free-mic-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-full);
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+    .hands-free-mic-btn:hover {
+      background: rgba(59, 130, 246, 0.1);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .hands-free-mic-btn.active {
+      background: linear-gradient(135deg, #10b981, #059669) !important;
+      color: white !important;
+      border-color: #10b981 !important;
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.5) !important;
+      animation: pulseMic 1.5s infinite;
+    }
+    @keyframes pulseMic {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1.06); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .hands-free-banner {
+      width: 100%;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.08));
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: var(--radius-md);
+      padding: 7px 12px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      animation: fadeIn 0.2s ease;
+      box-sizing: border-box;
+    }
+    .hf-status-left {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #10b981;
+      white-space: nowrap;
+    }
+    .hf-pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      display: inline-block;
+      animation: pulseDot 1s infinite;
+    }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    .hf-status-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      flex: 1;
+      justify-content: flex-end;
+    }
+    .hf-transcript {
+      font-size: 0.78rem;
+      color: var(--text-main);
+      font-style: italic;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 280px;
+    }
+
+    /* --- DAILY BRIEFING STYLING --- */
+    .briefing-content h1, .briefing-content h2, .briefing-content h3 {
+      color: var(--primary);
+      margin-top: 14px;
+      margin-bottom: 6px;
+    }
+    .briefing-content hr {
+      border: none;
+      border-top: 1px dashed var(--border);
+      margin: 12px 0;
+    }
+
+    /* --- MEMORY DASHBOARD PILLS --- */
+    .memory-cat-pill {
+      font-size: 0.74rem;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 600;
+    }
+    .memory-cat-pill:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .memory-cat-pill.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white !important;
+    }
