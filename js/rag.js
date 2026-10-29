@@ -1061,7 +1061,7 @@ Nhiệm vụ:
     };
   }
 
-  // --- PERSONA SYNTHESIS ENGINE (GEMINI 3.8 FLASH / 3.6 FLASH) ---
+  // --- PERSONA SYNTHESIS ENGINE (GEMINI 3.6 FLASH / 3.5 FLASH-LITE) ---
   async function synthesizePersonaProfile() {
     const summaryBox = document.getElementById('persona-summary-box');
     const summaryText = document.getElementById('persona-summary-text');
@@ -1072,7 +1072,7 @@ Nhiệm vụ:
     summaryText.innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;padding:12px;color:var(--text-muted);">
         <span class="hf-pulse-dot" style="background:var(--primary);width:10px;height:10px;"></span>
-        <span>Jarvis đang dùng <strong>Gemini 3.8 Flash</strong> phân tích toàn bộ mẩu trí nhớ để phác họa chân dung cá nhân...</span>
+        <span>Jarvis đang dùng <strong>Gemini 3.6 Flash</strong> phân tích toàn bộ mẩu trí nhớ để phác họa chân dung cá nhân...</span>
       </div>
     `;
 
@@ -1108,8 +1108,8 @@ Dựa trên dữ liệu trên, hãy phác họa chân dung tổng thể về ng�
 Giọng văn ấm áp, thông minh, tôn trọng, đúng chuẩn Jarvis. Không bịa đặt thông tin chưa có trong trí nhớ.`;
 
       const ai = new window.GoogleGenAI({ apiKey: key });
-      // Sử dụng model Flash mới nhất hiện tại: gemini-3.8-flash, fallback gemini-3.6-flash
-      const candidateModels = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+      // Sử dụng model Flash tối ưu tốc độ: gemini-3.6-flash, fallback gemini-3.5-flash-lite
+      const candidateModels = ['gemini-3.6-flash', 'gemini-3.5-flash-lite'];
       let resultText = '';
       let lastErr = null;
 

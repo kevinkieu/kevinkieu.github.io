@@ -1364,8 +1364,8 @@ import { GoogleGenAI } from "@google/genai";
           }
         }
 
-        // Bước C: Biên soạn bản tin bằng mô hình Flash mới nhất: gemini-3.8-flash (fallback gemini-3.6-flash)
-        if (statusEl) statusEl.innerText = "Jarvis (Gemini 3.8 Flash) đang biên soạn bản tin hoàn chỉnh...";
+        // Bước C: Biên soạn bản tin bằng mô hình Flash tối ưu tốc độ: gemini-3.6-flash (fallback gemini-3.5-flash-lite)
+        if (statusEl) statusEl.innerText = "Jarvis (Gemini 3.6 Flash) đang biên soạn bản tin hoàn chỉnh...";
 
         const synthesisPrompt = `Bạn là Jarvis - Trợ lý AI cá nhân cao cấp.
 Hôm nay là: ${dateStr}.
@@ -1374,7 +1374,7 @@ Thông tin thời tiết:
 ${weatherInfo}
 
 Thông tin tin tức công nghệ / AI thời gian thực thu thập được:
-${newsInfo ? newsInfo.slice(0, 2000) : "Các diễn biến phát triển AI mới nhất: Gemini 3.8 Flash, các mô hình Agentic AI, tự động hóa quy trình làm việc và các công cụ phát triển phần mềm đang bùng nổ."}
+${newsInfo ? newsInfo.slice(0, 2000) : "Các diễn biến phát triển AI mới nhất: Gemini 3.6 Flash, các mô hình Agentic AI, tự động hóa quy trình làm việc và các công cụ phát triển phần mềm đang bùng nổ."}
 
 Dữ liệu trí nhớ Second Brain về người dùng (mục tiêu, sở thích, dự án):
 ${memoryContext ? memoryContext : "Người dùng là một chuyên gia/kỹ sư công nghệ đam mê AI, tập trung vào hiệu suất cao và ứng dụng AI vào cuộc sống thực tế."}
@@ -1389,7 +1389,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 Định dạng Markdown đẹp mắt, phân đoạn rõ ràng bằng tiêu đề và bullet points, icon sinh động. Giữ giọng văn tự tin, tinh tế, tận tụy chuẩn phong cách Jarvis.`;
 
         const ai = new GoogleGenAI({ apiKey: key });
-        const modelsToTry = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+        const modelsToTry = ['gemini-3.6-flash', 'gemini-3.5-flash-lite'];
         let generatedText = '';
         let lastError = null;
 
