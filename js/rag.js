@@ -874,16 +874,61 @@ Nhiệm vụ:
     });
   }
 
+    // --- MEMORY DASHBOARD STATE ---
+  let activeMemoryCategory = 'all';
+  let memorySearchKeyword = '';
+
   async function renderMemoryList() {
     const container = document.getElementById('memory-list-container');
     const countBadge = document.getElementById('memory-count-badge');
+    const pillsContainer = document.getElementById('memory-category-pills');
     if (!container) return;
 
     try {
-      const items = await getAllVectorItems('memory');
-      if (countBadge) countBadge.innerText = `${items.length} mục`;
+      const allItems = await getAllVectorItems('memory');
+      if (countBadge) countBadge.innerText = `${allItems.length} mục`;
 
-      if (!items.length) {
+      // 1. Render Category Filter Pills with counts
+      if (pillsContainer) {
+        const counts = { personal: 0, work: 0, project: 0, hobbies: 0, rules: 0 };
+        allItems.forEach(it => {
+          const cat = it.category || 'personal';
+          if (counts[cat] !== undefined) counts[cat]++;
+          else counts.personal++;
+        });
+
+        pillsContainer.innerHTML = `
+          <button type="button" class="memory-cat-pill ${activeMemoryCategory === 'all' ? 'active' : ''}" data-cat="all">🌟 Tất cả (${allItems.length})</button>
+          <button type="button" class="memory-cat-pill ${activeMemoryCategory === 'personal' ? 'active' : ''}" data-cat="personal">👤 Cá nhân (${counts.personal})</button>
+          <button type="button" class="memory-cat-pill ${activeMemoryCategory === 'work' ? 'active' : ''}" data-cat="work">💼 Công việc (${counts.work})</button>
+          <button type="button" class="memory-cat-pill ${activeMemoryCategory === 'project' ? 'active' : ''}" data-cat="project">🚀 Dự án (${counts.project})</button>
+          <button type="button" class="memory-cat-pill ${activeMemoryCategory === 'hobbies' ? 'active' : ''}" data-cat="hobbies">🎨 Sở thích (${counts.hobbies})</button>
+          <button type="button" class="memory-cat-pill ${activeMemoryCategory === 'rules' ? 'active' : ''}" data-cat="rules">⚖️ Quy tắc (${counts.rules})</button>
+        `;
+
+        pillsContainer.querySelectorAll('.memory-cat-pill').forEach(pill => {
+          pill.onclick = (e) => {
+            e.preventDefault();
+            activeMemoryCategory = pill.getAttribute('data-cat');
+            renderMemoryList();
+          };
+        });
+      }
+
+      // 2. Filter items by Category & Search Keyword
+      let filtered = allItems;
+      if (activeMemoryCategory !== 'all') {
+        filtered = filtered.filter(it => (it.category || 'personal') === activeMemoryCategory);
+      }
+      if (memorySearchKeyword) {
+        const kw = memorySearchKeyword.toLowerCase();
+        filtered = filtered.filter(it => 
+          (it.title && it.title.toLowerCase().includes(kw)) || 
+          (it.text && it.text.toLowerCase().includes(kw))
+        );
+      }
+
+      if (!allItems.length) {
         container.innerHTML = `
           <div style="text-align:center;padding:24px 12px;color:var(--text-muted);font-size:0.82rem;">
             Chưa có mẩu trí nhớ nào. Hãy thêm thông tin về bạn, sở thích hoặc quy tắc làm việc ở trên!
@@ -892,15 +937,25 @@ Nhiệm vụ:
         return;
       }
 
-      container.innerHTML = items.map(item => {
-        const dateStr = new Date(item.createdAt).toLocaleDateString('vi-VN');
-        const catMap = {
-          personal: 'Cá nhân',
-          work: 'Công việc',
-          hobbies: 'Sở thích',
-          project: 'Dự án',
-          rules: 'Quy tắc'
-        };
+      if (!filtered.length) {
+        container.innerHTML = `
+          <div style="text-align:center;padding:22px 12px;color:var(--text-muted);font-size:0.82rem;">
+            🔍 Không tìm thấy mẩu trí nhớ nào khớp với bộ lọc hiện tại.
+          </div>
+        `;
+        return;
+      }
+
+      const catMap = {
+        personal: 'Cá nhân',
+        work: 'Công việc',
+        hobbies: 'Sở thích',
+        project: 'Dự án',
+        rules: 'Quy tắc'
+      };
+
+      container.innerHTML = filtered.map(item => {
+        const dateStr = new Date(item.updatedAt || item.createdAt).toLocaleDateString('vi-VN');
         const catName = catMap[item.category] || item.category || 'Cá nhân';
         return `
           <div class="memory-card" id="card-${item.id}">
@@ -910,12 +965,15 @@ Nhiệm vụ:
               </span>
               <div style="display:flex;align-items:center;gap:6px;">
                 <span class="memory-tag ${item.category || 'personal'}">${catName}</span>
-                <button class="icon-btn" onclick="window.JarvisRAG.deleteMemory('${item.id}')" title="Xóa mẩu trí nhớ" style="width:24px;height:24px;color:var(--danger);">
+                <button class="icon-btn" onclick="window.JarvisRAG.editMemory('${item.id}')" title="Chỉnh sửa mẩu trí nhớ" style="width:24px;height:24px;font-size:0.82rem;">
+                  ✏️
+                </button>
+                <button class="icon-btn" onclick="window.JarvisRAG.deleteMemory('${item.id}')" title="Xóa mẩu trí nhớ" style="width:24px;height:24px;color:var(--danger);font-size:0.82rem;">
                   🗑️
                 </button>
               </div>
             </div>
-            <div class="memory-card-body">${escapeHtml(item.text)}</div>
+            <div class="memory-card-body" id="body-${item.id}">${escapeHtml(item.text)}</div>
             <div class="memory-card-footer">
               <span>Đã nhúng Vector (${PRIMARY_EMBEDDING_MODEL})</span>
               <span>${dateStr}</span>
@@ -925,6 +983,164 @@ Nhiệm vụ:
       }).join('');
     } catch (e) {
       console.error("renderMemoryList error:", e);
+    }
+  }
+
+  // --- IN-PLACE MEMORY EDITING ---
+  async function editMemory(id) {
+    const card = document.getElementById(`card-${id}`);
+    if (!card) return;
+
+    const items = await getAllVectorItems('memory');
+    const item = items.find(x => x.id === id);
+    if (!item) return;
+
+    card.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:8px;padding:4px 0;">
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="edit-title-${id}" class="modern-input" value="${escapeHtml(item.title)}" style="flex:2;font-size:0.82rem;font-weight:700;" placeholder="Tiêu đề...">
+          <select id="edit-cat-${id}" class="modern-select" style="flex:1;font-size:0.8rem;padding:4px 8px;">
+            <option value="personal" ${item.category === 'personal' ? 'selected' : ''}>Cá nhân</option>
+            <option value="work" ${item.category === 'work' ? 'selected' : ''}>Công việc</option>
+            <option value="project" ${item.category === 'project' ? 'selected' : ''}>Dự án</option>
+            <option value="hobbies" ${item.category === 'hobbies' ? 'selected' : ''}>Sở thích</option>
+            <option value="rules" ${item.category === 'rules' ? 'selected' : ''}>Quy tắc</option>
+          </select>
+        </div>
+        <textarea id="edit-text-${id}" class="modern-input" rows="3" style="width:100%;font-size:0.82rem;resize:vertical;" placeholder="Nội dung ghi nhớ...">${escapeHtml(item.text)}</textarea>
+        <div style="display:flex;justify-content:flex-end;gap:6px;">
+          <button type="button" class="btn" onclick="window.JarvisRAG.renderMemoryList()" style="font-size:0.75rem;padding:4px 10px;">Hủy</button>
+          <button type="button" id="btn-save-edit-${id}" class="btn primary" style="font-size:0.75rem;padding:4px 12px;">💾 Lưu cập nhật</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById(`btn-save-edit-${id}`).onclick = async () => {
+      const newTitle = (document.getElementById(`edit-title-${id}`)?.value || '').trim();
+      const newCat = document.getElementById(`edit-cat-${id}`)?.value || 'personal';
+      const newText = (document.getElementById(`edit-text-${id}`)?.value || '').trim();
+
+      if (!newText) {
+        if (typeof window.showToast === 'function') window.showToast("Nội dung không được để trống!", "warning");
+        return;
+      }
+
+      const saveBtn = document.getElementById(`btn-save-edit-${id}`);
+      saveBtn.disabled = true;
+      saveBtn.innerText = "Đang nhúng...";
+
+      try {
+        const key = getActiveApiKey();
+        const newEmbedding = await getEmbedding(newText, { taskType: 'RETRIEVAL_DOCUMENT', title: newTitle, apiKey: key });
+
+        const updatedItem = {
+          ...item,
+          title: newTitle || 'Ghi nhớ',
+          category: newCat,
+          text: newText,
+          embedding: newEmbedding,
+          updatedAt: Date.now()
+        };
+
+        const db = await initVectorDB();
+        await new Promise((res, rej) => {
+          const tx = db.transaction(VECTOR_STORE_NAME, "readwrite");
+          const store = tx.objectStore(VECTOR_STORE_NAME);
+          const req = store.put(updatedItem);
+          req.onsuccess = () => res();
+          req.onerror = (e) => rej(e.target.error);
+        });
+
+        if (typeof window.showToast === 'function') window.showToast("✓ Đã cập nhật trí nhớ & làm mới vector!", "success");
+        await renderMemoryList();
+      } catch (err) {
+        if (typeof window.showToast === 'function') window.showToast("Lỗi cập nhật: " + err.message, "danger");
+        saveBtn.disabled = false;
+        saveBtn.innerText = "💾 Lưu cập nhật";
+      }
+    };
+  }
+
+  // --- PERSONA SYNTHESIS ENGINE (GEMINI 3.8 FLASH / 3.6 FLASH) ---
+  async function synthesizePersonaProfile() {
+    const summaryBox = document.getElementById('persona-summary-box');
+    const summaryText = document.getElementById('persona-summary-text');
+    const btn = document.getElementById('btn-synthesize-persona');
+    if (!summaryBox || !summaryText) return;
+
+    summaryBox.style.display = 'block';
+    summaryText.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;padding:12px;color:var(--text-muted);">
+        <span class="hf-pulse-dot" style="background:var(--primary);width:10px;height:10px;"></span>
+        <span>Jarvis đang dùng <strong>Gemini 3.8 Flash</strong> phân tích toàn bộ mẩu trí nhớ để phác họa chân dung cá nhân...</span>
+      </div>
+    `;
+
+    try {
+      const allMemories = await getAllVectorItems('memory');
+      if (!allMemories.length) {
+        summaryText.innerHTML = `
+          <div style="color:var(--text-muted);font-style:italic;padding:8px 0;">
+            Chưa có mẩu trí nhớ nào trong Second Brain. Hãy thêm thông tin về bạn (sở thích, công việc, quy tắc) hoặc kích hoạt tính năng "Tự động học & ghi nhớ" khi trò chuyện để Jarvis hiểu bạn hơn nhé!
+          </div>
+        `;
+        return;
+      }
+
+      const key = getActiveApiKey();
+      if (!key) {
+        summaryText.innerHTML = `<span style="color:var(--danger)">Cần có Google API Key để tổng hợp chân dung!</span>`;
+        return;
+      }
+
+      const memorySummary = allMemories.map((m, idx) => `[Mục ${idx + 1}] (${m.category || 'personal'}): ${m.title} - ${m.text}`).join('\n');
+
+      const prompt = `Bạn là Jarvis - Siêu trí tuệ nhân tạo và trợ lý cá nhân tận tâm.
+Dưới đây là danh sách toàn bộ các mẩu dữ liệu trí nhớ (Second Brain) mà bạn đã ghi nhớ về người dùng của mình:
+${memorySummary}
+
+Dựa trên dữ liệu trên, hãy phác họa chân dung tổng thể về người dùng (Persona Profile) một cách ngắn gọn, sâu sắc, súc tích và có cấu trúc:
+1. 👤 **Tổng quan & Bản sắc:** Tên/cách xưng hô, nghề nghiệp, phong cách làm việc và giao tiếp.
+2. 🎯 **Mục tiêu & Dự án trọng tâm:** Những gì người dùng đang tập trung xây dựng hoặc phát triển.
+3. 🎨 **Sở thích & Phong cách sống:** Thói quen, sở thích cá nhân.
+4. ⚖️ **Quy tắc vàng:** Các nguyên tắc ứng xử, cách phản hồi mà Jarvis cần tuân thủ tuyệt đối khi phục vụ người dùng này.
+
+Giọng văn ấm áp, thông minh, tôn trọng, đúng chuẩn Jarvis. Không bịa đặt thông tin chưa có trong trí nhớ.`;
+
+      const ai = new window.GoogleGenAI({ apiKey: key });
+      // Sử dụng model Flash mới nhất hiện tại: gemini-3.8-flash, fallback gemini-3.6-flash
+      const candidateModels = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+      let resultText = '';
+      let lastErr = null;
+
+      for (const m of candidateModels) {
+        try {
+          const res = await ai.models.generateContent({
+            model: m,
+            contents: prompt,
+            config: {
+              temperature: 0.3
+            }
+          });
+          if (res.text) {
+            resultText = res.text;
+            break;
+          }
+        } catch (err) {
+          console.warn(`Persona synthesis failed with ${m}:`, err);
+          lastErr = err;
+        }
+      }
+
+      if (resultText) {
+        summaryText.innerHTML = (window.marked && typeof window.marked.parse === 'function') 
+          ? window.marked.parse(resultText) 
+          : `<pre style="white-space:pre-wrap;">${escapeHtml(resultText)}</pre>`;
+      } else {
+        throw lastErr || new Error("Không nhận được phản hồi từ mô hình.");
+      }
+    } catch (e) {
+      summaryText.innerHTML = `<span style="color:var(--danger)">Lỗi phác họa chân dung: ${escapeHtml(e.message)}</span>`;
     }
   }
 
@@ -1346,6 +1562,24 @@ Nhiệm vụ:
         }
       };
     }
+
+    // 6. Tìm kiếm trong trí nhớ và phác họa chân dung cá nhân
+    const searchInput = document.getElementById('memory-search-input');
+    if (searchInput) {
+      let searchDebounce = null;
+      searchInput.oninput = (e) => {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => {
+          memorySearchKeyword = e.target.value.trim();
+          renderMemoryList();
+        }, 120);
+      };
+    }
+
+    const btnPersona = document.getElementById('btn-synthesize-persona');
+    if (btnPersona) {
+      btnPersona.onclick = () => synthesizePersonaProfile();
+    }
   }
 
   // --- GLOBAL SEARCH MODAL CONTROLLER (KEYWORD + SEMANTIC) ---
@@ -1582,6 +1816,9 @@ Nhiệm vụ:
     init: initVectorDB,
     getEmbedding,
     cosineSimilarity,
+    renderMemoryList,
+    editMemory,
+    synthesizePersonaProfile,
     addMemory: addMemoryItem,
     deleteMemory: async (id) => {
       await deleteVectorItem(id);
