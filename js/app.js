@@ -1098,47 +1098,101 @@ import { GoogleGenAI } from "@google/genai";
       }
     }, { passive: true });
 
+    // --- LOCAL FALLBACK TITLE GENERATOR ---
+    function generateLocalFallbackTitle(text) {
+      if (!text) return '';
+      let clean = text.replace(/```[\s\S]*?```/g, '')
+                      .replace(/https?:\/\/\S+/g, '')
+                      .replace(/["'“”«»#*_\n\r\t]/g, ' ')
+                      .trim();
+      let prev;
+      do {
+        prev = clean;
+        clean = clean.replace(/^(hãy|bạn hãy|xin hãy|cho tôi hỏi|cho hỏi|nhờ bạn|giúp tôi|làm sao để|làm thế nào để|hướng dẫn|giải thích|tóm tắt|viết|tạo|cách|tìm|so sánh|vui lòng|please|how to|can you|explain|what is)\s+/i, '').trim();
+      } while (clean !== prev);
+
+      const words = clean.split(/\s+/).filter(Boolean);
+      if (!words.length) return '';
+      const title = words.slice(0, 5).join(' ');
+      return title.charAt(0).toUpperCase() + title.slice(1);
+    }
+    window.generateLocalFallbackTitle = generateLocalFallbackTitle;
+
     // --- AUTO-NAME SESSION ---
-    async function tryAutoNameSession(sessionObj, userText, botText) {
+    async function tryAutoNameSession(sessionObj, userText, botText, preferredKey = null) {
       if (!sessionObj) return;
       const normName = (sessionObj.name || '').normalize('NFC').trim();
       const isDefault = !normName || /^(hội thoại|phiên|cuộc trò chuyện|new session)/i.test(normName);
-      if (!isDefault || sessionObj.isCustomNamed) return;
+      if (!isDefault || sessionObj.isCustomNamed || sessionObj.isAutoNamed) return;
 
-      const k = getSessionApiKey(sessionObj) || (apiKeys.length ? apiKeys[0] : '');
+      const k = preferredKey || getSessionApiKey(sessionObj) || (apiKeys.length ? apiKeys[0] : '');
       if (!k) return;
-      try {
-        const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
-          model: FLASH_LITE_MODEL,
-          contents: `Hãy tóm tắt chủ đề chính của câu hỏi sau thành một tiêu đề ngắn gọn súc tích từ 3 đến 6 từ bằng tiếng Việt (không dùng dấu ngoặc kép, không thêm lời giải thích):\nNgười dùng: "${userText.slice(0, 160)}"\nAI: "${botText.slice(0, 160)}"`,
-          config: {
-            safetySettings: SAFETY,
-            maxOutputTokens: 60,
-            temperature: 0.5,
-            thinkingConfig: { thinkingLevel: 'minimal' }
+
+      const promptUserPart = (userText || '').slice(0, 180).trim();
+      const promptBotPart = (botText || '').slice(0, 180).trim();
+      const promptText = `Tóm tắt chủ đề chính của câu hỏi người dùng thành một tiêu đề ngắn gọn súc tích từ 3 đến 6 từ bằng tiếng Việt (chỉ trả về đúng tiêu đề, không dùng dấu ngoặc kép, không thêm lời giải thích hay tiền tố):\nNgười dùng: "${promptUserPart}"\nAI: "${promptBotPart}"`;
+
+      let title = '';
+
+      // Cố gắng gọi AI: Thử model siêu nhẹ FLASH_LITE_MODEL trước, nếu lỗi thì thử model chính của phiên
+      const candidateModels = [
+        FLASH_LITE_MODEL,
+        sessionObj.mod || 'gemini-3.6-flash',
+        'gemini-3.1-flash-lite'
+      ];
+
+      for (const mod of candidateModels) {
+        if (!mod) continue;
+        try {
+          const ai = new GoogleGenAI({ apiKey: k });
+          const res = await ai.models.generateContent({
+            model: mod,
+            contents: promptText,
+            config: {
+              safetySettings: SAFETY,
+              maxOutputTokens: 100,
+              temperature: 0.4
+              // KHÔNG dùng thinkingConfig ở đây để tránh lỗi 400 Bad Request trên Flash-Lite và tránh tràn token
+            }
+          });
+
+          let raw = '';
+          try { raw = res.text || ''; } catch (_) {}
+          if (!raw && res.candidates?.[0]?.content?.parts) {
+            raw = res.candidates[0].content.parts
+              .filter(p => !p.thought && typeof p.text === 'string')
+              .map(p => p.text)
+              .join(' ')
+              .trim();
           }
-        });
-        let title = '';
-        try { title = res.text || ''; } catch (_) {}
-        if (!title && res.candidates?.[0]?.content?.parts) {
-          title = res.candidates[0].content.parts
-            .filter(p => !p.thought && typeof p.text === 'string')
-            .map(p => p.text)
-            .join(' ')
-            .trim();
+
+          raw = raw.replace(/["“«»”*\n#:]/g, '')
+                   .replace(/^(tiêu đề|chủ đề|tóm tắt):\s*/i, '')
+                   .trim();
+
+          if (raw && raw.length >= 2) {
+            title = raw;
+            break;
+          }
+        } catch (mErr) {
+          console.warn(`[Auto-Name] Thử model ${mod} không thành công:`, mErr?.message || mErr);
         }
-        title = title.replace(/["“«»”*\n#:]/g, '').trim();
-        if (title.length > 40) title = title.slice(0, 40) + '...';
-        if (title && title.length >= 3) {
-          sessionObj.name = title;
-          sessionObj.isAutoNamed = true;
-          await saveToDB(sessionObj);
-          renderSel();
-          renderTabs();
-          showToast(`🏷️ Đã tự động đặt tên: "${title}"`, 'info');
-        }
-      } catch (err) {
-        console.warn("Auto-name không thành công:", err);
+      }
+
+      // Nếu tất cả AI models đều không trả về được, dùng Local Fallback từ câu hỏi đầu tiên
+      if (!title || title.length < 2) {
+        title = generateLocalFallbackTitle(userText);
+      }
+
+      if (title.length > 35) title = title.slice(0, 35).trim() + '...';
+
+      if (title && title.length >= 2) {
+        sessionObj.name = title;
+        sessionObj.isAutoNamed = true;
+        await saveToDB(sessionObj);
+        renderSel();
+        renderTabs();
+        showToast(`🏷️ Đã tự động đặt tên: "${title}"`, 'info');
       }
     }
 
@@ -3171,7 +3225,7 @@ import { GoogleGenAI } from "@google/genai";
           const normName = (cs.name || '').normalize('NFC').trim();
           const isDefaultSessName = !normName || /^(hội thoại|phiên|cuộc trò chuyện|new session)/i.test(normName);
           if (isDefaultSessName && !cs.isCustomNamed) {
-            setTimeout(() => tryAutoNameSession(cs, fP, finalResp), 200);
+            setTimeout(() => tryAutoNameSession(cs, fP, finalResp, gKey), 200);
           }
         }
 
