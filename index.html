@@ -117,10 +117,7 @@
             <div id="search-engine-box" style="margin-left:22px;display:none;">
               <select id="search-engine-select" class="modern-select" style="font-size:0.75rem;padding:4px 8px;">
                 <option value="tavily" selected>⚡ Tavily AI Search (Tối ưu nhất)</option>
-                <option value="auto">🔄 Tự động (Smart Auto-Search)</option>
-                <option value="jina">🦎 Jina AI Search</option>
                 <option value="serper">🔎 Serper.dev Google</option>
-                <option value="brave">🦁 Brave Search</option>
               </select>
             </div>
             <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:var(--success);display:flex;align-items:center;gap:8px;">
@@ -305,20 +302,17 @@
         </span>
       </div>
 
-      <!-- QUICK SNIPPETS CONTAINER (DYNAMICALLY LOADED FROM PROMPT LIBRARY) -->
-      <div id="snippets-container"></div>
-
       <!-- BOTTOM INPUT PANEL -->
       <div class="bottom-input-panel">
         <div class="input-tools-scroll">
           <!-- SMART PRESETS (1-CLICK WORKSPACE SWITCHER) -->
           <div class="preset-pills-group" style="display:inline-flex;align-items:center;gap:3px;background:var(--bg-main);padding:2px 5px;border-radius:var(--radius-full);border:1px solid var(--border);margin-right:6px;flex-shrink:0;">
-            <span style="font-size:0.7rem;font-weight:700;color:var(--text-muted);padding-left:3px;padding-right:2px;">Preset:</span>
-            <button id="preset-daily-quick" class="tool-chip preset-chip" style="margin:0;padding:2px 8px;font-size:0.73rem;border:none;background:transparent;color:var(--text-main);font-weight:600;display:inline-flex;align-items:center;gap:3px;" title="⚡ Daily Quick: Gemini 3.6 Flash · Think Min · Tắt Deep Research (Siêu tốc ~0.5s)">
+            <span style="font-size:0.7rem;font-weight:700;color:var(--text-muted);padding-left:3px;padding-right:2px;">Mode:</span>
+            <button id="preset-daily-quick" class="tool-chip preset-chip" style="margin:0;padding:2px 8px;font-size:0.73rem;border:none;background:transparent;color:var(--text-main);font-weight:600;display:inline-flex;align-items:center;gap:3px;" title="⚡ Daily Quick: Gemini 3.6 Flash · Think Min · Tắt Web Search (Siêu tốc ~0.5s)">
               ⚡ Quick
             </button>
-            <button id="preset-deep-study" class="tool-chip preset-chip" style="margin:0;padding:2px 8px;font-size:0.73rem;border:none;background:transparent;color:var(--text-main);font-weight:600;display:inline-flex;align-items:center;gap:3px;" title="🔬 Deep Study: Gemini 3.8 Flash · Think High · Bật RAG & Deep Research">
-              🔬 Deep
+            <button id="preset-deep-study" class="tool-chip preset-chip" style="margin:0;padding:2px 8px;font-size:0.73rem;border:none;background:transparent;color:var(--text-main);font-weight:600;display:inline-flex;align-items:center;gap:3px;" title="🧠 Deep Think: Gemini 3.8 Flash · Think High · Bật RAG & Tìm kiếm Web">
+              🧠 Deep
             </button>
             <button id="preset-hands-free" class="tool-chip preset-chip" style="margin:0;padding:2px 8px;font-size:0.73rem;border:none;background:transparent;color:var(--text-main);font-weight:600;display:inline-flex;align-items:center;gap:3px;" title="🎙️ Hands-Free: Đàm thoại rảnh tay 2 chiều liên tục">
               🎙️ Voice
@@ -329,55 +323,22 @@
             <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
             Đính kèm (<span id="file-count">0</span>)
           </label>
-          <input type="file" id="camera-file-input" accept="image/*" capture="environment" style="display:none;">
           <input type="file" id="file-upload" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;">
-          <button id="btn-open-tts-studio" class="tool-chip" onclick="openTTSStudioModal()" style="border-color:#8b5cf6;color:#8b5cf6;font-weight:600;" title="Mở Gemini TTS Studio Pro (Chuyển văn bản thành giọng nói, xuất MP3)">
-            🎙️ Studio TTS
-          </button>
 
-                    <button id="btn-toggle-deep-research" class="tool-chip" title="Bật/Tắt chế độ Nghiên cứu Sâu đa tầng (Deep Research)">
-            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            🔬 Deep Research: <strong id="dr-chip-state" style="color:var(--text-muted);">TẮT</strong>
-          </button>
           <button id="btn-toggle-session-memory" class="tool-chip" title="Bật/Tắt Bộ nhớ ngữ cảnh (lịch sử trò chuyện của phiên này)" style="border-color:#3b82f6;color:#3b82f6;font-weight:600;">
             💬 Ngữ cảnh: <strong id="session-memory-state" style="color:var(--success);">BẬT</strong>
           </button>
+
           <button id="btn-toggle-rag-memory" class="tool-chip" title="Bật/Tắt Trí nhớ vĩnh cửu & RAG (Gemini Embedding 2) cho phiên này" style="border-color:#10b981;color:#10b981;font-weight:600;">
             🧠 Trí nhớ RAG: <strong id="rag-memory-state" style="color:var(--success);">BẬT</strong>
           </button>
+
           <button id="btn-open-knowledge-chip" class="tool-chip" onclick="openKnowledgeModal()" title="Mở Kho Tri Thức Cá Nhân & RAG Studio">
             📚 Kho Tri Thức
           </button>
-          <button id="btn-enhance-prompt" class="tool-chip magic" title="Tối ưu câu lệnh Prompt bằng AI">
-            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            Enhance
-          </button>
-          <button id="btn-camera-snap" class="tool-chip" title="Chụp ảnh trực tiếp">
-            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            Chụp
-          </button>
-          <button id="btn-toggle-hands-free-chip" class="tool-chip" style="color:var(--primary);font-weight:700;" title="Trò chuyện 2 chiều rảnh tay liên tục">
-            🎙️ Rảnh tay
-          </button>
-          <button id="btn-manage-prompts" class="tool-chip" title="Mở Kho Prompt mẫu cá nhân">
-            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-            Kho Prompt
-          </button>
-          <button id="btn-toggle-snippets" class="tool-chip" title="Bật/Tắt thanh gợi ý lệnh">
-            <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            Gợi ý nhanh
-          </button>
-          <button id="btn-file-library" class="tool-chip" title="Thư viện tệp đã lưu">
-            <svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-            Thư viện
-          </button>
-          <button id="btn-add-url" class="tool-chip" title="Bóc tách nội dung website hoặc video YouTube">
-            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-            Đọc Link/YT
-          </button>
-          <button id="btn-paste-clipboard" class="tool-chip" title="Dán ảnh hoặc chữ từ bộ nhớ tạm">
-            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
-            Dán
+
+          <button id="btn-open-tts-studio" class="tool-chip" onclick="openTTSStudioModal()" style="border-color:#8b5cf6;color:#8b5cf6;font-weight:600;" title="Mở Gemini TTS Studio Pro (Chuyển văn bản thành giọng nói, xuất MP3)">
+            🎙️ Studio TTS
           </button>
         </div>
 
@@ -723,24 +684,6 @@
           </div>
         </fieldset>
 
-        <!-- GEMINI PARAMETERS -->
-        <fieldset class="settings-group">
-          <legend>🚀 Tham số Google Gemini</legend>
-          <div class="slider-row">
-            <label>Temperature (<strong id="temp-val">0.5</strong>):</label>
-            <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.5">
-          </div>
-          <div class="slider-row" style="margin-top:8px;">
-            <label>TopP (<strong id="topp-val">0.9</strong>):</label>
-            <input type="range" id="top-p" min="0" max="1" step="0.1" value="0.9">
-          </div>
-          <div style="margin-top:8px;">
-            <label style="font-size:.8rem;font-weight:600;">TopK: 
-              <input type="number" id="top-k" min="1" max="100" value="40" class="modern-input" style="width:75px;display:inline-block;margin-left:6px;">
-            </label>
-          </div>
-        </fieldset>
-
         <!-- EXTERNAL SEARCH ENGINES -->
         <fieldset class="settings-group">
           <legend>🌐 Công cụ Tìm kiếm & Đọc Link Web</legend>
@@ -748,39 +691,17 @@
             <div>
               <label class="field-label">Công cụ mặc định cho Tự Động (Auto-Search):</label>
               <select id="auto-search-engine-input" class="modern-select">
-                <option value="tavily" selected>⚡ Tavily AI Search (Khuyên dùng cho Live)</option>
-                <option value="jina">🦎 Jina AI Search (Miễn phí)</option>
-                <option value="serper">🔎 Serper.dev Google (2.500 lượt free)</option>
-                <option value="brave">🦁 Brave Search (2.000 lượt free)</option>
+                <option value="tavily" selected>⚡ Tavily AI Search (Tối ưu cho LLM)</option>
+                <option value="serper">🔎 Serper.dev Google (Chuẩn Google)</option>
               </select>
             </div>
             <div>
-              <label class="field-label">📖 Công cụ Bóc tách Link Website:</label>
-              <select id="web-extract-engine-input" class="modern-select">
-                <option value="auto" selected>🔄 Tự động (Jina ➔ Tavily nếu dính Cloudflare)</option>
-                <option value="tavily">⚡ Tavily Extract</option>
-                <option value="jina">🦎 Jina Reader</option>
-              </select>
-            </div>
-            <div>
-              <label class="field-label">Tavily API Key (Dùng cho Live Search & Trích xuất):</label>
+              <label class="field-label">Tavily API Key (Dùng cho Web Search & Trích xuất):</label>
               <input type="password" id="tavily-key-input" placeholder="tvly-..." class="modern-input">
             </div>
             <div>
-              <label class="field-label">Jina API Key:</label>
-              <input type="password" id="jina-key-input" placeholder="jina_..." class="modern-input">
-            </div>
-            <div>
-              <label class="field-label">Serper API Key:</label>
-              <input type="password" id="serper-key-input" class="modern-input">
-            </div>
-            <div>
-              <label class="field-label">Brave Search API Key:</label>
-              <input type="password" id="brave-key-input" class="modern-input">
-            </div>
-            <div>
-              <label class="field-label">Brave Worker Proxy URL:</label>
-              <input type="text" id="brave-worker-url-input" class="modern-input">
+              <label class="field-label">Serper API Key (Dùng cho Google Search):</label>
+              <input type="password" id="serper-key-input" placeholder="Nhập Serper key..." class="modern-input">
             </div>
           </div>
         </fieldset>
@@ -1546,11 +1467,11 @@
   <button id="scroll-to-top" title="Cuộn lên đầu trang">▲</button>
 
   <!-- JAVASCRIPT APPLICATION MODULES -->
-  <script type="module" src="./js/app.js?v=65"></script>
-  <script type="module" src="./js/sync.js?v=65"></script>
-  <script type="module" src="./js/live.js?v=65"></script>
-  <script type="module" src="./js/tts.js?v=65"></script>
-  <script type="module" src="./js/translate.js?v=65"></script>
-  <script type="module" src="./js/rag.js?v=65"></script>
+  <script type="module" src="./js/app.js?v=66"></script>
+  <script type="module" src="./js/sync.js?v=66"></script>
+  <script type="module" src="./js/live.js?v=66"></script>
+  <script type="module" src="./js/tts.js?v=66"></script>
+  <script type="module" src="./js/translate.js?v=66"></script>
+  <script type="module" src="./js/rag.js?v=66"></script>
 </body>
 </html>
