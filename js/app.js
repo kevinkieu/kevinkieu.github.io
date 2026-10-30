@@ -1512,8 +1512,8 @@ import { GoogleGenAI } from "@google/genai";
           }
         }
 
-        // Bước C: Biên soạn bản tin bằng mô hình Flash tối ưu tốc độ: gemini-3.6-flash (fallback gemini-3.5-flash-lite)
-        if (statusEl) statusEl.innerText = "Jarvis (Gemini 3.6 Flash) đang biên soạn bản tin hoàn chỉnh...";
+        // Bước C: Biên soạn bản tin bằng mô hình siêu tốc: gemini-3.5-flash-lite (fallback gemini-3.6-flash)
+        if (statusEl) statusEl.innerText = "Jarvis (Gemini 3.5 Flash-Lite) đang biên soạn bản tin siêu tốc...";
 
         const currentCityName = locationLabel ? locationLabel.innerText : loc.city;
         const synthesisPrompt = `Bạn là Jarvis - Trợ lý AI cá nhân cao cấp.
@@ -1539,7 +1539,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 Định dạng Markdown đẹp mắt, phân đoạn rõ ràng bằng tiêu đề và bullet points, icon sinh động. Giữ giọng văn tự tin, tinh tế, tận tụy chuẩn phong cách Jarvis.`;
 
         const ai = new GoogleGenAI({ apiKey: key });
-        const modelsToTry = ['gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+        const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-3.6-flash'];
         let generatedText = '';
         let lastError = null;
 
@@ -3415,7 +3415,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
     function stopCurrentSpeaking() {
       if (currentSpeakingAudio) {
-        currentSpeakingAudio.pause();
+        try { currentSpeakingAudio.pause(); } catch {}
+        currentSpeakingAudio.src = "";
         currentSpeakingAudio = null;
       }
       if (window.speechSynthesis && window.speechSynthesis.speaking) {
@@ -3453,28 +3454,39 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       const isVietnamese = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(clean);
       const activeKeys = getGoogleKeysList().filter(Boolean);
 
-      // 1. Thử đọc bằng Gemini TTS chất lượng cao (gemini-3.8-flash-lite-tts)
+      // 1. Thử đọc bằng Gemini TTS chất lượng cao (ưu tiên phát thanh viên tiếng Việt bản xứ)
       if (activeKeys.length > 0) {
         try {
-          const speechChunk = clean.length > 950 ? clean.slice(0, 950) + '...' : clean;
+          const speechChunk = clean.length > 1200 ? clean.slice(0, 1200) + '...' : clean;
+          const dialect = ls.getItem('tts_dialect_pref') || 'Nam chuẩn Sài Gòn';
+          const voicePref = $('tts-voice-select')?.value || ls.getItem('jarvis_tts_voice') || 'Aoede';
+          const ttsModel = $('tts-model-select')?.value || 'gemini-3.8-flash-lite-tts';
+
+          const styleInstruction = isVietnamese 
+            ? `[Style: Bạn là phát thanh viên Việt Nam bản xứ. Bắt buộc đọc hoàn toàn bằng tiếng Việt với ngữ điệu tự nhiên, truyền cảm, ấm áp, giọng ${dialect}, phát âm chuẩn 100% tiếng Việt, tuyệt đối không dùng giọng lơ lớ người nước ngoài.]\n`
+            : '';
+
           const payload = {
             contents: [{
               role: "user",
-              parts: [{ text: speechChunk }]
+              parts: [{ text: `${styleInstruction}${speechChunk}` }]
             }],
             generationConfig: {
               responseModalities: ["AUDIO"],
               speechConfig: {
                 voiceConfig: {
                   prebuiltVoiceConfig: {
-                    voiceName: 'Aoede'
+                    voiceName: voicePref
                   }
                 }
               }
             }
           };
 
-          const res = await requestGeminiAudioWithFailover(payload, 'gemini-3.8-flash-lite-tts', activeKeys, 0);
+          const reqFn = window.requestGeminiAudioWithFailover || (typeof requestGeminiAudioWithFailover === 'function' ? requestGeminiAudioWithFailover : null);
+          if (!reqFn) throw new Error("Thư viện Gemini TTS chưa sẵn sàng");
+
+          const res = await reqFn(payload, ttsModel, activeKeys, 0);
           let base64Audio = null;
           const parts = res.data?.candidates?.[0]?.content?.parts || [];
           for (let p of parts) {
@@ -3504,8 +3516,10 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
                 btn.classList.remove('speaking-active');
                 currentSpeakingBtn = null;
               }
-              currentSpeakingAudio = null;
-              URL.revokeObjectURL(audioUrl);
+              if (currentSpeakingAudio === audio) {
+                currentSpeakingAudio = null;
+              }
+              try { URL.revokeObjectURL(audioUrl); } catch {}
               if (onEnd) onEnd();
             };
 
@@ -3538,11 +3552,22 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       const voices = window.speechSynthesis.getVoices();
       if (isVietnamese) {
         utter.lang = 'vi-VN';
-        const viVoice = voices.find(v => v.lang.includes('vi') || v.name.toLowerCase().includes('vietnam') || v.name.toLowerCase().includes('vietnamese'));
-        if (viVoice) utter.voice = viVoice;
+        const viVoice = voices.find(v => (v.lang && (v.lang.startsWith('vi') || v.lang.includes('vi'))) || (v.name && (v.name.toLowerCase().includes('vietnam') || v.name.toLowerCase().includes('vietnamese') || v.name.toLowerCase().includes('tiếng việt') || v.name.toLowerCase().includes('an') || v.name.toLowerCase().includes('linh') || v.name.toLowerCase().includes('mai'))));
+        if (viVoice) {
+          utter.voice = viVoice;
+        } else {
+          // BẢO VỆ TUYỆT ĐỐI: KHÔNG BAO GIỜ DÙNG GIỌNG MỸ ĐỂ ĐỌC TIẾNG VIỆT
+          if (btn) {
+            btn.innerHTML = btn.getAttribute('data-original-html') || "🔊 Nghe";
+            btn.classList.remove('speaking-active');
+            currentSpeakingBtn = null;
+          }
+          if (onError) onError(new Error("Không có giọng đọc tiếng Việt"));
+          return showToast("⚠️ Trình duyệt chưa có sẵn giọng đọc tiếng Việt và Gemini TTS chưa phản hồi. Vui lòng kiểm tra kết nối API Key!", "warning");
+        }
       } else {
         utter.lang = 'en-US';
-        const enVoice = voices.find(v => v.lang.startsWith('en'));
+        const enVoice = voices.find(v => v.lang && v.lang.startsWith('en'));
         if (enVoice) utter.voice = enVoice;
       }
       utter.rate = 1.05;
@@ -4835,6 +4860,89 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       showToast(isDeepResearch ? "Đã bật Chế độ Nghiên cứu Sâu (Deep Research)!" : "Đã tắt Nghiên cứu Sâu.");
     };
     updateDrBtnUI();
+
+    // --- SMART PRESETS (1-CLICK WORKSPACE SWITCHER) ---
+    const btnPresetQuick = $('preset-daily-quick');
+    const btnPresetDeep = $('preset-deep-study');
+    const btnPresetVoice = $('preset-hands-free');
+
+    function highlightActivePreset(presetName) {
+      [btnPresetQuick, btnPresetDeep, btnPresetVoice].forEach(b => {
+        if (b) b.classList.remove('active');
+      });
+      if (presetName === 'quick' && btnPresetQuick) btnPresetQuick.classList.add('active');
+      if (presetName === 'deep' && btnPresetDeep) btnPresetDeep.classList.add('active');
+      if (presetName === 'voice' && btnPresetVoice) btnPresetVoice.classList.add('active');
+    }
+
+    if (btnPresetQuick) {
+      btnPresetQuick.onclick = () => {
+        // 1. Chuyển Model về 3.6 Flash
+        if (DOM.model) DOM.model.value = 'gemini-3.6-flash';
+        // 2. Chuyển Think Depth về minimal
+        if (DOM.thinking) DOM.thinking.value = 'minimal';
+        // 3. Tắt Deep Research nếu đang bật
+        if (isDeepResearch) {
+          isDeepResearch = false;
+          ls.setItem('jarvis_deep_research', '0');
+          updateDrBtnUI();
+        }
+        // 4. Tắt Web Search nếu đang bật
+        if (DOM.toggleSearch && DOM.toggleSearch.checked) {
+          DOM.toggleSearch.checked = false;
+          if (DOM.searchEngineBox) DOM.searchEngineBox.style.display = 'none';
+        }
+        highlightActivePreset('quick');
+        ls.setItem('jarvis_active_preset', 'quick');
+        showToast("⚡ Đã bật Chế độ Quick: Gemini 3.6 Flash · Think Min · Phản hồi siêu tốc ~0.5s!", "success");
+      };
+    }
+
+    if (btnPresetDeep) {
+      btnPresetDeep.onclick = () => {
+        // 1. Chuyển Model về 3.8 Flash (suy luận sâu)
+        if (DOM.model) DOM.model.value = 'gemini-3.8-flash';
+        // 2. Chuyển Think Depth về high
+        if (DOM.thinking) DOM.thinking.value = 'high';
+        // 3. Bật Deep Research nếu đang tắt
+        if (!isDeepResearch) {
+          isDeepResearch = true;
+          ls.setItem('jarvis_deep_research', '1');
+          updateDrBtnUI();
+        }
+        // 4. Bật RAG Trí nhớ
+        if (DOM.toggleRagEmbedding && !DOM.toggleRagEmbedding.checked) {
+          DOM.toggleRagEmbedding.checked = true;
+          if (DOM.ragMemoryState) {
+            DOM.ragMemoryState.innerText = 'BẬT';
+            DOM.ragMemoryState.style.color = 'var(--success)';
+          }
+        }
+        // 5. Bật Web Search
+        if (DOM.toggleSearch) {
+          DOM.toggleSearch.checked = true;
+          if (DOM.searchEngineBox) DOM.searchEngineBox.style.display = 'block';
+        }
+        highlightActivePreset('deep');
+        ls.setItem('jarvis_active_preset', 'deep');
+        showToast("🔬 Đã bật Chế độ Deep Study: Gemini 3.8 Flash · Think High · RAG & Nghiên cứu sâu!", "info");
+      };
+    }
+
+    if (btnPresetVoice) {
+      btnPresetVoice.onclick = () => {
+        highlightActivePreset('voice');
+        const hfBtn = $('btn-toggle-hands-free-chip') || $('btn-hands-free-voice');
+        if (hfBtn) {
+          hfBtn.click();
+        } else {
+          showToast("🎙️ Đang mở đàm thoại rảnh tay...", "info");
+        }
+      };
+    }
+
+    const initialPreset = ls.getItem('jarvis_active_preset') || 'quick';
+    highlightActivePreset(initialPreset);
 
     // --- KEY & CONFIG SYNC HELPERS (PROTECTED AGAINST SECRET SCANNER) ---
 

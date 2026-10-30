@@ -338,17 +338,58 @@
       resetLiveSilenceTimer();
       if (liveFarewellTimer) { clearTimeout(liveFarewellTimer); liveFarewellTimer = null; }
       stopLiveSpeechRec();
+
+      // Dừng và giải phóng toàn bộ audio buffers đang xếp hàng phát
+      if (livePlaybackState && Array.isArray(livePlaybackState.activeSources)) {
+        livePlaybackState.activeSources.forEach(s => {
+          try { s.stop(); s.disconnect(); } catch {}
+        });
+        livePlaybackState.activeSources = [];
+      }
+      livePlaybackState = { nextPlayTime: 0, activeSources: [] };
+
+      // Đóng WebSocket cleanly
+      if (liveWs) {
+        try {
+          liveWs.onopen = liveWs.onmessage = liveWs.onerror = liveWs.onclose = null;
+          if (liveWs.readyState === WebSocket.OPEN || liveWs.readyState === WebSocket.CONNECTING) {
+            liveWs.close();
+          }
+        } catch {}
+        liveWs = null;
+      }
+
+      // Ngắt kết nối Audio Nodes
       try { liveScriptProcessor?.disconnect(); liveScriptProcessor = null; } catch {}
       try { liveMicSource?.disconnect(); liveMicSource = null; } catch {}
       try { liveSilentGain?.disconnect(); liveSilentGain = null; } catch {}
-      liveMediaStream?.getTracks().forEach(t => t.stop());
-      liveMediaStream = null;
-      try { liveAudioCtx?.close(); } catch {}
-      liveAudioCtx = null;
+
+      // Tắt hoàn toàn microphone tracks
+      if (liveMediaStream) {
+        try { liveMediaStream.getTracks().forEach(t => t.stop()); } catch {}
+        liveMediaStream = null;
+      }
+
+      // Đóng AudioContext để giải phóng phần cứng âm thanh trên điện thoại
+      if (liveAudioCtx) {
+        try {
+          if (liveAudioCtx.state !== 'closed') liveAudioCtx.close();
+        } catch {}
+        liveAudioCtx = null;
+      }
+
+      // Tắt Camera tracks và giải phóng bộ nhớ Canvas
       clearInterval(liveCamInterval);
       liveCamInterval = null;
       const cv = $('live-camera-video');
-      if (cv) { cv.srcObject = null; cv.style.display = 'none'; }
+      if (cv) {
+        if (cv.srcObject) {
+          try { cv.srcObject.getTracks().forEach(t => t.stop()); } catch {}
+        }
+        cv.srcObject = null;
+        cv.style.display = 'none';
+      }
+
       isLiveCamOn = isLiveMicMuted = false;
       if ($('btn-live-mic-toggle')) { $('btn-live-mic-toggle').className = 'live-control-btn active'; $('btn-live-mic-toggle').innerHTML = '🎙️'; }
       if ($('btn-live-cam-toggle')) $('btn-live-cam-toggle').className = 'live-control-btn';

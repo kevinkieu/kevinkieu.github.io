@@ -44,6 +44,46 @@
     let _autoSyncTimer = null;
     let _gistRateLimitedUntil = 0;
 
+    function updateSyncHeaderStatus() {
+      const headerSyncBtn = $('btn-cloud-sync-header');
+      const timeSpan = $('header-sync-time');
+      if (!timeSpan) return;
+
+      const rawTs = ls.getItem('jarvis_gist_last_sync_timestamp');
+      if (!rawTs) {
+        timeSpan.innerText = '';
+        return;
+      }
+
+      const ts = parseInt(rawTs, 10);
+      if (isNaN(ts) || ts <= 0) {
+        timeSpan.innerText = '';
+        return;
+      }
+
+      const diffSec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+      let text = '';
+      if (diffSec < 60) {
+        text = 'Vừa xong';
+      } else if (diffSec < 3600) {
+        const mins = Math.floor(diffSec / 60);
+        text = `${mins}p trước`;
+      } else if (diffSec < 86400) {
+        const hours = Math.floor(diffSec / 3600);
+        text = `${hours}h trước`;
+      } else {
+        const days = Math.floor(diffSec / 86400);
+        text = `${days}d trước`;
+      }
+
+      timeSpan.innerText = `(${text})`;
+      const fullDate = ls.getItem('jarvis_gist_last_sync') || new Date(ts).toLocaleString('vi-VN');
+      if (headerSyncBtn) {
+        headerSyncBtn.title = `Đồng bộ Cloud Gist · Lần cuối: ${fullDate}`;
+      }
+    }
+    window.updateSyncHeaderStatus = updateSyncHeaderStatus;
+
     // Helper xử lý lỗi HTTP của GitHub Gist (Đặc biệt phát hiện và cảnh báo Rate Limit thông minh)
     function handleGistHttpError(res, errData) {
       if (res.status === 403 || res.status === 429 || (errData && errData.message && /rate limit/i.test(errData.message))) {
@@ -156,6 +196,8 @@
       _isSyncing = true;
       const syncBtn = $('btn-gist-sync');
       const headerSyncBtn = $('btn-cloud-sync-header');
+      const headerSyncLabel = $('header-sync-label');
+      if (headerSyncLabel) headerSyncLabel.innerText = 'Đang sync...';
       const oldBtnHtml = syncBtn ? syncBtn.innerHTML : '';
       if (syncBtn && !silent) {
         syncBtn.innerHTML = `<span>Đang đồng bộ 2 chiều...</span> ⏳`;
@@ -510,6 +552,10 @@
         }
       } finally {
         _isSyncing = false;
+        const headerSyncLabel = $('header-sync-label');
+        if (headerSyncLabel) headerSyncLabel.innerText = 'Đồng bộ';
+        updateSyncHeaderStatus();
+
         if (syncBtn && !silent) {
           syncBtn.innerHTML = oldBtnHtml || `🔄 Đồng bộ 2 chiều (Smart Sync & Merge)`;
           syncBtn.disabled = false;
@@ -776,6 +822,10 @@
         btn.disabled = false;
       }
     };
+
+    // Tự động cập nhật nhãn thời gian đồng bộ trên thanh tiêu đề
+    updateSyncHeaderStatus();
+    setInterval(updateSyncHeaderStatus, 60000);
 
     // Tự động kiểm tra & đồng bộ 2 chiều ngầm khi khởi động ứng dụng (Startup Sync - 1 lần duy nhất sau 5 giây)
     setTimeout(() => {
