@@ -221,7 +221,8 @@
         <div class="header-right">
           <!-- CLOUD SYNC HEADER BUTTON (DESKTOP ONLY - ON MOBILE IT IS ON THE INPUT TOOLBAR) -->
           <button id="btn-cloud-sync-header" class="btn mobile-hidden" style="background:linear-gradient(135deg,#0284c7,#2563eb);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(2,132,199,0.35);display:flex;align-items:center;gap:5px;" title="Đồng bộ Cloud Đa thiết bị (Gist)">
-            ☁️ <span>Đồng bộ</span>
+            ☁️ <span id="header-sync-label">Đồng bộ</span>
+            <span id="header-sync-time" style="font-size:0.68rem;opacity:0.88;font-weight:400;margin-left:2px;"></span>
           </button>
 
           
@@ -310,6 +311,20 @@
       <!-- BOTTOM INPUT PANEL -->
       <div class="bottom-input-panel">
         <div class="input-tools-scroll">
+          <!-- SMART PRESETS (1-CLICK WORKSPACE SWITCHER) -->
+          <div class="preset-pills-group" style="display:inline-flex;align-items:center;gap:3px;background:var(--bg-main);padding:2px 5px;border-radius:var(--radius-full);border:1px solid var(--border);margin-right:6px;flex-shrink:0;">
+            <span style="font-size:0.7rem;font-weight:700;color:var(--text-muted);padding-left:3px;padding-right:2px;">Preset:</span>
+            <button id="preset-daily-quick" class="tool-chip preset-chip" style="margin:0;padding:2px 8px;font-size:0.73rem;border:none;background:transparent;color:var(--text-main);font-weight:600;display:inline-flex;align-items:center;gap:3px;" title="⚡ Daily Quick: Gemini 3.6 Flash · Think Min · Tắt Deep Research (Siêu tốc ~0.5s)">
+              ⚡ Quick
+            </button>
+            <button id="preset-deep-study" class="tool-chip preset-chip" style="margin:0;padding:2px 8px;font-size:0.73rem;border:none;background:transparent;color:var(--text-main);font-weight:600;display:inline-flex;align-items:center;gap:3px;" title="🔬 Deep Study: Gemini 3.8 Flash · Think High · Bật RAG & Deep Research">
+              🔬 Deep
+            </button>
+            <button id="preset-hands-free" class="tool-chip preset-chip" style="margin:0;padding:2px 8px;font-size:0.73rem;border:none;background:transparent;color:var(--text-main);font-weight:600;display:inline-flex;align-items:center;gap:3px;" title="🎙️ Hands-Free: Đàm thoại rảnh tay 2 chiều liên tục">
+              🎙️ Voice
+            </button>
+          </div>
+
           <label class="tool-chip" for="file-upload" style="cursor:pointer;" title="Đính kèm ảnh, video, PDF, txt, code">
             <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
             Đính kèm (<span id="file-count">0</span>)
@@ -1531,11 +1546,11 @@
   <button id="scroll-to-top" title="Cuộn lên đầu trang">▲</button>
 
   <!-- JAVASCRIPT APPLICATION MODULES -->
-  <script type="module" src="./js/app.js?v=64"></script>
-  <script type="module" src="./js/sync.js?v=64"></script>
-  <script type="module" src="./js/live.js?v=64"></script>
-  <script type="module" src="./js/tts.js?v=64"></script>
-  <script type="module" src="./js/translate.js?v=64"></script>
-  <script type="module" src="./js/rag.js?v=64"></script>
+  <script type="module" src="./js/app.js?v=65"></script>
+  <script type="module" src="./js/sync.js?v=65"></script>
+  <script type="module" src="./js/live.js?v=65"></script>
+  <script type="module" src="./js/tts.js?v=65"></script>
+  <script type="module" src="./js/translate.js?v=65"></script>
+  <script type="module" src="./js/rag.js?v=65"></script>
 </body>
 </html>

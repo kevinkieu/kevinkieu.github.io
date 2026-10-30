@@ -795,6 +795,12 @@
       background: var(--primary-container);
       border-color: var(--primary);
     }
+    .preset-chip.active {
+      background: linear-gradient(135deg, var(--primary), #1d4ed8) !important;
+      color: #ffffff !important;
+      border-color: var(--primary) !important;
+      box-shadow: 0 1px 4px rgba(37,99,235,0.35);
+    }
     .input-container-box {
       display: flex;
       align-items: flex-end;

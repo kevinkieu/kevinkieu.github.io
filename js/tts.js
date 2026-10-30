@@ -187,39 +187,54 @@
       let curIdx = preferredIdx % keyList.length;
       let lastErr = null;
 
-      while (attempts < keyList.length) {
-        const key = keyList[curIdx];
-        const masked = key.length > 8 ? key.substring(0, 4) + '...' + key.slice(-4) : '***';
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+      // Danh sách mô hình dự phòng nếu mô hình chính bị 404 (chưa khả dụng ở endpoint generateContent)
+      const fallbackModels = [model, 'gemini-2.5-flash', 'gemini-2.0-flash'];
+      const uniqueModels = [...new Set(fallbackModels.filter(Boolean))];
 
-        try {
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
+      for (const currentModel of uniqueModels) {
+        attempts = 0;
+        while (attempts < keyList.length) {
+          const key = keyList[curIdx];
+          const masked = key.length > 8 ? key.substring(0, 4) + '...' + key.slice(-4) : '***';
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${key}`;
 
-          if (res.ok) {
-            const data = await res.json();
-            return { data, successIdx: curIdx };
+          try {
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              return { data, successIdx: curIdx, usedModel: currentModel };
+            }
+
+            const errText = await res.text();
+            // Nếu lỗi 404 (mô hình không tồn tại), ngắt vòng lặp key để chuyển ngay sang model dự phòng
+            if (res.status === 404) {
+              console.warn(`[TTS] Mô hình ${currentModel} trả về 404, thử model dự phòng kế tiếp...`);
+              lastErr = new Error(`HTTP 404: Mô hình ${currentModel} không hỗ trợ sinh âm thanh trực tiếp.`);
+              break;
+            }
+
+            console.warn(`Key #${curIdx + 1} (${masked}) HTTP ${res.status}: ${errText}`);
+            showToast(`⚠️ Key #${curIdx + 1} quá tải (${res.status}), xoay sang Key kế tiếp...`, 'warning');
+            lastErr = new Error(`HTTP ${res.status}: ${errText}`);
+            curIdx = (curIdx + 1) % keyList.length;
+            attempts++;
+          } catch (e) {
+            console.warn(`Key #${curIdx + 1} lỗi kết nối:`, e);
+            lastErr = e;
+            curIdx = (curIdx + 1) % keyList.length;
+            attempts++;
           }
-
-          const errText = await res.text();
-          console.warn(`Key #${curIdx + 1} (${masked}) HTTP ${res.status}: ${errText}`);
-          showToast(`⚠️ Key #${curIdx + 1} quá tải (${res.status}), xoay sang Key kế tiếp...`, 'warning');
-          lastErr = new Error(`HTTP ${res.status}: ${errText}`);
-          curIdx = (curIdx + 1) % keyList.length;
-          attempts++;
-        } catch (e) {
-          console.warn(`Key #${curIdx + 1} lỗi kết nối:`, e);
-          lastErr = e;
-          curIdx = (curIdx + 1) % keyList.length;
-          attempts++;
         }
       }
 
-      throw new Error(`Toàn bộ ${keyList.length} Keys đều không thể xử lý! Lỗi: ${lastErr ? lastErr.message : 'Unknown'}`);
+      throw new Error(`Không thể tạo âm thanh! Lỗi: ${lastErr ? lastErr.message : 'Unknown'}`);
     }
+    window.requestGeminiAudioWithFailover = requestGeminiAudioWithFailover;
 
     function formatFileSize(bytes) {
       if (!bytes) return "0 B";
