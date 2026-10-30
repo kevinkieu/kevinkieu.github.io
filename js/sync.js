@@ -27,7 +27,7 @@
   const deobfuscateKey = k => (typeof window.deobfuscateKey === 'function') ? window.deobfuscateKey(k) : k;
   const obfuscateKey = k => (typeof window.obfuscateKey === 'function') ? window.obfuscateKey(k) : k;
   const saveToNativeBridge = (k, v) => (typeof window.saveToNativeBridge === 'function') ? window.saveToNativeBridge(k, v) : null;
-  const getDB = () => (typeof window.getDB === 'function') ? window.getDB() : null;
+  const getDB = () => (typeof window.getDB === 'function') ? window.getDB() : (window.db || null);
   const getSTORE_NAME = () => window.STORE_NAME || 'sessions';
   const getDOM = () => window.DOM || {};
   const oLay = $('modal-overlay');
@@ -411,13 +411,20 @@
         if (hasChanges) {
           // Lưu bằng transaction trực tiếp, KHÔNG gọi saveToDB để triệt tiêu đệ quy!
           await clearAllDB();
-          const tx = getDB().transaction(getSTORE_NAME(), "readwrite");
-          const store = tx.objectStore(getSTORE_NAME());
-          finalSessions.forEach(s => store.put(s));
-          await new Promise((res, rej) => {
-            tx.oncomplete = () => res();
-            tx.onerror = e => rej(e);
-          });
+          let database = getDB();
+          if (!database && typeof window.initDB === 'function') {
+            await window.initDB();
+            database = getDB();
+          }
+          if (database) {
+            const tx = database.transaction(getSTORE_NAME(), "readwrite");
+            const store = tx.objectStore(getSTORE_NAME());
+            finalSessions.forEach(s => store.put(s));
+            await new Promise((res, rej) => {
+              tx.oncomplete = () => res();
+              tx.onerror = e => rej(e);
+            });
+          }
           window.sessions = (await getAllFromDB()).sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
 
           window.folders = finalFolders;
@@ -456,11 +463,11 @@
               keys: getGoogleKeysList(true),
               keyNames: getGoogleKeyNamesList(),
               externalConfigs: getExternalConfigsObj(true),
-              model: getDOM().model.value,
-              temperature: getDOM().temp.value,
-              searchEngine: getDOM().searchEngineSel.value,
-              globalContext: getDOM().globContext.value,
-              systemInstruction: getDOM().sysInst.value,
+              model: getDOM().model?.value || 'gemini-3.6-flash',
+              temperature: getDOM().temp?.value || 0.5,
+              searchEngine: getDOM().searchEngineSel?.value || 'tavily',
+              globalContext: getDOM().globContext?.value || '',
+              systemInstruction: getDOM().sysInst?.value || '',
               theme: ls.getItem('jarvis_theme') || 'auto',
               autoLearnMemory: ls.getItem('jarvis_auto_learn_memory') || 'true',
               ragEnabled: ls.getItem('jarvis_rag_enabled') || 'true',
@@ -687,11 +694,11 @@
             keys: getGoogleKeysList(true),
             keyNames: getGoogleKeyNamesList(),
             externalConfigs: getExternalConfigsObj(true),
-            model: getDOM().model.value,
-            temperature: getDOM().temp.value,
-            searchEngine: getDOM().searchEngineSel.value,
-            globalContext: getDOM().globContext.value,
-            systemInstruction: getDOM().sysInst.value,
+            model: getDOM().model?.value || 'gemini-3.6-flash',
+            temperature: getDOM().temp?.value || 0.5,
+            searchEngine: getDOM().searchEngineSel?.value || 'tavily',
+            globalContext: getDOM().globContext?.value || '',
+            systemInstruction: getDOM().sysInst?.value || '',
             theme: ls.getItem('jarvis_theme') || 'auto',
             autoLearnMemory: ls.getItem('jarvis_auto_learn_memory') || 'true',
             ragEnabled: ls.getItem('jarvis_rag_enabled') || 'true',

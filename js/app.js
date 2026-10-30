@@ -769,18 +769,18 @@ import { GoogleGenAI } from "@google/genai";
       sessionMemState: $('session-memory-state'),
       btnToggleRag: $('btn-toggle-rag-memory'),
       ragMemoryState: $('rag-memory-state'),
-      temp: $('temperature') || { value: 0.5 },
-      tempVal: $('temp-val') || {},
-      topP: $('top-p') || { value: 0.9 },
-      toppVal: $('topp-val') || {},
-      topK: $('top-k') || { value: 40 },
+      temp: $('temperature') || { value: 0.5, addEventListener: () => {} },
+      tempVal: $('temp-val') || { innerText: '' },
+      topP: $('top-p') || { value: 0.9, addEventListener: () => {} },
+      toppVal: $('topp-val') || { innerText: '' },
+      topK: $('top-k') || { value: 40, addEventListener: () => {} },
       thinking: $('thinking-level'),
       searchInput: $('search-chat-input'),
       scrollTopBtn: $('scroll-to-top'),
-      snippetsContainer: $('snippets-container') || { style: {} },
-      btnToggleSnippets: $('btn-toggle-snippets') || {},
-      btnFileLibrary: $('btn-file-library') || {},
-      btnAddUrl: $('btn-add-url') || {},
+      snippetsContainer: $('snippets-container') || { style: {}, innerHTML: '' },
+      btnToggleSnippets: $('btn-toggle-snippets') || { addEventListener: () => {}, onclick: null },
+      btnFileLibrary: $('btn-file-library') || { addEventListener: () => {}, click: () => {}, onclick: null },
+      btnAddUrl: $('btn-add-url') || { addEventListener: () => {}, click: () => {}, onclick: null },
       btnTheme: $('btn-theme'),
       tabsContainer: $('tabs-container')
     };
@@ -807,8 +807,11 @@ import { GoogleGenAI } from "@google/genai";
     window.fetchTavilySearch = q => fetchTavilySearch(q);
     window.fetchSerperSearch = q => fetchSerperSearch(q);
     window.fallbackBrowserDownload = (blob, fn) => fallbackBrowserDownload(blob, fn);
-    window.saveToDB = s => saveToDB(s);
-    window.getAllFromDB = () => getAllFromDB();
+    window.saveToDB = saveToDB;
+    window.getAllFromDB = getAllFromDB;
+    window.clearAllDB = clearAllDB;
+    window.initDB = initDB;
+    window.getDB = () => db;
     window.switchSess = id => switchSess(id);
     window.renderSel = () => renderSel();
     window.updateTokenCount = () => updateTokenCount();
@@ -3189,7 +3192,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
     DOM.model.addEventListener('change', () => { updateThinkingVisibility(); updateConfig(); updateKeyQuotaUI(); });
     DOM.engineSel.addEventListener('change', updateConfig);
-    [DOM.sysInst, DOM.apiKeySel, DOM.toggleGlob, DOM.toggleSearch, DOM.searchEngineSel, DOM.topK, DOM.thinking].forEach(el => el?.addEventListener('change', updateConfig));
+    [DOM.sysInst, DOM.apiKeySel, DOM.toggleGlob, DOM.toggleSearch, DOM.searchEngineSel, DOM.thinking].forEach(el => el?.addEventListener?.('change', updateConfig));
 
     if (DOM.btnToggleSessionMem) {
       DOM.btnToggleSessionMem.onclick = () => {
@@ -3218,8 +3221,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       updateConfig();
       showToast(`Ngữ cảnh trò chuyện [Phiên này]: ${next ? 'ĐÃ BẬT' : 'ĐÃ TẮT'}`, next ? 'success' : 'warning');
     });
-    DOM.temp.addEventListener('input', () => { DOM.tempVal.innerText = DOM.temp.value; updateConfig(); });
-    DOM.topP.addEventListener('input', () => { DOM.toppVal.innerText = DOM.topP.value; updateConfig(); });
+    DOM.temp?.addEventListener?.('input', () => { if (DOM.tempVal) DOM.tempVal.innerText = DOM.temp.value; updateConfig(); });
+    DOM.topP?.addEventListener?.('input', () => { if (DOM.toppVal) DOM.toppVal.innerText = DOM.topP.value; updateConfig(); });
 
     // --- MARKDOWN & SYNTAX HIGHLIGHTING RENDERER ---
     async function renderMsgContent(el, t) {
