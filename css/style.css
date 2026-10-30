@@ -869,25 +869,7 @@
       align-items: center;
       gap: 14px;
     }
-    #snippets-container {
-      display: none;
-      max-width: 860px;
-      width: 100%;
-      margin: 6px auto;
-      padding: 0 12px;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-    .snippet-chip {
-      background: var(--primary-container);
-      color: var(--primary);
-      padding: 5px 12px;
-      border-radius: var(--radius-full);
-      font-size: 0.75rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: var(--transition);
-    }
+
     .snippet-chip:hover {
       background: var(--primary);
       color: #fff;

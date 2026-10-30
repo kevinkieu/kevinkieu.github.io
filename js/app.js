@@ -349,26 +349,12 @@ import { GoogleGenAI } from "@google/genai";
       return res;
     }
 
-    async function fetchJinaSearch(q) {
-      const cached = getSearchCache(q, 'jina');
-      if (cached) return cached;
-      let k = (ls.getItem('jina_api_key') || '').trim();
-      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
-      const r = await fetch(`https://s.jina.ai/${encodeURIComponent(q)}`, {
-        headers: { Accept: "application/json", ...(k ? { Authorization: `Bearer ${k}` } : {}) }
-      });
-      if (!r.ok) throw new Error(`Jina HTTP ${r.status}`);
-      const res = ((await r.json()).data || []).slice(0, 5).map(x => `- **${x.title || 'Tin'}**\n  *Nội dung*: ${(x.content || x.description || '').substring(0, 800)}\n  *Nguồn*: ${x.url}`).join('\n\n');
-      setSearchCache(q, 'jina', res);
-      return res;
-    }
-
     async function fetchSerperSearch(q) {
       const cached = getSearchCache(q, 'serper');
       if (cached) return cached;
       let k = (ls.getItem('serper_api_key') || '').trim();
       if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
-      if (!k) throw new Error("Chưa có Serper Key!");
+      if (!k) throw new Error("Chưa có Serper API Key trong Cài đặt!");
       const r = await fetch("https://google.serper.dev/search", {
         method: "POST",
         headers: { "X-API-KEY": k, "Content-Type": "application/json" },
@@ -384,22 +370,6 @@ import { GoogleGenAI } from "@google/genai";
       return res;
     }
 
-    async function fetchBraveSearch(q) {
-      const cached = getSearchCache(q, 'brave');
-      if (cached) return cached;
-      let k = (ls.getItem('brave_api_key') || '').trim();
-      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
-      if (!k) throw new Error("Chưa có Brave Key!");
-      let w = (ls.getItem('brave_worker_url') || '').replace(/\/+$/, '');
-      if (w.startsWith('JVENC_') || w.startsWith('ENC_')) w = deobfuscateKey(w);
-      const ep = `${w || 'https://api.search.brave.com/res/v1/web/search'}?q=${encodeURIComponent(q)}&count=5`;
-      const r = await fetch(ep, { headers: { Accept: "application/json", "X-Subscription-Token": k } });
-      if (!r.ok) throw new Error(`Brave HTTP ${r.status}`);
-      const res = ((await r.json()).web?.results || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.description}\n  *Nguồn*: ${x.url}`).join('\n\n');
-      setSearchCache(q, 'brave', res);
-      return res;
-    }
-
     async function executeLiveSearch(query) {
       let q = (query || '').trim();
       const quoted = extractQuotedKeywords(q);
@@ -412,13 +382,11 @@ import { GoogleGenAI } from "@google/genai";
       try {
         return await fetchTavilySearch(q);
       } catch (tavErr) {
-        console.warn("Tavily search lỗi, chạy fallback:", tavErr);
+        console.warn("Tavily search lỗi, chạy fallback Serper:", tavErr);
         try {
-          const eng = ls.getItem('auto_search_default_engine') || 'jina';
-          const fallbackFn = { jina: fetchJinaSearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[eng] || fetchJinaSearch;
-          return await fallbackFn(q);
+          return await fetchSerperSearch(q);
         } catch (fbErr) {
-          return `Không thể lấy dữ liệu: ${tavErr.message}`;
+          return `Không thể lấy dữ liệu tìm kiếm: ${tavErr.message}`;
         }
       }
     }
@@ -493,10 +461,7 @@ import { GoogleGenAI } from "@google/genai";
     const cfgMap = [
       ['global-context-input', 'jarvis_global_context'],
       ['tavily-key-input', 'tavily_api_key'],
-      ['jina-key-input', 'jina_api_key'],
       ['serper-key-input', 'serper_api_key'],
-      ['brave-key-input', 'brave_api_key'],
-      ['brave-worker-url-input', 'brave_worker_url'],
       ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
       ['web-extract-engine-input', 'web_extract_engine', 'auto'],
       ['live-temperature', 'live_temperature', '0.7']
@@ -804,18 +769,18 @@ import { GoogleGenAI } from "@google/genai";
       sessionMemState: $('session-memory-state'),
       btnToggleRag: $('btn-toggle-rag-memory'),
       ragMemoryState: $('rag-memory-state'),
-      temp: $('temperature'),
-      tempVal: $('temp-val'),
-      topP: $('top-p'),
-      toppVal: $('topp-val'),
-      topK: $('top-k'),
+      temp: $('temperature') || { value: 0.5 },
+      tempVal: $('temp-val') || {},
+      topP: $('top-p') || { value: 0.9 },
+      toppVal: $('topp-val') || {},
+      topK: $('top-k') || { value: 40 },
       thinking: $('thinking-level'),
       searchInput: $('search-chat-input'),
       scrollTopBtn: $('scroll-to-top'),
-      snippetsContainer: $('snippets-container'),
-      btnToggleSnippets: $('btn-toggle-snippets'),
-      btnFileLibrary: $('btn-file-library'),
-      btnAddUrl: $('btn-add-url'),
+      snippetsContainer: $('snippets-container') || { style: {} },
+      btnToggleSnippets: $('btn-toggle-snippets') || {},
+      btnFileLibrary: $('btn-file-library') || {},
+      btnAddUrl: $('btn-add-url') || {},
       btnTheme: $('btn-theme'),
       tabsContainer: $('tabs-container')
     };
@@ -840,7 +805,6 @@ import { GoogleGenAI } from "@google/genai";
     window.extractWebPageContent = url => extractWebPageContent(url);
     window.executeLiveSearch = q => executeLiveSearch(q);
     window.fetchTavilySearch = q => fetchTavilySearch(q);
-    window.fetchJinaSearch = q => fetchJinaSearch(q);
     window.fetchSerperSearch = q => fetchSerperSearch(q);
     window.fallbackBrowserDownload = (blob, fn) => fallbackBrowserDownload(blob, fn);
     window.saveToDB = s => saveToDB(s);
@@ -964,7 +928,6 @@ import { GoogleGenAI } from "@google/genai";
     const COMMANDS = [
       { id: 'quota', title: 'Xem hạn ngạch 10 Key (20 RPD cho 3.6/3.8 Flash)', shortcut: '/quota', icon: '🔑', run: () => openKeyQuotaModal() },
       { id: 'cloud', title: 'Đồng bộ Cloud đa thiết bị (GitHub Gist)', shortcut: '/cloud', icon: '☁️', run: () => $('btn-open-cloud-sync').click() },
-      { id: 'deep', title: 'Bật/Tắt Chế độ Nghiên cứu Sâu (Deep Research)', shortcut: '/deep', icon: '🔬', run: () => $('btn-toggle-deep-research').click() },
       { id: 'new', title: 'Tạo phiên hội thoại mới', shortcut: '/new', icon: '➕', run: () => newSess() },
       { id: 'brief', title: 'Bản tin Ngày Mới (Thời tiết, Tin tức AI/Tech, Kế hoạch)', shortcut: '/brief', icon: '🌅', run: () => openDailyBriefing() },
       { id: 'voice', title: 'Trò chuyện Rảnh tay Liên tục (Hands-Free Voice Flow)', shortcut: '/voice', icon: '🎙️', run: () => toggleHandsFreeVoice() },
@@ -2582,7 +2545,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     });
 
     // --- PROMPT ENHANCE BUTTON ---
-    $('btn-enhance-prompt').onclick = async () => {
+    if ($('btn-enhance-prompt')) $('btn-enhance-prompt').onclick = async () => {
       const txt = DOM.input.value.trim();
       if (!txt) return showToast("Nhập prompt trước khi Enhance!", "warning");
       const k = getSessionApiKey(sessions.find(x => x.id === activeId));
@@ -2659,7 +2622,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       }
       DOM.snippetsContainer.style.display = 'none';
     };
-    DOM.btnToggleSnippets.onclick = () => DOM.snippetsContainer.style.display = DOM.snippetsContainer.style.display === 'flex' ? 'none' : 'flex';
+    if (DOM.btnToggleSnippets?.onclick) DOM.btnToggleSnippets.onclick = () => DOM.snippetsContainer.style.display = DOM.snippetsContainer.style.display === 'flex' ? 'none' : 'flex';
 
     async function readPDF(f) {
       const p = await pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise;
@@ -2765,7 +2728,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       DOM.btnAddUrl.innerHTML = `<svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Đọc Link/YT`;
     };
 
-    $('btn-paste-clipboard').onclick = async () => {
+    if ($('btn-paste-clipboard')) $('btn-paste-clipboard').onclick = async () => {
       try {
         const is = await navigator.clipboard.read();
         let h = false;
@@ -2794,7 +2757,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     };
 
     const oLay = $('modal-overlay'), closeModals = () => {
-      document.querySelectorAll('.modal-box, #command-palette-modal, #daily-briefing-modal, #arena-modal, #share-target-modal').forEach(m => m.style.display = 'none');
+      document.querySelectorAll('.modal-box, #command-palette-modal, #daily-briefing-modal, #share-target-modal').forEach(m => m.style.display = 'none');
       if (oLay) oLay.style.display = 'none';
       if (typeof window.closeTTSStudioModal === 'function') window.closeTTSStudioModal();
     };
@@ -2819,7 +2782,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     });
 
     // CAMERA SNAP: TOUCH OPENS NATIVE CAMERA, PC OPENS MODAL
-    $('btn-camera-snap').onclick = async () => {
+    if ($('btn-camera-snap')) $('btn-camera-snap').onclick = async () => {
       const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
       if (isTouch && $('camera-file-input')) {
         $('camera-file-input').click();
@@ -3927,90 +3890,10 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
-        // DEEP RESEARCH & THINKING PROTOCOL
-        if (isDeepResearch && msg && msg.trim().length > 15 && !/^(chào|hello|hi|hey|alo|ê|ơi|chào bạn|xin chào)\b/i.test(msg.trim())) {
-          const drCard = document.createElement('div');
-          drCard.className = 'deep-research-card';
-          drCard.innerHTML = `
-            <div class="dr-header">
-              <span class="dr-badge">🔬 DEEP RESEARCH</span>
-              <span class="dr-status-title">Đang nghiên cứu chuyên sâu đa bước...</span>
-              <span class="dr-arrow">▼</span>
-            </div>
-            <div class="dr-content">
-              <div class="dr-step active" id="dr-s1"><span class="dr-dot">⏳</span> 1. Bẻ nhỏ bài toán thành 3 truy vấn ngách...</div>
-              <div class="dr-step" id="dr-s2"><span class="dr-dot">⭕</span> 2. Quét tìm kiếm đa nguồn song song...</div>
-              <div class="dr-step" id="dr-s3"><span class="dr-dot">⭕</span> 3. Kiểm chứng và trích lọc dữ liệu...</div>
-              <div class="dr-step" id="dr-s4"><span class="dr-dot">⭕</span> 4. Viết báo cáo toàn diện kèm trích dẫn nguồn...</div>
-            </div>
-          `;
-          drCard.querySelector('.dr-header').onclick = () => drCard.classList.toggle('collapsed');
-          bD.querySelector('.msg-content').appendChild(drCard);
-
-          try {
-            const sAi = new GoogleGenAI({ apiKey: gKey });
-            const sRes = await sAi.models.generateContent({
-              model: FLASH_LITE_MODEL,
-              contents: `Dựa vào câu hỏi sau của người dùng: "${msg}"\nHãy tạo đúng 3 câu truy vấn tìm kiếm ngách ngắn gọn bằng tiếng Việt hoặc tiếng Anh (mỗi câu tối đa 8 từ, mỗi câu trên 1 dòng, không đánh số, không gạch đầu dòng) để quét thông tin từ nhiều khía cạnh:\n`,
-              config: { safetySettings: SAFETY, maxOutputTokens: 120, temperature: 0.5 }
-            });
-
-            const queries = (sRes.text || '').split('\n').map(l => l.replace(/^[-*0-9.)\s]+/, '').trim()).filter(l => l.length > 2).slice(0, 3);
-            const subQueries = queries.length ? queries : [msg];
-
-            const s1 = drCard.querySelector('#dr-s1');
-            if (s1) {
-              s1.className = 'dr-step done';
-              s1.innerHTML = `<span class="dr-dot" style="color:#10b981;">✓</span> 1. Đã tạo ${subQueries.length} truy vấn: ${subQueries.map(q => `<em>"${escapeHtml(q)}"</em>`).join(', ')}`;
-            }
-
-            const s2 = drCard.querySelector('#dr-s2');
-            if (s2) s2.className = 'dr-step active';
-
-            const selEng = DOM.searchEngineSel.value;
-            const tgtEng = selEng === 'auto' ? (ls.getItem('auto_search_default_engine') || 'tavily') : selEng;
-            const searchFn = { tavily: fetchTavilySearch, jina: fetchJinaSearch, serper: fetchSerperSearch, brave: fetchBraveSearch }[tgtEng] || fetchTavilySearch;
-
-            const searchPromises = subQueries.map(async q => {
-              try {
-                return await searchFn(q);
-              } catch (e) {
-                console.warn(`Deep research lỗi ${tgtEng}:`, e);
-                try { return await fetchJinaSearch(q); } catch { return ''; }
-              }
-            });
-            const searchResults = await Promise.all(searchPromises);
-
-            if (s2) {
-              s2.className = 'dr-step done';
-              s2.innerHTML = `<span class="dr-dot" style="color:#10b981;">✓</span> 2. Đã quét xong ${subQueries.length} truy vấn tìm kiếm đa nguồn.`;
-            }
-
-            const s3 = drCard.querySelector('#dr-s3');
-            if (s3) {
-              s3.className = 'dr-step done';
-              s3.innerHTML = `<span class="dr-dot" style="color:#10b981;">✓</span> 3. Đã thu thập và trích lọc dữ liệu nghiên cứu.`;
-            }
-
-            const s4 = drCard.querySelector('#dr-s4');
-            if (s4) {
-              s4.className = 'dr-step active';
-              s4.innerHTML = `<span class="dr-dot">⚡</span> 4. Đang tổng hợp báo cáo chi tiết kèm trích dẫn nguồn...`;
-            }
-
-            const gatheredText = searchResults.filter(Boolean).join('\n\n---\n\n');
-            if (gatheredText) {
-              fnP = `[DỮ LIỆU NGHIÊN CỨU SÂU ĐÃ THU THẬP TỪ CÁC NGUỒN]:\n${gatheredText}\n\n[CÂU HỎI GỐC CỦA NGƯỜI DÙNG]:\n${msg}\n\n[CHỈ THỊ BÁO CÁO NGHIÊN CỨU SÂU]:\nHãy viết báo cáo phân tích toàn diện, có cấu trúc rõ ràng với các tiêu đề mục.\nHãy gắn chú thích nguồn [1], [2] khi đưa ra số liệu hoặc luận điểm.\nỞ cuối bài, bắt buộc phải có mục "### 📚 Nguồn tham khảo" liệt kê các liên kết hoặc tài liệu đã dùng.`;
-            }
-          } catch (drErr) {
-            console.log("Deep Research Error:", drErr);
-          }
-        }
-
+        // WEB SEARCH (TAVILY / SERPER)
         const quoted = extractQuotedKeywords(fnP);
-        if (quoted && DOM.toggleSearch.checked && !isDeepResearch) {
-          const sel = DOM.searchEngineSel.value,
-                tgt = sel === 'auto' ? (ls.getItem('auto_search_default_engine') || 'tavily') : sel;
+        if (quoted && DOM.toggleSearch.checked) {
+          const tgt = DOM.searchEngineSel.value === 'serper' ? 'serper' : 'tavily';
 
           let actualSearchQuery = quoted;
           const now = new Date();
@@ -4030,22 +3913,20 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           }
 
           let sText = '';
-          const engineMap = { tavily: fetchTavilySearch, jina: fetchJinaSearch, serper: fetchSerperSearch, brave: fetchBraveSearch };
-          const primaryFn = engineMap[tgt] || fetchTavilySearch;
+          const primaryFn = tgt === 'serper' ? fetchSerperSearch : fetchTavilySearch;
+          const fallbackFn = tgt === 'serper' ? fetchTavilySearch : fetchSerperSearch;
 
           try {
             sText = await primaryFn(actualSearchQuery);
           } catch (sErr) {
             console.warn(`Lỗi tìm kiếm ${tgt}:`, sErr);
-            showToast(`⚠️ Lỗi ${tgt}: ${sErr.message || 'Không kết nối được'}. Thử fallback Jina Search...`, 'warning');
-            if (tgt !== 'jina') {
-              try {
-                if (searchBadge) searchBadge.innerHTML = `🌐 Đang thử fallback Jina Search...`;
-                sText = await fetchJinaSearch(actualSearchQuery);
-              } catch (jinaErr) {
-                console.warn("Jina fallback cũng lỗi:", jinaErr);
-                showToast(`❌ Không thể tìm kiếm web: ${jinaErr.message || sErr.message}`, 'danger');
-              }
+            showToast(`⚠️ Lỗi ${tgt}: ${sErr.message || 'Không kết nối được'}. Thử fallback...`, 'warning');
+            try {
+              if (searchBadge) searchBadge.innerHTML = `🌐 Đang thử fallback...`;
+              sText = await fallbackFn(actualSearchQuery);
+            } catch (fbErr) {
+              console.warn("Fallback search cũng lỗi:", fbErr);
+              showToast(`❌ Không thể tìm kiếm web: ${fbErr.message || sErr.message}`, 'danger');
             }
           }
 
@@ -4319,9 +4200,9 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           if (thk && thk !== 'none') {
             config.thinkingConfig = { thinkingLevel: thk };
           } else {
-            config.temperature = +DOM.temp.value;
-            config.topP = +DOM.topP.value;
-            config.topK = +DOM.topK.value;
+            config.temperature = DOM.temp?.value !== undefined ? +DOM.temp.value : 0.5;
+            config.topP = DOM.topP?.value !== undefined ? +DOM.topP.value : 0.9;
+            config.topK = DOM.topK?.value !== undefined ? +DOM.topK.value : 40;
           }
 
           let streamAttempts = 0;
@@ -4836,31 +4717,6 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       }
     }
 
-    // --- DEEP RESEARCH & THINKING CONTROLLER ---
-    let isDeepResearch = ls.getItem('jarvis_deep_research') === '1';
-    const drBtn = $('btn-toggle-deep-research');
-    const drState = $('dr-chip-state');
-
-    function updateDrBtnUI() {
-      if (isDeepResearch) {
-        drBtn.classList.add('magic');
-        drBtn.style.borderColor = '#8b5cf6';
-        drState.innerHTML = `<span style="color:#8b5cf6;font-weight:700;">BẬT</span>`;
-      } else {
-        drBtn.classList.remove('magic');
-        drBtn.style.borderColor = 'var(--border)';
-        drState.innerHTML = `<span style="color:var(--text-muted);">TẮT</span>`;
-      }
-    }
-
-    drBtn.onclick = () => {
-      isDeepResearch = !isDeepResearch;
-      ls.setItem('jarvis_deep_research', isDeepResearch ? '1' : '0');
-      updateDrBtnUI();
-      showToast(isDeepResearch ? "Đã bật Chế độ Nghiên cứu Sâu (Deep Research)!" : "Đã tắt Nghiên cứu Sâu.");
-    };
-    updateDrBtnUI();
-
     // --- SMART PRESETS (1-CLICK WORKSPACE SWITCHER) ---
     const btnPresetQuick = $('preset-daily-quick');
     const btnPresetDeep = $('preset-deep-study');
@@ -4881,13 +4737,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         if (DOM.model) DOM.model.value = 'gemini-3.6-flash';
         // 2. Chuyển Think Depth về minimal
         if (DOM.thinking) DOM.thinking.value = 'minimal';
-        // 3. Tắt Deep Research nếu đang bật
-        if (isDeepResearch) {
-          isDeepResearch = false;
-          ls.setItem('jarvis_deep_research', '0');
-          updateDrBtnUI();
-        }
-        // 4. Tắt Web Search nếu đang bật
+        // 3. Tắt Web Search nếu đang bật
         if (DOM.toggleSearch && DOM.toggleSearch.checked) {
           DOM.toggleSearch.checked = false;
           if (DOM.searchEngineBox) DOM.searchEngineBox.style.display = 'none';
@@ -4904,13 +4754,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         if (DOM.model) DOM.model.value = 'gemini-3.8-flash';
         // 2. Chuyển Think Depth về high
         if (DOM.thinking) DOM.thinking.value = 'high';
-        // 3. Bật Deep Research nếu đang tắt
-        if (!isDeepResearch) {
-          isDeepResearch = true;
-          ls.setItem('jarvis_deep_research', '1');
-          updateDrBtnUI();
-        }
-        // 4. Bật RAG Trí nhớ
+        // 3. Bật RAG Trí nhớ
         if (DOM.toggleRagEmbedding && !DOM.toggleRagEmbedding.checked) {
           DOM.toggleRagEmbedding.checked = true;
           if (DOM.ragMemoryState) {
@@ -4918,21 +4762,21 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
             DOM.ragMemoryState.style.color = 'var(--success)';
           }
         }
-        // 5. Bật Web Search
+        // 4. Bật Web Search
         if (DOM.toggleSearch) {
           DOM.toggleSearch.checked = true;
           if (DOM.searchEngineBox) DOM.searchEngineBox.style.display = 'block';
         }
         highlightActivePreset('deep');
         ls.setItem('jarvis_active_preset', 'deep');
-        showToast("🔬 Đã bật Chế độ Deep Study: Gemini 3.8 Flash · Think High · RAG & Nghiên cứu sâu!", "info");
+        showToast("🧠 Đã bật Chế độ Deep Think: Gemini 3.8 Flash · Think High · RAG & Tìm kiếm Web!", "info");
       };
     }
 
     if (btnPresetVoice) {
       btnPresetVoice.onclick = () => {
         highlightActivePreset('voice');
-        const hfBtn = $('btn-toggle-hands-free-chip') || $('btn-hands-free-voice');
+        const hfBtn = $('btn-hands-free-voice');
         if (hfBtn) {
           hfBtn.click();
         } else {
