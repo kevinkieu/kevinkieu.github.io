@@ -749,9 +749,9 @@ import { GoogleGenAI } from "@google/genai";
       clearFilesBtn: $('clear-all-images'),
       fileCount: $('file-count'),
       toast: $('toast'),
-      folderSelect: $('folder-select'),
-      btnNewFolder: $('btn-new-folder'),
-      btnDeleteFolder: $('btn-delete-folder'),
+      folderSelect: null,
+      btnNewFolder: null,
+      btnDeleteFolder: null,
       selSession: $('session-select'),
       sysInst: $('system-instruction-input'),
       globContext: $('global-context-input'),
@@ -894,11 +894,17 @@ import { GoogleGenAI } from "@google/genai";
       showToast("🎉 Đã thêm vào Kho Prompt!");
     };
 
-    $('btn-manage-prompts').onclick = () => {
-      $('prompt-library-modal').style.display = 'flex';
-      oLay.style.display = 'block';
+    function openPromptLibraryModal() {
+      const modal = $('prompt-library-modal');
+      if (modal) modal.style.display = 'flex';
+      if (oLay) oLay.style.display = 'block';
       renderPromptList();
-    };
+    }
+    window.openPromptLibraryModal = openPromptLibraryModal;
+
+    if ($('btn-manage-prompts')) {
+      $('btn-manage-prompts').onclick = openPromptLibraryModal;
+    }
 
     // --- COMMAND PALETTE (CTRL+K) ---
     const cmdModal = $('command-palette-modal');
@@ -935,14 +941,14 @@ import { GoogleGenAI } from "@google/genai";
       { id: 'tts', title: 'Mở Gemini TTS Studio Pro (Chuyển văn bản thành giọng nói, xuất MP3)', shortcut: '/tts', icon: '🎙️', run: () => openTTSStudioModal() },
       { id: 'settings', title: 'Mở Cài đặt hệ thống & 10 Keys', shortcut: '/settings', icon: '⚙️', run: () => $('btn-open-settings').click() },
       { id: 'storage', title: 'Quản lý Bộ nhớ & Trạng thái Lưu trữ (IndexedDB)', shortcut: '/storage', icon: '💾', run: () => { $('btn-open-settings').click(); setTimeout(updateStorageStatus, 150); } },
-      { id: 'prompts', title: 'Mở Kho Prompt mẫu cá nhân', shortcut: '/prompts', icon: '📚', run: () => $('btn-manage-prompts').click() },
+      { id: 'prompts', title: 'Mở Kho Prompt mẫu cá nhân', shortcut: '/prompts', icon: '📚', run: () => openPromptLibraryModal() },
       { id: 'rag', title: 'Mở Kho Tri Thức & RAG Studio (Gemini Embedding 2)', shortcut: '/rag', icon: '🧠', run: () => typeof openKnowledgeModal === 'function' ? openKnowledgeModal() : window.JarvisRAG?.openModal() },
       { id: 'memory', title: 'Quản lý Trí nhớ Cá nhân (Second Brain)', shortcut: '/memory', icon: '👤', run: () => typeof openKnowledgeModal === 'function' ? openKnowledgeModal('memory') : window.JarvisRAG?.openModal('memory') },
       { id: 'search', title: 'Tìm kiếm nội dung hội thoại', shortcut: '/search', icon: '🔍', run: () => { $('search-modal').style.display = 'flex'; oLay.style.display = 'block'; } },
       { id: 'theme', title: 'Chuyển đổi giao diện Sáng / Tối', shortcut: '/theme', icon: '🌙', run: () => DOM.btnTheme.click() },
       { id: 'export', title: 'Sao lưu toàn bộ dữ liệu ra tệp JSON', shortcut: '/export', icon: '📥', run: () => exportAllSessions() },
       { id: 'clear', title: 'Xóa sạch tin nhắn phiên hiện tại', shortcut: '/clear', icon: '🗑️', run: () => clearActiveSession() },
-      { id: 'library', title: 'Mở Thư viện tài liệu đã lưu', shortcut: '/library', icon: '🗄️', run: () => DOM.btnFileLibrary.click() }
+      { id: 'library', title: 'Mở Thư viện tài liệu đã lưu', shortcut: '/library', icon: '🗄️', run: () => DOM.btnFileLibrary?.click?.() }
     ];
 
     function openCommandPalette() {
@@ -2890,47 +2896,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     };
 
     function renderFolders() {
-      DOM.folderSelect.innerHTML = `<option value="All">📁 Tất cả Thư Mục</option>` + folders.map(f => `<option value="${f}">📁 ${f}</option>`).join('');
-      DOM.folderSelect.value = activeFolder;
+      // Folders system pruned for simplicity & performance
     }
-
-    DOM.folderSelect.onchange = e => {
-      activeFolder = e.target.value;
-      ls.setItem('jarvis_active_folder', activeFolder);
-      renderSel();
-      const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder);
-      if (v.length && !v.find(s => s.id === activeId)) switchSess(v[0].id);
-    };
-
-    DOM.btnNewFolder.onclick = () => {
-      const n = prompt("Nhập tên Thư mục mới:");
-      if (n && !folders.includes(n.trim())) {
-        folders.push(n.trim());
-        ls.setItem('jarvis_folders', JSON.stringify(folders));
-        activeFolder = n.trim();
-        renderFolders();
-        renderSel();
-        showToast("Đã tạo thư mục mới!");
-      }
-    };
-
-    DOM.btnDeleteFolder.onclick = async () => {
-      if (activeFolder === "All" || activeFolder === "Mặc định") return showToast("Không thể xóa thư mục này!", "warning");
-      if (confirm(`Bạn có chắc muốn xóa thư mục "${activeFolder}"? Các phiên bên trong sẽ chuyển về 'Mặc định'.`)) {
-        folders = folders.filter(f => f !== activeFolder);
-        ls.setItem('jarvis_folders', JSON.stringify(folders));
-        for (const s of sessions) {
-          if (s.folder === activeFolder) {
-            s.folder = "Mặc định";
-            await saveToDB(s);
-          }
-        }
-        activeFolder = "All";
-        renderFolders();
-        renderSel();
-        showToast("Đã xóa thư mục!");
-      }
-    };
 
     async function loadSess() {
       try {
@@ -2973,7 +2940,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       const id = 's_' + Date.now(), s = {
         id,
         name: n || `Hội thoại ${sessions.length + 1}`,
-        folder: activeFolder === "All" ? "Mặc định" : activeFolder,
+        folder: "Mặc định",
         his: [],
         sys: '',
         mod: 'gemini-3.6-flash',
@@ -3012,11 +2979,6 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       ls.setItem('jarvis_active_id', id);
       ls.setItem('huanmu_active_id', id);
       const s = sessions.find(x => x.id === id);
-      if (s && activeFolder !== 'All' && s.folder && s.folder !== activeFolder) {
-        activeFolder = 'All';
-        ls.setItem('jarvis_active_folder', activeFolder);
-        renderFolders();
-      }
       chatHistory = (s && Array.isArray(s.his)) ? [...s.his] : [];
 
       if (s) {
@@ -3070,11 +3032,11 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     DOM.selSession.onchange = e => switchSess(e.target.value);
 
     function renderSel() {
-      const v = activeFolder === "All" ? sessions : sessions.filter(s => s.folder === activeFolder);
-      DOM.selSession.innerHTML = v.map(s => {
-        const dot = s.color ? '● ' : '';
-        return `<option value="${s.id}" ${s.id === activeId ? 'selected' : ''}>${dot}${activeFolder === "All" ? `[${s.folder}] ` : ''}${s.name}</option>`;
-      }).join('');
+      const v = sessions;
+      DOM.selSession.innerHTML = v.length ? v.map(s => {
+        const dot = s.pinned ? '📌 ' : (s.color ? '● ' : '');
+        return `<option value="${s.id}" ${s.id === activeId ? 'selected' : ''}>${dot}${s.name}</option>`;
+      }).join('') : '<option value="">(Chưa có phiên nào)</option>';
       if (activeId) DOM.selSession.value = activeId;
       const curS = sessions.find(x => x.id === activeId);
       const kInfo = (curS?.engine === 'interactions' && curS?.assignedApiKey) ? ` • 🔒 Ghim Key ${apiKeys.indexOf(curS.assignedApiKey) + 1}` : '';
@@ -3105,23 +3067,9 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       DOM.sendBtn.click();
     };
 
-    $('btn-move-session').onclick = async () => {
-      const s = sessions.find(x => x.id === activeId);
-      if (!s) return;
-      const targetFolder = prompt(`Chuyển phiên sang Thư mục:\n(Các TM hiện có: ${folders.join(', ')})`, s.folder);
-      if (targetFolder && targetFolder.trim()) {
-        const tf = targetFolder.trim();
-        if (!folders.includes(tf)) {
-          folders.push(tf);
-          ls.setItem('jarvis_folders', JSON.stringify(folders));
-          renderFolders();
-        }
-        s.folder = tf;
-        await saveToDB(s);
-        renderSel();
-        showToast(`📂 Đã chuyển phiên sang "${tf}"!`);
-      }
-    };
+    if ($('btn-move-session')) {
+      $('btn-move-session').onclick = async () => {};
+    }
 
     $('btn-delete-session').onclick = async () => {
       if (sessions.length <= 1) return showToast("Cần giữ lại ít nhất 1 phiên!", "warning");
