@@ -2130,6 +2130,12 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       const btnSendHf = $('btn-send-hands-free');
       if (btnSendHf) btnSendHf.style.display = 'none';
 
+      // Mở khóa âm thanh trước cho trình duyệt điện thoại (iOS Safari & Android Chrome)
+      try {
+        const unlockAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
+        unlockAudio.play().catch(() => {});
+      } catch (_) {}
+
       await startHandsFreeRecorder();
       showToast("🎙️ Đã bật Đàm thoại Rảnh tay 2 chiều liên tục!", "success");
     }
@@ -3744,12 +3750,14 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
               }
             };
             const res = await reqFn(payload, ttsModel, activeKeys, 0);
-            let base64Audio = null;
-            const parts = res.data?.candidates?.[0]?.content?.parts || [];
-            for (let p of parts) {
-              if (p.inlineData && p.inlineData.mimeType && p.inlineData.mimeType.startsWith('audio/')) {
-                base64Audio = p.inlineData.data;
-                break;
+            let base64Audio = res.outputAudioData || res.data?.output_audio?.data || null;
+            if (!base64Audio) {
+              const parts = res.data?.candidates?.[0]?.content?.parts || [];
+              for (let p of parts) {
+                if (p.inlineData && p.inlineData.mimeType && p.inlineData.mimeType.startsWith('audio/')) {
+                  base64Audio = p.inlineData.data;
+                  break;
+                }
               }
             }
             if (!base64Audio) throw new Error("Không nhận được dữ liệu âm thanh");
