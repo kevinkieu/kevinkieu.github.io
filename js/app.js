@@ -1807,55 +1807,83 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         else if (cleanMime.includes('ogg')) cleanMime = 'audio/ogg';
         else cleanMime = 'audio/webm';
 
-        // 3. Lấy API Key
-        const keys = getGoogleKeysList(true);
-        if (!keys.length) {
+        // 3. Lấy danh sách API Key hợp lệ (Giải mã nếu có tiền tố mã hóa, tuyệt đối không gọi getGoogleKeysList(true))
+        let availableKeys = (typeof apiKeys !== 'undefined' && Array.isArray(apiKeys) && apiKeys.length) ? [...apiKeys] : [];
+        if (!availableKeys.length) {
+          const raw = getGoogleKeysList(false).filter(Boolean);
+          availableKeys = raw.map(k => {
+            let clean = (k || '').trim();
+            if (clean.startsWith('JVENC_') || clean.startsWith('ENC_')) clean = deobfuscateKey(clean);
+            return clean;
+          }).filter(Boolean);
+        }
+
+        if (!availableKeys.length) {
           showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
           stopHandsFreeVoice();
           return;
         }
-        const key = keys[0];
-        const ai = new GoogleGenAI({ apiKey: key });
 
-        // 4. Gọi Gemini Flash Lite để chuyển giọng nói sang văn bản tiếng Việt cực nhanh
+        // Ưu tiên key đang gán cho phiên hiện tại, sau đó đến các key còn lại
+        const currentSession = sessions.find(x => x.id === activeId);
+        const preferredKey = (typeof getSessionApiKey === 'function') ? getSessionApiKey(currentSession) : null;
+        const candidateKeys = [];
+        if (preferredKey && availableKeys.includes(preferredKey)) candidateKeys.push(preferredKey);
+        for (const k of availableKeys) {
+          if (!candidateKeys.includes(k)) candidateKeys.push(k);
+        }
+
+        // 4. Chuyển giọng nói sang văn bản tiếng Việt với cơ chế Xoay Key & Fallback Model đa tầng
         handsFreeTranscribeController = new AbortController();
-        const candidateTranscribeModels = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.8-flash'];
+        const candidateTranscribeModels = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite'];
         let spokenText = '';
         let lastErr = null;
 
-        for (const mod of candidateTranscribeModels) {
+        keyLoop:
+        for (let kIdx = 0; kIdx < candidateKeys.length; kIdx++) {
+          const activeKey = candidateKeys[kIdx];
+          let ai;
           try {
-            const res = await ai.models.generateContent({
-              model: mod,
-              contents: [
-                {
-                  role: 'user',
-                  parts: [
-                    {
-                      inlineData: {
-                        mimeType: cleanMime,
-                        data: base64Data
+            ai = new GoogleGenAI({ apiKey: activeKey });
+          } catch (initErr) {
+            lastErr = initErr;
+            continue;
+          }
+
+          for (const mod of candidateTranscribeModels) {
+            try {
+              const res = await ai.models.generateContent({
+                model: mod,
+                contents: [
+                  {
+                    role: 'user',
+                    parts: [
+                      {
+                        inlineData: {
+                          mimeType: cleanMime,
+                          data: base64Data
+                        }
+                      },
+                      {
+                        text: "Nghe đoạn ghi âm tiếng Việt này và chỉ chép lại đúng văn bản những gì người nói. Tuyệt đối không thêm lời dẫn, không giải thích, không dùng ngoặc kép."
                       }
-                    },
-                    {
-                      text: "Nghe đoạn ghi âm tiếng Việt này và chỉ chép lại đúng văn bản những gì người nói. Tuyệt đối không thêm lời dẫn, không giải thích, không dùng ngoặc kép."
-                    }
-                  ]
-                }
-              ]
-            });
-            spokenText = (res.text || '').trim();
-            if (!spokenText && res.candidates?.[0]?.content?.parts) {
-              spokenText = res.candidates[0].content.parts.map(p => p.text || '').join('').trim();
+                    ]
+                  }
+                ]
+              });
+              spokenText = (res.text || '').trim();
+              if (!spokenText && res.candidates?.[0]?.content?.parts) {
+                spokenText = res.candidates[0].content.parts.map(p => p.text || '').join('').trim();
+              }
+              if (spokenText) break keyLoop;
+            } catch (tErr) {
+              lastErr = tErr;
+              console.warn(`[HandsFree STT] Key #${kIdx + 1} (${activeKey.substring(0, 6)}...) - Model ${mod} lỗi (${cleanMime}):`, tErr.message);
             }
-            if (spokenText) break;
-          } catch (tErr) {
-            lastErr = tErr;
-            console.warn(`[HandsFree STT] Model ${mod} lỗi (${cleanMime}):`, tErr.message);
           }
         }
 
-        // Nếu tất cả model đều lỗi (ví dụ lỗi mạng / quota / key)
+        // Nếu tất cả key & model đều lỗi (ví dụ rớt mạng hoàn toàn)
         if (!spokenText && lastErr) {
           console.error("[HandsFree STT] Thất bại chuyển âm thanh:", lastErr);
           if (statusText) statusText.innerHTML = `<span style="color:#ef4444;font-weight:600;">❌ Lỗi: ${lastErr.message || 'Thất bại'}</span>`;
@@ -1873,7 +1901,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           .trim();
 
         // 5. Nếu không có từ nào rõ ràng (tiếng thở, tiếng ồn nhẹ): Tiếp tục lắng nghe
-        if (!spokenText || spokenText.length < 2) {
+        if (!spokenText) {
           console.info("[HandsFree] Không phát hiện từ ngữ rõ ràng.");
           if (statusText) statusText.innerHTML = '<span style="color:var(--text-muted);">👂 Chưa nghe rõ, đang lắng nghe lại...</span>';
           setTimeout(() => {
@@ -1983,7 +2011,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           const recordedBlob = new Blob(handsFreeAudioChunks, { type: blobType });
           handsFreeAudioChunks = [];
 
-          if (recordedBlob.size > 600 && isHandsFreeUserTalking) {
+          if (recordedBlob.size > 300 && isHandsFreeUserTalking) {
             await processHandsFreeAudioBlob(recordedBlob);
           } else {
             // Chưa có âm thanh hợp lệ, tiếp tục lượt nghe mới
@@ -2003,8 +2031,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         // Voice Activity Detection (VAD) Loop: kiểm tra mỗi 60ms
         const pcmData = new Uint8Array(handsFreeAnalyser.frequencyBinCount);
         let consecutiveSilenceMs = 0;
-        const VAD_THRESHOLD = 9;        // Ngưỡng âm lượng nhạy cho dải tần số tiếng người (80Hz - 3800Hz)
-        const SILENCE_COMMIT_MS = 1000; // 1 giây im lặng là hoàn tất câu nói
+        const VAD_THRESHOLD = 7;        // Ngưỡng âm lượng nhạy cho dải tần số tiếng người (80Hz - 3800Hz)
+        const SILENCE_COMMIT_MS = 950;  // Gần 1 giây im lặng là hoàn tất câu nói
 
         handsFreeVadInterval = setInterval(() => {
           if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing || !handsFreeAnalyser) {
