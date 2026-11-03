@@ -6,6 +6,7 @@
     let liveWs = null, liveAudioCtx = null, liveMediaStream = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] };
     let liveMicSource = null, liveScriptProcessor = null, liveSilentGain = null;
     let liveCamInterval = null, isLiveMicMuted = false, isLiveCamOn = false, isLiveSetupComplete = false;
+    let isLiveMiniBar = false;
     let liveCallHistory = []; // Lưu lại toàn bộ hội thoại Live để đưa vào Chat Text khi kết thúc
     let liveSilenceTimer = null, liveSilenceInterval = null, liveFarewellDetected = false;
     let liveFarewellTimer = null, liveSpeechRec = null;
@@ -121,6 +122,15 @@
       const currentText = liveCallHistory[liveCallHistory.length - 1].text.trim();
       const tr = $('live-transcript');
       if (tr) tr.innerHTML = `<span style="color:#94a3b8;">🗣️ <b>Bạn:</b> "${escapeHtml(currentText)}"</span>`;
+      if (isLiveMiniBar) {
+        const hfStatus = $('hf-status-text');
+        if (hfStatus) hfStatus.innerHTML = '<span style="color:#3b82f6;font-weight:600;">🎙️ Đang nghe giọng bạn...</span>';
+        const hfPrev = $('hf-transcript-preview');
+        if (hfPrev) {
+          hfPrev.innerText = `"${currentText}"`;
+          hfPrev.title = currentText;
+        }
+      }
 
       if (isFarewellIntent(currentText)) {
         handleFarewellTriggered('user');
@@ -146,6 +156,15 @@
       const currentText = liveCallHistory[liveCallHistory.length - 1].text.trim();
       const tr = $('live-transcript');
       if (tr) tr.innerHTML = `<span style="color:#38bdf8;">✨ <b>Jarvis AI:</b> "${escapeHtml(currentText)}"</span>`;
+      if (isLiveMiniBar) {
+        const hfStatus = $('hf-status-text');
+        if (hfStatus) hfStatus.innerHTML = '<span style="color:#8b5cf6;font-weight:600;">🔊 Jarvis đang nói...</span>';
+        const hfPrev = $('hf-transcript-preview');
+        if (hfPrev) {
+          hfPrev.innerText = `"${currentText.slice(0, 42)}${currentText.length > 42 ? '...' : ''}"`;
+          hfPrev.title = currentText;
+        }
+      }
 
       if (isFarewellIntent(currentText)) {
         handleFarewellTriggered('model');
@@ -208,15 +227,25 @@
       const modal = $('live-call-modal');
       if (modal) modal.style.display = 'none';
 
+      if (isLiveMiniBar) {
+        const banner = $('hands-free-banner');
+        if (banner) banner.style.display = 'none';
+        $('btn-hands-free-voice')?.classList.remove('active');
+        $('btn-toggle-hands-free-chip')?.classList.remove('active');
+        const hfPrev = $('hf-transcript-preview');
+        if (hfPrev) hfPrev.innerText = "";
+      }
+
       // Chuyển toàn bộ hội thoại cuộc gọi Live vào khung chat chính
       if (liveCallHistory.length > 0) {
         const curSessions = window.sessions || sessions || [];
         const curActiveId = window.activeId || activeId;
         const cs = curSessions.find(x => x.id === curActiveId);
-        const validItems = liveCallHistory.filter(item => item.text && item.text.trim().length > 0);
+        const validItems = liveCallHistory.filter(item => !item._synced && item.text && item.text.trim().length > 0);
         if (validItems.length > 0) {
           const targetHistory = window.chatHistory || chatHistory;
           for (const item of validItems) {
+            item._synced = true;
             targetHistory.push({
               role: item.role,
               text: item.text.trim(),
@@ -272,11 +301,25 @@
     function getLiveApiKey() {
       const sel = $('live-key-select')?.value || 'auto';
       if (sel !== 'auto') {
-        const idx = parseInt(sel),
-              k = (ls.getItem(`jarvis_api_${idx+1}`) || ls.getItem(`huanmu_api_${idx+1}`) || ls.getItem(`javiss_api_${idx+1}`) || '').trim();
-        if (k) return { key: k, index: idx };
+        const idx = parseInt(sel);
+        let k = (ls.getItem(`jarvis_api_${idx+1}`) || ls.getItem(`huanmu_api_${idx+1}`) || ls.getItem(`javiss_api_${idx+1}`) || '').trim();
+        if (k) {
+          if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
+            if (typeof deobfuscateKey === 'function') k = deobfuscateKey(k);
+            else if (typeof window.deobfuscateKey === 'function') k = window.deobfuscateKey(k);
+          }
+          return { key: k, index: idx };
+        }
       }
-      return apiKeys.length ? { key: apiKeys[liveKeyIndex % apiKeys.length], index: liveKeyIndex % apiKeys.length } : { key: '', index: -1 };
+      if (apiKeys.length) {
+        let k = apiKeys[liveKeyIndex % apiKeys.length];
+        if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
+          if (typeof deobfuscateKey === 'function') k = deobfuscateKey(k);
+          else if (typeof window.deobfuscateKey === 'function') k = window.deobfuscateKey(k);
+        }
+        return { key: k, index: liveKeyIndex % apiKeys.length };
+      }
+      return { key: '', index: -1 };
     }
 
     function downsampleTo16kPCM(inputData, inputSampleRate) {
@@ -396,14 +439,37 @@
       isLiveCamOn = isLiveMicMuted = false;
       if ($('btn-live-mic-toggle')) { $('btn-live-mic-toggle').className = 'live-control-btn active'; $('btn-live-mic-toggle').innerHTML = '🎙️'; }
       if ($('btn-live-cam-toggle')) $('btn-live-cam-toggle').className = 'live-control-btn';
+
+      if (isLiveMiniBar) {
+        const banner = $('hands-free-banner');
+        if (banner) banner.style.display = 'none';
+        $('btn-hands-free-voice')?.classList.remove('active');
+        $('btn-toggle-hands-free-chip')?.classList.remove('active');
+        const hfPrev = $('hf-transcript-preview');
+        if (hfPrev) hfPrev.innerText = "";
+      }
+      isLiveMiniBar = false;
     }
 
-    async function startLiveVoiceCall() {
+    async function startLiveVoiceCall(options = {}) {
+      isLiveMiniBar = !!(options && options.miniBar);
       const { key, index } = getLiveApiKey();
       if (!key) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
 
       const m = $('live-call-modal'), st = $('live-call-status'), tr = $('live-transcript'), orb = $('live-orb');
-      m.style.display = 'flex';
+      if (isLiveMiniBar) {
+        if (m) m.style.display = 'none';
+        const banner = $('hands-free-banner');
+        if (banner) banner.style.display = 'flex';
+        $('btn-hands-free-voice')?.classList.add('active');
+        $('btn-toggle-hands-free-chip')?.classList.add('active');
+        const hfStatus = $('hf-status-text');
+        if (hfStatus) hfStatus.innerHTML = `<span style="color:#10b981;font-weight:600;">⚡ Đang kết nối Live [Key ${index+1}]...</span>`;
+        const hfPrev = $('hf-transcript-preview');
+        if (hfPrev) hfPrev.innerText = "";
+      } else {
+        if (m) m.style.display = 'flex';
+      }
       st.innerText = `Đang kết nối [Key ${index+1}]...`;
       tr.innerHTML = '<i>Đang mở micro & kết nối máy chủ Jarvis Live...</i>';
       orb.className = 'live-orb listening';
@@ -518,6 +584,10 @@
             if (msg.setupComplete || msg.serverContent?.setupComplete) {
               isLiveSetupComplete = true;
               liveRetryCount = 0;
+              if (isLiveMiniBar) {
+                const hfStatus = $('hf-status-text');
+                if (hfStatus) hfStatus.innerHTML = '<span style="color:#10b981;font-weight:600;">🟢 Live: Đang lắng nghe... (Hãy nói)</span>';
+              }
               st.innerText = `🟢 Đã kết nối Jarvis Live 3.8`;
               tr.innerHTML = '<i>Hãy nói chuyện bình thường hoặc yêu cầu tìm kiếm...</i>';
               startLiveSpeechRec();
@@ -532,10 +602,18 @@
                   const chosenEngine = $('live-search-engine-select')?.value || ls.getItem('jarvis_live_search_engine') || 'tavily';
                   const engineLabel = chosenEngine === 'serper' ? 'Serper Google' : 'Tavily Search';
                   tr.innerHTML = `<span style="color:#38bdf8;">⚡ <b>Jarvis AI:</b> Đang dùng ${engineLabel} tìm: "<em>${escapeHtml(q)}</em>"...</span>`;
+                  if (isLiveMiniBar) {
+                    const hfStatus = $('hf-status-text');
+                    if (hfStatus) hfStatus.innerHTML = `<span style="color:#38bdf8;font-weight:600;">⚡ Đang tìm web: "<em>${escapeHtml(q.slice(0, 18))}...</em>"</span>`;
+                  }
                   searchOutput = await executeLiveSearch(q, chosenEngine);
                 } else if (call.name === "read_url") {
                   const u = call.args?.url || "";
                   tr.innerHTML = `<span style="color:#38bdf8;">🌐 <b>Jarvis AI:</b> Đang đọc link: "<em>${escapeHtml(u.substring(0, 25))}...</em>"</span>`;
+                  if (isLiveMiniBar) {
+                    const hfStatus = $('hf-status-text');
+                    if (hfStatus) hfStatus.innerHTML = `<span style="color:#38bdf8;font-weight:600;">🌐 Đang đọc link: "<em>${escapeHtml(u.substring(0, 20))}...</em>"</span>`;
+                  }
                   try {
                     const ext = await extractWebPageContent(u);
                     searchOutput = ext.content.substring(0, 10000);
@@ -588,10 +666,46 @@
               }
 
               // Hoàn tất lượt model (turnComplete)
-              if (sc.turnComplete && liveFarewellDetected) {
-                if (!livePlaybackState.activeSources.length) {
-                  if (liveFarewellTimer) clearTimeout(liveFarewellTimer);
-                  liveFarewellTimer = setTimeout(() => endLiveCall("Đã tự động kết thúc cuộc gọi theo lời chào tạm biệt!"), 600);
+              if (sc.turnComplete) {
+                if (isLiveMiniBar) {
+                  const hfStatus = $('hf-status-text');
+                  if (hfStatus) hfStatus.innerHTML = '<span style="color:#10b981;font-weight:600;">🟢 Live: Đang lắng nghe... (Hãy nói)</span>';
+
+                  // Tự động đẩy tin nhắn vừa hoàn tất vào giao diện chat ngay lập tức
+                  try {
+                    const curSessions = window.sessions || sessions || [];
+                    const curActiveId = window.activeId || activeId;
+                    const cs = curSessions.find(x => x.id === curActiveId);
+                    const targetHistory = window.chatHistory || chatHistory || [];
+                    let hasNew = false;
+                    for (const item of liveCallHistory) {
+                      if (!item._synced && item.text && item.text.trim()) {
+                        item._synced = true;
+                        targetHistory.push({
+                          role: item.role,
+                          text: item.text.trim(),
+                          time: item.time || (window.getNowTime24h ? window.getNowTime24h() : getNowTime24h()),
+                          isLiveCall: true
+                        });
+                        hasNew = true;
+                      }
+                    }
+                    if (hasNew) {
+                      if (cs) {
+                        cs.his = targetHistory;
+                        if (typeof window.saveToDB === 'function') window.saveToDB(cs);
+                      }
+                      if (typeof window.reRenderHistory === 'function') window.reRenderHistory();
+                      if (window.DOM?.chat) window.DOM.chat.scrollTop = window.DOM.chat.scrollHeight;
+                    }
+                  } catch (_) {}
+                }
+
+                if (liveFarewellDetected) {
+                  if (!livePlaybackState.activeSources.length) {
+                    if (liveFarewellTimer) clearTimeout(liveFarewellTimer);
+                    liveFarewellTimer = setTimeout(() => endLiveCall("Đã tự động kết thúc cuộc gọi theo lời chào tạm biệt!"), 600);
+                  }
                 }
               }
             }
@@ -681,3 +795,4 @@
 
     window.startLiveVoiceCall = startLiveVoiceCall;
     window.endLiveCall = endLiveCall;
+    window.isLiveActive = () => !!(liveWs && (liveWs.readyState === WebSocket.OPEN || liveWs.readyState === WebSocket.CONNECTING));
