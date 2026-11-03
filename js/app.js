@@ -1798,7 +1798,16 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
         if (!base64Data) throw new Error("Không thể đọc dữ liệu âm thanh");
 
-        // 2. Lấy API Key
+        // 2. Chuẩn hóa MIME type bare (Gemini API bắt buộc MIME type thuần, không có tham số ;codecs=...)
+        let rawType = (blob.type || handsFreeRecorder?.mimeType || 'audio/webm').toLowerCase();
+        let cleanMime = rawType.split(';')[0].trim();
+        if (cleanMime.includes('webm')) cleanMime = 'audio/webm';
+        else if (cleanMime.includes('mp4') || cleanMime.includes('m4a') || cleanMime.includes('aac')) cleanMime = 'audio/mp4';
+        else if (cleanMime.includes('wav')) cleanMime = 'audio/wav';
+        else if (cleanMime.includes('ogg')) cleanMime = 'audio/ogg';
+        else cleanMime = 'audio/webm';
+
+        // 3. Lấy API Key
         const keys = getGoogleKeysList(true);
         if (!keys.length) {
           showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
@@ -1808,10 +1817,11 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         const key = keys[0];
         const ai = new GoogleGenAI({ apiKey: key });
 
-        // 3. Gọi Gemini Flash Lite để chuyển giọng nói sang văn bản tiếng Việt cực nhanh
+        // 4. Gọi Gemini Flash Lite để chuyển giọng nói sang văn bản tiếng Việt cực nhanh
         handsFreeTranscribeController = new AbortController();
         const candidateTranscribeModels = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.8-flash'];
         let spokenText = '';
+        let lastErr = null;
 
         for (const mod of candidateTranscribeModels) {
           try {
@@ -1823,12 +1833,12 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
                   parts: [
                     {
                       inlineData: {
-                        mimeType: blob.type || 'audio/webm',
+                        mimeType: cleanMime,
                         data: base64Data
                       }
                     },
                     {
-                      text: "Hãy chép lại chính xác từng từ tiếng Việt trong đoạn ghi âm trên. Chỉ trả về đúng câu nói của người dùng, không thêm bớt, không giải thích, không đặt trong dấu ngoặc kép."
+                      text: "Nghe đoạn ghi âm tiếng Việt này và chỉ chép lại đúng văn bản những gì người nói. Tuyệt đối không thêm lời dẫn, không giải thích, không dùng ngoặc kép."
                     }
                   ]
                 }
@@ -1840,13 +1850,29 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
             }
             if (spokenText) break;
           } catch (tErr) {
-            console.warn(`Transcribe model ${mod} lỗi:`, tErr.message);
+            lastErr = tErr;
+            console.warn(`[HandsFree STT] Model ${mod} lỗi (${cleanMime}):`, tErr.message);
           }
         }
 
-        spokenText = spokenText.replace(/^["'“”«»]+|["'“”«»]+$/g, '').trim();
+        // Nếu tất cả model đều lỗi (ví dụ lỗi mạng / quota / key)
+        if (!spokenText && lastErr) {
+          console.error("[HandsFree STT] Thất bại chuyển âm thanh:", lastErr);
+          if (statusText) statusText.innerHTML = `<span style="color:#ef4444;font-weight:600;">❌ Lỗi: ${lastErr.message || 'Thất bại'}</span>`;
+          setTimeout(() => {
+            if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
+              startHandsFreeRecorder();
+            }
+          }, 1200);
+          return;
+        }
 
-        // 4. Nếu không có từ nào rõ ràng (tiếng thở, tiếng ồn nhẹ): Tiếp tục lắng nghe
+        spokenText = spokenText
+          .replace(/^(người dùng nói|người nói|câu nói|văn bản|nội dung|bản chép|transcript|transcription):\s*/i, '')
+          .replace(/^["'“”«»]+|["'“”«»]+$/g, '')
+          .trim();
+
+        // 5. Nếu không có từ nào rõ ràng (tiếng thở, tiếng ồn nhẹ): Tiếp tục lắng nghe
         if (!spokenText || spokenText.length < 2) {
           console.info("[HandsFree] Không phát hiện từ ngữ rõ ràng.");
           if (statusText) statusText.innerHTML = '<span style="color:var(--text-muted);">👂 Chưa nghe rõ, đang lắng nghe lại...</span>';
@@ -1858,7 +1884,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           return;
         }
 
-        // 5. Cập nhật giao diện & gán nội dung vào ô nhập text
+        // 6. Cập nhật giao diện & gán nội dung vào ô nhập text
         if (preview) {
           preview.innerText = `"${spokenText}"`;
           preview.title = spokenText;
@@ -1882,7 +1908,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
             startHandsFreeRecorder();
           }
-        }, 600);
+        }, 800);
       } finally {
         handsFreeTranscribeController = null;
       }
@@ -1957,7 +1983,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           const recordedBlob = new Blob(handsFreeAudioChunks, { type: blobType });
           handsFreeAudioChunks = [];
 
-          if (recordedBlob.size > 1500 && isHandsFreeUserTalking) {
+          if (recordedBlob.size > 600 && isHandsFreeUserTalking) {
             await processHandsFreeAudioBlob(recordedBlob);
           } else {
             // Chưa có âm thanh hợp lệ, tiếp tục lượt nghe mới
@@ -1977,7 +2003,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         // Voice Activity Detection (VAD) Loop: kiểm tra mỗi 60ms
         const pcmData = new Uint8Array(handsFreeAnalyser.frequencyBinCount);
         let consecutiveSilenceMs = 0;
-        const VAD_THRESHOLD = 16;       // Ngưỡng năng lượng nhận diện giọng nói
+        const VAD_THRESHOLD = 9;        // Ngưỡng âm lượng nhạy cho dải tần số tiếng người (80Hz - 3800Hz)
         const SILENCE_COMMIT_MS = 1000; // 1 giây im lặng là hoàn tất câu nói
 
         handsFreeVadInterval = setInterval(() => {
@@ -1986,11 +2012,13 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           }
 
           handsFreeAnalyser.getByteFrequencyData(pcmData);
-          let sum = 0;
-          for (let i = 0; i < pcmData.length; i++) sum += pcmData[i];
-          const avgEnergy = sum / pcmData.length;
+          // Tập trung vào dải tần số tiếng người (80Hz - 3800Hz, bins 1 đến 45)
+          let voiceSum = 0;
+          const voiceBins = Math.min(45, pcmData.length);
+          for (let i = 1; i < voiceBins; i++) voiceSum += pcmData[i];
+          const voiceEnergy = voiceSum / (voiceBins - 1);
 
-          if (avgEnergy > VAD_THRESHOLD) {
+          if (voiceEnergy > VAD_THRESHOLD) {
             consecutiveSilenceMs = 0;
             if (!isHandsFreeUserTalking) {
               isHandsFreeUserTalking = true;
@@ -2027,6 +2055,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         clearInterval(handsFreeVadInterval);
         handsFreeVadInterval = null;
       }
+      isHandsFreeUserTalking = true;
       if (handsFreeRecorder && handsFreeRecorder.state === 'recording') {
         const statusText = $('hf-status-text');
         if (statusText) statusText.innerHTML = '<span style="color:#f59e0b;font-weight:600;">⏳ Đang gửi ngay...</span>';
