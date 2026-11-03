@@ -188,7 +188,7 @@
       let lastErr = null;
 
       // Danh sách mô hình dự phòng nếu mô hình chính bị 404 (chưa khả dụng ở endpoint generateContent)
-      const fallbackModels = [model, 'gemini-2.5-flash', 'gemini-2.0-flash'];
+      const fallbackModels = [model, 'gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts'];
       const uniqueModels = [...new Set(fallbackModels.filter(Boolean))];
 
       for (const currentModel of uniqueModels) {

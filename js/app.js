@@ -1135,7 +1135,7 @@ import { GoogleGenAI } from "@google/genai";
       // Cố gắng gọi AI: Thử model siêu nhẹ FLASH_LITE_MODEL trước, nếu lỗi thì thử model chính của phiên
       const candidateModels = [
         FLASH_LITE_MODEL,
-        sessionObj.mod || 'gemini-3.6-flash',
+        sessionObj.mod || 'gemini-3.8-flash',
         'gemini-3.1-flash-lite'
       ];
 
@@ -1497,7 +1497,7 @@ import { GoogleGenAI } from "@google/genai";
           }
         }
 
-        // Bước C: Biên soạn bản tin bằng mô hình siêu tốc: gemini-3.5-flash-lite (fallback gemini-3.6-flash)
+        // Bước C: Biên soạn bản tin bằng mô hình siêu tốc: gemini-3.5-flash-lite (fallback gemini-3.8-flash)
         if (statusEl) statusEl.innerText = "Jarvis (Gemini 3.5 Flash-Lite) đang biên soạn bản tin siêu tốc...";
 
         const currentCityName = locationLabel ? locationLabel.innerText : loc.city;
@@ -1509,7 +1509,7 @@ Thông tin thời tiết thực tế tại ${currentCityName}:
 ${weatherInfo}
 
 Thông tin tin tức công nghệ / AI thời gian thực thu thập được:
-${newsInfo ? newsInfo.slice(0, 2000) : "Các diễn biến phát triển AI mới nhất: Gemini 3.6 Flash, các mô hình Agentic AI, tự động hóa quy trình làm việc và các công cụ phát triển phần mềm đang bùng nổ."}
+${newsInfo ? newsInfo.slice(0, 2000) : "Các diễn biến phát triển AI mới nhất: Gemini 3.8 Flash, các mô hình Agentic AI, tự động hóa quy trình làm việc và các công cụ phát triển phần mềm đang bùng nổ."}
 
 Dữ liệu trí nhớ Second Brain về người dùng (mục tiêu, sở thích, dự án):
 ${memoryContext ? memoryContext : "Người dùng là một chuyên gia/kỹ sư công nghệ đam mê AI, tập trung vào hiệu suất cao và ứng dụng AI vào cuộc sống thực tế."}
@@ -1524,7 +1524,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 Định dạng Markdown đẹp mắt, phân đoạn rõ ràng bằng tiêu đề và bullet points, icon sinh động. Giữ giọng văn tự tin, tinh tế, tận tụy chuẩn phong cách Jarvis.`;
 
         const ai = new GoogleGenAI({ apiKey: key });
-        const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-3.6-flash'];
+        const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-3.8-flash'];
         let generatedText = '';
         let lastError = null;
 
@@ -1770,7 +1770,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           window.handsFreeRecognition.onresult = null;
           window.handsFreeRecognition.onerror = null;
           window.handsFreeRecognition.onend = null;
-          window.handsFreeRecognition.stop();
+          window.handsFreeRecognition.abort();
         } catch (e) {}
       }
 
@@ -1803,7 +1803,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
       try {
         const rec = new SpeechRec();
-        rec.continuous = true;
+        // Dùng continuous: false để mỗi lượt nhận diện dứt khoát, không bị nghẽn buffer trên Windows
+        rec.continuous = false;
         rec.interimResults = true;
         rec.lang = 'vi-VN';
         rec.maxAlternatives = 1;
@@ -1862,14 +1863,14 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
             if (btnSendHf) btnSendHf.style.display = 'inline-flex';
             if (statusText) {
-              statusText.innerHTML = `<span style="color:#6366f1;font-weight:600;">✍️ Đã nghe (${currentSpoken.length} ký tự)...</span>`;
+              statusText.innerHTML = `<span style="color:#6366f1;font-weight:600;">✍️ Đã nghe: "${currentSpoken.slice(0, 32)}${currentSpoken.length > 32 ? '...' : ''}"</span>`;
             }
 
-            // Voice Activity Detection (VAD) silence pause trigger (1.2s silence sends text)
+            // VAD silence pause trigger (1s silence sends text)
             clearTimeout(handsFreeSilenceTimer);
             handsFreeSilenceTimer = setTimeout(() => {
               commitAndSendHandsFree();
-            }, 1200);
+            }, 1000);
           }
         };
 
@@ -1884,9 +1885,6 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           console.warn("HandsFree Speech error:", e.error, e.message);
           const errType = e.error;
           if (errType === 'no-speech') {
-            if (statusText && isHandsFreeActive && !isHandsFreeSpeaking && !handsFreeCurrentTranscript) {
-              statusText.innerHTML = '<span style="color:var(--text-muted);">👂 Chưa nghe thấy tiếng nói, đang nghe tiếp...</span>';
-            }
             return;
           }
           if (errType === 'audio-capture') {
@@ -1917,18 +1915,18 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         rec.onend = () => {
           if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing) return;
 
-          // If there is pending transcript, commit and send it immediately!
+          // Nếu đã nhận được câu nói, lập tức gửi đi
           if (handsFreeCurrentTranscript && handsFreeCurrentTranscript.trim()) {
             commitAndSendHandsFree();
             return;
           }
 
-          // Otherwise restart listening cleanly after brief delay
+          // Ngược lại, bắt đầu lượt nghe tiếp theo mượt mà
           setTimeout(() => {
             if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
               startHandsFreeListener();
             }
-          }, 250);
+          }, 150);
         };
 
         rec.start();
@@ -3118,7 +3116,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         folder: "Mặc định",
         his: [],
         sys: '',
-        mod: 'gemini-3.6-flash',
+        mod: 'gemini-3.8-flash',
         engine: 'stream',
         lastInteractionId: null,
         assignedApiKey: null,
@@ -3158,7 +3156,13 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
       if (s) {
         DOM.sysInst.value = s.sys || '';
-        DOM.model.value = s.mod || 'gemini-3.6-flash';
+        let savedMod = s.mod || 'gemini-3.8-flash';
+        if (savedMod.includes('3.6') || savedMod.includes('2.0') || savedMod.includes('2.5') || savedMod.includes('1.5')) {
+          savedMod = 'gemini-3.8-flash';
+          s.mod = savedMod;
+          saveToDB(s);
+        }
+        DOM.model.value = savedMod;
         DOM.engineSel.value = s.engine || 'stream';
         DOM.apiKeySel.value = s.keySel || 'auto';
         DOM.temp.value = s.tmp || 0.5;
@@ -3574,13 +3578,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       // 1. Thử đọc bằng Gemini TTS chất lượng cao với chuỗi đoạn liên tục (Pipeline Streaming Queue)
       if (activeKeys.length > 0) {
         try {
-          const dialect = ls.getItem('tts_dialect_pref') || 'Nam chuẩn Sài Gòn';
           const voicePref = $('tts-voice-select')?.value || ls.getItem('jarvis_tts_voice') || 'Aoede';
           const ttsModel = $('tts-model-select')?.value || 'gemini-3.8-flash-lite-tts';
-
-          const styleInstruction = isVietnamese 
-            ? `[Style: Bạn là phát thanh viên Việt Nam bản xứ. Bắt buộc đọc hoàn toàn bằng tiếng Việt với ngữ điệu tự nhiên, truyền cảm, ấm áp, giọng ${dialect}, phát âm chuẩn 100% tiếng Việt, tuyệt đối không dùng giọng lơ lớ người nước ngoài.]\n`
-            : '';
 
           const reqFn = window.requestGeminiAudioWithFailover || (typeof requestGeminiAudioWithFailover === 'function' ? requestGeminiAudioWithFailover : null);
           if (!reqFn) throw new Error("Thư viện Gemini TTS chưa sẵn sàng");
@@ -3590,7 +3589,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
             const payload = {
               contents: [{
                 role: "user",
-                parts: [{ text: `${styleInstruction}${textChunk}` }]
+                parts: [{ text: textChunk }]
               }],
               generationConfig: {
                 responseModalities: ["AUDIO"],
@@ -3892,7 +3891,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         updateTokenCount();
         return;
       }
-      const am = DOM.model.value || 'gemini-3.6-flash';
+      let am = DOM.model.value || 'gemini-3.8-flash';
       const msg = rawMsg;
       if (!msg && !filesData.length && !txtContent) return;
       document.querySelectorAll('.follow-up-container').forEach(el => el.remove());
@@ -4395,7 +4394,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           }
 
           let streamAttempts = 0;
-          const maxStreamAttempts = 2;
+          const maxStreamAttempts = Math.max(Math.min(apiKeys.length || 1, 3), 2);
 
           while (streamAttempts < maxStreamAttempts) {
             streamAttempts++;
@@ -4438,6 +4437,43 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
               if (e.name === 'AbortError' || abortController.signal.aborted) throw e;
               lastErr = e;
 
+              // 1. Nếu lỗi xảy ra trước khi nhận chữ (!pS): Tự phục hồi thông minh
+              if (!pS) {
+                console.warn(`generateContentStream lần ${streamAttempts} lỗi:`, e.message);
+
+                // A. Nếu lỗi do thinkingConfig (400 Bad Request): gỡ bỏ thinkingConfig và thử lại ngay
+                if (config.thinkingConfig && (e.message?.includes('thinking') || e.message?.includes('400') || e.message?.includes('INVALID_ARGUMENT'))) {
+                  delete config.thinkingConfig;
+                  config.temperature = 0.5;
+                  console.info("[Fallback] Gỡ thinkingConfig, thử lại với cấu hình chuẩn...");
+                  continue;
+                }
+
+                // B. Nếu lỗi do Model không tìm thấy hoặc khai tử (404 Not Found): Chuyển sang Flash-Lite / 3.8 Flash
+                if (e.message?.includes('404') || e.message?.includes('not found')) {
+                  am = (am === 'gemini-3.8-flash') ? 'gemini-3.5-flash-lite' : 'gemini-3.8-flash';
+                  console.warn(`[Fallback] Chuyển sang model dự phòng: ${am}`);
+                  continue;
+                }
+
+                // C. Nếu lỗi do Key hoặc Quota (429, 403, Quota exceeded): Tự động xoay sang Key kế tiếp
+                if (apiKeys.length > 1 && streamAttempts < maxStreamAttempts) {
+                  gKey = getSessionApiKey(cs, true);
+                  keyIndexNum = findSlotIndexForKey(gKey);
+                  recordKeyRequest(keyIndexNum, am);
+                  const updatedBadge = getKeyBadgeHtml(keyIndexNum, am);
+                  const headerEl = bD?.querySelector('.message-header');
+                  if (headerEl) {
+                    const oldKeyBadge = headerEl.querySelector('.key-indicator-badge');
+                    if (oldKeyBadge) oldKeyBadge.outerHTML = updatedBadge;
+                  }
+                  showToast(`⚠️ Key #${keyIndexNum} bận hoặc hết hạn ngạch, đang xoay sang Key tiếp theo...`, 'warning');
+                  continue;
+                }
+                break;
+              }
+
+              // 2. Nếu đã nhận được chữ (pS) mà bị đứt stream giữa chừng
               const isStreamCutoff = e.message && (
                 e.message.includes('Incomplete JSON') ||
                 e.message.includes('network') ||
@@ -4930,8 +4966,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
     if (btnPresetQuick) {
       btnPresetQuick.onclick = () => {
-        // 1. Chuyển Model về 3.6 Flash
-        if (DOM.model) DOM.model.value = 'gemini-3.6-flash';
+        // 1. Chuyển Model về 3.8 Flash
+        if (DOM.model) DOM.model.value = 'gemini-3.8-flash';
         // 2. Chuyển Think Depth về minimal
         if (DOM.thinking) DOM.thinking.value = 'minimal';
         // 3. Tắt Web Search nếu đang bật
@@ -4941,7 +4977,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         }
         highlightActivePreset('quick');
         ls.setItem('jarvis_active_preset', 'quick');
-        showToast("⚡ Đã bật Chế độ Quick: Gemini 3.6 Flash · Think Min · Phản hồi siêu tốc ~0.5s!", "success");
+        showToast("⚡ Đã bật Chế độ Quick: Gemini 3.8 Flash · Think Min · Phản hồi siêu tốc ~0.5s!", "success");
       };
     }
 
