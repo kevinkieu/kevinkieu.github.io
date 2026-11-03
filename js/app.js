@@ -1721,15 +1721,16 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       handsFreeSilenceTimer = null;
       handsFreeCurrentTranscript = '';
 
-      if (handsFreeRecognition) {
+      if (window.handsFreeRecognition) {
         try {
-          handsFreeRecognition.onresult = null;
-          handsFreeRecognition.onerror = null;
-          handsFreeRecognition.onend = null;
-          handsFreeRecognition.abort();
+          window.handsFreeRecognition.onresult = null;
+          window.handsFreeRecognition.onerror = null;
+          window.handsFreeRecognition.onend = null;
+          window.handsFreeRecognition.abort();
         } catch (e) {}
-        handsFreeRecognition = null;
+        window.handsFreeRecognition = null;
       }
+      handsFreeRecognition = null;
       stopCurrentSpeaking();
 
       const banner = $('hands-free-banner');
@@ -1740,8 +1741,44 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
       const chipBtn = $('btn-toggle-hands-free-chip');
       if (chipBtn) chipBtn.classList.remove('active');
+
+      const btnSendHf = $('btn-send-hands-free');
+      if (btnSendHf) btnSendHf.style.display = 'none';
     }
     window.stopHandsFreeVoice = stopHandsFreeVoice;
+
+    function commitAndSendHandsFree() {
+      clearTimeout(handsFreeSilenceTimer);
+      handsFreeSilenceTimer = null;
+      const textToSend = (handsFreeCurrentTranscript || DOM.input.value || '').trim();
+      if (!textToSend || !isHandsFreeActive || isHandsFreeSpeaking || isProcessing) {
+        return;
+      }
+      handsFreeCurrentTranscript = '';
+
+      const preview = $('hf-transcript-preview');
+      if (preview) preview.innerText = `"${textToSend}"`;
+
+      const statusText = $('hf-status-text');
+      if (statusText) statusText.innerHTML = '<span style="color:#8b5cf6;font-weight:600;">🚀 Đang gửi câu hỏi...</span>';
+
+      const btnSendHf = $('btn-send-hands-free');
+      if (btnSendHf) btnSendHf.style.display = 'none';
+
+      if (window.handsFreeRecognition) {
+        try {
+          window.handsFreeRecognition.onresult = null;
+          window.handsFreeRecognition.onerror = null;
+          window.handsFreeRecognition.onend = null;
+          window.handsFreeRecognition.stop();
+        } catch (e) {}
+      }
+
+      DOM.input.value = textToSend;
+      DOM.input.dispatchEvent(new Event('input'));
+      DOM.sendBtn.click();
+    }
+    window.commitAndSendHandsFree = commitAndSendHandsFree;
 
     function startHandsFreeListener() {
       if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing) return;
@@ -1749,19 +1786,20 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRec) return;
 
-      if (handsFreeRecognition) {
+      if (window.handsFreeRecognition) {
         try {
-          handsFreeRecognition.onresult = null;
-          handsFreeRecognition.onerror = null;
-          handsFreeRecognition.onend = null;
-          handsFreeRecognition.abort();
+          window.handsFreeRecognition.onresult = null;
+          window.handsFreeRecognition.onerror = null;
+          window.handsFreeRecognition.onend = null;
+          window.handsFreeRecognition.abort();
         } catch (e) {}
-        handsFreeRecognition = null;
+        window.handsFreeRecognition = null;
       }
+      handsFreeRecognition = null;
 
       const statusText = $('hf-status-text');
-      if (statusText) statusText.innerText = "Đang lắng nghe...";
       const preview = $('hf-transcript-preview');
+      const btnSendHf = $('btn-send-hands-free');
 
       try {
         const rec = new SpeechRec();
@@ -1770,67 +1808,135 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         rec.lang = 'vi-VN';
         rec.maxAlternatives = 1;
 
+        rec.onstart = () => {
+          if (!isHandsFreeActive) return;
+          if (statusText) statusText.innerHTML = '<span style="color:#10b981;font-weight:600;">🟢 Đang lắng nghe... (Hãy nói)</span>';
+        };
+
+        rec.onaudiostart = () => {
+          if (!isHandsFreeActive) return;
+          if (statusText && !handsFreeCurrentTranscript) {
+            statusText.innerHTML = '<span style="color:#10b981;font-weight:600;">🟢 Micro sẵn sàng... (Hãy nói)</span>';
+          }
+        };
+
+        rec.onsoundstart = () => {
+          if (!isHandsFreeActive) return;
+          if (statusText && !handsFreeCurrentTranscript) {
+            statusText.innerHTML = '<span style="color:#3b82f6;font-weight:600;">🎙️ Đang nhận tín hiệu âm thanh...</span>';
+          }
+        };
+
+        rec.onspeechstart = () => {
+          if (!isHandsFreeActive) return;
+          if (statusText) {
+            statusText.innerHTML = '<span style="color:#3b82f6;font-weight:600;">🎙️ Đang nghe giọng nói...</span>';
+          }
+        };
+
         rec.onresult = (event) => {
           if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing) return;
 
           let fullFinal = '';
           let interim = '';
           for (let i = 0; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              fullFinal += event.results[i][0].transcript + ' ';
+            const res = event.results[i];
+            if (res.isFinal) {
+              fullFinal += res[0].transcript + ' ';
             } else {
-              interim += event.results[i][0].transcript;
+              interim += res[0].transcript;
             }
           }
 
           const currentSpoken = (fullFinal + interim).trim();
           if (currentSpoken) {
             handsFreeCurrentTranscript = currentSpoken;
-            if (preview) preview.innerText = `"${currentSpoken}"`;
+            if (preview) {
+              preview.innerText = `"${currentSpoken}"`;
+              preview.title = currentSpoken;
+            }
             DOM.input.value = currentSpoken;
             DOM.input.style.height = 'auto';
             DOM.input.style.height = Math.min(DOM.input.scrollHeight, 180) + 'px';
             DOM.input.dispatchEvent(new Event('input'));
-          }
 
-          // Voice Activity Detection (VAD) silence pause trigger
-          clearTimeout(handsFreeSilenceTimer);
-          handsFreeSilenceTimer = setTimeout(() => {
-            const textToSend = handsFreeCurrentTranscript.trim();
-            if (textToSend && isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
-              handsFreeCurrentTranscript = '';
-              if (statusText) statusText.innerText = "Đang gửi câu hỏi...";
-              try { rec.stop(); } catch (e) {}
-
-              DOM.input.value = textToSend;
-              DOM.input.dispatchEvent(new Event('input'));
-              DOM.sendBtn.click();
+            if (btnSendHf) btnSendHf.style.display = 'inline-flex';
+            if (statusText) {
+              statusText.innerHTML = `<span style="color:#6366f1;font-weight:600;">✍️ Đã nghe (${currentSpoken.length} ký tự)...</span>`;
             }
-          }, 1200);
+
+            // Voice Activity Detection (VAD) silence pause trigger (1.2s silence sends text)
+            clearTimeout(handsFreeSilenceTimer);
+            handsFreeSilenceTimer = setTimeout(() => {
+              commitAndSendHandsFree();
+            }, 1200);
+          }
+        };
+
+        rec.onspeechend = () => {
+          if (!isHandsFreeActive) return;
+          if (handsFreeCurrentTranscript && statusText) {
+            statusText.innerHTML = '<span style="color:#f59e0b;font-weight:600;">⏳ Đang hoàn tất câu nói...</span>';
+          }
         };
 
         rec.onerror = (e) => {
-          console.warn("HandsFree Speech error:", e.error);
-          if (e.error === 'not-allowed') {
-            showToast("Chưa cấp quyền Microphone! Vui lòng cho phép truy cập mic.", "danger");
+          console.warn("HandsFree Speech error:", e.error, e.message);
+          const errType = e.error;
+          if (errType === 'no-speech') {
+            if (statusText && isHandsFreeActive && !isHandsFreeSpeaking && !handsFreeCurrentTranscript) {
+              statusText.innerHTML = '<span style="color:var(--text-muted);">👂 Chưa nghe thấy tiếng nói, đang nghe tiếp...</span>';
+            }
+            return;
+          }
+          if (errType === 'audio-capture') {
+            if (statusText) statusText.innerHTML = '<span style="color:#ef4444;font-weight:600;">❌ Lỗi Micro (thiết bị đang bận)</span>';
+            showToast("Microphone đang bận hoặc lỗi phần cứng âm thanh. Vui lòng kiểm tra micro!", "danger");
             stopHandsFreeVoice();
+            return;
+          }
+          if (errType === 'not-allowed') {
+            if (statusText) statusText.innerHTML = '<span style="color:#ef4444;font-weight:600;">❌ Quyền Micro bị từ chối</span>';
+            showToast("Chưa cấp quyền Microphone! Bấm icon 🔒 trên thanh địa chỉ để mở quyền mic.", "danger");
+            stopHandsFreeVoice();
+            return;
+          }
+          if (errType === 'network') {
+            if (statusText) statusText.innerHTML = '<span style="color:#f59e0b;font-weight:600;">⚠️ Lỗi mạng Google Speech</span>';
+            showToast("Lỗi kết nối mạng tới dịch vụ nhận diện giọng nói Google.", "warning");
+            return;
+          }
+          if (errType === 'service-not-allowed') {
+            if (statusText) statusText.innerHTML = '<span style="color:#ef4444;font-weight:600;">❌ Trình duyệt chặn Speech API</span>';
+            showToast("Trình duyệt không cho phép dịch vụ Speech.", "danger");
+            stopHandsFreeVoice();
+            return;
           }
         };
 
         rec.onend = () => {
-          if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
-            setTimeout(() => {
-              if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
-                startHandsFreeListener();
-              }
-            }, 200);
+          if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing) return;
+
+          // If there is pending transcript, commit and send it immediately!
+          if (handsFreeCurrentTranscript && handsFreeCurrentTranscript.trim()) {
+            commitAndSendHandsFree();
+            return;
           }
+
+          // Otherwise restart listening cleanly after brief delay
+          setTimeout(() => {
+            if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
+              startHandsFreeListener();
+            }
+          }, 250);
         };
 
         rec.start();
         handsFreeRecognition = rec;
+        window.handsFreeRecognition = rec;
       } catch (err) {
         console.error("HandsFree listener error:", err);
+        if (statusText) statusText.innerHTML = `<span style="color:#ef4444;font-weight:600;">❌ Lỗi khởi động mic: ${err.message || err}</span>`;
       }
     }
     window.startHandsFreeListener = startHandsFreeListener;
@@ -1849,16 +1955,18 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         return showToast("Trình duyệt không hỗ trợ Web Speech Recognition! Vui lòng dùng Chrome hoặc Edge.", "warning");
       }
 
-      // Check mic access beforehand
-      if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+      if (window.isSecureContext === false) {
+        return showToast("Web Speech API yêu cầu kết nối bảo mật (HTTPS hoặc http://localhost)!", "warning");
+      }
+
+      if (navigator.permissions && navigator.permissions.query) {
         try {
-          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          micStream.getTracks().forEach(t => t.stop());
-        } catch (micErr) {
-          console.warn("Chưa có quyền mic:", micErr);
-          showToast("Chưa cấp quyền Microphone! Vui lòng cho phép truy cập mic trên trình duyệt.", "danger");
-          return;
-        }
+          const perm = await navigator.permissions.query({ name: 'microphone' });
+          if (perm.state === 'denied') {
+            showToast("Microphone bị chặn! Hãy bấm vào biểu tượng 🔒 trên thanh địa chỉ để cho phép.", "danger");
+            return;
+          }
+        } catch (e) {}
       }
 
       stopHandsFreeVoice();
@@ -1874,10 +1982,13 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       if (chipBtn) chipBtn.classList.add('active');
 
       const statusText = $('hf-status-text');
-      if (statusText) statusText.innerText = "Đang lắng nghe...";
+      if (statusText) statusText.innerHTML = '<span style="color:#10b981;font-weight:600;">🟢 Đang khởi động micro...</span>';
 
       const preview = $('hf-transcript-preview');
       if (preview) preview.innerText = "";
+
+      const btnSendHf = $('btn-send-hands-free');
+      if (btnSendHf) btnSendHf.style.display = 'none';
 
       startHandsFreeListener();
       showToast("🎙️ Đã bật Trò chuyện 2 chiều Rảnh tay liên tục!", "success");
@@ -1893,6 +2004,9 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
     const btnStopHf = $('btn-stop-hands-free');
     if (btnStopHf) btnStopHf.onclick = () => toggleHandsFreeVoice(false);
+
+    const btnSendHf = $('btn-send-hands-free');
+    if (btnSendHf) btnSendHf.onclick = () => commitAndSendHandsFree();
 
     // --- [MULTI-AGENT ARENA MODULE MOVED TO js/arena.js] ---
 
@@ -4409,39 +4523,47 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         DOM.sendBtn.style.background = 'var(--primary)';
 
         // --- HANDS-FREE VOICE FLOW COMPLETION HOOK ---
-        if (isHandsFreeActive && finalResp && !wasAborted) {
-          isHandsFreeSpeaking = true;
-          const statusText = $('hf-status-text');
-          if (statusText) statusText.innerText = "Jarvis đang trả lời...";
+        if (isHandsFreeActive) {
+          if (finalResp && !wasAborted) {
+            isHandsFreeSpeaking = true;
+            const statusText = $('hf-status-text');
+            if (statusText) statusText.innerHTML = '<span style="color:#8b5cf6;font-weight:600;">🔊 Jarvis đang trả lời...</span>';
 
-          playTextAudio(finalResp, {
-            onEnd: () => {
-              isHandsFreeSpeaking = false;
-              if (isHandsFreeActive) {
-                const status = $('hf-status-text');
-                if (status) status.innerText = "Đang lắng nghe...";
-                const prev = $('hf-transcript-preview');
-                if (prev) prev.innerText = "";
-                setTimeout(() => {
-                  if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
-                    startHandsFreeListener();
-                  }
-                }, 200);
+            playTextAudio(finalResp, {
+              onEnd: () => {
+                isHandsFreeSpeaking = false;
+                if (isHandsFreeActive) {
+                  const status = $('hf-status-text');
+                  if (status) status.innerHTML = '<span style="color:#10b981;font-weight:600;">🟢 Đang lắng nghe... (Hãy nói)</span>';
+                  const prev = $('hf-transcript-preview');
+                  if (prev) prev.innerText = "";
+                  setTimeout(() => {
+                    if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
+                      startHandsFreeListener();
+                    }
+                  }, 300);
+                }
+              },
+              onError: () => {
+                isHandsFreeSpeaking = false;
+                if (isHandsFreeActive) {
+                  const status = $('hf-status-text');
+                  if (status) status.innerHTML = '<span style="color:#10b981;font-weight:600;">🟢 Đang lắng nghe... (Hãy nói)</span>';
+                  setTimeout(() => {
+                    if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
+                      startHandsFreeListener();
+                    }
+                  }, 300);
+                }
               }
-            },
-            onError: () => {
-              isHandsFreeSpeaking = false;
-              if (isHandsFreeActive) {
-                const status = $('hf-status-text');
-                if (status) status.innerText = "Đang lắng nghe...";
-                setTimeout(() => {
-                  if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
-                    startHandsFreeListener();
-                  }
-                }, 200);
+            });
+          } else {
+            setTimeout(() => {
+              if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
+                startHandsFreeListener();
               }
-            }
-          });
+            }, 300);
+          }
         }
       }
     };
