@@ -180,53 +180,177 @@
     }
 
     async function requestGeminiAudioWithFailover(payload, model, keyList, preferredIdx = 0) {
-      if (!keyList || keyList.length === 0) {
-        throw new Error("Chưa có API Key Google nào trong Jarvis AI! Hãy mở Cài đặt để thêm key.");
+      const cleanKeys = (keyList || []).map(k => {
+        let clean = (k || '').trim();
+        if (clean.startsWith('JVENC_') || clean.startsWith('ENC_')) {
+          if (typeof deobfuscateKey === 'function') clean = deobfuscateKey(clean);
+          else if (typeof window.deobfuscateKey === 'function') clean = window.deobfuscateKey(clean);
+        }
+        return clean;
+      }).filter(Boolean);
+
+      if (!cleanKeys.length) {
+        throw new Error("Chưa có API Key Google nào hợp lệ trong Jarvis AI! Hãy mở Cài đặt để thêm key.");
       }
-      let attempts = 0;
-      let curIdx = preferredIdx % keyList.length;
+
+      // Trích xuất văn bản, giọng đọc và chỉ dẫn phong cách
+      let textToRead = '';
+      let voiceName = 'Charon';
+      let styleInstruction = 'Bạn là trợ lý AI Jarvis với giọng nam giới Nam Bộ. Hãy đọc toàn bộ văn bản được cung cấp với phát âm tiếng Việt chuẩn phương ngữ Nam Bộ (miền Nam Việt Nam), ngữ điệu tự nhiên, ấm áp, thân thiện, gần gũi, rõ ràng từng chữ, tuyệt đối không dùng giọng robot hay giọng người nước ngoài.';
+
+      if (typeof payload === 'string') {
+        textToRead = payload;
+      } else if (payload && typeof payload === 'object') {
+        if (payload.text) textToRead = payload.text;
+        else if (payload.contents?.[0]?.parts?.[0]?.text) textToRead = payload.contents[0].parts[0].text;
+        else if (payload.input?.[0]?.content?.[0]?.text) textToRead = payload.input[0].content[0].text;
+
+        if (payload.voice) voiceName = payload.voice;
+        else if (payload.generationConfig?.speechConfig?.voiceConfig?.prebuiltVoiceConfig?.voiceName) {
+          voiceName = payload.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName;
+        } else if (payload.generation_config?.speech_config?.[0]?.voice) {
+          voiceName = payload.generation_config.speech_config[0].voice;
+        } else {
+          voiceName = (typeof $ === 'function' ? $('tts-voice-select')?.value : null) || (typeof ls !== 'undefined' ? ls.getItem('jarvis_tts_voice') : null) || 'Charon';
+        }
+
+        if (payload.style) styleInstruction = payload.style;
+        else if (payload.systemInstruction?.parts?.[0]?.text) styleInstruction = payload.systemInstruction.parts[0].text;
+        else if (payload.input?.[0]?.content?.[0]?.annotations?.[0]?.style) {
+          styleInstruction = payload.input[0].content[0].annotations[0].style;
+        }
+      }
+
+      if (textToRead.startsWith('[Style:')) {
+        const endBracket = textToRead.indexOf(']\n');
+        if (endBracket !== -1) {
+          const extractedStyle = textToRead.slice(7, endBracket).trim();
+          if (extractedStyle) styleInstruction = extractedStyle;
+          textToRead = textToRead.slice(endBracket + 2).trim();
+        }
+      }
+
+      textToRead = (textToRead || '').trim();
+      if (!textToRead) throw new Error("Không có nội dung văn bản để đọc");
+
+      // Danh sách mô hình TTS chính thức của Google Gemini (Interactions API)
+      const requestedModel = (model || '').trim();
+      const candidateModels = [];
+      if (requestedModel && !requestedModel.includes('2.0') && !requestedModel.includes('2.5')) {
+        candidateModels.push(requestedModel);
+      }
+      if (!candidateModels.includes('gemini-3.8-flash-lite-tts')) candidateModels.push('gemini-3.8-flash-lite-tts');
+      if (!candidateModels.includes('gemini-3.8-flash-tts')) candidateModels.push('gemini-3.8-flash-tts');
+
+      let curIdx = preferredIdx % cleanKeys.length;
       let lastErr = null;
 
-      // Danh sách mô hình dự phòng nếu mô hình chính bị 404 (chưa khả dụng ở endpoint generateContent)
-      const fallbackModels = [model, 'gemini-2.5-flash', 'gemini-2.0-flash'];
-      const uniqueModels = [...new Set(fallbackModels.filter(Boolean))];
-
-      for (const currentModel of uniqueModels) {
-        attempts = 0;
-        while (attempts < keyList.length) {
-          const key = keyList[curIdx];
+      for (const currentModel of candidateModels) {
+        let attempts = 0;
+        while (attempts < cleanKeys.length) {
+          const key = cleanKeys[curIdx];
           const masked = key.length > 8 ? key.substring(0, 4) + '...' + key.slice(-4) : '***';
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${key}`;
 
           try {
-            const res = await fetch(url, {
+            // Gọi Google Gemini Interactions API (Chuẩn GA chính thức cho Text-to-Speech)
+            const interactionsUrl = `https://generativelanguage.googleapis.com/v1beta/interactions?key=${encodeURIComponent(key)}`;
+            const interactionsBody = {
+              model: currentModel,
+              input: [{
+                type: "user_input",
+                content: [{
+                  type: "text",
+                  text: textToRead,
+                  annotations: [{
+                    type: "speech_metadata",
+                    style: styleInstruction
+                  }]
+                }]
+              }],
+              response_format: { type: "audio" },
+              generation_config: {
+                speech_config: [{ voice: voiceName }]
+              }
+            };
+
+            const res = await fetch(interactionsUrl, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
+              headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': key
+              },
+              body: JSON.stringify(interactionsBody)
             });
 
             if (res.ok) {
-              const data = await res.json();
-              return { data, successIdx: curIdx, usedModel: currentModel };
+              const json = await res.json();
+              let base64Audio = json.output_audio?.data || null;
+              if (!base64Audio && Array.isArray(json.steps)) {
+                for (const step of json.steps) {
+                  if (step.type === 'model_output' && Array.isArray(step.content)) {
+                    for (const item of step.content) {
+                      if (item.type === 'audio' && item.data) {
+                        base64Audio = item.data;
+                        break;
+                      }
+                    }
+                  }
+                  if (base64Audio) break;
+                }
+              }
+
+              if (base64Audio) {
+                // Tạo bridge tương thích cho cả code mới và các hàm cũ
+                const bridgeData = {
+                  ...json,
+                  candidates: [{
+                    content: {
+                      parts: [{
+                        inlineData: {
+                          mimeType: 'audio/wav',
+                          data: base64Audio
+                        }
+                      }]
+                    }
+                  }],
+                  output_audio: {
+                    data: base64Audio,
+                    mime_type: 'audio/wav'
+                  }
+                };
+
+                return {
+                  data: bridgeData,
+                  outputAudioData: base64Audio,
+                  successIdx: curIdx,
+                  usedModel: currentModel
+                };
+              }
             }
 
             const errText = await res.text();
-            // Nếu lỗi 404 (mô hình không tồn tại), ngắt vòng lặp key để chuyển ngay sang model dự phòng
-            if (res.status === 404) {
-              console.warn(`[TTS] Mô hình ${currentModel} trả về 404, thử model dự phòng kế tiếp...`);
-              lastErr = new Error(`HTTP 404: Mô hình ${currentModel} không hỗ trợ sinh âm thanh trực tiếp.`);
+            console.warn(`[TTS Interactions] Key #${curIdx + 1} (${masked}) HTTP ${res.status}:`, errText);
+
+            // Nếu model trả về 404 hoặc không hỗ trợ, ngắt để thử model tiếp theo
+            if (res.status === 404 || (res.status === 400 && errText.toLowerCase().includes('not supported'))) {
+              lastErr = new Error(`HTTP ${res.status}: Mô hình ${currentModel} không khả dụng.`);
               break;
             }
 
-            console.warn(`Key #${curIdx + 1} (${masked}) HTTP ${res.status}: ${errText}`);
-            showToast(`⚠️ Key #${curIdx + 1} quá tải (${res.status}), xoay sang Key kế tiếp...`, 'warning');
+            // Quá tải Quota (429) hoặc Quyền (403) -> Xoay sang key tiếp theo
+            if (res.status === 429) {
+              if (typeof showToast === 'function') showToast(`⚠️ Key #${curIdx + 1} quá tải tạm thời (429), xoay sang Key kế tiếp...`, 'warning');
+            } else if (res.status === 403) {
+              if (typeof showToast === 'function') showToast(`⚠️ Key #${curIdx + 1} bị chặn quyền (403), xoay sang Key kế tiếp...`, 'warning');
+            }
+
             lastErr = new Error(`HTTP ${res.status}: ${errText}`);
-            curIdx = (curIdx + 1) % keyList.length;
+            curIdx = (curIdx + 1) % cleanKeys.length;
             attempts++;
           } catch (e) {
             console.warn(`Key #${curIdx + 1} lỗi kết nối:`, e);
             lastErr = e;
-            curIdx = (curIdx + 1) % keyList.length;
+            curIdx = (curIdx + 1) % cleanKeys.length;
             attempts++;
           }
         }
