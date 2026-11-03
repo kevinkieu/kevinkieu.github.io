@@ -125,10 +125,10 @@
           <div style="margin-top:6px;">
             <span class="field-label">🤖 Mô hình Google Gemini:</span>
             <select id="model-select" class="modern-select">
-              <option value="gemini-3.8-flash" selected>Gemini 3.8 Flash (Khuyên dùng - Cân bằng & Mới nhất)</option>
-              <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Siêu tốc & 500 RPD)</option>
-              <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite (Siêu nhẹ)</option>
-              <option value="gemini-4-argon">Gemini 4 Argon (Suy luận sâu & Code đỉnh cao)</option>
+              <option value="gemini-3.6-flash" selected>Gemini 3.6 Flash (Khuyên dùng - Nhanh & Chuẩn)</option>
+              <option value="gemini-3.8-flash">Gemini 3.8 Flash (Mới nhất)</option>
+              <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Lite)</option>
+              <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
             </select>
           </div>
 
@@ -508,6 +508,8 @@
         <select id="live-model-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;font-size:0.78rem;">
           <option value="models/gemini-3.8-live" selected>⚡ Gemini 3.8 Live (Mặc định)</option>
           <option value="models/gemini-3.8-live-extended-thinking">🧠 Gemini 3.8 Extended</option>
+          <option value="models/gemini-2.0-flash-exp">⚡ Gemini 2.0 Flash Live (Dự phòng)</option>
+          <option value="models/gemini-2.0-flash-realtime-exp">⚡ Gemini 2.0 Realtime (Dự phòng)</option>
         </select>
         <select id="live-search-engine-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;font-size:0.78rem;" title="Dịch vụ tìm kiếm web cho Live Voice">
           <option value="tavily" selected>🌐 Tavily Search</option>
@@ -1152,6 +1154,7 @@
               <select id="tts-model-select" class="tts-select">
                 <option value="gemini-3.8-flash-lite-tts" selected>gemini-3.8-flash-lite-tts (Khuyên dùng - Nhanh & Ổn định)</option>
                 <option value="gemini-3.8-flash-tts">gemini-3.8-flash-tts (Chuẩn Studio)</option>
+                <option value="gemini-2.5-flash">gemini-2.5-flash (Đa dụng)</option>
               </select>
             </div>
 
@@ -1455,11 +1458,11 @@
   <button id="scroll-to-top" title="Cuộn lên đầu trang">▲</button>
 
   <!-- JAVASCRIPT APPLICATION MODULES -->
-  <script type="module" src="./js/app.js?v=71"></script>
-  <script type="module" src="./js/sync.js?v=71"></script>
-  <script type="module" src="./js/live.js?v=71"></script>
-  <script type="module" src="./js/tts.js?v=71"></script>
-  <script type="module" src="./js/translate.js?v=71"></script>
-  <script type="module" src="./js/rag.js?v=71"></script>
+  <script type="module" src="./js/app.js?v=72"></script>
+  <script type="module" src="./js/sync.js?v=72"></script>
+  <script type="module" src="./js/live.js?v=72"></script>
+  <script type="module" src="./js/tts.js?v=72"></script>
+  <script type="module" src="./js/translate.js?v=72"></script>
+  <script type="module" src="./js/rag.js?v=72"></script>
 </body>
 </html>
