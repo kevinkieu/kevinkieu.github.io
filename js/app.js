@@ -1135,7 +1135,7 @@ import { GoogleGenAI } from "@google/genai";
       // Cố gắng gọi AI: Thử model siêu nhẹ FLASH_LITE_MODEL trước, nếu lỗi thì thử model chính của phiên
       const candidateModels = [
         FLASH_LITE_MODEL,
-        sessionObj.mod || 'gemini-3.8-flash',
+        sessionObj.mod || 'gemini-3.6-flash',
         'gemini-3.1-flash-lite'
       ];
 
@@ -1497,7 +1497,7 @@ import { GoogleGenAI } from "@google/genai";
           }
         }
 
-        // Bước C: Biên soạn bản tin bằng mô hình siêu tốc: gemini-3.5-flash-lite (fallback gemini-3.8-flash)
+        // Bước C: Biên soạn bản tin bằng mô hình siêu tốc: gemini-3.5-flash-lite (fallback gemini-3.6-flash)
         if (statusEl) statusEl.innerText = "Jarvis (Gemini 3.5 Flash-Lite) đang biên soạn bản tin siêu tốc...";
 
         const currentCityName = locationLabel ? locationLabel.innerText : loc.city;
@@ -1509,7 +1509,7 @@ Thông tin thời tiết thực tế tại ${currentCityName}:
 ${weatherInfo}
 
 Thông tin tin tức công nghệ / AI thời gian thực thu thập được:
-${newsInfo ? newsInfo.slice(0, 2000) : "Các diễn biến phát triển AI mới nhất: Gemini 3.8 Flash, các mô hình Agentic AI, tự động hóa quy trình làm việc và các công cụ phát triển phần mềm đang bùng nổ."}
+${newsInfo ? newsInfo.slice(0, 2000) : "Các diễn biến phát triển AI mới nhất: Gemini 3.6 Flash, các mô hình Agentic AI, tự động hóa quy trình làm việc và các công cụ phát triển phần mềm đang bùng nổ."}
 
 Dữ liệu trí nhớ Second Brain về người dùng (mục tiêu, sở thích, dự án):
 ${memoryContext ? memoryContext : "Người dùng là một chuyên gia/kỹ sư công nghệ đam mê AI, tập trung vào hiệu suất cao và ứng dụng AI vào cuộc sống thực tế."}
@@ -1524,7 +1524,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 Định dạng Markdown đẹp mắt, phân đoạn rõ ràng bằng tiêu đề và bullet points, icon sinh động. Giữ giọng văn tự tin, tinh tế, tận tụy chuẩn phong cách Jarvis.`;
 
         const ai = new GoogleGenAI({ apiKey: key });
-        const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-3.8-flash'];
+        const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-3.6-flash'];
         let generatedText = '';
         let lastError = null;
 
@@ -3116,7 +3116,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         folder: "Mặc định",
         his: [],
         sys: '',
-        mod: 'gemini-3.8-flash',
+        mod: 'gemini-3.6-flash',
         engine: 'stream',
         lastInteractionId: null,
         assignedApiKey: null,
@@ -3156,13 +3156,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
       if (s) {
         DOM.sysInst.value = s.sys || '';
-        let savedMod = s.mod || 'gemini-3.8-flash';
-        if (savedMod.includes('3.6') || savedMod.includes('2.0') || savedMod.includes('2.5') || savedMod.includes('1.5')) {
-          savedMod = 'gemini-3.8-flash';
-          s.mod = savedMod;
-          saveToDB(s);
-        }
-        DOM.model.value = savedMod;
+        DOM.model.value = s.mod || 'gemini-3.6-flash';
         DOM.engineSel.value = s.engine || 'stream';
         DOM.apiKeySel.value = s.keySel || 'auto';
         DOM.temp.value = s.tmp || 0.5;
@@ -3891,7 +3885,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         updateTokenCount();
         return;
       }
-      let am = DOM.model.value || 'gemini-3.8-flash';
+      let am = DOM.model.value || 'gemini-3.6-flash';
       const msg = rawMsg;
       if (!msg && !filesData.length && !txtContent) return;
       document.querySelectorAll('.follow-up-container').forEach(el => el.remove());
@@ -4966,8 +4960,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
     if (btnPresetQuick) {
       btnPresetQuick.onclick = () => {
-        // 1. Chuyển Model về 3.8 Flash
-        if (DOM.model) DOM.model.value = 'gemini-3.8-flash';
+        // 1. Chuyển Model về 3.6 Flash
+        if (DOM.model) DOM.model.value = 'gemini-3.6-flash';
         // 2. Chuyển Think Depth về minimal
         if (DOM.thinking) DOM.thinking.value = 'minimal';
         // 3. Tắt Web Search nếu đang bật
@@ -4977,7 +4971,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         }
         highlightActivePreset('quick');
         ls.setItem('jarvis_active_preset', 'quick');
-        showToast("⚡ Đã bật Chế độ Quick: Gemini 3.8 Flash · Think Min · Phản hồi siêu tốc ~0.5s!", "success");
+        showToast("⚡ Đã bật Chế độ Quick: Gemini 3.6 Flash · Think Min · Phản hồi siêu tốc ~0.5s!", "success");
       };
     }
 
