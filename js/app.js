@@ -1707,30 +1707,56 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       };
     }
 
-    // --- FEATURE 3: HANDS-FREE VOICE FLOW CONTROLLER ---
+    // --- FEATURE 3: HANDS-FREE VOICE FLOW CONTROLLER (HARDWARE-GRADE getUserMedia + GEMINI STT) ---
     let isHandsFreeActive = false;
-    let handsFreeRecognition = null;
-    let handsFreeSilenceTimer = null;
     let isHandsFreeSpeaking = false;
-    let handsFreeCurrentTranscript = '';
+    let handsFreeMediaStream = null;
+    let handsFreeAudioCtx = null;
+    let handsFreeAnalyser = null;
+    let handsFreeRecorder = null;
+    let handsFreeAudioChunks = [];
+    let handsFreeVadInterval = null;
+    let isHandsFreeUserTalking = false;
+    let handsFreeSpeechStartTime = 0;
+    let handsFreeTranscribeController = null;
 
     function stopHandsFreeVoice() {
       isHandsFreeActive = false;
       isHandsFreeSpeaking = false;
-      clearTimeout(handsFreeSilenceTimer);
-      handsFreeSilenceTimer = null;
-      handsFreeCurrentTranscript = '';
+      isHandsFreeUserTalking = false;
+      handsFreeSpeechStartTime = 0;
 
-      if (window.handsFreeRecognition) {
-        try {
-          window.handsFreeRecognition.onresult = null;
-          window.handsFreeRecognition.onerror = null;
-          window.handsFreeRecognition.onend = null;
-          window.handsFreeRecognition.abort();
-        } catch (e) {}
-        window.handsFreeRecognition = null;
+      if (handsFreeVadInterval) {
+        clearInterval(handsFreeVadInterval);
+        handsFreeVadInterval = null;
       }
-      handsFreeRecognition = null;
+
+      if (handsFreeTranscribeController) {
+        try { handsFreeTranscribeController.abort(); } catch (_) {}
+        handsFreeTranscribeController = null;
+      }
+
+      if (handsFreeRecorder && handsFreeRecorder.state !== 'inactive') {
+        try {
+          handsFreeRecorder.onstop = null;
+          handsFreeRecorder.stop();
+        } catch (_) {}
+      }
+      handsFreeRecorder = null;
+      handsFreeAudioChunks = [];
+
+      if (handsFreeMediaStream) {
+        try {
+          handsFreeMediaStream.getTracks().forEach(track => track.stop());
+        } catch (_) {}
+        handsFreeMediaStream = null;
+      }
+
+      if (handsFreeAudioCtx && handsFreeAudioCtx.state !== 'closed') {
+        try { handsFreeAudioCtx.close(); } catch (_) {}
+        handsFreeAudioCtx = null;
+      }
+      handsFreeAnalyser = null;
       stopCurrentSpeaking();
 
       const banner = $('hands-free-banner');
@@ -1747,197 +1773,267 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     }
     window.stopHandsFreeVoice = stopHandsFreeVoice;
 
-    function commitAndSendHandsFree() {
-      clearTimeout(handsFreeSilenceTimer);
-      handsFreeSilenceTimer = null;
-      const textToSend = (handsFreeCurrentTranscript || DOM.input.value || '').trim();
-      if (!textToSend || !isHandsFreeActive || isHandsFreeSpeaking || isProcessing) {
-        return;
-      }
-      handsFreeCurrentTranscript = '';
-
-      const preview = $('hf-transcript-preview');
-      if (preview) preview.innerText = `"${textToSend}"`;
-
+    async function processHandsFreeAudioBlob(blob) {
+      if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing) return;
       const statusText = $('hf-status-text');
-      if (statusText) statusText.innerHTML = '<span style="color:#8b5cf6;font-weight:600;">🚀 Đang gửi câu hỏi...</span>';
-
+      const preview = $('hf-transcript-preview');
       const btnSendHf = $('btn-send-hands-free');
       if (btnSendHf) btnSendHf.style.display = 'none';
 
-      if (window.handsFreeRecognition) {
-        try {
-          window.handsFreeRecognition.onresult = null;
-          window.handsFreeRecognition.onerror = null;
-          window.handsFreeRecognition.onend = null;
-          window.handsFreeRecognition.abort();
-        } catch (e) {}
+      try {
+        if (statusText) statusText.innerHTML = '<span style="color:#8b5cf6;font-weight:600;">⚡ Đang chuyển giọng nói thành chữ...</span>';
+
+        // 1. Chuyển Blob sang base64
+        const reader = new FileReader();
+        const base64Promise = new Promise((resolve, reject) => {
+          reader.onloadend = () => {
+            const res = reader.result;
+            const b64 = typeof res === 'string' ? res.split(',')[1] : '';
+            resolve(b64);
+          };
+          reader.onerror = reject;
+        });
+        reader.readAsDataURL(blob);
+        const base64Data = await base64Promise;
+
+        if (!base64Data) throw new Error("Không thể đọc dữ liệu âm thanh");
+
+        // 2. Lấy API Key
+        const keys = getGoogleKeysList(true);
+        if (!keys.length) {
+          showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
+          stopHandsFreeVoice();
+          return;
+        }
+        const key = keys[0];
+        const ai = new GoogleGenAI({ apiKey: key });
+
+        // 3. Gọi Gemini Flash Lite để chuyển giọng nói sang văn bản tiếng Việt cực nhanh
+        handsFreeTranscribeController = new AbortController();
+        const candidateTranscribeModels = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.8-flash'];
+        let spokenText = '';
+
+        for (const mod of candidateTranscribeModels) {
+          try {
+            const res = await ai.models.generateContent({
+              model: mod,
+              contents: [
+                {
+                  role: 'user',
+                  parts: [
+                    {
+                      inlineData: {
+                        mimeType: blob.type || 'audio/webm',
+                        data: base64Data
+                      }
+                    },
+                    {
+                      text: "Hãy chép lại chính xác từng từ tiếng Việt trong đoạn ghi âm trên. Chỉ trả về đúng câu nói của người dùng, không thêm bớt, không giải thích, không đặt trong dấu ngoặc kép."
+                    }
+                  ]
+                }
+              ]
+            });
+            spokenText = (res.text || '').trim();
+            if (!spokenText && res.candidates?.[0]?.content?.parts) {
+              spokenText = res.candidates[0].content.parts.map(p => p.text || '').join('').trim();
+            }
+            if (spokenText) break;
+          } catch (tErr) {
+            console.warn(`Transcribe model ${mod} lỗi:`, tErr.message);
+          }
+        }
+
+        spokenText = spokenText.replace(/^["'“”«»]+|["'“”«»]+$/g, '').trim();
+
+        // 4. Nếu không có từ nào rõ ràng (tiếng thở, tiếng ồn nhẹ): Tiếp tục lắng nghe
+        if (!spokenText || spokenText.length < 2) {
+          console.info("[HandsFree] Không phát hiện từ ngữ rõ ràng.");
+          if (statusText) statusText.innerHTML = '<span style="color:var(--text-muted);">👂 Chưa nghe rõ, đang lắng nghe lại...</span>';
+          setTimeout(() => {
+            if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
+              startHandsFreeRecorder();
+            }
+          }, 350);
+          return;
+        }
+
+        // 5. Cập nhật giao diện & gán nội dung vào ô nhập text
+        if (preview) {
+          preview.innerText = `"${spokenText}"`;
+          preview.title = spokenText;
+        }
+        if (statusText) {
+          statusText.innerHTML = `<span style="color:#6366f1;font-weight:600;">✍️ Đã nghe: "${spokenText.slice(0, 32)}${spokenText.length > 32 ? '...' : ''}"</span>`;
+        }
+
+        DOM.input.value = spokenText;
+        DOM.input.style.height = 'auto';
+        DOM.input.style.height = Math.min(DOM.input.scrollHeight, 180) + 'px';
+        DOM.input.dispatchEvent(new Event('input'));
+
+        if (statusText) statusText.innerHTML = '<span style="color:#8b5cf6;font-weight:600;">🚀 Đang gửi cho Jarvis...</span>';
+        DOM.sendBtn.click();
+
+      } catch (err) {
+        console.error("Lỗi chuyển đổi giọng nói rảnh tay:", err);
+        if (statusText) statusText.innerHTML = `<span style="color:#ef4444;font-weight:600;">⚠️ Lỗi: ${err.message || 'Thử lại'}</span>`;
+        setTimeout(() => {
+          if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
+            startHandsFreeRecorder();
+          }
+        }, 600);
+      } finally {
+        handsFreeTranscribeController = null;
       }
-
-      DOM.input.value = textToSend;
-      DOM.input.dispatchEvent(new Event('input'));
-      DOM.sendBtn.click();
     }
-    window.commitAndSendHandsFree = commitAndSendHandsFree;
 
-    function startHandsFreeListener() {
+    async function startHandsFreeRecorder() {
       if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing) return;
 
-      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRec) return;
-
-      if (window.handsFreeRecognition) {
-        try {
-          window.handsFreeRecognition.onresult = null;
-          window.handsFreeRecognition.onerror = null;
-          window.handsFreeRecognition.onend = null;
-          window.handsFreeRecognition.abort();
-        } catch (e) {}
-        window.handsFreeRecognition = null;
-      }
-      handsFreeRecognition = null;
-
       const statusText = $('hf-status-text');
-      const preview = $('hf-transcript-preview');
       const btnSendHf = $('btn-send-hands-free');
 
       try {
-        const rec = new SpeechRec();
-        // Dùng continuous: false để mỗi lượt nhận diện dứt khoát, không bị nghẽn buffer trên Windows
-        rec.continuous = false;
-        rec.interimResults = true;
-        rec.lang = 'vi-VN';
-        rec.maxAlternatives = 1;
+        // Dừng recorder cũ nếu còn đang chạy
+        if (handsFreeRecorder && handsFreeRecorder.state !== 'inactive') {
+          try {
+            handsFreeRecorder.onstop = null;
+            handsFreeRecorder.stop();
+          } catch (_) {}
+        }
+        if (handsFreeVadInterval) {
+          clearInterval(handsFreeVadInterval);
+          handsFreeVadInterval = null;
+        }
 
-        rec.onstart = () => {
-          if (!isHandsFreeActive) return;
-          if (statusText) statusText.innerHTML = '<span style="color:#10b981;font-weight:600;">🟢 Đang lắng nghe... (Hãy nói)</span>';
-        };
+        // Khởi tạo MediaStream (chuẩn micro phần cứng, chạy mượt trên Android/iOS Safari/PWA)
+        if (!handsFreeMediaStream || !handsFreeMediaStream.active) {
+          handsFreeMediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            }
+          });
+        }
 
-        rec.onaudiostart = () => {
-          if (!isHandsFreeActive) return;
-          if (statusText && !handsFreeCurrentTranscript) {
-            statusText.innerHTML = '<span style="color:#10b981;font-weight:600;">🟢 Micro sẵn sàng... (Hãy nói)</span>';
+        // Khởi tạo AudioContext để phân tích năng lượng giọng nói thời gian thực (VAD)
+        if (!handsFreeAudioCtx || handsFreeAudioCtx.state === 'closed') {
+          handsFreeAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (handsFreeAudioCtx.state === 'suspended') {
+          await handsFreeAudioCtx.resume();
+        }
+
+        const source = handsFreeAudioCtx.createMediaStreamSource(handsFreeMediaStream);
+        handsFreeAnalyser = handsFreeAudioCtx.createAnalyser();
+        handsFreeAnalyser.fftSize = 512;
+        source.connect(handsFreeAnalyser);
+
+        // Tìm mimeType hỗ trợ trên thiết bị (ưu tiên Opus WebM, fallback MP4 cho iOS)
+        let mimeType = 'audio/webm;codecs=opus';
+        if (typeof MediaRecorder !== 'undefined') {
+          if (!MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+            if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
+            else if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+            else mimeType = '';
+          }
+        }
+
+        handsFreeAudioChunks = [];
+        const options = mimeType ? { mimeType } : undefined;
+        handsFreeRecorder = new MediaRecorder(handsFreeMediaStream, options);
+
+        handsFreeRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            handsFreeAudioChunks.push(e.data);
           }
         };
 
-        rec.onsoundstart = () => {
-          if (!isHandsFreeActive) return;
-          if (statusText && !handsFreeCurrentTranscript) {
-            statusText.innerHTML = '<span style="color:#3b82f6;font-weight:600;">🎙️ Đang nhận tín hiệu âm thanh...</span>';
-          }
-        };
-
-        rec.onspeechstart = () => {
-          if (!isHandsFreeActive) return;
-          if (statusText) {
-            statusText.innerHTML = '<span style="color:#3b82f6;font-weight:600;">🎙️ Đang nghe giọng nói...</span>';
-          }
-        };
-
-        rec.onresult = (event) => {
+        handsFreeRecorder.onstop = async () => {
           if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing) return;
+          const blobType = handsFreeRecorder?.mimeType || mimeType || 'audio/webm';
+          const recordedBlob = new Blob(handsFreeAudioChunks, { type: blobType });
+          handsFreeAudioChunks = [];
 
-          let fullFinal = '';
-          let interim = '';
-          for (let i = 0; i < event.results.length; ++i) {
-            const res = event.results[i];
-            if (res.isFinal) {
-              fullFinal += res[0].transcript + ' ';
-            } else {
-              interim += res[0].transcript;
-            }
-          }
-
-          const currentSpoken = (fullFinal + interim).trim();
-          if (currentSpoken) {
-            handsFreeCurrentTranscript = currentSpoken;
-            if (preview) {
-              preview.innerText = `"${currentSpoken}"`;
-              preview.title = currentSpoken;
-            }
-            DOM.input.value = currentSpoken;
-            DOM.input.style.height = 'auto';
-            DOM.input.style.height = Math.min(DOM.input.scrollHeight, 180) + 'px';
-            DOM.input.dispatchEvent(new Event('input'));
-
-            if (btnSendHf) btnSendHf.style.display = 'inline-flex';
-            if (statusText) {
-              statusText.innerHTML = `<span style="color:#6366f1;font-weight:600;">✍️ Đã nghe: "${currentSpoken.slice(0, 32)}${currentSpoken.length > 32 ? '...' : ''}"</span>`;
-            }
-
-            // VAD silence pause trigger (1s silence sends text)
-            clearTimeout(handsFreeSilenceTimer);
-            handsFreeSilenceTimer = setTimeout(() => {
-              commitAndSendHandsFree();
-            }, 1000);
-          }
-        };
-
-        rec.onspeechend = () => {
-          if (!isHandsFreeActive) return;
-          if (handsFreeCurrentTranscript && statusText) {
-            statusText.innerHTML = '<span style="color:#f59e0b;font-weight:600;">⏳ Đang hoàn tất câu nói...</span>';
-          }
-        };
-
-        rec.onerror = (e) => {
-          console.warn("HandsFree Speech error:", e.error, e.message);
-          const errType = e.error;
-          if (errType === 'no-speech') {
-            return;
-          }
-          if (errType === 'audio-capture') {
-            if (statusText) statusText.innerHTML = '<span style="color:#ef4444;font-weight:600;">❌ Lỗi Micro (thiết bị đang bận)</span>';
-            showToast("Microphone đang bận hoặc lỗi phần cứng âm thanh. Vui lòng kiểm tra micro!", "danger");
-            stopHandsFreeVoice();
-            return;
-          }
-          if (errType === 'not-allowed') {
-            if (statusText) statusText.innerHTML = '<span style="color:#ef4444;font-weight:600;">❌ Quyền Micro bị từ chối</span>';
-            showToast("Chưa cấp quyền Microphone! Bấm icon 🔒 trên thanh địa chỉ để mở quyền mic.", "danger");
-            stopHandsFreeVoice();
-            return;
-          }
-          if (errType === 'network') {
-            if (statusText) statusText.innerHTML = '<span style="color:#f59e0b;font-weight:600;">⚠️ Lỗi mạng Google Speech</span>';
-            showToast("Lỗi kết nối mạng tới dịch vụ nhận diện giọng nói Google.", "warning");
-            return;
-          }
-          if (errType === 'service-not-allowed') {
-            if (statusText) statusText.innerHTML = '<span style="color:#ef4444;font-weight:600;">❌ Trình duyệt chặn Speech API</span>';
-            showToast("Trình duyệt không cho phép dịch vụ Speech.", "danger");
-            stopHandsFreeVoice();
-            return;
-          }
-        };
-
-        rec.onend = () => {
-          if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing) return;
-
-          // Nếu đã nhận được câu nói, lập tức gửi đi
-          if (handsFreeCurrentTranscript && handsFreeCurrentTranscript.trim()) {
-            commitAndSendHandsFree();
-            return;
-          }
-
-          // Ngược lại, bắt đầu lượt nghe tiếp theo mượt mà
-          setTimeout(() => {
+          if (recordedBlob.size > 1500 && isHandsFreeUserTalking) {
+            await processHandsFreeAudioBlob(recordedBlob);
+          } else {
+            // Chưa có âm thanh hợp lệ, tiếp tục lượt nghe mới
             if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
-              startHandsFreeListener();
+              setTimeout(() => startHandsFreeRecorder(), 150);
             }
-          }, 150);
+          }
         };
 
-        rec.start();
-        handsFreeRecognition = rec;
-        window.handsFreeRecognition = rec;
+        handsFreeRecorder.start(250);
+        isHandsFreeUserTalking = false;
+        handsFreeSpeechStartTime = 0;
+
+        if (statusText) statusText.innerHTML = '<span style="color:#10b981;font-weight:600;">🟢 Đang lắng nghe... (Hãy nói)</span>';
+        if (btnSendHf) btnSendHf.style.display = 'none';
+
+        // Voice Activity Detection (VAD) Loop: kiểm tra mỗi 60ms
+        const pcmData = new Uint8Array(handsFreeAnalyser.frequencyBinCount);
+        let consecutiveSilenceMs = 0;
+        const VAD_THRESHOLD = 16;       // Ngưỡng năng lượng nhận diện giọng nói
+        const SILENCE_COMMIT_MS = 1000; // 1 giây im lặng là hoàn tất câu nói
+
+        handsFreeVadInterval = setInterval(() => {
+          if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing || !handsFreeAnalyser) {
+            return;
+          }
+
+          handsFreeAnalyser.getByteFrequencyData(pcmData);
+          let sum = 0;
+          for (let i = 0; i < pcmData.length; i++) sum += pcmData[i];
+          const avgEnergy = sum / pcmData.length;
+
+          if (avgEnergy > VAD_THRESHOLD) {
+            consecutiveSilenceMs = 0;
+            if (!isHandsFreeUserTalking) {
+              isHandsFreeUserTalking = true;
+              handsFreeSpeechStartTime = Date.now();
+              if (statusText) statusText.innerHTML = '<span style="color:#3b82f6;font-weight:600;">🎙️ Đang nghe giọng nói...</span>';
+              if (btnSendHf) btnSendHf.style.display = 'inline-flex';
+            }
+          } else if (isHandsFreeUserTalking) {
+            consecutiveSilenceMs += 60;
+            const isOverMax = Date.now() - handsFreeSpeechStartTime > 25000;
+            if (consecutiveSilenceMs >= SILENCE_COMMIT_MS || isOverMax) {
+              clearInterval(handsFreeVadInterval);
+              handsFreeVadInterval = null;
+              if (statusText) statusText.innerHTML = '<span style="color:#f59e0b;font-weight:600;">⏳ Đang hoàn tất câu nói...</span>';
+              if (handsFreeRecorder && handsFreeRecorder.state === 'recording') {
+                handsFreeRecorder.stop();
+              }
+            }
+          }
+        }, 60);
+
       } catch (err) {
-        console.error("HandsFree listener error:", err);
-        if (statusText) statusText.innerHTML = `<span style="color:#ef4444;font-weight:600;">❌ Lỗi khởi động mic: ${err.message || err}</span>`;
+        console.error("Lỗi bật micro phần cứng:", err);
+        if (statusText) statusText.innerHTML = `<span style="color:#ef4444;font-weight:600;">❌ Lỗi Micro: ${err.message || 'Bị chặn quyền'}</span>`;
+        showToast("Không thể truy cập Microphone! Hãy cấp quyền micro trong cài đặt điện thoại hoặc trình duyệt.", "danger");
+        stopHandsFreeVoice();
       }
     }
-    window.startHandsFreeListener = startHandsFreeListener;
+    window.startHandsFreeRecorder = startHandsFreeRecorder;
+    window.startHandsFreeListener = startHandsFreeRecorder;
+
+    function commitAndSendHandsFree() {
+      if (handsFreeVadInterval) {
+        clearInterval(handsFreeVadInterval);
+        handsFreeVadInterval = null;
+      }
+      if (handsFreeRecorder && handsFreeRecorder.state === 'recording') {
+        const statusText = $('hf-status-text');
+        if (statusText) statusText.innerHTML = '<span style="color:#f59e0b;font-weight:600;">⏳ Đang gửi ngay...</span>';
+        handsFreeRecorder.stop();
+      }
+    }
+    window.commitAndSendHandsFree = commitAndSendHandsFree;
 
     async function toggleHandsFreeVoice(forceState) {
       const shouldActivate = forceState !== undefined ? forceState : !isHandsFreeActive;
@@ -1948,23 +2044,12 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         return;
       }
 
-      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRec) {
-        return showToast("Trình duyệt không hỗ trợ Web Speech Recognition! Vui lòng dùng Chrome hoặc Edge.", "warning");
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        return showToast("Thiết bị không hỗ trợ truy cập Microphone phần cứng!", "warning");
       }
 
-      if (window.isSecureContext === false) {
-        return showToast("Web Speech API yêu cầu kết nối bảo mật (HTTPS hoặc http://localhost)!", "warning");
-      }
-
-      if (navigator.permissions && navigator.permissions.query) {
-        try {
-          const perm = await navigator.permissions.query({ name: 'microphone' });
-          if (perm.state === 'denied') {
-            showToast("Microphone bị chặn! Hãy bấm vào biểu tượng 🔒 trên thanh địa chỉ để cho phép.", "danger");
-            return;
-          }
-        } catch (e) {}
+      if (window.isSecureContext === false && window.location.hostname !== 'localhost') {
+        return showToast("Microphone yêu cầu kết nối bảo mật (HTTPS hoặc localhost)!", "warning");
       }
 
       stopHandsFreeVoice();
@@ -1980,7 +2065,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       if (chipBtn) chipBtn.classList.add('active');
 
       const statusText = $('hf-status-text');
-      if (statusText) statusText.innerHTML = '<span style="color:#10b981;font-weight:600;">🟢 Đang khởi động micro...</span>';
+      if (statusText) statusText.innerHTML = '<span style="color:#10b981;font-weight:600;">🟢 Đang kết nối micro...</span>';
 
       const preview = $('hf-transcript-preview');
       if (preview) preview.innerText = "";
@@ -1988,8 +2073,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       const btnSendHf = $('btn-send-hands-free');
       if (btnSendHf) btnSendHf.style.display = 'none';
 
-      startHandsFreeListener();
-      showToast("🎙️ Đã bật Trò chuyện 2 chiều Rảnh tay liên tục!", "success");
+      await startHandsFreeRecorder();
+      showToast("🎙️ Đã bật Đàm thoại Rảnh tay 2 chiều liên tục!", "success");
     }
     window.toggleHandsFreeVoice = toggleHandsFreeVoice;
 
@@ -3572,7 +3657,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       // 1. Thử đọc bằng Gemini TTS chất lượng cao với chuỗi đoạn liên tục (Pipeline Streaming Queue)
       if (activeKeys.length > 0) {
         try {
-          const voicePref = $('tts-voice-select')?.value || ls.getItem('jarvis_tts_voice') || 'Aoede';
+          const voicePref = $('tts-voice-select')?.value || ls.getItem('jarvis_tts_voice') || 'Charon';
           const ttsModel = $('tts-model-select')?.value || 'gemini-3.8-flash-lite-tts';
 
           const reqFn = window.requestGeminiAudioWithFailover || (typeof requestGeminiAudioWithFailover === 'function' ? requestGeminiAudioWithFailover : null);
@@ -3581,6 +3666,11 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           const fetchChunkAudioUrl = async (textChunk) => {
             if (currentSpeakingAbort) return null;
             const payload = {
+              systemInstruction: {
+                parts: [{
+                  text: "Bạn là trợ lý AI Jarvis với giọng nam giới Nam Bộ. Hãy đọc toàn bộ văn bản được cung cấp với phát âm tiếng Việt chuẩn phương ngữ Nam Bộ (miền Nam Việt Nam), ngữ điệu tự nhiên, ấm áp, thân thiện, gần gũi, rõ ràng từng chữ, tuyệt đối không dùng giọng robot hay giọng người nước ngoài."
+                }]
+              },
               contents: [{
                 role: "user",
                 parts: [{ text: textChunk }]
@@ -4557,7 +4647,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           if (finalResp && !wasAborted) {
             isHandsFreeSpeaking = true;
             const statusText = $('hf-status-text');
-            if (statusText) statusText.innerHTML = '<span style="color:#8b5cf6;font-weight:600;">🔊 Jarvis đang trả lời...</span>';
+            if (statusText) statusText.innerHTML = '<span style="color:#8b5cf6;font-weight:600;">🔊 Jarvis đang trả lời (Nam Bộ)...</span>';
 
             playTextAudio(finalResp, {
               onEnd: () => {
