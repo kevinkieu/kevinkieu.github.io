@@ -259,7 +259,10 @@
             mm = String(now.getMinutes()).padStart(2, '0'),
             ss = String(now.getSeconds()).padStart(2, '0');
 
-      let si = `[VAI TRÒ & NGỮ CẢNH PHIÊN]:\n${(DOM.toggleGlob?.checked !== false && g) ? `--- TOÀN CỤC: ${g}\n\n` : ''}${sSI ? `--- RIÊNG: ${sSI}` : 'Bạn là Jarvis AI thông minh, thân thiện và nhạy bén.'}\n\n[QUY TẮC ĐÀM THOẠI & TRA CỨU TAVILY]:\n- BẠN ĐƯỢC TRANG BỊ CÔNG CỤ 'search_web' (chạy bằng Tavily AI) VÀ 'read_url'.\n- BẮT BUỘC: Khi người dùng yêu cầu tìm kiếm, tra cứu bất kỳ thông tin nào về tin tức mới, sự kiện, giá cả, thời tiết, kết quả bóng đá, hoặc dữ liệu thực tế, bạn PHẢI GỌI CÔNG CỤ 'search_web' ngay lập tức mà không được từ chối.\n- Sau khi công cụ trả về kết quả, hãy tổng hợp ngắn gọn, súc tích 1-2 câu tự nhiên bằng tiếng Việt như người thật đang đàm thoại.\n- KHI NGƯỜI DÙNG NÓI LỜI CHÀO TẠM BIỆT (như "tạm biệt", "hẹn gặp lại", "bye", "kết thúc", "cúp máy"): Hãy đáp lại bằng một lời chào ngắn gọn và thân thiện (ví dụ: "Tạm biệt bạn, hẹn gặp lại!") rồi dừng nói.\n[THỜI GIAN CHUẨN]: ${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}, lúc ${hh}:${mm}:${ss} (Giờ Việt Nam GMT+7).`;
+      const chosenSearchEngine = $('live-search-engine-select')?.value || ls.getItem('jarvis_live_search_engine') || 'tavily';
+      const searchEngineName = chosenSearchEngine === 'serper' ? 'Google qua Serper API' : 'Tavily AI Search';
+
+      let si = `[VAI TRÒ & NGỮ CẢNH PHIÊN]:\n${(DOM.toggleGlob?.checked !== false && g) ? `--- TOÀN CỤC: ${g}\n\n` : ''}${sSI ? `--- RIÊNG: ${sSI}` : 'Bạn là Jarvis AI thông minh, thân thiện và nhạy bén.'}\n\n[QUY TẮC ĐÀM THOẠI & TRA CỨU WEB (${searchEngineName.toUpperCase()})]:\n- BẠN ĐƯỢC TRANG BỊ CÔNG CỤ 'search_web' (chạy bằng ${searchEngineName}) VÀ 'read_url'.\n- BẮT BUỘC: Khi người dùng yêu cầu tìm kiếm, tra cứu bất kỳ thông tin nào về tin tức mới, sự kiện, giá cả, thời tiết, kết quả bóng đá, hoặc dữ liệu thực tế, bạn PHẢI GỌI CÔNG CỤ 'search_web' ngay lập tức mà không được từ chối.\n- Sau khi công cụ trả về kết quả, hãy tổng hợp ngắn gọn, súc tích 1-2 câu tự nhiên bằng tiếng Việt như người thật đang đàm thoại.\n- KHI NGƯỜI DÙNG NÓI LỜI CHÀO TẠM BIỆT (như "tạm biệt", "hẹn gặp lại", "bye", "kết thúc", "cúp máy"): Hãy đáp lại bằng một lời chào ngắn gọn và thân thiện (ví dụ: "Tạm biệt bạn, hẹn gặp lại!") rồi dừng nói.\n[THỜI GIAN CHUẨN]: ${days[now.getDay()]}, ngày ${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}, lúc ${hh}:${mm}:${ss} (Giờ Việt Nam GMT+7).`;
       if ($('live-toggle-context')?.checked && chatHistory.length) {
         si += `\n\n[LỊCH SỬ 10 TIN TRƯỚC]:\n` + chatHistory.slice(-10).map(m => `${m.role==='model'?'AI':'Bạn'}: ${m.text.replace(/<[^>]+>/g,'').replace(/```[\s\S]*?```/g,'[code]')}`).join('\n');
       }
@@ -526,8 +529,10 @@
                 let searchOutput = "";
                 if (call.name === "search_web") {
                   const q = call.args?.query || "";
-                  tr.innerHTML = `<span style="color:#38bdf8;">⚡ <b>Jarvis AI:</b> Đang dùng Tavily tìm: "<em>${escapeHtml(q)}</em>"...</span>`;
-                  searchOutput = await executeLiveSearch(q);
+                  const chosenEngine = $('live-search-engine-select')?.value || ls.getItem('jarvis_live_search_engine') || 'tavily';
+                  const engineLabel = chosenEngine === 'serper' ? 'Serper Google' : 'Tavily Search';
+                  tr.innerHTML = `<span style="color:#38bdf8;">⚡ <b>Jarvis AI:</b> Đang dùng ${engineLabel} tìm: "<em>${escapeHtml(q)}</em>"...</span>`;
+                  searchOutput = await executeLiveSearch(q, chosenEngine);
                 } else if (call.name === "read_url") {
                   const u = call.args?.url || "";
                   tr.innerHTML = `<span style="color:#38bdf8;">🌐 <b>Jarvis AI:</b> Đang đọc link: "<em>${escapeHtml(u.substring(0, 25))}...</em>"</span>`;
@@ -628,6 +633,20 @@
     $('btn-live-call-open').onclick = startLiveVoiceCall;
     $('btn-live-end-call').onclick = () => endLiveCall();
     $('live-model-select').onchange = () => { if (liveWs?.readyState === WebSocket.OPEN) { liveWs.close(); setTimeout(startLiveVoiceCall, 300); } };
+    const liveSearchSel = $('live-search-engine-select');
+    if (liveSearchSel) {
+      liveSearchSel.value = ls.getItem('jarvis_live_search_engine') || 'tavily';
+      liveSearchSel.onchange = e => {
+        ls.setItem('jarvis_live_search_engine', e.target.value);
+        if (typeof showToast === 'function') {
+          showToast(`Tìm kiếm Live: ${e.target.value === 'serper' ? 'Serper Google' : 'Tavily Search'}`, 'info');
+        }
+        if (liveWs?.readyState === WebSocket.OPEN) {
+          liveWs.close();
+          setTimeout(startLiveVoiceCall, 300);
+        }
+      };
+    }
     $('live-voice-select').onchange = e => { ls.setItem('live_voice_name', e.target.value); if (liveWs?.readyState === WebSocket.OPEN) { liveWs.close(); setTimeout(startLiveVoiceCall, 300); } };
     $('live-key-select').onchange = e => { ls.setItem('live_selected_key', e.target.value); if (liveWs?.readyState === WebSocket.OPEN) { liveWs.close(); setTimeout(startLiveVoiceCall, 300); } };
     $('btn-live-mic-toggle').onclick = () => {
