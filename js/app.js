@@ -1721,6 +1721,9 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     let handsFreeTranscribeController = null;
 
     function stopHandsFreeVoice() {
+      if (typeof window.isLiveActive === 'function' && window.isLiveActive()) {
+        if (typeof window.endLiveCall === 'function') window.endLiveCall();
+      }
       isHandsFreeActive = false;
       isHandsFreeSpeaking = false;
       isHandsFreeUserTalking = false;
@@ -2093,11 +2096,15 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     window.commitAndSendHandsFree = commitAndSendHandsFree;
 
     async function toggleHandsFreeVoice(forceState) {
-      const shouldActivate = forceState !== undefined ? forceState : !isHandsFreeActive;
+      if (typeof window.isLiveActive === 'function' && window.isLiveActive()) {
+        if (typeof window.endLiveCall === 'function') window.endLiveCall();
+        showToast("Đã dừng đàm thoại Live rảnh tay.", "info");
+        return;
+      }
 
-      if (!shouldActivate) {
+      if (forceState === false) {
+        if (typeof window.endLiveCall === 'function') window.endLiveCall();
         stopHandsFreeVoice();
-        showToast("Đã tắt chế độ rảnh tay.", "info");
         return;
       }
 
@@ -2109,6 +2116,14 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         return showToast("Microphone yêu cầu kết nối bảo mật (HTTPS hoặc localhost)!", "warning");
       }
 
+      // Kích hoạt engine Live Call dạng Mini-Bar trực tiếp trong giao diện chat
+      if (typeof window.startLiveVoiceCall === 'function') {
+        window.startLiveVoiceCall({ miniBar: true });
+        showToast("⚡ Đã bật Đàm thoại Live siêu tốc (WebSocket 2 chiều)!", "success");
+        return;
+      }
+
+      // Dự phòng nếu Live Call chưa sẵn sàng
       stopHandsFreeVoice();
       isHandsFreeActive = true;
 
@@ -2149,7 +2164,13 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     if (btnToggleHfChip) btnToggleHfChip.onclick = () => toggleHandsFreeVoice();
 
     const btnStopHf = $('btn-stop-hands-free');
-    if (btnStopHf) btnStopHf.onclick = () => toggleHandsFreeVoice(false);
+    if (btnStopHf) btnStopHf.onclick = () => {
+      if (typeof window.isLiveActive === 'function' && window.isLiveActive()) {
+        if (typeof window.endLiveCall === 'function') window.endLiveCall();
+      } else {
+        toggleHandsFreeVoice(false);
+      }
+    };
 
     const btnSendHf = $('btn-send-hands-free');
     if (btnSendHf) btnSendHf.onclick = () => commitAndSendHandsFree();
