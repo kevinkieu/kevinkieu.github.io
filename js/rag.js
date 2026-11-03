@@ -1145,8 +1145,8 @@ Dựa trên dữ liệu trên, hãy phác họa chân dung tổng thể về ng�
 Giọng văn ấm áp, thông minh, tôn trọng, đúng chuẩn Jarvis. Không bịa đặt thông tin chưa có trong trí nhớ.`;
 
       const ai = new window.GoogleGenAI({ apiKey: key });
-      // Sử dụng model Flash tối ưu tốc độ: gemini-3.6-flash, fallback gemini-3.5-flash-lite
-      const candidateModels = ['gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+      // Sử dụng model Flash tối ưu tốc độ: gemini-3.8-flash, fallback gemini-3.5-flash-lite
+      const candidateModels = ['gemini-3.8-flash', 'gemini-3.5-flash-lite'];
       let resultText = '';
       let lastErr = null;
 
