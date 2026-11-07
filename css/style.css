@@ -503,25 +503,27 @@
       border-bottom: 1px solid var(--border);
       min-height: 40px;
       scrollbar-width: thin;
-      scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
-      scroll-behavior: smooth;
+      scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
       user-select: none;
       -webkit-user-select: none;
       cursor: grab;
     }
     #tabs-container::-webkit-scrollbar {
-      height: 4px;
+      height: 6px;
     }
     #tabs-container::-webkit-scrollbar-track {
-      background: transparent;
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 999px;
     }
     #tabs-container::-webkit-scrollbar-thumb {
-      background: rgba(156, 163, 175, 0.25);
-      border-radius: 4px;
+      background: rgba(156, 163, 175, 0.45);
+      border-radius: 999px;
       transition: background 0.2s ease;
+      cursor: pointer;
     }
-    #tabs-container:hover::-webkit-scrollbar-thumb {
-      background: rgba(59, 130, 246, 0.6);
+    #tabs-container:hover::-webkit-scrollbar-thumb,
+    #tabs-container::-webkit-scrollbar-thumb:hover {
+      background: rgba(59, 130, 246, 0.85);
     }
     .tab-item {
       padding: 8px 14px;
@@ -534,6 +536,12 @@
       gap: 6px;
       white-space: nowrap;
       transition: var(--transition);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .tab-item * {
+      user-select: none;
+      -webkit-user-select: none;
     }
     .tab-item:hover {
       background: var(--bg-main);
@@ -784,37 +792,35 @@
       margin-bottom: 6px;
       border-bottom: 1px solid var(--border);
       scrollbar-width: thin;
-      scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
-      scroll-behavior: smooth;
+      scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
       user-select: none;
       -webkit-user-select: none;
       cursor: grab;
     }
     .input-tools-scroll::-webkit-scrollbar {
-      height: 4px;
+      height: 6px;
     }
     .input-tools-scroll::-webkit-scrollbar-track {
-      background: transparent;
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 999px;
     }
     .input-tools-scroll::-webkit-scrollbar-thumb {
-      background: rgba(156, 163, 175, 0.25);
-      border-radius: 4px;
+      background: rgba(156, 163, 175, 0.45);
+      border-radius: 999px;
       transition: background 0.2s ease;
+      cursor: pointer;
     }
-    .input-tools-scroll:hover::-webkit-scrollbar-thumb {
-      background: rgba(59, 130, 246, 0.6);
+    .input-tools-scroll:hover::-webkit-scrollbar-thumb,
+    .input-tools-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(59, 130, 246, 0.85);
     }
     .is-dragging-scroll {
       cursor: grabbing !important;
       user-select: none !important;
       -webkit-user-select: none !important;
-      scroll-behavior: auto !important;
     }
     .is-dragging-scroll * {
       cursor: grabbing !important;
-      user-select: none !important;
-      -webkit-user-select: none !important;
-      pointer-events: none !important;
     }
     @media (hover: none) and (pointer: coarse) {
       #tabs-container, .input-tools-scroll {
