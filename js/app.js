@@ -916,11 +916,17 @@ import { GoogleGenAI } from "@google/genai";
     window.newSess = () => newSess();
     window.reRenderHistory = () => reRenderHistory();
 
-    // --- TIỆN ÍCH CUỘN VÀ KÉO NGANG BẰNG CHUỘT TRÊN PC (HORIZONTAL MOUSE WHEEL & GRAB SCROLL) ---
+    // --- TIỆN ÍCH CUỘN VÀ KÉO NGANG BẰNG CHUỘT TRÊN PC (HORIZONTAL MOUSE WHEEL & SAFE GRAB SCROLL) ---
     function enableHorizontalScrollAndDrag(el) {
-      if (!el) return;
+      if (!el || el._hScrollInit) return;
+      el._hScrollInit = true;
 
-      // 1. Chuyển đổi con lăn chuột dọc sang cuộn ngang trên PC
+      // 1. Chặn trình duyệt kéo chữ mặc định (HTML5 drag) làm đơ chuột khi rê qua tab
+      el.addEventListener('dragstart', (e) => {
+        e.preventDefault();
+      });
+
+      // 2. Chuyển đổi con lăn chuột dọc sang cuộn ngang mượt mà trên PC
       el.addEventListener('wheel', (e) => {
         if (e.deltaY !== 0) {
           if (el.scrollWidth > el.clientWidth) {
@@ -932,49 +938,65 @@ import { GoogleGenAI } from "@google/genai";
         }
       }, { passive: false });
 
-      // 2. Kéo thả chuột ngang (Grab-to-scroll giống mobile / canvas)
+      // 3. Kéo thả chuột ngang an toàn (Grab-to-scroll, không chặn click thông thường)
       let isDown = false;
+      let isDragging = false;
+      let suppressClick = false;
       let startX = 0;
       let scrollStart = 0;
-      let hasDragged = false;
 
       el.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return; // Chỉ nhận chuột trái
         if (e.target.tagName === 'INPUT' || e.target.classList.contains('tab-close')) return;
 
         isDown = true;
-        hasDragged = false;
+        isDragging = false;
+        suppressClick = false;
         startX = e.pageX;
         scrollStart = el.scrollLeft;
-        el.classList.add('is-dragging-scroll');
       });
 
       window.addEventListener('mousemove', (e) => {
         if (!isDown) return;
         const dx = e.pageX - startX;
-        if (Math.abs(dx) > 5) {
-          hasDragged = true;
+
+        // Chỉ chuyển sang trạng thái Drag khi rê chuột vượt quá 10px (tránh kích hoạt nhầm khi bấm click)
+        if (!isDragging && Math.abs(dx) > 10) {
+          isDragging = true;
+          suppressClick = true;
+          el.classList.add('is-dragging-scroll');
         }
-        el.scrollLeft = scrollStart - dx;
+
+        if (isDragging) {
+          el.scrollLeft = scrollStart - dx;
+        }
       });
 
       const endDrag = () => {
         if (!isDown) return;
         isDown = false;
-        el.classList.remove('is-dragging-scroll');
-        setTimeout(() => {
-          hasDragged = false;
-        }, 60);
+        if (isDragging) {
+          el.classList.remove('is-dragging-scroll');
+          // Giữ cờ chặn click trong 80ms để hủy sự kiện click xuất hiện ngay sau khi thả chuột
+          setTimeout(() => {
+            isDragging = false;
+            suppressClick = false;
+          }, 80);
+        } else {
+          isDragging = false;
+          suppressClick = false;
+        }
       };
 
       window.addEventListener('mouseup', endDrag);
 
-      // Ngăn chặn sự kiện click nhầm vào tab/nút khi người dùng vừa kéo chuột
+      // Chặn sự kiện click DUY NHẤT khi người dùng thực hiện thao tác kéo rê chuột
       el.addEventListener('click', (e) => {
-        if (hasDragged) {
+        if (suppressClick) {
           e.preventDefault();
           e.stopPropagation();
           e.stopImmediatePropagation();
+          suppressClick = false;
         }
       }, true);
     }
@@ -3394,10 +3416,10 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       DOM.tabsContainer.innerHTML = openTabs.map(tId => {
         const s = sessions.find(x => x.id === tId);
         const dot = s?.color ? `<span class="color-dot" style="background:${s.color};"></span>` : '';
-        return s ? `<div class="tab-item ${tId === activeId ? 'active' : ''}">
+        return s ? `<div class="tab-item ${tId === activeId ? 'active' : ''}" onclick="window.switchSess('${tId}')" title="${escapeHtml(s.name)}">
           ${dot}
-          <span onclick="window.switchSess('${tId}')">${s.name.substring(0, 16)}</span>
-          <span class="tab-close" onclick="window.closeTab('${tId}', event)">×</span>
+          <span>${escapeHtml(s.name.substring(0, 16))}</span>
+          <span class="tab-close" onclick="window.closeTab('${tId}', event)" title="Đóng tab">×</span>
         </div>` : '';
       }).join('');
       ls.setItem('jarvis_tabs', JSON.stringify(openTabs));
