@@ -404,7 +404,91 @@ import { GoogleGenAI } from "@google/genai";
       }
     }
 
+    // --- TRÍCH XUẤT THÔNG TIN VIDEO YOUTUBE SIÊU TỐC ---
+    async function extractYouTubeContent(url) {
+      if (!url) throw new Error("Link YouTube không hợp lệ");
+      const vidMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([a-zA-Z0-9_-]{11})/i);
+      const videoId = vidMatch ? vidMatch[1] : null;
+
+      let title = '';
+      let author = '';
+      let thumbnail = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : '';
+
+      // 1. Lấy metadata qua noembed (hỗ trợ CORS mọi trình duyệt, phản hồi < 200ms)
+      try {
+        const canonical = videoId ? `https://www.youtube.com/watch?v=${videoId}` : url;
+        const res = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(canonical)}`, { signal: AbortSignal.timeout(6000) });
+        if (res.ok) {
+          const d = await res.json();
+          if (d && d.title) {
+            title = d.title.trim();
+            author = (d.author_name || '').trim();
+            if (d.thumbnail_url) thumbnail = d.thumbnail_url;
+          }
+        }
+      } catch (e) {
+        console.warn("Lỗi noembed YouTube:", e);
+      }
+
+      // 2. Dự phòng qua oEmbed nếu noembed chưa trả về tiêu đề
+      if (!title && videoId) {
+        try {
+          const ytOembed = `https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + videoId)}&format=json`;
+          const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(ytOembed)}`, { signal: AbortSignal.timeout(5000) });
+          if (res.ok) {
+            const data = await res.json();
+            const d = JSON.parse(data.contents || '{}');
+            if (d.title) {
+              title = d.title.trim();
+              author = (d.author_name || '').trim();
+              if (d.thumbnail_url) thumbnail = d.thumbnail_url;
+            }
+          }
+        } catch (e) {}
+      }
+
+      // 3. Tra cứu bối cảnh & tóm tắt liên quan nếu có Tavily hoặc Serper
+      let extraSearch = '';
+      if (title) {
+        const searchQ = `"${title}" ${author ? author : ''} tóm tắt nội dung`.trim();
+        if (typeof fetchTavilySearch === 'function' && ls.getItem('tavily_api_key')) {
+          try {
+            extraSearch = await fetchTavilySearch(searchQ);
+          } catch (e) {
+            console.warn("Tavily assist cho YouTube lỗi:", e);
+          }
+        } else if (typeof fetchSerperSearch === 'function' && ls.getItem('serper_api_key')) {
+          try {
+            extraSearch = await fetchSerperSearch(searchQ);
+          } catch (e) {
+            console.warn("Serper assist cho YouTube lỗi:", e);
+          }
+        }
+      }
+
+      const formattedContent = [
+        `🎬 Tiêu đề video: ${title || (videoId ? 'Video YouTube ID ' + videoId : 'Video YouTube')}`,
+        `👤 Kênh phát hành: ${author || 'Không rõ'}`,
+        `🔗 Link gốc: ${url}`,
+        ...(thumbnail ? [`🖼️ Thumbnail: ${thumbnail}`] : []),
+        ...(extraSearch ? [`\n📰 Dữ liệu & Ngữ cảnh phân tích từ Web:\n${extraSearch}`] : [])
+      ].join('\n');
+
+      return {
+        source: "YouTube Video Intel",
+        title: title || (videoId ? `Video YouTube (${videoId})` : 'Video YouTube'),
+        author: author || 'Kênh YouTube',
+        videoId: videoId,
+        thumbnail: thumbnail,
+        extraSearch: extraSearch,
+        content: formattedContent
+      };
+    }
+
     async function extractWebPageContent(url) {
+      if (url && (url.includes("youtube.com") || url.includes("youtu.be"))) {
+        return await extractYouTubeContent(url);
+      }
       const mode = ls.getItem('web_extract_engine') || 'auto';
       let jk = (ls.getItem('jina_api_key') || '').trim(),
           tk = (ls.getItem('tavily_api_key') || '').trim();
@@ -816,6 +900,7 @@ import { GoogleGenAI } from "@google/genai";
     window.getNowTime24h = () => getNowTime24h();
     window.formatGoogleApiError = err => formatGoogleApiError(err);
     window.extractWebPageContent = url => extractWebPageContent(url);
+    window.extractYouTubeContent = url => extractYouTubeContent(url);
     window.executeLiveSearch = (q, engine) => executeLiveSearch(q, engine);
     window.fetchTavilySearch = q => fetchTavilySearch(q);
     window.fetchSerperSearch = q => fetchSerperSearch(q);
@@ -830,6 +915,74 @@ import { GoogleGenAI } from "@google/genai";
     window.updateTokenCount = () => updateTokenCount();
     window.newSess = () => newSess();
     window.reRenderHistory = () => reRenderHistory();
+
+    // --- TIỆN ÍCH CUỘN VÀ KÉO NGANG BẰNG CHUỘT TRÊN PC (HORIZONTAL MOUSE WHEEL & GRAB SCROLL) ---
+    function enableHorizontalScrollAndDrag(el) {
+      if (!el) return;
+
+      // 1. Chuyển đổi con lăn chuột dọc sang cuộn ngang trên PC
+      el.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0) {
+          if (el.scrollWidth > el.clientWidth) {
+            e.preventDefault();
+            el.scrollLeft += e.deltaY * 1.2;
+          }
+        } else if (e.deltaX !== 0) {
+          el.scrollLeft += e.deltaX;
+        }
+      }, { passive: false });
+
+      // 2. Kéo thả chuột ngang (Grab-to-scroll giống mobile / canvas)
+      let isDown = false;
+      let startX = 0;
+      let scrollStart = 0;
+      let hasDragged = false;
+
+      el.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return; // Chỉ nhận chuột trái
+        if (e.target.tagName === 'INPUT' || e.target.classList.contains('tab-close')) return;
+
+        isDown = true;
+        hasDragged = false;
+        startX = e.pageX;
+        scrollStart = el.scrollLeft;
+        el.classList.add('is-dragging-scroll');
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        const dx = e.pageX - startX;
+        if (Math.abs(dx) > 5) {
+          hasDragged = true;
+        }
+        el.scrollLeft = scrollStart - dx;
+      });
+
+      const endDrag = () => {
+        if (!isDown) return;
+        isDown = false;
+        el.classList.remove('is-dragging-scroll');
+        setTimeout(() => {
+          hasDragged = false;
+        }, 60);
+      };
+
+      window.addEventListener('mouseup', endDrag);
+
+      // Ngăn chặn sự kiện click nhầm vào tab/nút khi người dùng vừa kéo chuột
+      el.addEventListener('click', (e) => {
+        if (hasDragged) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+        }
+      }, true);
+    }
+
+    window.enableHorizontalScrollAndDrag = enableHorizontalScrollAndDrag;
+    enableHorizontalScrollAndDrag(DOM.tabsContainer);
+    enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
+    enableHorizontalScrollAndDrag($('image-preview-grid'));
 
     Object.defineProperty(window, 'sessions', { get: () => sessions, set: v => { sessions = v; }, configurable: true });
     Object.defineProperty(window, 'activeId', { get: () => activeId, set: v => { activeId = v; }, configurable: true });
@@ -2221,15 +2374,25 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       showToast("⏳ Đang bóc tách nội dung liên kết...", "warning");
       try {
         if (url.includes("youtube.com") || url.includes("youtu.be")) {
+          const yt = await extractYouTubeContent(url);
           const k = getSessionApiKey(sessions.find(x => x.id === activeId));
-          if (!k) throw new Error("Cần Google Key để phân tích YouTube!");
-          const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
-            model: FLASH_LITE_MODEL,
-            contents: `Tóm tắt video YouTube: ${url}`,
-            config: { safetySettings: SAFETY }
-          });
-          txtContent += `\n[YouTube: ${url}]:\n${res.text}\n`;
-          DOM.textFileList.innerHTML += `📺 YouTube (${url.substring(0, 30)}...)<br>`;
+          let summary = "";
+          if (k) {
+            try {
+              const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
+                model: FLASH_LITE_MODEL,
+                contents: `Phân tích và tóm tắt chi tiết video YouTube sau:\n- Tiêu đề: ${yt.title}\n- Kênh: ${yt.author}\n- Link: ${url}\n${yt.content ? yt.content : ''}\nHãy nêu rõ chủ đề chính, các luận điểm nổi bật và ý nghĩa của video. Tuyệt đối KHÔNG từ chối là không xem được video.`,
+                config: { safetySettings: SAFETY }
+              });
+              summary = res.text;
+            } catch(e) {
+              summary = `Tiêu đề: ${yt.title} (Kênh: ${yt.author})`;
+            }
+          } else {
+            summary = `Tiêu đề: ${yt.title} (Kênh: ${yt.author})`;
+          }
+          txtContent += `\n[YouTube: ${yt.title} - ${yt.author} (${url})]:\n${summary}\n`;
+          DOM.textFileList.innerHTML += `📺 YouTube: ${escapeHtml(yt.title.substring(0, 24))}...<br>`;
         } else {
           const ext = await extractWebPageContent(url);
           txtContent += `\n[Nội dung ${url} qua ${ext.source}]:\n${ext.content}\n`;
@@ -3052,15 +3215,25 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       DOM.btnAddUrl.innerHTML = "⏳...";
       try {
         if (u.includes("youtube.com") || u.includes("youtu.be")) {
+          const yt = await extractYouTubeContent(u);
           const k = getSessionApiKey(sessions.find(x => x.id === activeId));
-          if (!k) throw new Error("Cần Google Key!");
-          const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
-            model: FLASH_LITE_MODEL,
-            contents: `Tóm tắt video YouTube: ${u}`,
-            config: { safetySettings: SAFETY }
-          });
-          txtContent += `\n[YouTube: ${u}]:\n${res.text}\n`;
-          DOM.textFileList.innerHTML += `📺 YouTube<br>`;
+          let summary = "";
+          if (k) {
+            try {
+              const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
+                model: FLASH_LITE_MODEL,
+                contents: `Phân tích và tóm tắt chi tiết video YouTube sau:\n- Tiêu đề: ${yt.title}\n- Kênh: ${yt.author}\n- Link: ${u}\n${yt.content ? yt.content : ''}\nHãy nêu rõ chủ đề chính, các luận điểm nổi bật và ý nghĩa của video. Tuyệt đối KHÔNG từ chối là không xem được video.`,
+                config: { safetySettings: SAFETY }
+              });
+              summary = res.text;
+            } catch(e) {
+              summary = `Tiêu đề: ${yt.title} (Kênh: ${yt.author})`;
+            }
+          } else {
+            summary = `Tiêu đề: ${yt.title} (Kênh: ${yt.author})`;
+          }
+          txtContent += `\n[YouTube: ${yt.title} - ${yt.author} (${u})]:\n${summary}\n`;
+          DOM.textFileList.innerHTML += `📺 YouTube: ${escapeHtml(yt.title.substring(0, 24))}...<br>`;
         } else {
           const ext = await extractWebPageContent(u);
           txtContent += `\n[Nội dung ${u} qua ${ext.source}]:\n${ext.content}\n`;
@@ -3228,6 +3401,12 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         </div>` : '';
       }).join('');
       ls.setItem('jarvis_tabs', JSON.stringify(openTabs));
+      requestAnimationFrame(() => {
+        const activeTab = DOM.tabsContainer?.querySelector('.tab-item.active');
+        if (activeTab) {
+          activeTab.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+        }
+      });
     }
 
     window.switchSess = switchSess;
@@ -4239,12 +4418,36 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         const renderer = createStreamRenderer(cD);
         let fnP = fP;
 
-        const uMatch = fnP.match(/https?:\/\/[^\s]+/)?.[0];
-        if (uMatch && !uMatch.includes("youtube.com") && !uMatch.includes("youtu.be")) {
+        let rawMatch = fnP.match(/https?:\/\/[^\s]+/)?.[0];
+        const uMatch = rawMatch ? rawMatch.replace(/[.,!?;:)\]]+$/, '') : null;
+        if (uMatch) {
+          const isYt = uMatch.includes("youtube.com") || uMatch.includes("youtu.be");
+          let urlBadge = null;
+          const msgHdr = bD?.querySelector('.message-header');
+          if (msgHdr) {
+            urlBadge = document.createElement('span');
+            urlBadge.className = 'search-status-badge';
+            urlBadge.style.cssText = 'font-size:0.75rem;padding:2px 8px;border-radius:12px;background:rgba(239,68,68,0.15);color:#ef4444;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin-left:8px;';
+            urlBadge.innerHTML = isYt ? `📺 Đang bóc tách video YouTube...` : `🌐 Đang bóc tách liên kết...`;
+            msgHdr.appendChild(urlBadge);
+          }
           try {
-            const ext = await extractWebPageContent(uMatch);
-            fnP = `[NỘI DUNG TỪ ${uMatch} QUA ${ext.source}]:\n${ext.content}\n\n[YÊU CẦU]:\n${fnP}`;
-          } catch {}
+            if (isYt) {
+              const yt = await extractYouTubeContent(uMatch);
+              if (urlBadge) {
+                urlBadge.innerHTML = `📺 Video: <em>"${escapeHtml(yt.title.substring(0, 26))}..."</em>`;
+              }
+              fnP = `[THÔNG TIN VIDEO YOUTUBE ĐÃ BÓC TÁCH]:\n- Tiêu đề video: "${yt.title}"\n- Kênh sản xuất: ${yt.author}\n- Link gốc: ${uMatch}\n${yt.content ? yt.content + '\n' : ''}\n[YÊU CẦU CỦA NGƯỜI DÙNG ĐỐI VỚI VIDEO NÀY]:\n${fnP}\n\n(CHỈ DẪN QUAN TRỌNG: Bạn ĐÃ CÓ thông tin tiêu đề, kênh phát hành và ngữ cảnh video YouTube ở trên. Hãy giải thích, tóm tắt và phân tích nội dung, ý nghĩa của video một cách chi tiết, chuyên nghiệp, thông minh và thân thiện theo phong cách Jarvis AI. Tuyệt đối KHÔNG từ chối hoặc trả lời là "hệ thống không thể xem/mở video YouTube")`;
+            } else {
+              const ext = await extractWebPageContent(uMatch);
+              if (urlBadge) {
+                urlBadge.innerHTML = `🌐 Nguồn: <em>${escapeHtml(ext.source)}</em>`;
+              }
+              fnP = `[NỘI DUNG TỪ ${uMatch} QUA ${ext.source}]:\n${ext.content}\n\n[YÊU CẦU]:\n${fnP}`;
+            }
+          } catch (e) {
+            if (urlBadge) urlBadge.remove();
+          }
         }
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
@@ -5356,3 +5559,16 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         }
       }
     });
+
+    // Đảm bảo cuộn chuột & kéo thả ngang PC được gắn đầy đủ
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        enableHorizontalScrollAndDrag($('tabs-container'));
+        enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
+        enableHorizontalScrollAndDrag($('image-preview-grid'));
+      });
+    } else {
+      enableHorizontalScrollAndDrag($('tabs-container'));
+      enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
+      enableHorizontalScrollAndDrag($('image-preview-grid'));
+    }

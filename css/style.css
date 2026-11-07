@@ -502,10 +502,26 @@
       background: var(--bg-sidebar);
       border-bottom: 1px solid var(--border);
       min-height: 40px;
-      scrollbar-width: none;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+      scroll-behavior: smooth;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: grab;
     }
     #tabs-container::-webkit-scrollbar {
-      display: none;
+      height: 4px;
+    }
+    #tabs-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #tabs-container::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.25);
+      border-radius: 4px;
+      transition: background 0.2s ease;
+    }
+    #tabs-container:hover::-webkit-scrollbar-thumb {
+      background: rgba(59, 130, 246, 0.6);
     }
     .tab-item {
       padding: 8px 14px;
@@ -767,7 +783,48 @@
       padding-bottom: 6px;
       margin-bottom: 6px;
       border-bottom: 1px solid var(--border);
-      scrollbar-width: none;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+      scroll-behavior: smooth;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: grab;
+    }
+    .input-tools-scroll::-webkit-scrollbar {
+      height: 4px;
+    }
+    .input-tools-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .input-tools-scroll::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.25);
+      border-radius: 4px;
+      transition: background 0.2s ease;
+    }
+    .input-tools-scroll:hover::-webkit-scrollbar-thumb {
+      background: rgba(59, 130, 246, 0.6);
+    }
+    .is-dragging-scroll {
+      cursor: grabbing !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+      scroll-behavior: auto !important;
+    }
+    .is-dragging-scroll * {
+      cursor: grabbing !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+      pointer-events: none !important;
+    }
+    @media (hover: none) and (pointer: coarse) {
+      #tabs-container, .input-tools-scroll {
+        scrollbar-width: none;
+        cursor: auto;
+      }
+      #tabs-container::-webkit-scrollbar,
+      .input-tools-scroll::-webkit-scrollbar {
+        display: none;
+      }
     }
     .tool-chip {
       background: var(--bg-card);
