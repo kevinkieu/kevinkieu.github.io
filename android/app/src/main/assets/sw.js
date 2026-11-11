@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v81 - DeepSeek Collapsible Reasoning & Clean UI)
-const CACHE_NAME = 'jarvis-ai-pwa-v81';
+// Jarvis AI Service Worker for PWA (v82 - Fix horizontal overflow & touch scrolling lock)
+const CACHE_NAME = 'jarvis-ai-pwa-v82';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',

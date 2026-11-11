@@ -264,6 +264,14 @@
       }
       .user-message {
         max-width: 90%;
+        padding: 10px 14px;
+        font-size: 0.92rem;
+      }
+      .bot-message {
+        padding: 12px 14px;
+        max-width: 100%;
+        width: 100%;
+        font-size: 0.92rem;
       }
       .bottom-input-panel {
         width: calc(100% - 16px);
@@ -271,8 +279,23 @@
         padding: 6px 12px;
       }
       #chat-container {
-        padding: 12px 10px;
-        gap: 16px;
+        padding: 10px 8px;
+        gap: 14px;
+        overflow-x: hidden !important;
+        touch-action: pan-y !important;
+        overscroll-behavior-x: none;
+      }
+      .message-container {
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+      .msg-actions {
+        gap: 4px;
+        margin-top: 6px;
+      }
+      .action-btn {
+        padding: 3px 7px;
+        font-size: 0.72rem;
       }
     }
   
