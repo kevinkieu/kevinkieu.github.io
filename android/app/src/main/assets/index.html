@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
+  <title>Jarvis AI - Ultimate Intelligence Assistant</title>
+  
+  <!-- PWA META & MANIFEST -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Jarvis AI">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%232563eb'/><text x='50' y='65' font-size='48' font-weight='bold' fill='white' text-anchor='middle'>J</text></svg>">
+
+  <!-- CDN LIBRARIES -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.8.0/dist/mermaid.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+
+  <!-- GOOGLE GENAI IMPORTMAP -->
+  <script type="importmap">
+  { 
+    "imports": { 
+      "@google/genai": "https://esm.run/@google/genai" 
+    } 
+  }
+  </script>
+
+  <!-- MODULAR STYLESHEETS -->
+  <link rel="stylesheet" href="./css/style.css?v=79">
+  <link rel="stylesheet" href="./css/live.css">
+  <link rel="stylesheet" href="./css/tts.css">
+  <link rel="stylesheet" href="./css/translate.css">
+  <link rel="stylesheet" href="./css/rag.css">
+</head>
+<body>
+  <!-- DRAG & DROP OVERLAY (DESKTOP) -->
+  <div id="drop-overlay">
+    <svg class="icon icon-lg" style="width:48px;height:48px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <span>Thả tệp vào đây để đính kèm</span>
+  </div>
+
+  <div class="app-container">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-box">
+          <div class="brand-logo-badge">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <span class="brand-name">Jarvis AI</span>
+        </div>
+        <button id="close-sidebar-btn" class="icon-btn mobile-only" title="Đóng Menu">
+          <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="sidebar-scroll-content">
+        <!-- SIDEBAR QUICK SEARCH -->
+        <div class="sidebar-search-box">
+          <div class="sidebar-search-input-wrap">
+            <svg class="icon icon-sm search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="sidebar-search-input" placeholder="🔍 Tìm kiếm phiên & tri thức..." class="modern-input">
+          </div>
+        </div>
+
+        <!-- SESSIONS & PARAMETERS -->
+        <div class="sidebar-section" style="flex:1;">
+          <div class="section-title">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Phiên Hội Thoại
+          </div>
+          <select id="session-select" class="modern-select"></select>
+
+          <!-- COLOR TAG SELECTOR ROW -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:var(--bg-card);border-radius:var(--radius-md);border:1px solid var(--border);">
+            <span style="font-size:0.75rem;font-weight:600;color:var(--text-muted);">Màu nhãn:</span>
+            <div class="color-picker-row" id="session-color-picker">
+              <span class="color-chip-btn" data-color="#2563eb" style="background:#2563eb;" title="Xanh Dương"></span>
+              <span class="color-chip-btn" data-color="#10b981" style="background:#10b981;" title="Xanh Lá"></span>
+              <span class="color-chip-btn" data-color="#f59e0b" style="background:#f59e0b;" title="Vàng Cam"></span>
+              <span class="color-chip-btn" data-color="#ef4444" style="background:#ef4444;" title="Đỏ"></span>
+              <span class="color-chip-btn" data-color="#8b5cf6" style="background:#8b5cf6;" title="Tím"></span>
+              <span class="color-chip-btn" data-color="none" style="background:transparent;border:1px dashed var(--border);position:relative;" title="Không màu">×</span>
+            </div>
+          </div>
+
+          <!-- CONTEXT & SEARCH TOGGLES -->
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;padding:10px;background:var(--bg-card);border-radius:var(--radius-md);border:1px solid var(--border);">
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="toggle-global-context" checked> 🌍 Ngữ cảnh Toàn cục
+            </label>
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:var(--primary);display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="toggle-search"> 🌐 Tìm kiếm Web
+            </label>
+            <div id="search-engine-box" style="margin-left:22px;display:none;">
+              <select id="search-engine-select" class="modern-select" style="font-size:0.75rem;padding:4px 8px;">
+                <option value="tavily" selected>⚡ Tavily AI Search (Tối ưu nhất)</option>
+                <option value="serper">🔎 Serper.dev Google</option>
+              </select>
+            </div>
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:var(--success);display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="toggle-memory" checked> 🧠 Bộ nhớ ngữ cảnh
+            </label>
+            <label style="cursor:pointer;font-size:.78rem;font-weight:600;color:#8b5cf6;display:flex;align-items:center;gap:8px;" title="Tự động nén các tin nhắn cũ để duy trì trí nhớ vĩnh viễn">
+              <input type="checkbox" id="toggle-auto-summary" checked> 🧬 Nén trí nhớ dài hạn (Auto-Summary)
+            </label>
+            <label style="cursor:pointer;font-size:.78rem;font-weight:600;color:#10b981;display:flex;align-items:center;gap:8px;" title="Khai thác trí nhớ vĩnh cửu và tài liệu RAG bằng Gemini Embedding 2">
+              <input type="checkbox" id="toggle-rag-embedding" checked> 🧠 Trí nhớ Vector RAG (Gemini Embedding 2)
+            </label>
+          </div>
+          <button id="btn-open-knowledge-sidebar" class="btn" onclick="openKnowledgeModal()" style="width:100%;margin-top:8px;background:var(--bg-card);border:1px solid var(--border);font-size:0.8rem;gap:6px;justify-content:center;font-weight:600;" title="Quản lý Kho Tri Thức Cá Nhân & RAG Studio">
+            📚 Quản lý Kho Tri Thức & RAG
+          </button>
+
+          <!-- GEMINI MODEL SELECT -->
+          <div style="margin-top:6px;">
+            <span class="field-label">🤖 Mô hình Google Gemini:</span>
+            <select id="model-select" class="modern-select">
+              <option value="gemini-3.6-flash" selected>Gemini 3.6 Flash (Khuyên dùng - Nhanh & Chuẩn)</option>
+              <option value="gemini-3.8-flash">Gemini 3.8 Flash (Mới nhất)</option>
+              <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Lite)</option>
+              <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+              <optgroup label="🌐 Experiential Labs">
+                <option value="gpt-6-luna">⚡ GPT-6 Luna (Experiential)</option>
+                <option value="claude-fable-5.2:free">🧠 Claude Fable 5.2 Free (Experiential)</option>
+                <option value="clef">🎯 Clef (Experiential)</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <!-- ENGINE & THINKING -->
+          <div style="margin-top:6px;">
+            <span class="field-label">⚡ Động cơ AI (Engine):</span>
+            <select id="engine-select" class="modern-select">
+              <option value="stream" selected>🔄 generateContentStream (Xoay 10 Key & Sửa)</option>
+              <option value="interactions">🌐 Interactions API (Google State & Khóa Key)</option>
+            </select>
+          </div>
+
+          <div style="margin-top:6px;">
+            <span class="field-label">🧠 Think Depth:</span>
+            <select id="thinking-level" class="modern-select">
+              <option value="minimal" selected>Min (Tối thiểu)</option>
+              <option value="low">Low (Thấp)</option>
+              <option value="medium">Med (Chuẩn)</option>
+              <option value="high">High (Sâu)</option>
+            </select>
+          </div>
+
+          <div style="margin-top:6px;">
+            <span class="field-label">🔑 Google API Key:</span>
+            <select id="api-key-select" class="modern-select">
+              <option value="auto">🔄 Tự động xoay tua</option>
+            </select>
+          </div>
+
+          <!-- SESSION ACTIONS (GRID & ROWS) -->
+          <div class="side-btn-grid" style="margin-top:10px;">
+            <button id="btn-new-session" class="btn primary" style="grid-column: span 2;">➕ Thêm phiên mới</button>
+            <button id="btn-rename-session" class="btn">✏️ Đổi tên</button>
+            <button id="btn-delete-session" class="btn danger">🗑️ Xóa</button>
+          </div>
+          <div class="side-btn-row" style="margin-top:6px;">
+            <button id="btn-move-up" class="btn" style="flex:1;">⬆️ Lên</button>
+            <button id="btn-move-down" class="btn" style="flex:1;">⬇️ Xuống</button>
+          </div>
+          <button id="btn-bulk-edit" class="btn warning" style="margin-top:6px;width:100%;">🛠️ Quản lý Lịch sử</button>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div id="session-msg-count" style="font-size:0.75rem;color:var(--text-muted);font-weight:500;">0 tin nhắn</div>
+                <button id="btn-open-cloud-sync" class="btn" style="width:100%;padding:9px;background:linear-gradient(135deg, #0284c7, #2563eb);color:white;border:none;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:var(--radius-md);box-shadow:0 2px 6px rgba(2,132,199,0.35);">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+          ☁️ Đồng bộ Cloud (Gist)
+        </button>
+        <button id="btn-open-settings" class="btn primary" style="width:100%;padding:10px;">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Hệ thống & Cấu hình
+        </button>
+      </div>
+    </aside>
+
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <!-- MAIN CHAT VIEW -->
+    <main class="main-content">
+      <header class="main-header">
+        <div class="header-left">
+          <button id="toggle-sidebar-btn" class="icon-btn mobile-only" title="Mở Sidebar">
+            <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div style="display:flex;align-items:center;gap:6px;white-space:nowrap;">
+            <span style="font-size:1.05rem;font-weight:700;color:var(--primary);white-space:nowrap;">Jarvis AI</span>
+            <span class="pulse-dot" title="Hệ thống trực tuyến"></span>
+            <span class="mobile-hidden" style="font-size:0.68rem;background:linear-gradient(135deg,#0284c7,#2563eb);color:white;padding:2px 7px;border-radius:10px;font-weight:700;letter-spacing:0.02em;">v3.3 Mobile</span>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <!-- CLOUD SYNC HEADER BUTTON (DESKTOP ONLY - ON MOBILE IT IS ON THE INPUT TOOLBAR) -->
+          <button id="btn-cloud-sync-header" class="btn mobile-hidden" style="background:linear-gradient(135deg,#0284c7,#2563eb);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(2,132,199,0.35);display:flex;align-items:center;gap:5px;" title="Đồng bộ Cloud Đa thiết bị (Gist)">
+            ☁️ <span id="header-sync-label">Đồng bộ</span>
+            <span id="header-sync-time" style="font-size:0.68rem;opacity:0.88;font-weight:400;margin-left:2px;"></span>
+          </button>
+
+          
+          <!-- LIVE TRANSLATE DUAL SCREEN BUTTON -->
+          <button id="btn-open-live-translate" class="btn" style="background:linear-gradient(135deg,#0ea5e9,#2563eb);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(14,165,233,0.35);display:flex;align-items:center;gap:5px;" title="Thông dịch viên Đối thoại 2 chiều (Gemini 3.5 Live Translate)">
+            🌐 <span class="mobile-hidden">Dịch Live</span>
+          </button>
+
+          <!-- LIVE CALL OPEN BUTTON (CIRCULAR COMPACT ON MOBILE) -->
+          <button id="btn-live-call-open" class="btn" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;box-shadow:0 2px 8px rgba(16,185,129,0.3);display:flex;align-items:center;gap:5px;" title="Gọi Live AI">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <span class="mobile-hidden">Gọi Live AI</span>
+          </button>
+
+          <!-- TTS STUDIO BUTTON -->
+          <button id="btn-tts-studio-header" class="btn" onclick="openTTSStudioModal()" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(139,92,246,0.3);display:flex;align-items:center;gap:5px;" title="Gemini TTS Studio Pro (Chuyển văn bản thành giọng nói, xuất MP3)">
+            🎙️ <span class="mobile-hidden">Studio TTS</span>
+          </button>
+
+          <!-- A/B COMPARE BUTTON -->
+          <!-- DAILY BRIEFING & MORNING ASSISTANT -->
+          <button id="btn-open-briefing" class="btn" style="background:linear-gradient(135deg,#f59e0b,#ea580c);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(245,158,11,0.35);display:flex;align-items:center;gap:5px;" title="Bản tin Ngày mới · Jarvis Briefing (Thời tiết, Tin nóng AI/Tech, Kế hoạch)">
+            🌅 <span class="mobile-hidden">Bản tin</span>
+          </button>
+
+          <!-- VISUAL MEMORY / SECOND BRAIN BUTTON -->
+          <button id="btn-open-memory-header" class="btn" style="background:var(--bg-main);border:1px solid var(--border);border-radius:var(--radius-full);padding:5px 10px;font-weight:600;font-size:0.78rem;display:flex;align-items:center;gap:5px;" title="Bộ Não Jarvis & Bản Đồ Tri Thức (Second Brain)">
+            🧠 <span class="mobile-hidden">Trí nhớ</span>
+          </button>
+
+          <!-- KEY QUOTA INDICATOR (DISTRIBUTED G-COUNTER) -->
+          <button id="btn-key-quota-header" class="btn" style="background:var(--bg-main);border:1px solid var(--border);border-radius:var(--radius-full);padding:5px 11px;font-weight:600;font-size:0.78rem;display:flex;align-items:center;gap:6px;cursor:pointer;transition:all 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.05);flex-shrink:0;white-space:nowrap;" title="Hạn ngạch Google AI Studio (20 RPD cho 3.6/3.8 Flash) • Bấm hoặc gõ /quota để xem chi tiết 10 Key">
+            <span id="key-quota-dot" style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;"></span>
+            <span id="key-quota-label" style="color:var(--text-main);">🔑 Key 1: 0/20</span>
+          </button>
+
+          <!-- QUICK COMMAND PALETTE BUTTON -->
+          <button id="btn-trigger-cmd" class="btn" style="padding:5px 9px;font-size:0.78rem;gap:4px;" title="Mở bảng lệnh nhanh (Ctrl+K)">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span class="mobile-hidden">Lệnh</span> <kbd class="mobile-hidden" style="font-family:monospace;background:var(--input-bg);padding:1px 4px;border-radius:3px;border:1px solid var(--border);font-size:0.7rem;">Ctrl+K</kbd>
+          </button>
+
+          <!-- GLOBAL SEARCH BUTTON -->
+          <div class="header-search-bar">
+            <input type="text" id="search-chat-input" placeholder="Tìm kiếm phiên...">
+            <button id="btn-global-search" class="icon-btn" style="width:32px;height:32px;" title="Tìm kiếm">
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+          </div>
+
+          <!-- THEME BUTTON -->
+          <button id="btn-theme" class="btn" style="padding:5px 9px;font-size:0.8rem;" title="Chuyển chế độ Sáng / Tối">
+            🌙 <span class="mobile-hidden">Tự động</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- MULTI TABS CONTAINER -->
+      <div id="tabs-container"></div>
+
+      <!-- CHAT MESSAGE LIST -->
+      <div id="chat-container"></div>
+
+      <!-- ATTACHMENT PREVIEW DRAWER -->
+      <div id="image-preview-container">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <strong style="font-size:0.82rem;color:var(--primary);">📎 Tài liệu đính kèm:</strong>
+          <button id="clear-all-images" class="btn danger" style="padding:3px 10px;font-size:0.75rem;">Xóa hết</button>
+        </div>
+        <div id="image-preview-grid"></div>
+        <div id="text-files-list" style="font-size:0.82rem;margin-top:6px;color:var(--primary);"></div>
+      </div>
+
+      <!-- LATENCY & TOKEN COUNTER BAR WITH PROGRESS BAR -->
+      <div class="token-counter-bar">
+        <span>⏱️ Latency: <strong id="latency-val">0</strong>ms</span>
+        <span>
+          ~ <strong id="token-count">0</strong> tokens
+          <div class="token-bar-track"><div id="token-bar-fill" class="token-bar-fill"></div></div>
+        </span>
+      </div>
+
+      <!-- BOTTOM INPUT PANEL -->
+      <div class="bottom-input-panel">
+        <div class="input-tools-scroll">
+          <!-- SMART PRESETS (1-CLICK WORKSPACE SWITCHER) -->
+          <div class="preset-pills-group" style="display:inline-flex;align-items:center;gap:3px;background:var(--bg-main);padding:2px 5px;border-radius:var(--radius-full);border:1px solid var(--border);margin-right:6px;flex-shrink:0;">
+            <span style="font-size:0.7rem;font-weight:700;color:var(--text-muted);padding-left:3px;padding-right:2px;">Mode:</span>
+            <button id="preset-daily-quick" class="tool-chip preset-chip" style="margin:0;padding:2px 8px;font-size:0.73rem;border:none;background:transparent;color:var(--text-main);font-weight:600;display:inline-flex;align-items:center;gap:3px;" title="⚡ Daily Quick: Gemini 3.6 Flash · Think Min · Tắt Web Search (Siêu tốc ~0.5s)">
+              ⚡ Quick
+            </button>
+            <button id="preset-deep-study" class="tool-chip preset-chip" style="margin:0;padding:2px 8px;font-size:0.73rem;border:none;background:transparent;color:var(--text-main);font-weight:600;display:inline-flex;align-items:center;gap:3px;" title="🧠 Deep Think: Gemini 3.8 Flash · Think High · Bật RAG & Tìm kiếm Web">
+              🧠 Deep
+            </button>
+            <button id="preset-hands-free" class="tool-chip preset-chip" style="margin:0;padding:2px 8px;font-size:0.73rem;border:none;background:transparent;color:var(--text-main);font-weight:600;display:inline-flex;align-items:center;gap:3px;" title="🎙️ Hands-Free: Đàm thoại rảnh tay 2 chiều liên tục">
+              🎙️ Voice
+            </button>
+          </div>
+
+          <label class="tool-chip" for="file-upload" style="cursor:pointer;" title="Đính kèm ảnh, video, PDF, txt, code">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            Đính kèm (<span id="file-count">0</span>)
+          </label>
+          <input type="file" id="file-upload" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;">
+
+          <button id="btn-toggle-session-memory" class="tool-chip" title="Bật/Tắt Bộ nhớ ngữ cảnh (lịch sử trò chuyện của phiên này)" style="border-color:#3b82f6;color:#3b82f6;font-weight:600;">
+            💬 Ngữ cảnh: <strong id="session-memory-state" style="color:var(--success);">BẬT</strong>
+          </button>
+
+          <button id="btn-toggle-rag-memory" class="tool-chip" title="Bật/Tắt Trí nhớ vĩnh cửu & RAG (Gemini Embedding 2) cho phiên này" style="border-color:#10b981;color:#10b981;font-weight:600;">
+            🧠 Trí nhớ RAG: <strong id="rag-memory-state" style="color:var(--success);">BẬT</strong>
+          </button>
+
+          <button id="btn-open-knowledge-chip" class="tool-chip" onclick="openKnowledgeModal()" title="Mở Kho Tri Thức Cá Nhân & RAG Studio">
+            📚 Kho Tri Thức
+          </button>
+
+          <button id="btn-open-tts-studio" class="tool-chip" onclick="openTTSStudioModal()" style="border-color:#8b5cf6;color:#8b5cf6;font-weight:600;" title="Mở Gemini TTS Studio Pro (Chuyển văn bản thành giọng nói, xuất MP3)">
+            🎙️ Studio TTS
+          </button>
+        </div>
+
+        <!-- HANDS-FREE VOICE STATUS BANNER -->
+        <div id="hands-free-banner" class="hands-free-banner" style="display:none;">
+          <div class="hf-status-left">
+            <span class="hf-pulse-dot"></span>
+            <span id="hf-status-text">Đang lắng nghe...</span>
+          </div>
+          <div class="hf-status-right">
+            <span id="hf-transcript-preview" class="hf-transcript"></span>
+            <button id="btn-send-hands-free" class="btn primary" type="button" style="padding:3px 9px;font-size:0.72rem;border-radius:var(--radius-full);display:none;background:var(--primary);color:#fff;" title="Gửi ngay câu vừa nói mà không cần chờ khoảng lặng">Gửi ngay ⚡</button>
+            <button id="btn-stop-hands-free" class="btn" type="button" style="padding:3px 9px;font-size:0.72rem;background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-full);" title="Tắt chế độ rảnh tay">Dừng</button>
+          </div>
+        </div>
+
+        <div class="input-container-box">
+          <textarea id="user-input" rows="1" placeholder="Nhập tin nhắn (Ctrl+Enter gửi, gõ &quot;từ khóa&quot; tìm web, Ctrl+K mở lệnh)..."></textarea>
+          <button id="btn-hands-free-voice" class="icon-btn hands-free-mic-btn" type="button" title="Trò chuyện rảnh tay 2 chiều liên tục (Hands-Free Voice Flow)">
+            🎙️
+          </button>
+          <button id="send-button">
+            <span>Gửi</span>
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- ==========================================
+         KHỐI 3: CÁC MODAL HỆ THỐNG
+         ========================================== -->
+
+    <!-- MODAL DAILY BRIEFING (BẢN TIN NGÀY MỚI) -->
+    <div id="daily-briefing-modal" class="modal-box" style="max-width:660px;width:94%;display:none;z-index:2150;">
+      <div class="modal-header" style="background:linear-gradient(135deg, rgba(245,158,11,0.18), rgba(234,88,12,0.12));border-bottom:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.5rem;">🌅</span>
+          <div>
+            <h3 style="margin:0;font-size:1.05rem;color:var(--text-main);">Bản Tin Ngày Mới · Jarvis AI</h3>
+            <div id="briefing-date-label" style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Đang tải...</div>
+          </div>
+        </div>
+        <button id="btn-close-briefing" class="close-btn icon-btn" style="width:28px;height:28px;font-size:1.1rem;" title="Đóng">&times;</button>
+      </div>
+
+      <div class="modal-scroll-body" style="padding:16px;max-height:75vh;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
+        <!-- ACTION TOOLBAR -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button id="btn-speak-briefing" class="btn primary" style="font-size:0.78rem;padding:6px 13px;gap:5px;background:linear-gradient(135deg,#f59e0b,#ea580c);border:none;box-shadow:0 2px 6px rgba(245,158,11,0.3);">
+              <span>🔊 Nghe bản tin (Jarvis TTS)</span>
+            </button>
+            <button id="btn-refresh-briefing" class="btn" style="font-size:0.78rem;padding:6px 10px;gap:5px;" title="Cập nhật lại tin tức mới nhất hôm nay">
+              <span>🔄 Làm mới</span>
+            </button>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button id="btn-copy-briefing" class="btn" style="font-size:0.78rem;padding:6px 10px;" title="Sao chép toàn bộ bản tin">
+              <span>📋 Copy</span>
+            </button>
+            <button id="btn-discuss-briefing" class="btn" style="font-size:0.78rem;padding:6px 10px;color:var(--primary);" title="Đưa vào ô chat để trao đổi sâu hơn">
+              <span>💬 Thảo luận tiếp</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- LOCATION & PREFERENCES BAR -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--bg-main);border:1px solid var(--border);border-radius:var(--radius-md);font-size:0.78rem;gap:8px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span>📍</span>
+            <span style="color:var(--text-muted);">Vị trí dự báo:</span>
+            <strong id="briefing-location-label" style="color:var(--primary);">Đang xác định...</strong>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button type="button" id="btn-change-location" class="btn" style="padding:4px 9px;font-size:0.74rem;" title="Nhập thành phố của bạn">✏️ Đổi thành phố</button>
+            <button type="button" id="btn-gps-location" class="btn" style="padding:4px 9px;font-size:0.74rem;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);" title="Tự động lấy toạ độ GPS chính xác">🎯 Định vị GPS</button>
+          </div>
+        </div>
+
+        <!-- BRIEFING LOADING STATE -->
+        <div id="briefing-loading-state" style="text-align:center;padding:36px 16px;color:var(--text-muted);display:none;">
+          <div class="pulse-dot" style="width:12px;height:12px;margin:0 auto 12px;background:#f59e0b;"></div>
+          <div style="font-weight:600;font-size:0.9rem;color:var(--text-main);">Jarvis đang tổng hợp dữ liệu ngày mới...</div>
+          <div id="briefing-loading-status" style="font-size:0.75rem;margin-top:6px;color:var(--text-muted);">Đang đối chiếu thời tiết & tin tức công nghệ...</div>
+        </div>
+
+        <!-- BRIEFING CONTENT CONTAINER -->
+        <div id="briefing-content-body" class="briefing-content markdown-body" style="font-size:0.88rem;line-height:1.65;">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL WEB SHARE TARGET PROMPT -->
+    <div id="share-target-modal" class="modal-box" style="max-width:540px;display:none;">
+      <div class="modal-header" style="background:linear-gradient(135deg, rgba(2,132,199,0.15), rgba(37,99,235,0.1));border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.3rem;">📥</span>
+          <h3 style="margin:0;font-size:1.05rem;">Nhận nội dung chia sẻ từ thiết bị</h3>
+        </div>
+        <button class="close-btn icon-btn" onclick="$('share-target-modal').style.display='none'; $('modal-overlay').style.display='none';">&times;</button>
+      </div>
+      <div style="padding:16px;">
+        <div id="share-preview-content" style="max-height:160px;overflow-y:auto;background:var(--bg-main);padding:12px;border-radius:var(--radius-md);border:1px solid var(--border);font-size:0.88rem;word-break:break-word;line-height:1.5;"></div>
+        <div id="share-url-indicator" style="margin-top:10px;font-size:0.8rem;color:var(--primary);font-weight:600;display:none;">
+          🔗 Đã phát hiện liên kết: <span id="share-detected-url" style="text-decoration:underline;"></span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;">
+          <button id="btn-share-extract-now" class="btn primary" style="padding:10px;font-weight:600;display:none;">
+            ⚡ Bóc tách & Tóm tắt Link ngay
+          </button>
+          <button id="btn-share-insert-input" class="btn" style="padding:10px;font-weight:600;">
+            💬 Đưa vào ô nhập Chat để hỏi tiếp
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL COMMAND PALETTE (CTRL+K) -->
+    <div id="command-palette-modal">
+      <div class="cmd-header">
+        <svg class="icon icon-sm" style="color:var(--primary);" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <input type="text" id="cmd-palette-input" class="cmd-input" placeholder="Gõ lệnh hoặc hành động nhanh (/new, /live, /clear, /compare, /theme)...">
+        <span class="cmd-badge">ESC</span>
+      </div>
+      <div class="cmd-list" id="cmd-palette-list"></div>
+    </div>
+
+    <!-- MODAL PROMPT LIBRARY (KHO PROMPT CÁ NHÂN) -->
+    <div id="prompt-library-modal" class="modal-box">
+      <div class="modal-header">
+        <h3>
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Kho Prompt Mẫu Cá Nhân
+        </h3>
+        <button class="close-btn icon-btn" title="Đóng">&times;</button>
+      </div>
+      <div class="modal-scroll-body">
+        <div style="display:flex;gap:8px;align-items:flex-end;">
+          <div style="flex:1;">
+            <label class="field-label">Tiêu đề Prompt:</label>
+            <input type="text" id="new-prompt-title" placeholder="VD: So sánh & Đánh giá..." class="modern-input">
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Nội dung câu lệnh:</label>
+          <textarea id="new-prompt-text" rows="3" placeholder="Nhập nội dung câu lệnh chi tiết..." class="modern-textarea"></textarea>
+        </div>
+        <button id="btn-add-prompt-item" class="btn primary" style="align-self:flex-start;">➕ Thêm vào Kho</button>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:4px 0;">
+        <strong style="font-size:0.85rem;color:var(--primary);">📋 Danh sách Prompt của bạn:</strong>
+        <div id="prompt-items-list" style="display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;"></div>
+      </div>
+    </div>
+
+    <!-- MODAL LIVE CALL (REALTIME VOICE & CAM) -->
+    <div id="live-call-modal">
+      <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:#10b981;display:flex;align-items:center;justify-content:center;">
+            <svg class="icon" style="color:#fff;" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          </div>
+          <div>
+            <h3 style="font-size:1.05rem;font-weight:700;">Jarvis Live AI</h3>
+            <span id="live-call-status" style="font-size:0.75rem;color:#94a3b8;">Đang kết nối...</span>
+          </div>
+        </div>
+        <video id="live-camera-video" autoplay playsinline muted></video>
+      </div>
+
+      <div class="live-orb-container">
+        <div id="live-orb" class="live-orb"></div>
+        <div id="live-transcript" class="live-transcript-box">
+          <i>Hãy nói chuyện bình thường vào micro...</i>
+        </div>
+      </div>
+
+      <div class="live-controls">
+        <select id="live-model-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;font-size:0.78rem;">
+          <option value="models/gemini-3.8-live" selected>⚡ Gemini 3.8 Live (Mặc định)</option>
+          <option value="models/gemini-3.8-live-extended-thinking">🧠 Gemini 3.8 Extended</option>
+          <option value="models/gemini-2.0-flash-exp">⚡ Gemini 2.0 Flash Live (Dự phòng)</option>
+          <option value="models/gemini-2.0-flash-realtime-exp">⚡ Gemini 2.0 Realtime (Dự phòng)</option>
+        </select>
+        <select id="live-search-engine-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;font-size:0.78rem;" title="Dịch vụ tìm kiếm web cho Live Voice">
+          <option value="tavily" selected>🌐 Tavily Search</option>
+          <option value="serper">🔍 Serper Google</option>
+        </select>
+        <select id="live-key-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;font-size:0.78rem;">
+          <option value="auto">🔄 Tự động Key</option>
+        </select>
+        <select id="live-voice-select" class="modern-select" style="width:auto;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.2);height:44px;border-radius:22px;font-size:0.78rem;">
+          <option value="Aoede">👩 Aoede</option>
+          <option value="Charon" selected>👨 Charon</option>
+          <option value="Puck">👨 Puck</option>
+          <option value="Kore">👩 Kore</option>
+          <option value="Fenrir">👨 Fenrir</option>
+        </select>
+        <button id="btn-live-mic-toggle" class="live-control-btn active" title="Bật/Tắt Micro">🎙️</button>
+        <button id="btn-live-cam-toggle" class="live-control-btn" title="Bật/Tắt Camera">📹</button>
+        <button id="btn-live-end-call" class="live-control-btn end-call" title="Ngắt cuộc gọi">🛑</button>
+      </div>
+    </div>
+
+    
+    <!-- MODAL LIVE TRANSLATE DUAL SCREEN (FACE-TO-FACE) -->
+    <div id="live-translate-modal">
+      <!-- TOP HALF: FACES GUEST (ROTATED 180 DEG) -->
+      <div id="translate-guest-half" class="translate-half translate-guest-half">
+        <div class="translate-bar">
+          <div class="translate-lang-badge">
+            <span style="font-size:1.1rem;">🗣️</span>
+            <select id="translate-guest-lang-select" class="translate-lang-select">
+              <option value="en" selected>🇺🇸 English (US)</option>
+            </select>
+          </div>
+          <button id="btn-toggle-flip-guest" class="translate-tool-btn" title="Xoay ngược / Thuận chiều hiển thị">
+            🔄
+          </button>
+        </div>
+
+        <div class="translate-display">
+          <div id="translate-guest-main-text" class="translate-text-main">
+            Tap the button and start speaking...
+          </div>
+          <div id="translate-guest-trans-text" class="translate-text-sub"></div>
+          <div id="translate-guest-status" class="translate-status-pill">
+            🟢 Ready for conversation
+          </div>
+        </div>
+
+        <div class="translate-mic-zone">
+          <button id="btn-translate-guest-mic" class="translate-mic-btn" title="Guest: Tap to Speak / Dành cho Khách">
+            🎙️
+          </button>
+          <div id="translate-guest-meter" class="translate-audio-meter"><div class="meter-bar"></div></div>
+        </div>
+      </div>
+
+      <!-- CENTER DIVIDER BAR -->
+      <div class="translate-divider">
+        <div style="display:flex;align-items:center;gap:6px;overflow:hidden;">
+          <select id="translate-model-select" class="translate-model-select" title="Chọn mô hình dịch">
+            <option value="models/gemini-3.8-live" selected>⚡ Gemini 3.8 Live (Khuyên dùng - Cực mượt)</option>
+            <option value="models/gemini-3.5-live-translate-preview">🧪 Gemini 3.5 Live (Bản thử nghiệm)</option>
+          </select>
+          <span id="translate-active-model-tag" class="translate-model-tag">⚡ Chuẩn bị...</span>
+        </div>
+        <button id="btn-close-live-translate" class="translate-close-btn">✕ Đóng</button>
+      </div>
+
+      <!-- BOTTOM HALF: FACES YOU (NORMAL ORIENTATION) -->
+      <div id="translate-user-half" class="translate-half translate-user-half">
+        <div class="translate-bar">
+          <div class="translate-lang-badge">
+            <span style="font-size:1.1rem;">🇻🇳</span>
+            <span style="font-weight:700;font-size:0.95rem;">Tiếng Việt</span>
+          </div>
+        </div>
+
+        <div class="translate-display">
+          <div id="translate-user-main-text" class="translate-text-main">
+            Bấm nút micro để nói tiếng Việt...
+          </div>
+          <div id="translate-user-trans-text" class="translate-text-sub"></div>
+          <div id="translate-user-status" class="translate-status-pill">
+            🟢 Đang chờ bạn nói
+          </div>
+        </div>
+
+        <div class="translate-mic-zone">
+          <button id="btn-translate-user-mic" class="translate-mic-btn" title="Bấm để nói tiếng Việt">
+            🎙️
+          </button>
+          <div id="translate-user-meter" class="translate-audio-meter"><div class="meter-bar"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL SETTINGS -->
+    <div id="settings-modal" class="modal-box">
+      <div class="modal-header">
+        <h3>
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Cài đặt Hệ thống
+        </h3>
+        <button class="close-btn icon-btn" title="Đóng">&times;</button>
+      </div>
+      <div class="modal-scroll-body">
+        <!-- DEDICATED CLOUD SYNC SECTION IN SETTINGS -->
+        <fieldset class="settings-group" style="border: 2px solid #0284c7; background: rgba(2,132,199,0.05); margin-bottom: 6px;">
+          <legend style="color:#0284c7; font-weight:700;">☁️ Đồng bộ Cloud Đa thiết bị (GitHub Gist)</legend>
+          <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:8px;line-height:1.4;">
+            Đồng bộ toàn bộ lịch sử trò chuyện, API Keys và Prompt giữa PC và Điện thoại hoàn toàn miễn phí.
+          </div>
+          <button id="btn-open-cloud-from-settings" class="btn" style="width:100%;padding:10px;background:linear-gradient(135deg, #0284c7, #2563eb);color:white;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:var(--radius-md);">
+            ☁️ Mở bảng Điều khiển Đồng bộ Cloud (Gist)
+          </button>
+        </fieldset>
+
+        <!-- FONT SIZE -->
+        <fieldset class="settings-group">
+          <legend>🔤 Kích thước chữ tin nhắn</legend>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button id="btn-font-dec" class="btn" style="padding:6px 12px;font-weight:700;">➖ A-</button>
+              <span id="font-size-label" style="font-weight:700;font-size:0.95rem;min-width:48px;text-align:center;color:var(--primary);">16px</span>
+              <button id="btn-font-inc" class="btn" style="padding:6px 12px;font-weight:700;">➕ A+</button>
+            </div>
+            <button id="btn-font-reset" class="btn" style="padding:6px 12px;">🔄 Mặc định (16px)</button>
+          </div>
+        </fieldset>
+
+        <!-- LIVE CALL SETTINGS -->
+        <fieldset class="settings-group">
+          <legend>📞 Cấu hình Cuộc gọi Live AI</legend>
+          <div style="font-size:0.75rem;color:var(--text-muted);background:var(--bg-card);padding:10px;border-radius:var(--radius-sm);margin-bottom:10px;border:1px solid var(--border);">
+            💡 <b>Live 3.8 + Tavily:</b> Tự động gọi Tavily Search để tra cứu thông tin Internet ngay trong khi nói chuyện.
+          </div>
+          <div class="slider-row">
+            <label>Sáng tạo thoại (Temp: <strong id="live-temp-val">0.7</strong>):</label>
+            <input type="range" id="live-temperature" min="0" max="2" step="0.1" value="0.7">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="live-toggle-search" checked> 🌐 Tự động tra cứu Tavily & Đọc Link trong cuộc gọi
+            </label>
+            <label style="cursor:pointer;font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="live-toggle-context" checked> 🧠 Kế thừa 10 tin nhắn gần nhất
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- SYSTEM INSTRUCTIONS -->
+        <fieldset class="settings-group">
+          <legend>⚙️ Ngữ cảnh Phiên Chat & Live (System Prompt)</legend>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label class="field-label">System Instruction riêng phiên:</label>
+              <textarea id="system-instruction-input" rows="2" class="modern-textarea" placeholder="Nhập chỉ thị riêng cho phiên hiện tại..."></textarea>
+            </div>
+            <div>
+              <label class="field-label">🌍 Ngữ cảnh Toàn cục (Tự động lưu vĩnh viễn):</label>
+              <textarea id="global-context-input" rows="2" class="modern-textarea" placeholder="Nhập ngữ cảnh dùng chung cho tất cả các phiên..."></textarea>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- EXTERNAL SEARCH ENGINES -->
+        <fieldset class="settings-group">
+          <legend>🌐 Công cụ Tìm kiếm & Đọc Link Web</legend>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label class="field-label">Công cụ mặc định cho Tự Động (Auto-Search):</label>
+              <select id="auto-search-engine-input" class="modern-select">
+                <option value="tavily" selected>⚡ Tavily AI Search (Tối ưu cho LLM)</option>
+                <option value="serper">🔎 Serper.dev Google (Chuẩn Google)</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Tavily API Key (Dùng cho Web Search & Trích xuất):</label>
+              <input type="password" id="tavily-key-input" placeholder="tvly-..." class="modern-input">
+            </div>
+            <div>
+              <label class="field-label">Serper API Key (Dùng cho Google Search):</label>
+              <input type="password" id="serper-key-input" placeholder="Nhập Serper key..." class="modern-input">
+            </div>
+            <div>
+              <label class="field-label">⚡ Experiential Labs API Key (gpt-6-luna, claude-fable-5.2, clef):</label>
+              <input type="password" id="explabs-key-input" placeholder="xpl_..." class="modern-input">
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- STORAGE & MEMORY MANAGEMENT -->
+        <fieldset class="settings-group" style="border: 2px solid #10b981; background: rgba(16,185,129,0.04);">
+          <legend style="color:#10b981; font-weight:700;">💾 Bộ nhớ & Trạng thái Lưu trữ (IndexedDB)</legend>
+          <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:10px;line-height:1.4;">
+            Toàn bộ lịch sử trò chuyện và tài liệu được lưu trong IndexedDB dung lượng lớn trên thiết bị của bạn.
+          </div>
+          
+          <div style="margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;font-size:0.82rem;font-weight:600;margin-bottom:4px;">
+              <span>Dung lượng đã dùng: <strong id="storage-used-txt">Đang tính...</strong></span>
+              <span id="storage-quota-txt">Khả dụng: ...</span>
+            </div>
+            <div style="height:8px;background:var(--border);border-radius:var(--radius-full);overflow:hidden;">
+              <div id="storage-bar-progress" style="height:100%;width:0%;background:linear-gradient(90deg,#10b981,#059669);transition:width 0.4s ease;"></div>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-card);padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:10px;font-size:0.82rem;">
+            <div>
+              <span style="font-weight:600;">Bảo vệ vĩnh viễn (Persistent):</span>
+              <span id="storage-persist-status" style="margin-left:6px;font-weight:700;color:var(--success);">Kiểm tra...</span>
+            </div>
+            <button id="btn-request-persist" class="btn" style="padding:3px 8px;font-size:0.75rem;">🛡️ Kích hoạt</button>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button id="btn-refresh-storage" class="btn" style="padding:6px 12px;font-size:0.8rem;">🔄 Kiểm tra lại</button>
+            <button id="btn-clear-temp-cache" class="btn" style="padding:6px 12px;font-size:0.8rem;" title="Xóa cache tìm kiếm web & dữ liệu tạm, giữ nguyên lịch sử chat">🧹 Dọn Cache Tạm</button>
+          </div>
+        </fieldset>
+
+        <!-- DATA EXPORT & BACKUP -->
+        <fieldset class="settings-group">
+          <legend>💾 Dữ liệu & Xuất tệp</legend>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <button class="btn" onclick="exportCleanArticle()">📝 Bài sạch (MD)</button>
+            <button class="btn" onclick="exportChatPDF()">📄 Xuất PDF</button>
+            <button class="btn" onclick="exportChatDoc()">📄 Xuất Word</button>
+            <button class="btn primary" onclick="exportAllSessions()">📥 Sao lưu JSON</button>
+            <button class="btn warning" onclick="document.getElementById('import-all-input').click()">📤 Khôi phục JSON</button>
+            <button class="btn danger" onclick="clearActiveSession()">🗑️ Xóa phiên này</button>
+            <input type="file" id="import-all-input" accept=".json" style="display:none;">
+          </div>
+        </fieldset>
+
+        <!-- 10 GOOGLE API KEYS -->
+        <fieldset class="settings-group">
+          <legend>🔑 10 Google API Keys</legend>
+          <div class="api-keys-grid" id="api-keys-container" style="margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button id="btn-save-keys" class="btn primary">💾 Lưu Cấu Hình</button>
+            <button id="btn-check-keys" class="btn">🔍 Kiểm tra Keys</button>
+            <button id="btn-check-duplicates" class="btn">👯 Kiểm tra Trùng</button>
+            <span id="key-status-msg" style="font-size:.78rem;font-weight:600;"></span>
+          </div>
+        </fieldset>
+      </div>
+    </div>
+
+    <!-- MODAL GLOBAL & SEMANTIC SEARCH -->
+    <div id="search-modal" class="modal-box" style="max-width:620px;width:92%;">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <h3 style="margin:0;font-size:1.05rem;">🔍 Tìm kiếm Nâng cao & Ngữ nghĩa AI</h3>
+          <span class="badge" style="background:rgba(14,165,233,0.15);color:#0ea5e9;font-size:0.7rem;padding:2px 8px;border-radius:10px;">Gemini Embedding 2</span>
+        </div>
+        <button class="close-btn icon-btn">&times;</button>
+      </div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <div style="position:relative;display:flex;align-items:center;">
+          <input type="text" id="global-search-input" placeholder="Nhập câu hỏi, ý tưởng hoặc từ khóa cần tìm..." class="modern-input" style="padding-left:36px;padding-right:32px;">
+          <svg class="icon icon-sm" style="position:absolute;left:10px;color:var(--text-muted);pointer-events:none;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <button id="btn-clear-search-modal" class="icon-btn" style="position:absolute;right:8px;width:24px;height:24px;display:none;color:var(--text-muted);" title="Xóa tìm kiếm">&times;</button>
+        </div>
+
+        <!-- SEARCH MODE SELECTOR -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div class="search-mode-segmented">
+            <button type="button" class="search-mode-btn active" data-mode="keyword" id="btn-search-mode-keyword">
+              📝 Từ khóa (Nhanh)
+            </button>
+            <button type="button" class="search-mode-btn" data-mode="semantic" id="btn-search-mode-semantic" title="Tìm theo ý nghĩa bằng Gemini Embedding 2">
+              🧠 Ngữ nghĩa AI (Vector)
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <select id="search-scope-select" class="modern-select" style="font-size:0.75rem;padding:4px 8px;">
+              <option value="all">🌐 Toàn bộ (Chat + Tri thức)</option>
+              <option value="chats">💬 Lịch sử Hội thoại</option>
+              <option value="knowledge">📚 Kho Tri thức & RAG</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- SEMANTIC SEARCH STATUS -->
+        <div id="search-semantic-status" style="display:none;font-size:0.78rem;color:var(--primary);padding:6px 10px;background:rgba(59,130,246,0.08);border-radius:var(--radius-sm);border:1px solid rgba(59,130,246,0.2);">
+          <span>⏳</span> Đang chuyển đổi ý nghĩa câu hỏi sang vector và so khớp...
+        </div>
+
+        <!-- RESULTS CONTAINER -->
+        <div id="search-results" style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+    </div>
+
+    <!-- MODAL KNOWLEDGE BASE & RAG STUDIO -->
+    <div id="knowledge-modal" class="modal-box" style="max-width:720px;width:94%;">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <h3 style="margin:0;font-size:1.05rem;">🧠 Kho Tri Thức Cá Nhân & RAG Studio</h3>
+          <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.7rem;padding:2px 8px;border-radius:10px;">gemini-embedding-2</span>
+        </div>
+        <button class="close-btn icon-btn">&times;</button>
+      </div>
+
+      <!-- TABS HEADER -->
+      <div class="rag-tabs-header">
+        <button type="button" class="rag-tab-btn active" data-tab="memory" id="rag-tab-memory">
+          🧠 Trí nhớ Cá nhân (Second Brain)
+        </button>
+        <button type="button" class="rag-tab-btn" data-tab="docs" id="rag-tab-docs">
+          📚 Tài liệu & PDF RAG Studio
+        </button>
+        <button type="button" class="rag-tab-btn" data-tab="test" id="rag-tab-test">
+          🔍 Thử nghiệm Truy vấn (RAG Tester)
+        </button>
+      </div>
+
+      <div class="rag-modal-body" style="padding:16px;max-height:68vh;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
+        <!-- TAB 1: SECOND BRAIN / PERSONAL MEMORY -->
+        <div id="rag-pane-memory" class="rag-tab-pane">
+          <!-- PERSONA OVERVIEW & VISUAL CATEGORY FILTER -->
+          <div class="persona-overview-card" style="background:linear-gradient(135deg, rgba(59,130,246,0.1), rgba(16,185,129,0.08));border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:1.6rem;">🧠</span>
+                <div>
+                  <div style="font-weight:700;font-size:0.92rem;color:var(--text-main);">Bộ Não & Bản Đồ Tri Thức Của Jarvis</div>
+                  <div style="font-size:0.75rem;color:var(--text-muted);">Những điều Jarvis đã tự động học và ghi nhớ về bạn để cá nhân hóa mọi câu trả lời.</div>
+                </div>
+              </div>
+              <button type="button" id="btn-synthesize-persona" class="btn primary" style="font-size:0.78rem;padding:6px 12px;gap:5px;">
+                <span>✨ Jarvis hiểu gì về tôi?</span>
+              </button>
+            </div>
+
+            <!-- VISUAL CATEGORY FILTER PILLS -->
+            <div id="memory-category-pills" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- PERSONA PROFILE POPUP MODAL/CARD -->
+          <div id="persona-summary-box" style="display:none;background:var(--bg-card);border:1.5px solid var(--primary);border-radius:var(--radius-md);padding:14px;margin-bottom:14px;box-shadow:var(--shadow-md);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <strong style="color:var(--primary);font-size:0.88rem;">👤 Chân Dung Người Dùng (Theo Jarvis):</strong>
+              <button class="icon-btn" onclick="$('persona-summary-box').style.display='none'" style="width:20px;height:20px;">&times;</button>
+            </div>
+            <div id="persona-summary-text" class="markdown-body" style="font-size:0.82rem;line-height:1.6;"></div>
+          </div>
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-weight:700;font-size:0.85rem;color:var(--primary);display:flex;align-items:center;gap:6px;">
+              <span>➕ Thêm Mẩu Trí Nhớ Mới</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 140px;gap:8px;">
+              <input type="text" id="memory-input-title" placeholder="Tiêu đề (VD: Thông tin công việc, Sở thích, Dự án...)" class="modern-input">
+              <select id="memory-input-category" class="modern-select">
+                <option value="personal">👤 Cá nhân</option>
+                <option value="work">💼 Công việc</option>
+                <option value="project">🚀 Dự án</option>
+                <option value="hobbies">🎨 Sở thích</option>
+                <option value="rules">📜 Quy tắc AI</option>
+              </select>
+            </div>
+            <textarea id="memory-input-text" placeholder="Nội dung chi tiết cần Jarvis luôn ghi nhớ (VD: Tên tôi là Huân, chuyên làm ứng dụng Full-stack & Android. Luôn trả lời ngắn gọn, súc tích...)" class="modern-input" style="min-height:75px;resize:vertical;"></textarea>
+            <div style="display:flex;justify-content:flex-end;">
+              <button type="button" id="btn-save-memory" class="btn primary" style="padding:6px 16px;font-size:0.82rem;gap:6px;">
+                <span>💾 Lưu & Nhúng Vector ngay</span>
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+              <span style="font-weight:700;font-size:0.85rem;">📋 Danh sách Trí nhớ Đã lưu (<span id="memory-count-badge">0 mục</span>)</span>
+              <label style="cursor:pointer;font-size:0.75rem;font-weight:600;color:var(--primary);display:flex;align-items:center;gap:6px;" title="Tự động nhận diện và ghi nhớ thông tin cá nhân trong lúc chat">
+                <input type="checkbox" id="toggle-auto-learn-memory" checked>
+                🤖 Tự động học & ghi nhớ (ChatGPT Memory)
+              </label>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+                <input type="text" id="memory-search-input" placeholder="🔍 Tìm kiếm nhanh trong trí nhớ..." class="modern-input" style="flex:1;font-size:0.8rem;padding:6px 10px;">
+              </div>
+              <div id="memory-list-container" class="memory-grid"></div>
+          </div>
+        </div>
+
+        <!-- TAB 2: DOCUMENT & PDF RAG STUDIO -->
+        <div id="rag-pane-docs" class="rag-tab-pane" style="display:none;">
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-weight:700;font-size:0.85rem;color:#10b981;display:flex;align-items:center;gap:6px;">
+              <span>📥 Tải lên & Nạp Tài liệu vào RAG</span>
+            </div>
+            <div id="rag-drop-zone" class="rag-drop-zone">
+              <div style="font-size:1.8rem;margin-bottom:4px;">📂</div>
+              <div style="font-weight:600;font-size:0.85rem;">Kéo thả tệp Tài liệu, Ảnh, Âm thanh, Video vào đây hoặc bấm để chọn</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Gemini Embedding 2 hỗ trợ: PDF, TXT, MD, CSV, JSON, PNG, JPG, WebP, MP3, WAV, MP4, WebM</div>
+              <input type="file" id="rag-doc-file-input" accept=".pdf,.txt,.md,.markdown,.json,.csv,.png,.jpg,.jpeg,.webp,.mp3,.wav,.m4a,.ogg,.mp4,.mov,.webm,image/*,audio/*,video/*" style="display:none;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <input type="text" id="rag-doc-name-input" placeholder="Tên tài liệu / Tiêu đề tham chiếu" class="modern-input">
+              <textarea id="rag-doc-paste-input" placeholder="Hoặc dán văn bản dài trực tiếp vào đây..." class="modern-input" style="min-height:70px;resize:vertical;"></textarea>
+            </div>
+
+            <!-- PROGRESS BOX -->
+            <div id="rag-progress-box" class="rag-progress-box" style="display:none;">
+              <div id="rag-progress-status" style="font-size:0.78rem;font-weight:600;color:var(--primary);">Đang chuẩn bị...</div>
+              <div class="rag-progress-track">
+                <div id="rag-progress-fill" class="rag-progress-fill"></div>
+              </div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;">
+              <button type="button" id="btn-process-doc" class="btn primary" style="padding:6px 16px;font-size:0.82rem;gap:6px;background:linear-gradient(135deg,#10b981,#059669);">
+                <span>🚀 Phân tích & Nhúng Vector vào RAG</span>
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span style="font-weight:700;font-size:0.85rem;">📚 Thư viện Tài liệu RAG (<span id="docs-count-badge">0 tệp</span>)</span>
+            </div>
+            <div id="docs-list-container" style="display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+        </div>
+
+        <!-- TAB 3: RAG TESTER -->
+        <div id="rag-pane-test" class="rag-tab-pane" style="display:none;">
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-weight:700;font-size:0.85rem;color:var(--text-main);">
+              🧪 Kiểm thử Truy vấn Ngữ nghĩa & Trích xuất Context
+            </div>
+            <div style="font-size:0.75rem;color:var(--text-muted);">
+              Nhập câu hỏi để xem trước các mẩu tri thức hoặc đoạn tài liệu mà Jarvis sẽ tự động bốc và nạp vào câu trả lời:
+            </div>
+            <input type="text" id="rag-test-query-input" placeholder="Nhập câu hỏi kiểm tra (VD: Tôi đang làm dự án gì?)" class="modern-input">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:0.75rem;">
+              <span>Độ tương đồng tối thiểu: <b id="rag-th-val">55%</b></span>
+              <input type="range" id="rag-test-threshold" min="40" max="90" value="55" style="flex:1;max-width:200px;" oninput="document.getElementById('rag-th-val').innerText = this.value + '%'">
+              <button type="button" id="btn-run-rag-test" class="btn primary" style="padding:5px 12px;font-size:0.78rem;">
+                ⚡ Kiểm tra kết quả
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;">
+            <div style="font-weight:700;font-size:0.85rem;margin-bottom:8px;">Kết quả Trích xuất (Top Matches):</div>
+            <div id="rag-test-results" style="display:flex;flex-direction:column;gap:8px;">
+              <i style="color:var(--text-muted);font-size:0.8rem;padding:8px;">Chưa có lượt kiểm thử nào.</i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL RETRIEVED RAG DETAILS -->
+    <div id="rag-details-modal" class="modal-box" style="max-width:580px;width:92%;">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <h3 style="margin:0;font-size:1.05rem;">🧠 Dữ liệu Trí nhớ RAG Đã Trích Xuất</h3>
+          <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.7rem;padding:2px 8px;border-radius:10px;">Đã nạp vào Context</span>
+        </div>
+        <button class="close-btn icon-btn">&times;</button>
+      </div>
+      <div style="padding:16px;max-height:65vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:0.78rem;color:var(--text-muted);">
+          Dưới đây là các mẩu tri thức cá nhân hoặc đoạn trích tài liệu được <b>gemini-embedding-2</b> tính toán độ tương đồng và nạp vào câu trả lời:
+        </div>
+        <div id="rag-details-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+      </div>
+    </div>
+
+    <!-- MODAL FILE LIBRARY -->
+    <div id="file-library-modal" class="modal-box">
+      <div class="modal-header">
+        <h3>🗄️ Thư viện Tài liệu</h3>
+        <button class="close-btn icon-btn">&times;</button>
+      </div>
+      <div style="padding:16px;">
+        <label class="btn primary" style="cursor:pointer;display:inline-block;margin-bottom:12px;">
+          ➕ Tải tệp lên thư viện
+          <input type="file" id="library-upload-input" multiple style="display:none;">
+        </label>
+        <div id="library-files-container" style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto;"></div>
+      </div>
+    </div>
+
+    <!-- MODAL CAMERA -->
+    <div id="camera-modal" class="modal-box">
+      <div class="modal-header">
+        <h3>📷 Chụp ảnh từ Camera</h3>
+        <button class="close-btn icon-btn">&times;</button>
+      </div>
+      <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">
+        <video id="camera-preview" autoplay playsinline style="width:100%;max-height:300px;border-radius:var(--radius-md);background:#000;object-fit:cover;"></video>
+        <button id="btn-take-photo" class="btn primary" style="padding:10px;">📸 Bấm để Chụp</button>
+      </div>
+    </div>
+
+    <!-- MODAL BULK EDIT MESSAGES -->
+    <div id="bulk-edit-modal" class="modal-box">
+      <div class="modal-header">
+        <h3>🛠️ Quản lý Lịch sử Tin nhắn</h3>
+        <button class="close-btn icon-btn">&times;</button>
+      </div>
+      <div style="padding:16px;flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="margin-bottom:10px;display:flex;justify-content:space-between;gap:8px;">
+          <button id="btn-select-all-bulk" class="btn">☑️ Chọn tất cả</button>
+          <button id="btn-delete-selected-bulk" class="btn danger">🗑️ Xóa đã chọn</button>
+        </div>
+        <div id="bulk-edit-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;max-height:50vh;padding:4px;"></div>
+      </div>
+    </div>
+
+    
+    <!-- MODAL CLOUD SYNC (GITHUB GIST) -->
+    <div id="cloud-sync-modal" class="modal-box" style="max-width:580px;">
+      <div class="modal-header">
+        <h3 style="display:flex;align-items:center;gap:8px;">☁️ Đồng bộ Cloud qua GitHub Gist</h3>
+        <button class="close-btn icon-btn">&times;</button>
+      </div>
+      <div class="modal-scroll-body">
+        <div style="font-size:0.83rem;color:var(--text-muted);line-height:1.5;">
+          Đồng bộ toàn bộ lịch sử trò chuyện, cài đặt API Keys và kho Prompt mẫu giữa Máy tính và Điện thoại hoàn toàn miễn phí qua <strong>Secret Gist</strong> cá nhân của bạn.
+        </div>
+
+        <div class="settings-group">
+          <legend>🔑 Thông tin xác thực GitHub</legend>
+          <label class="field-label">GitHub Personal Access Token (PAT):</label>
+          <div style="display:flex;gap:6px;">
+            <input type="password" id="gist-pat-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" class="modern-input" style="flex:1;">
+            <button id="btn-toggle-pat-eye" class="btn" title="Hiện/Ẩn Token">👁️</button>
+          </div>
+          <small style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;display:block;">
+            Token chỉ cần cấp quyền duy nhất: <code>gist</code>. 
+            <a href="https://github.com/settings/tokens/new?scopes=gist&description=JarvisAI_Sync" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:underline;font-weight:600;">Bấm vào đây để tạo nhanh trên GitHub ↗</a>
+          </small>
+
+          <label class="field-label" style="margin-top:12px;">Gist ID (Để trống nếu lần đầu đẩy lên):</label>
+          <div style="display:flex;gap:6px;">
+            <input type="text" id="gist-id-input" placeholder="Tự sinh sau lần sao lưu đầu tiên..." class="modern-input" style="flex:1;">
+            <button id="btn-copy-gist-id" class="btn" title="Sao chép Gist ID">📋 Chép</button>
+          </div>
+        </div>
+
+        <div id="gist-status-card" style="padding:10px 14px;border-radius:var(--radius-md);background:var(--input-bg);border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:0.75rem;color:var(--text-muted);">Trạng thái đồng bộ:</div>
+            <strong id="gist-status-text" style="font-size:0.85rem;color:var(--primary);">Chưa kết nối</strong>
+          </div>
+          <span id="gist-last-time" style="font-size:0.75rem;color:var(--text-muted);">--:--</span>
+        </div>
+
+        <!-- AUTO SYNC TOGGLE -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--input-bg);border-radius:var(--radius-md);border:1px solid var(--border);">
+          <div>
+            <label for="gist-auto-sync-toggle" style="font-weight:600;font-size:0.85rem;cursor:pointer;display:block;">⚡ Tự động đồng bộ ngầm 2 chiều (Auto Sync)</label>
+            <span style="font-size:0.72rem;color:var(--text-muted);">Tự động gộp dữ liệu khi mở app và khi AI học trí nhớ mới trên mọi thiết bị</span>
+          </div>
+          <input type="checkbox" id="gist-auto-sync-toggle" style="cursor:pointer;width:18px;height:18px;accent-color:var(--primary);">
+        </div>
+
+        <!-- PRIMARY BUTTON: 2-WAY SMART SYNC & MERGE -->
+        <button id="btn-gist-sync" class="btn primary" style="padding:12px;font-weight:700;font-size:0.95rem;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg, #10b981, #059669);box-shadow:0 4px 12px rgba(16,185,129,0.3);border:none;color:#fff;border-radius:var(--radius-md);cursor:pointer;">
+          🔄 Đồng bộ 2 chiều (Smart Sync & Merge)
+        </button>
+
+        <!-- SECONDARY BUTTONS FOR MANUAL OVERWRITE -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button id="btn-gist-push" class="btn" style="padding:8px 12px;font-size:0.8rem;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:6px;" title="Ghi đè Cloud bằng toàn bộ dữ liệu máy hiện tại">
+            ☁️ Ghi đè Cloud (Backup)
+          </button>
+          <button id="btn-gist-pull" class="btn" style="padding:8px 12px;font-size:0.8rem;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:6px;" title="Ghi đè máy hiện tại bằng toàn bộ dữ liệu Cloud">
+            📥 Ghi đè Máy (Restore)
+          </button>
+        </div>
+
+        <details style="font-size:0.82rem;color:var(--text-muted);margin-top:6px;cursor:pointer;">
+          <summary style="font-weight:600;color:var(--primary);">📖 Hướng dẫn sử dụng đa thiết bị (PC + Điện thoại)</summary>
+          <ol style="margin-left:18px;margin-top:8px;line-height:1.6;">
+            <li><strong>Bước 1 (Lấy Token):</strong> Bấm link trên, tích chọn ô <code>gist</code>, bấm <strong>Generate token</strong> rồi dán vào ô PAT.</li>
+            <li><strong>Bước 2 (Kết nối 2 thiết bị):</strong> 
+              <br>• Trên máy thứ nhất (ví dụ PC): Nhập PAT, bấm <strong>"🔄 Đồng bộ 2 chiều (Smart Sync & Merge)"</strong>. Hệ thống sẽ tự tạo Gist riêng tư và điền Gist ID. Bấm nút <strong>📋 Chép</strong> để sao chép Gist ID.
+              <br>• Trên máy thứ hai (ví dụ Điện thoại): Dán cùng PAT và Gist ID đó vào, bấm <strong>"🔄 Đồng bộ 2 chiều"</strong>.
+            </li>
+            <li><strong>Bước 3 (Thảnh thơi sử dụng):</strong> Hãy bật <strong>⚡ Tự động đồng bộ ngầm 2 chiều (Auto Sync)</strong>. Từ nay về sau, khi bạn nhắn tin ở điện thoại hay PC, hệ thống sẽ tự động gộp (merge) toàn bộ tin nhắn và Trí nhớ Vectơ ("ChatGPT Memory") lại với nhau mà không bao giờ lo mất hay đè dữ liệu của máy nào!</li>
+          </ol>
+        </details>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL: GEMINI TTS STUDIO PRO
+         ========================================== -->
+    <div id="tts-studio-modal" class="modal-box modal-tts-studio" data-mobile-tab="editor">
+      <!-- HEADER -->
+      <div class="tts-header-bar">
+        <div class="tts-header-title">
+          <div class="tts-header-icon">🎙️</div>
+          <div>
+            <div style="font-weight:700;font-size:1.02rem;display:flex;align-items:center;gap:8px;">
+              <span>Gemini TTS Studio Pro</span>
+              <div class="tts-header-badges">
+                <span class="tts-badge tts-badge-mp3">⚡ Xuất MP3 & WAV</span>
+                <span class="tts-badge tts-badge-voices">20+ Giọng đọc</span>
+              </div>
+            </div>
+            <div style="font-size:0.73rem;color:var(--text-muted);">
+              Phòng thu AI cao cấp: Đơn thoại & Podcast Đối thoại A/B • Cảm xúc • Phương ngữ
+            </div>
+          </div>
+        </div>
+        <button id="btn-close-tts-studio" class="close-btn icon-btn" title="Đóng Studio">&times;</button>
+      </div>
+
+      <!-- MOBILE SEGMENTED TABS -->
+      <div class="tts-mobile-nav" id="tts-mobile-tabs">
+        <button type="button" class="tts-mobile-nav-btn active" data-tab="editor" id="tts-tab-btn-editor">
+          ✍️ Soạn thảo
+        </button>
+        <button type="button" class="tts-mobile-nav-btn" data-tab="settings" id="tts-tab-btn-settings">
+          ⚙️ Cấu hình & Giọng
+        </button>
+        <button type="button" class="tts-mobile-nav-btn" data-tab="history" id="tts-tab-btn-history">
+          📜 Lịch sử (<span id="tts-mobile-hist-count">0</span>)
+        </button>
+      </div>
+
+      <!-- MAIN LAYOUT BODY (GRID) -->
+      <div class="tts-layout-body">
+        <!-- LEFT COLUMN: SETTINGS & VOICES -->
+        <div id="tts-col-settings" style="display:flex;flex-direction:column;gap:14px;">
+          <!-- CARD: CHẾ ĐỘ & MODEL -->
+          <div class="tts-card">
+            <div class="tts-card-title">
+              <span>🎭 Chế độ phòng thu</span>
+            </div>
+            <div class="tts-mode-pill-group">
+              <button type="button" id="tts-mode-single-btn" class="tts-mode-pill active">👤 Đơn thoại</button>
+              <button type="button" id="tts-mode-dialogue-btn" class="tts-mode-pill">👥 Hội thoại A/B</button>
+            </div>
+
+            <div class="tts-field-group">
+              <label class="tts-field-label" for="tts-model-select">Mô hình AI:</label>
+              <select id="tts-model-select" class="tts-select">
+                <option value="gemini-3.8-flash-lite-tts" selected>gemini-3.8-flash-lite-tts (Khuyên dùng - Nhanh & Ổn định)</option>
+                <option value="gemini-3.8-flash-tts">gemini-3.8-flash-tts (Chuẩn Studio)</option>
+                
+              </select>
+            </div>
+
+            <div class="tts-field-group">
+              <label class="tts-field-label" for="tts-key-strategy-select">Chiến lược API Keys:</label>
+              <select id="tts-key-strategy-select" class="tts-select">
+                <option value="auto" selected>🔄 Tự động xoay 10 Keys Jarvis AI (Failover)</option>
+                <option value="1">Key 1</option>
+                <option value="2">Key 2</option>
+                <option value="3">Key 3</option>
+                <option value="4">Key 4</option>
+                <option value="5">Key 5</option>
+                <option value="6">Key 6</option>
+                <option value="7">Key 7</option>
+                <option value="8">Key 8</option>
+                <option value="9">Key 9</option>
+                <option value="10">Key 10</option>
+              </select>
+              <span id="tts-key-count-info" style="font-size:0.72rem;color:var(--accent-emerald, #10b981);font-weight:600;"></span>
+            </div>
+          </div>
+
+          <!-- CARD: GIỌNG ĐỌC & PHONG CÁCH -->
+          <div class="tts-card">
+            <div class="tts-card-title">
+              <span>🎙️ Giọng đọc & Phong cách</span>
+            </div>
+
+            <div class="tts-field-group">
+              <label class="tts-field-label" for="tts-lang-select">Ngôn ngữ:</label>
+              <select id="tts-lang-select" class="tts-select">
+                <option value="vi" selected>🇻🇳 Tiếng Việt</option>
+                <option value="en-US">🇺🇸 English (US)</option>
+                <option value="en-GB">🇬🇧 English (UK)</option>
+                <option value="en-AU">🇦🇺 English (Australia)</option>
+                <option value="ja-JP">🇯🇵 Japanese</option>
+                <option value="ko-KR">🇰🇷 Korean</option>
+                <option value="fr-FR">🇫🇷 French</option>
+                <option value="de-DE">🇩🇪 German</option>
+                <option value="zh-CN">🇨🇳 Chinese</option>
+              </select>
+            </div>
+
+            <div class="tts-field-group" id="tts-dialect-group">
+              <label class="tts-field-label" for="tts-dialect-select">Phương ngữ / Vùng miền:</label>
+              <select id="tts-dialect-select" class="tts-select">
+                <option value="Nam chuẩn Sài Gòn" selected>Giọng Miền Nam (Sài Gòn truyền cảm)</option>
+                <option value="Bắc chuẩn Hà Nội">Giọng Miền Bắc (Hà Nội chuẩn)</option>
+                <option value="Trung Huế - Đà Nẵng">Giọng Miền Trung (Huế / Đà Nẵng)</option>
+                <option value="Phát thanh toàn quốc">Giọng Phát thanh toàn quốc chuẩn</option>
+              </select>
+            </div>
+
+            <!-- SINGLE VOICE PANEL -->
+            <div id="tts-single-voice-panel" class="tts-field-group">
+              <label class="tts-field-label" for="tts-voice-select">Giọng đọc đơn thoại:</label>
+              <select id="tts-voice-select" class="tts-select">
+                <optgroup label="👨 Giọng Nam (Male Personas)">
+                  <option value="Charon" selected>Charon - Nam trầm ấm, phát thanh viên</option>
+                  <option value="Puck">Puck - Nam tươi vui, dí dỏm, tự nhiên</option>
+                  <option value="Fenrir">Fenrir - Nam sôi nổi, mạnh mẽ, nhiệt huyết</option>
+                  <option value="Enceladus">Enceladus - Nam trầm sâu, học thuật, uy tín</option>
+                  <option value="Alnilam">Alnilam - Nam điềm đạm, tin cậy</option>
+                  <option value="Rasalgethi">Rasalgethi - Nam tự tin, năng động</option>
+                  <option value="Iapetus">Iapetus - Nam sâu sắc, ấm áp</option>
+                  <option value="Algieba">Algieba - Nam lịch thiệp, đĩnh đạc</option>
+                  <option value="Algenib">Algenib - Nam trẻ trung, hiện đại</option>
+                  <option value="Orus">Orus - Nam truyền thông, dứt khoát</option>
+                  <option value="Schedar">Schedar - Nam tự nhiên, gần gũi</option>
+                </optgroup>
+                <optgroup label="👩 Giọng Nữ (Female Personas)">
+                  <option value="Aoede">Aoede - Nữ truyền cảm, cuốn hút, mượt mà</option>
+                  <option value="Kore">Kore - Nữ dịu dàng, ấm áp, sâu lắng</option>
+                  <option value="Leda">Leda - Nữ tươi sáng, thanh lịch, chuyên nghiệp</option>
+                  <option value="Zephyr">Zephyr - Nữ nhẹ nhàng, êm dịu, thư giãn</option>
+                  <option value="Autonoe">Autonoe - Nữ rạng rỡ, năng lượng, hoạt bát</option>
+                  <option value="Callirrhoe">Callirrhoe - Nữ thư thái, mềm mại</option>
+                  <option value="Despina">Despina - Nữ sắc sảo, tự tin</option>
+                  <option value="Galatea">Galatea - Nữ tinh tế, sang trọng</option>
+                  <option value="Thalassa">Thalassa - Nữ trong trẻo, ngọt ngào</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <!-- DIALOGUE VOICE PANEL (A/B) -->
+            <div id="tts-dialogue-voice-panel" style="display:none;flex-direction:column;gap:10px;">
+              <div class="tts-field-group">
+                <label class="tts-field-label" for="tts-voice-a">Người nói A (<code>A:</code> hoặc <code>[A]:</code>):</label>
+                <select id="tts-voice-a" class="tts-select">
+                  <option value="Charon" selected>Charon (Nam trầm ấm, Host podcast)</option>
+                  <option value="Puck">Puck (Nam tươi vui)</option>
+                  <option value="Fenrir">Fenrir (Nam sôi nổi)</option>
+                  <option value="Enceladus">Enceladus (Nam học thuật)</option>
+                  <option value="Aoede">Aoede (Nữ truyền cảm)</option>
+                  <option value="Kore">Kore (Nữ dịu dàng)</option>
+                  <option value="Leda">Leda (Nữ tươi sáng)</option>
+                </select>
+              </div>
+              <div class="tts-field-group">
+                <label class="tts-field-label" for="tts-voice-b">Người nói B (<code>B:</code> hoặc <code>[B]:</code>):</label>
+                <select id="tts-voice-b" class="tts-select">
+                  <option value="Aoede" selected>Aoede (Nữ truyền cảm, Khách mời)</option>
+                  <option value="Kore">Kore (Nữ dịu dàng)</option>
+                  <option value="Leda">Leda (Nữ tươi sáng)</option>
+                  <option value="Zephyr">Zephyr (Nữ nhẹ nhàng)</option>
+                  <option value="Charon">Charon (Nam trầm ấm)</option>
+                  <option value="Puck">Puck (Nam dí dỏm)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="tts-field-group">
+              <label class="tts-field-label" for="tts-style-select">Sắc thái biểu cảm:</label>
+              <select id="tts-style-select" class="tts-select">
+                <option value="Tự nhiên, gần gũi" selected>Tự nhiên, trò chuyện gần gũi</option>
+                <option value="Truyền hình, thời sự chuyên nghiệp">Bản tin truyền hình / Thời sự</option>
+                <option value="Kể chuyện, audiobook truyền cảm">Kể chuyện / Sách nói cảm xúc</option>
+                <option value="Podcast chill, tâm sự đêm muộn">Podcast tâm sự / Thư giãn</option>
+                <option value="Hào hứng, quảng cáo cuốn hút">Hào hứng / Giới thiệu sản phẩm</option>
+                <option value="Thì thầm thư giãn, ASMR">Thì thầm thư giãn (Whisper)</option>
+                <option value="Nghiêm túc, trang trọng, học thuật">Nghiêm túc / Thuyết trình học thuật</option>
+              </select>
+            </div>
+
+            <div class="tts-field-group">
+              <label class="tts-field-label" for="tts-speed-select">Tốc độ đọc:</label>
+              <select id="tts-speed-select" class="tts-select">
+                <option value="chậm rãi, khoan thai">0.85x - Chậm rãi, khoan thai</option>
+                <option value="vừa phải, tự nhiên" selected>1.0x - Vừa phải, tự nhiên chuẩn</option>
+                <option value="nhanh nhẹn, linh hoạt">1.15x - Nhanh nhẹn, linh hoạt</option>
+                <option value="nhanh, dứt khoát">1.3x - Nhanh, dứt khoát</option>
+                <option value="rất nhanh, tổng kết ngắn">1.5x - Rất nhanh</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: EDITOR, CONTROLS, PLAYER DECK, HISTORY -->
+        <div id="tts-col-editor" style="display:flex;flex-direction:column;gap:14px;">
+          <!-- CARD: SOẠN THẢO VĂN BẢN -->
+          <div class="tts-card">
+            <div class="tts-card-title">
+              <span>✍️ Kịch bản âm thanh</span>
+              <div class="tts-chip-group">
+                <button type="button" class="tts-chip-btn" id="tts-preset-news">📰 Bản tin</button>
+                <button type="button" class="tts-chip-btn" id="tts-preset-story">📖 Kể chuyện</button>
+                <button type="button" class="tts-chip-btn" id="tts-preset-ads">📢 Quảng cáo</button>
+                <button type="button" class="tts-chip-btn" id="tts-preset-podcast">🎙️ Podcast A/B</button>
+                <button type="button" class="tts-chip-btn" id="tts-clear-btn" style="color:var(--danger,#ef4444);">🧹 Xóa</button>
+              </div>
+            </div>
+
+            <!-- EXPRESSION TAGS TOOLBAR -->
+            <div>
+              <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;font-weight:600;">
+                💡 Chèn thẻ cảm xúc & nhịp điệu (Đặt con trỏ và bấm để chèn):
+              </div>
+              <div class="tts-expr-toolbar">
+                <button type="button" class="tts-expr-btn" data-tag="<whisper>">🤫 &lt;whisper&gt;</button>
+                <button type="button" class="tts-expr-btn" data-tag="<chuckle>">😄 &lt;chuckle&gt;</button>
+                <button type="button" class="tts-expr-btn" data-tag="<sigh>">😮‍💨 &lt;sigh&gt;</button>
+                <button type="button" class="tts-expr-btn" data-tag="<gasp>">😲 &lt;gasp&gt;</button>
+                <button type="button" class="tts-expr-btn" data-tag="<shout>">🗣️ &lt;shout&gt;</button>
+                <button type="button" class="tts-expr-btn" data-tag="<pause duration='1s'/>">⏸️ &lt;pause&gt;</button>
+                <button type="button" class="tts-expr-btn" data-tag="<emphasis>">✨ &lt;emphasis&gt;</button>
+                <button type="button" class="tts-expr-btn" data-tag="<cheerful>">😊 &lt;cheerful&gt;</button>
+                <button type="button" class="tts-expr-btn" data-tag="<sad>">😔 &lt;sad&gt;</button>
+              </div>
+            </div>
+
+            <!-- TEXTAREA -->
+            <textarea id="tts-editor-input" class="tts-editor-textarea" placeholder="Nhập hoặc dán văn bản cần đọc vào đây... (Hoặc bấm '🎙️ Studio' trên tin nhắn của Jarvis để đưa nội dung vào ngay!)"></textarea>
+
+            <!-- STATS -->
+            <div class="tts-stats-bar">
+              <div style="display:flex;gap:12px;">
+                <span>Ký tự: <strong id="tts-stat-chars">0</strong></span>
+                <span>Từ: <strong id="tts-stat-words">0</strong></span>
+                <span>Ước lượng: <strong id="tts-stat-est-time">0:00</strong></span>
+              </div>
+              <span id="tts-stat-mode-badge" style="color:var(--primary);font-weight:600;">👤 Chế độ: Đơn thoại</span>
+            </div>
+
+            <!-- PROGRESS BOX -->
+            <div id="tts-progress-box" class="tts-progress-box">
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.8rem;font-weight:600;">
+                <span id="tts-progress-status" style="color:var(--primary);">Đang khởi tạo...</span>
+                <span id="tts-progress-percent">0%</span>
+              </div>
+              <div class="tts-progress-track">
+                <div id="tts-progress-fill" class="tts-progress-fill"></div>
+              </div>
+            </div>
+
+            <!-- GENERATE BUTTON -->
+            <button id="btn-generate-audio" class="btn primary" style="padding:12px;font-size:0.95rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--radius-md);box-shadow:0 4px 14px rgba(37,99,235,0.35);">
+              ⚡ Tạo Âm Thanh Gemini
+            </button>
+          </div>
+
+          <!-- MASTER PLAYER DECK -->
+          <div id="tts-player-deck" class="tts-player-deck">
+            <div class="tts-card-title">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span>🎵 Bàn phát & Xuất âm thanh</span>
+                <span id="tts-audio-specs-badge" style="font-size:0.73rem;color:#10b981;font-weight:700;background:rgba(16,185,129,0.12);padding:2px 8px;border-radius:999px;">MP3 96kbps • 24kHz</span>
+              </div>
+            </div>
+
+            <!-- CANVAS VISUALIZER -->
+            <canvas id="tts-visualizer-canvas" class="tts-visualizer"></canvas>
+
+            <!-- CONTROLS -->
+            <div class="tts-audio-controls">
+              <audio id="tts-audio-element" controls style="flex:1;min-width:200px;"></audio>
+              <select id="tts-playback-speed-select" class="tts-select" style="width:90px;" title="Tốc độ phát">
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1.0x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2.0x</option>
+              </select>
+            </div>
+
+            <!-- DOWNLOAD ACTIONS (MP3 & WAV) -->
+            <div class="tts-dl-group">
+              <button id="btn-download-mp3" class="tts-btn-mp3" title="Tải tệp âm thanh định dạng MP3 nhỏ gọn, tiết kiệm dung lượng">
+                📥 Tải .MP3 (Nhẹ & Tối ưu) <span id="tts-mp3-size-tag" style="opacity:0.9;font-size:0.74rem;"></span>
+              </button>
+              <button id="btn-download-wav" class="tts-btn-wav" title="Tải tệp định dạng WAV gốc không nén">
+                📥 Tải .WAV (Gốc) <span id="tts-wav-size-tag" style="opacity:0.75;font-size:0.74rem;"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD: LỊCH SỬ ÂM THANH (PERSISTENT LIBRARY) -->
+        <div id="tts-col-history" class="tts-card">
+          <div class="tts-card-title">
+            <span>📜 Thư viện âm thanh đã tạo (<span id="tts-history-count">0</span>)</span>
+            <button id="btn-clear-tts-history" class="btn" style="padding:4px 8px;font-size:0.74rem;color:var(--danger,#ef4444);" title="Xóa toàn bộ lịch sử">
+              🗑️ Xóa hết
+            </button>
+          </div>
+          <div id="tts-history-container" class="tts-history-list">
+            <i id="tts-history-empty" style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">Chưa có bản ghi âm thanh nào được lưu.</i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL KEY QUOTA DETAILS (10 KEYS - 20 RPD) -->
+    <div id="key-quota-modal" class="modal-box" style="max-width:440px;width:92%;display:none;z-index:2150;">
+      <div class="modal-header" style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-weight:700;font-size:0.92rem;color:var(--text-main);display:flex;align-items:center;gap:6px;">
+          <span>🔑 Hạn ngạch 10 Key (20 RPD)</span>
+        </div>
+        <button id="btn-close-quota-modal" class="close-btn icon-btn" style="width:28px;height:28px;font-size:1.1rem;line-height:1;" title="Đóng">&times;</button>
+      </div>
+
+      <div class="modal-scroll-body" style="padding:14px;max-height:75vh;overflow-y:auto;">
+        <div style="font-size:0.74rem;color:var(--text-muted);margin-bottom:12px;line-height:1.45;background:var(--bg-card);padding:9px 11px;border-radius:var(--radius-sm);border:1px solid var(--border);">
+          ⚡ Áp dụng cho <strong>3.6 &amp; 3.8 Flash</strong> (20 RPD mỗi model/key). Tự động reset lúc <strong>14:00</strong> VN hàng ngày • Đồng bộ qua Cloud Gist.
+        </div>
+
+        <!-- KEY LIST CONTAINER -->
+        <div id="key-quota-list" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:14px;padding-right:2px;">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- TOGGLE AUTO AVOID EXHAUSTED KEYS -->
+        <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;align-items:center;justify-content:space-between;font-size:0.78rem;">
+          <span style="color:var(--text-main);font-weight:600;">Tự động né key đã 20/20:</span>
+          <input type="checkbox" id="toggle-skip-exhausted-keys" checked style="cursor:pointer;accent-color:var(--primary);width:16px;height:16px;">
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px;justify-content:space-between;">
+          <button id="btn-reset-quota-manual" class="btn" style="flex:1;font-size:0.74rem;padding:7px 10px;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);" title="Chỉ reset số đếm trong chu kỳ hiện tại">
+            🔄 Reset bộ đếm hôm nay
+          </button>
+          <button id="btn-open-settings-keys" class="btn" style="font-size:0.74rem;padding:7px 10px;">
+            ⚙️ Quản lý Key
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-overlay" class="modal-overlay-bg"></div>
+  </div>
+
+  
+  <!-- FLOATING SELECTION TOOLBAR -->
+  <div id="selection-toolbar" class="selection-toolbar" style="display:none;">
+    <button class="sel-btn" id="sel-btn-explain">🔍 Giải thích</button>
+    <button class="sel-btn" id="sel-btn-translate">🌐 Dịch</button>
+    <button class="sel-btn" id="sel-btn-summarize">📝 Tóm tắt</button>
+    <button class="sel-btn" id="sel-btn-copy">📋 Copy</button>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <button id="scroll-to-top" title="Cuộn lên đầu trang">▲</button>
+
+  <!-- JAVASCRIPT APPLICATION MODULES -->
+  <script type="module" src="./js/app.js?v=79"></script>
+  <script type="module" src="./js/sync.js?v=79"></script>
+  <script type="module" src="./js/live.js?v=79"></script>
+  <script type="module" src="./js/tts.js?v=79"></script>
+  <script type="module" src="./js/translate.js?v=79"></script>
+  <script type="module" src="./js/rag.js?v=79"></script>
+</body>
+</html>
