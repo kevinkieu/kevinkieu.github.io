@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v83 - Restore message height & remove presets bar)
-const CACHE_NAME = 'jarvis-ai-pwa-v83';
+// Jarvis AI Service Worker for PWA (v84 - DeepSeek Image Vision & Version Sync 1.1.31)
+const CACHE_NAME = 'jarvis-ai-pwa-v84';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
