@@ -287,7 +287,8 @@
       }
       .message-container {
         max-width: 100%;
-        overflow-x: hidden;
+        flex-shrink: 0 !important;
+        min-height: fit-content;
       }
       .msg-actions {
         gap: 4px;
