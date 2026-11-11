@@ -1,16 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- QUYỀN TRUY CẬP INTERNET, MICRO CHO LIVE CALL, CAMERA VÀ LƯU TRỮ -->
+    <!-- QUYỀN TRUY CẬP INTERNET, MICRO CHO LIVE CALL & TRỢ LÝ, CAMERA VÀ LƯU TRỮ -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    
+    <!-- QUYỀN ĐẶT BÁO THỨC & HẸN GIỜ TRỢ LÝ ẢO HỆ THỐNG -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+    <!-- TRUY VẤN MỞ CÁC ỨNG DỤNG ĐÃ CÀI ĐẶT TRÊN MÁY (ANDROID 11+) -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="true"
@@ -21,16 +39,41 @@
         android:theme="@style/Theme.JarvisAI"
         android:usesCleartextTraffic="true">
 
+        <!-- ICON 1: CHATBOT CHÍNH (JARVIS AI) -->
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
             android:exported="true"
+            android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- ICON 2: TRỢ LÝ GIỌNG NÓI 1-CHẠM (JARVIS VOICE) -->
+        <activity-alias
+            android:name=".VoiceAssistantActivity"
+            android:targetActivity=".MainActivity"
+            android:label="@string/voice_app_name"
+            android:icon="@mipmap/ic_voice_launcher"
+            android:roundIcon="@mipmap/ic_voice_launcher"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VOICE_COMMAND" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity-alias>
+
     </application>
 
 </manifest>

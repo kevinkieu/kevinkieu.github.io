@@ -1397,3 +1397,356 @@
       border-color: var(--primary);
       color: white !important;
     }
+
+    /* ==========================================
+       JARVIS VOICE ASSISTANT MODAL (1-CHẠM)
+       ========================================== */
+    .voice-assistant-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      background: rgba(11, 19, 41, 0.94);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+      animation: vaFadeIn 0.25s ease-out;
+    }
+
+    @keyframes vaFadeIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .va-container {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      color: #f8fafc;
+      text-align: center;
+    }
+
+    .va-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+    }
+
+    .va-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-align: left;
+    }
+
+    .va-pulse-icon {
+      font-size: 1.8rem;
+      filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.6));
+      animation: vaIconPulse 2s infinite ease-in-out;
+    }
+
+    @keyframes vaIconPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .va-title {
+      font-weight: 700;
+      font-size: 1.15rem;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .va-status {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    .va-close-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #e2e8f0;
+      font-size: 1.5rem;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .va-close-btn:hover {
+      background: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    /* VISUALIZER ORB */
+    .va-visualizer-wrap {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 10px 0;
+    }
+
+    .va-orb {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .va-orb-core {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #0284c7, #6366f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 35px rgba(56, 189, 248, 0.7);
+      z-index: 2;
+      font-size: 2rem;
+    }
+
+    .va-orb-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid rgba(56, 189, 248, 0.4);
+      pointer-events: none;
+    }
+
+    .va-orb-ring.ring-1 {
+      width: 100px;
+      height: 100px;
+      animation: vaRingPulse 2s infinite ease-out;
+    }
+
+    .va-orb-ring.ring-2 {
+      width: 130px;
+      height: 130px;
+      animation: vaRingPulse 2s infinite ease-out 0.6s;
+    }
+
+    .va-orb-ring.ring-3 {
+      width: 160px;
+      height: 160px;
+      animation: vaRingPulse 2s infinite ease-out 1.2s;
+    }
+
+    @keyframes vaRingPulse {
+      0% { transform: scale(0.7); opacity: 0.9; }
+      100% { transform: scale(1.3); opacity: 0; }
+    }
+
+    .va-orb.listening .va-orb-core {
+      background: linear-gradient(135deg, #10b981, #06b6d4);
+      box-shadow: 0 0 45px rgba(16, 185, 129, 0.85);
+    }
+
+    .va-orb.speaking .va-orb-core {
+      background: linear-gradient(135deg, #8b5cf6, #ec4899);
+      box-shadow: 0 0 45px rgba(236, 72, 153, 0.85);
+    }
+
+    .va-orb.processing .va-orb-core {
+      background: linear-gradient(135deg, #f59e0b, #ea580c);
+      box-shadow: 0 0 45px rgba(245, 158, 11, 0.85);
+    }
+
+    .va-wave-bars {
+      position: absolute;
+      bottom: -8px;
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      height: 24px;
+    }
+
+    .va-wave-bars span {
+      width: 4px;
+      height: 6px;
+      background: #38bdf8;
+      border-radius: 2px;
+      transition: height 0.1s ease;
+    }
+
+    .va-orb.listening ~ .va-wave-bars span {
+      animation: vaWave 1s infinite ease-in-out;
+    }
+    .va-wave-bars span:nth-child(1) { animation-delay: 0.1s; }
+    .va-wave-bars span:nth-child(2) { animation-delay: 0.3s; }
+    .va-wave-bars span:nth-child(3) { animation-delay: 0.5s; }
+    .va-wave-bars span:nth-child(4) { animation-delay: 0.2s; }
+    .va-wave-bars span:nth-child(5) { animation-delay: 0.4s; }
+
+    @keyframes vaWave {
+      0%, 100% { height: 6px; }
+      50% { height: 22px; }
+    }
+
+    /* CONTENT BOX */
+    .va-content-box {
+      width: 100%;
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 18px;
+      padding: 16px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 110px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .va-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      text-align: left;
+    }
+
+    .va-transcript {
+      font-size: 1.05rem;
+      line-height: 1.5;
+      color: #f1f5f9;
+      font-weight: 500;
+      min-height: 48px;
+      word-break: break-word;
+      text-align: left;
+    }
+
+    .va-transcript.interim {
+      color: #94a3b8;
+      font-style: italic;
+    }
+
+    .va-feedback-box {
+      margin-top: 4px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+    }
+
+    .va-action-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      width: fit-content;
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .va-feedback-text {
+      font-size: 0.92rem;
+      color: #e2e8f0;
+      line-height: 1.5;
+    }
+
+    /* CONTROLS */
+    .va-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      margin-top: 4px;
+    }
+
+    .va-btn {
+      border-radius: 9999px;
+      padding: 10px 18px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .va-btn.primary {
+      background: linear-gradient(135deg, #0284c7, #3b82f6);
+      color: white;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+      padding: 12px 24px;
+      font-size: 0.95rem;
+    }
+
+    .va-btn.primary:active {
+      transform: scale(0.96);
+    }
+
+    .va-btn.secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .va-btn.secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: white;
+    }
+
+    /* SUGGESTIONS */
+    .va-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 6px;
+      width: 100%;
+    }
+
+    .va-sug-item {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #94a3b8;
+      padding: 5px 12px;
+      border-radius: 9999px;
+      font-size: 0.76rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .va-sug-item:hover {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: #38bdf8;
+      color: #e0f2fe;
+      transform: translateY(-1px);
+    }

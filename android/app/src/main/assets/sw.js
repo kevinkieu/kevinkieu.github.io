@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v84 - DeepSeek Image Vision & Version Sync 1.1.31)
-const CACHE_NAME = 'jarvis-ai-pwa-v84';
+// Jarvis AI Service Worker for PWA (v85 - Android System Assistant Voice Integration & Dual Launcher)
+const CACHE_NAME = 'jarvis-ai-pwa-v85';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
