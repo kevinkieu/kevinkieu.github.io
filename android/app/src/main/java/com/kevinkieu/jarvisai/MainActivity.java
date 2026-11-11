@@ -20,6 +20,9 @@ import android.os.Environment;
 import android.provider.AlarmClock;
 import android.provider.CalendarContract;
 import android.provider.MediaStore;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.util.Base64;
 import android.view.Window;
 import android.view.WindowManager;
@@ -48,6 +51,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -499,6 +503,164 @@ public class MainActivity extends AppCompatActivity {
                 return false;
             }
         }
+
+        /**
+         * Bắt đầu nhận diện giọng nói tiếng Việt bằng Google SpeechRecognizer gốc của Android
+         */
+        @JavascriptInterface
+        public void startListening() {
+            runOnUiThread(() -> startNativeSpeechRecognition());
+        }
+
+        /**
+         * Dừng nhận diện giọng nói
+         */
+        @JavascriptInterface
+        public void stopListening() {
+            runOnUiThread(() -> stopNativeSpeechRecognition());
+        }
+
+        /**
+         * Kiểm tra thiết bị có sẵn Dịch vụ nhận diện giọng nói không
+         */
+        @JavascriptInterface
+        public boolean isNativeSpeechAvailable() {
+            return SpeechRecognizer.isRecognitionAvailable(MainActivity.this);
+        }
+    }
+
+    private SpeechRecognizer speechRecognizer;
+    private Intent speechRecognizerIntent;
+    private boolean isListeningSpeech = false;
+
+    private void startNativeSpeechRecognition() {
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            android.util.Log.w("JarvisVoice", "SpeechRecognizer not available");
+            if (webView != null) {
+                webView.evaluateJavascript("if (window.onNativeVoiceError) window.onNativeVoiceError('Dịch vụ nhận diện giọng nói chưa bật trên máy!');", null);
+            }
+            return;
+        }
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, PERMISSION_REQ_CODE);
+            return;
+        }
+
+        try {
+            if (speechRecognizer != null) {
+                try { speechRecognizer.destroy(); } catch (Exception ignored) {}
+                speechRecognizer = null;
+            }
+
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+            speechRecognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "vi-VN");
+            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "vi-VN");
+            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3);
+            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
+
+            speechRecognizer.setRecognitionListener(new RecognitionListener() {
+                @Override
+                public void onReadyForSpeech(Bundle params) {
+                    isListeningSpeech = true;
+                    if (webView != null) {
+                        webView.evaluateJavascript("if (window.onNativeVoiceState) window.onNativeVoiceState('listening', 'Jarvis đang lắng nghe bạn nói...');", null);
+                    }
+                }
+
+                @Override
+                public void onBeginningOfSpeech() {
+                    if (webView != null) {
+                        webView.evaluateJavascript("if (window.onNativeVoiceState) window.onNativeVoiceState('hearing', 'Đang nhận diện giọng nói...');", null);
+                    }
+                }
+
+                @Override
+                public void onRmsChanged(float rmsdB) {
+                    if (webView != null && rmsdB > 0) {
+                        webView.evaluateJavascript("if (window.onNativeVoiceRms) window.onNativeVoiceRms(" + rmsdB + ");", null);
+                    }
+                }
+
+                @Override
+                public void onBufferReceived(byte[] buffer) {}
+
+                @Override
+                public void onEndOfSpeech() {
+                    isListeningSpeech = false;
+                    if (webView != null) {
+                        webView.evaluateJavascript("if (window.onNativeVoiceState) window.onNativeVoiceState('processing', 'Đang xử lý câu lệnh...');", null);
+                    }
+                }
+
+                @Override
+                public void onError(int error) {
+                    isListeningSpeech = false;
+                    android.util.Log.w("JarvisVoice", "Speech error: " + error);
+                    String msg = "Không nghe rõ câu lệnh, bạn chạm 'Nói lại' nhé!";
+                    if (error == SpeechRecognizer.ERROR_NO_MATCH) {
+                        msg = "Không nghe rõ câu lệnh, bạn chạm 'Nói lại' nhé!";
+                    } else if (error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
+                        msg = "Hết thời gian chờ, bạn chạm 'Nói lại' nhé!";
+                    } else if (error == SpeechRecognizer.ERROR_AUDIO) {
+                        msg = "Lỗi micro, vui lòng kiểm tra micro!";
+                    } else if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
+                        msg = "Chưa cấp quyền Micro cho ứng dụng!";
+                    }
+                    final String finalMsg = msg;
+                    if (webView != null) {
+                        webView.evaluateJavascript("if (window.onNativeVoiceError) window.onNativeVoiceError('" + escapeJs(finalMsg) + "');", null);
+                    }
+                }
+
+                @Override
+                public void onResults(Bundle results) {
+                    isListeningSpeech = false;
+                    ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                    if (matches != null && !matches.isEmpty()) {
+                        String text = matches.get(0);
+                        if (webView != null) {
+                            webView.evaluateJavascript("if (window.onNativeVoiceResult) window.onNativeVoiceResult('" + escapeJs(text) + "', true);", null);
+                        }
+                    }
+                }
+
+                @Override
+                public void onPartialResults(Bundle partialResults) {
+                    ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                    if (matches != null && !matches.isEmpty()) {
+                        String partial = matches.get(0);
+                        if (webView != null) {
+                            webView.evaluateJavascript("if (window.onNativeVoiceResult) window.onNativeVoiceResult('" + escapeJs(partial) + "', false);", null);
+                        }
+                    }
+                }
+
+                @Override
+                public void onEvent(int eventType, Bundle params) {}
+            });
+
+            speechRecognizer.startListening(speechRecognizerIntent);
+        } catch (Exception e) {
+            android.util.Log.e("JarvisVoice", "Error in startNativeSpeechRecognition: " + e.getMessage());
+        }
+    }
+
+    private void stopNativeSpeechRecognition() {
+        if (speechRecognizer != null) {
+            try {
+                speechRecognizer.stopListening();
+            } catch (Exception ignored) {}
+        }
+        isListeningSpeech = false;
+    }
+
+    private static String escapeJs(String str) {
+        if (str == null) return "";
+        return str.replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"").replace("\n", " ").replace("\r", "");
     }
 
     private static String normalizeText(String input) {
@@ -776,6 +938,12 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        if (speechRecognizer != null) {
+            try {
+                speechRecognizer.destroy();
+            } catch (Exception ignored) {}
+            speechRecognizer = null;
+        }
         if (webView != null) {
             webView.destroy();
         }

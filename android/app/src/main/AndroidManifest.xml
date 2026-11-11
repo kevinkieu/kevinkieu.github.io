@@ -16,8 +16,11 @@
     <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
-    <!-- TRUY VẤN MỞ CÁC ỨNG DỤNG ĐÃ CÀI ĐẶT TRÊN MÁY (ANDROID 11+) -->
+    <!-- TRUY VẤN MỞ CÁC ỨNG DỤNG VÀ DỊCH VỤ NHẬN DIỆN GIỌNG NÓI (ANDROID 11+) -->
     <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.MAIN" />
         </intent>

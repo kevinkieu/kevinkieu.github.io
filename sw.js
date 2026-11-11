@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v85 - Android System Assistant Voice Integration & Dual Launcher)
-const CACHE_NAME = 'jarvis-ai-pwa-v85';
+// Jarvis AI Service Worker for PWA (v86 - Native SpeechRecognizer & Relative Alarm Support)
+const CACHE_NAME = 'jarvis-ai-pwa-v86';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
