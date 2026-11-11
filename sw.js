@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v87 - Google Voice Dialog & Silence Tolerance)
-const CACHE_NAME = 'jarvis-ai-pwa-v87';
+// Jarvis AI Service Worker for PWA (v88 - Primary Google Voice Engine for Vivo OriginOS/iQOO)
+const CACHE_NAME = 'jarvis-ai-pwa-v88';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',

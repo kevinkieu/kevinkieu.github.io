@@ -506,11 +506,12 @@ public class MainActivity extends AppCompatActivity {
         }
 
         /**
-         * Bắt đầu nhận diện giọng nói tiếng Việt bằng Google SpeechRecognizer gốc của Android
+         * Bắt đầu nhận diện giọng nói: Tự động kích hoạt Google Voice Dialog chuẩn Android
+         * Đảm bảo tương thích 100% trên Vivo (OriginOS/FuntouchOS), Xiaomi, Samsung, Oppo...
          */
         @JavascriptInterface
         public void startListening() {
-            runOnUiThread(() -> startNativeSpeechRecognition());
+            runOnUiThread(() -> openGoogleVoiceDialog());
         }
 
         /**

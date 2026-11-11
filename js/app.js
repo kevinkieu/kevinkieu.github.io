@@ -6328,21 +6328,11 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     $('btn-va-close')?.addEventListener('click', closeVoiceAssistantModal);
 
     $('btn-va-mic-toggle')?.addEventListener('click', () => {
-      if (vaIsListening) {
-        stopVoiceAssistantListening();
-        setOrbState('idle');
-      } else {
-        startVoiceAssistantListening();
-      }
+      startVoiceAssistantListening();
     });
 
-    $('btn-va-google-mic')?.addEventListener('click', () => {
-      stopVoiceAssistantListening();
-      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.openGoogleVoiceDialog === 'function') {
-        window.JarvisNativeBridge.openGoogleVoiceDialog();
-      } else {
-        startVoiceAssistantListening();
-      }
+    $('va-orb')?.addEventListener('click', () => {
+      startVoiceAssistantListening();
     });
 
     $('btn-va-stop-speaking')?.addEventListener('click', () => {
