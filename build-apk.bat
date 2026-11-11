@@ -5,9 +5,23 @@ echo   DANG DONG GOI TAI NGUYEN VA BUILD JARVIS AI OFFLINE APK
 echo ========================================================
 echo.
 
-:: 1. Thiet lap moi truong Java tu Android Studio co san tren may
-set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
-set "ANDROID_HOME=C:\Users\Admin\AppData\Local\Android\Sdk"
+:: 1. Thiet lap moi truong Java tu dong (Uu tien JDK 17 tuong thich Gradle 8.2)
+if exist "C:\Program Files\Microsoft\jdk-17.0.21.21-hotspot" (
+    set "JAVA_HOME=C:\Program Files\Microsoft\jdk-17.0.21.21-hotspot"
+) else if exist "C:\Program Files\Eclipse Adoptium\jdk-17" (
+    set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-17"
+) else if exist "C:\Program Files\Android\Android Studio\jbr" (
+    set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
+)
+
+if exist "%LOCALAPPDATA%\Android\Sdk" (
+    set "ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk"
+) else if exist "C:\Users\Admin\AppData\Local\Android\Sdk" (
+    set "ANDROID_HOME=C:\Users\Admin\AppData\Local\Android\Sdk"
+) else if exist "C:\Users\huank\AppData\Local\Android\Sdk" (
+    set "ANDROID_HOME=C:\Users\huank\AppData\Local\Android\Sdk"
+)
+
 set "PATH=%JAVA_HOME%\bin;%PATH%"
 
 cd /d "%~dp0"
@@ -32,12 +46,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "$f='app/build.gradle'; $
 echo [3/3] Dang bien dich APK Release...
 call gradlew.bat assembleRelease
 if %ERRORLEVEL% EQU 0 (
-    copy /y "app\build\outputs\apk\release\app-release.apk" "%~dp0JarvisAI_Offline.apk"
+    copy /y "app\build\outputs\apk\release\app-release.apk" "%~dp0JarvisAI_Offline.apk" >nul
+    copy /y "app\build\outputs\apk\release\app-release.apk" "%~dp0JarvisAI.apk" >nul
     echo.
     echo ========================================================
     echo   BUILD THANH CONG!
     echo   File APK da san sang cai de len dien thoai:
-    echo   %~dp0JarvisAI_Offline.apk
+    echo   %~dp0JarvisAI_Offline.apk va JarvisAI.apk
     echo ========================================================
 ) else (
     echo.

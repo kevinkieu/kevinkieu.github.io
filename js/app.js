@@ -4589,8 +4589,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
         const thk = DOM.thinking.value;
 
-        // --- ENGINE 0: EXPERIENTIAL LABS GATEWAY (gpt-6-luna, claude-fable-5.2:free, clef) ---
-        const isExplabsModel = (am === 'gpt-6-luna' || am === 'claude-fable-5.2:free' || am === 'claude-fable-5.2' || am === 'clef');
+        // --- ENGINE 0: EXPERIENTIAL LABS GATEWAY (gpt-6-luna, deepseek-v4.1-flash, clef) ---
+        const isExplabsModel = (am === 'gpt-6-luna' || am === 'deepseek-v4.1-flash' || am === 'clef');
         if (isExplabsModel) {
           const expKey = (ls.getItem('explabs_api_key') || 'xpl_71c47c840e1af2b6e28d3f04909884a5eaf35752').trim();
           if (!expKey) {
@@ -4654,7 +4654,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
               pS = true;
             }
           } else {
-            // Conversational Models (gpt-6-luna, claude-fable-5.2) on /v1/chat/completions (SSE Stream)
+            // Conversational Models (gpt-6-luna, deepseek-v4.1-flash) on /v1/chat/completions (SSE Stream)
             try {
               const expMessages = [];
               const dynamicSI = getDynamicSI(ragSnippet);
@@ -4695,6 +4695,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
               const decoder = new TextDecoder();
               let sseDone = false;
               let sseBuffer = '';
+              let currentThinking = '';
+              let currentContent = '';
 
               while (!sseDone) {
                 const { value, done: streamDone } = await reader.read();
@@ -4711,9 +4713,12 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
                     const jsonStr = trimmed.slice(5).trim();
                     try {
                       const parsed = JSON.parse(jsonStr);
+                      const deltaThinking = parsed.choices?.[0]?.delta?.reasoning_content || '';
                       const deltaText = parsed.choices?.[0]?.delta?.content || '';
-                      if (deltaText) {
-                        finalResp += deltaText;
+                      if (deltaThinking) currentThinking += deltaThinking;
+                      if (deltaText) currentContent += deltaText;
+                      if (deltaThinking || deltaText) {
+                        finalResp = (currentThinking ? `<think>\n${currentThinking}\n</think>\n\n` : '') + currentContent;
                         renderer.push(finalResp);
                         if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
                         pS = true;
