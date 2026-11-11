@@ -5572,76 +5572,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       }
     }
 
-    // --- SMART PRESETS (1-CLICK WORKSPACE SWITCHER) ---
-    const btnPresetQuick = $('preset-daily-quick');
-    const btnPresetDeep = $('preset-deep-study');
-    const btnPresetVoice = $('preset-hands-free');
 
-    function highlightActivePreset(presetName) {
-      [btnPresetQuick, btnPresetDeep, btnPresetVoice].forEach(b => {
-        if (b) b.classList.remove('active');
-      });
-      if (presetName === 'quick' && btnPresetQuick) btnPresetQuick.classList.add('active');
-      if (presetName === 'deep' && btnPresetDeep) btnPresetDeep.classList.add('active');
-      if (presetName === 'voice' && btnPresetVoice) btnPresetVoice.classList.add('active');
-    }
-
-    if (btnPresetQuick) {
-      btnPresetQuick.onclick = () => {
-        // 1. Chuyển Model về 3.6 Flash
-        if (DOM.model) DOM.model.value = 'gemini-3.6-flash';
-        // 2. Chuyển Think Depth về minimal
-        if (DOM.thinking) DOM.thinking.value = 'minimal';
-        // 3. Tắt Web Search nếu đang bật
-        if (DOM.toggleSearch && DOM.toggleSearch.checked) {
-          DOM.toggleSearch.checked = false;
-          if (DOM.searchEngineBox) DOM.searchEngineBox.style.display = 'none';
-        }
-        highlightActivePreset('quick');
-        ls.setItem('jarvis_active_preset', 'quick');
-        showToast("⚡ Đã bật Chế độ Quick: Gemini 3.6 Flash · Think Min · Phản hồi siêu tốc ~0.5s!", "success");
-      };
-    }
-
-    if (btnPresetDeep) {
-      btnPresetDeep.onclick = () => {
-        // 1. Chuyển Model về 3.8 Flash (suy luận sâu)
-        if (DOM.model) DOM.model.value = 'gemini-3.8-flash';
-        // 2. Chuyển Think Depth về high
-        if (DOM.thinking) DOM.thinking.value = 'high';
-        // 3. Bật RAG Trí nhớ
-        if (DOM.toggleRagEmbedding && !DOM.toggleRagEmbedding.checked) {
-          DOM.toggleRagEmbedding.checked = true;
-          if (DOM.ragMemoryState) {
-            DOM.ragMemoryState.innerText = 'BẬT';
-            DOM.ragMemoryState.style.color = 'var(--success)';
-          }
-        }
-        // 4. Bật Web Search
-        if (DOM.toggleSearch) {
-          DOM.toggleSearch.checked = true;
-          if (DOM.searchEngineBox) DOM.searchEngineBox.style.display = 'block';
-        }
-        highlightActivePreset('deep');
-        ls.setItem('jarvis_active_preset', 'deep');
-        showToast("🧠 Đã bật Chế độ Deep Think: Gemini 3.8 Flash · Think High · RAG & Tìm kiếm Web!", "info");
-      };
-    }
-
-    if (btnPresetVoice) {
-      btnPresetVoice.onclick = () => {
-        highlightActivePreset('voice');
-        const hfBtn = $('btn-hands-free-voice');
-        if (hfBtn) {
-          hfBtn.click();
-        } else {
-          showToast("🎙️ Đang mở đàm thoại rảnh tay...", "info");
-        }
-      };
-    }
-
-    const initialPreset = ls.getItem('jarvis_active_preset') || 'quick';
-    highlightActivePreset(initialPreset);
 
     // --- KEY & CONFIG SYNC HELPERS (PROTECTED AGAINST SECRET SCANNER) ---
 

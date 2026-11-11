@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v82 - Fix horizontal overflow & touch scrolling lock)
-const CACHE_NAME = 'jarvis-ai-pwa-v82';
+// Jarvis AI Service Worker for PWA (v83 - Restore message height & remove presets bar)
+const CACHE_NAME = 'jarvis-ai-pwa-v83';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
