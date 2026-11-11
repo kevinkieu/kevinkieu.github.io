@@ -5807,37 +5807,72 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         let hour = 7;
         let minute = 0;
         let foundTime = false;
+        let isRelative = false;
+        let relDesc = '';
 
-        const m1 = norm.match(/(\d{1,2})\s*(gio|h|:)\s*(\d{1,2})?/);
-        if (m1) {
-          hour = parseInt(m1[1], 10);
-          minute = m1[3] ? parseInt(m1[3], 10) : 0;
+        // A. Kiểm tra thời gian tương đối (vd: "trong 10 phút nữa", "sau 15 phút", "20 phút nữa", "sau 1 tiếng", "nửa tiếng nữa")
+        const relHalfMatch = norm.match(/(?:trong|sau)?\s*nua\s*(?:tieng|gio)(?:\s*nua)?/);
+        const relMatch = norm.match(/(?:trong|sau)?\s*(\d+)\s*(phut|p|tieng|gio)(?:\s*nua)?/);
+
+        if (relHalfMatch) {
+          const now = new Date();
+          const target = new Date(now.getTime() + 30 * 60 * 1000);
+          hour = target.getHours();
+          minute = target.getMinutes();
           foundTime = true;
-        } else {
-          const m2 = norm.match(/(\d{1,2})\s*ruoi/);
-          if (m2) {
-            hour = parseInt(m2[1], 10);
-            minute = 30;
+          isRelative = true;
+          relDesc = 'nửa tiếng nữa';
+        } else if (relMatch) {
+          const val = parseInt(relMatch[1], 10);
+          const unit = relMatch[2];
+          const offsetMins = (unit === 'tieng' || unit === 'gio') ? (val * 60) : val;
+          if (offsetMins > 0) {
+            const now = new Date();
+            const target = new Date(now.getTime() + offsetMins * 60 * 1000);
+            hour = target.getHours();
+            minute = target.getMinutes();
             foundTime = true;
+            isRelative = true;
+            relDesc = `${val} ${unit.startsWith('t') || unit === 'gio' ? 'tiếng' : 'phút'} nữa`;
+          }
+        }
+
+        // B. Kiểm tra thời gian tuyệt đối (vd: "7 giờ 30", "6 rưỡi sáng", "8h kém 15", "14:00")
+        if (!foundTime) {
+          const m1 = norm.match(/(\d{1,2})\s*(gio|h|:)\s*(\d{1,2})?/);
+          if (m1) {
+            hour = parseInt(m1[1], 10);
+            minute = m1[3] ? parseInt(m1[3], 10) : 0;
+            foundTime = true;
+          } else {
+            const m2 = norm.match(/(\d{1,2})\s*ruoi/);
+            if (m2) {
+              hour = parseInt(m2[1], 10);
+              minute = 30;
+              foundTime = true;
+            }
+          }
+
+          if (foundTime) {
+            if (/ruoi/.test(norm) && minute === 0) minute = 30;
+            const kemMatch = norm.match(/kem\s*(\d{1,2})/);
+            if (kemMatch) {
+              const kemMin = parseInt(kemMatch[1], 10);
+              minute = 60 - kemMin;
+              hour = (hour - 1 + 24) % 24;
+            }
+            if (/chieu|toi|pm/.test(norm) && hour < 12) {
+              hour += 12;
+            } else if (/sang|am/.test(norm) && hour === 12) {
+              hour = 0;
+            } else if (/trua/.test(norm) && hour < 11) {
+              hour += 12;
+            }
           }
         }
 
         if (foundTime) {
-          if (/ruoi/.test(norm) && minute === 0) minute = 30;
-          const kemMatch = norm.match(/kem\s*(\d{1,2})/);
-          if (kemMatch) {
-            const kemMin = parseInt(kemMatch[1], 10);
-            minute = 60 - kemMin;
-            hour = (hour - 1 + 24) % 24;
-          }
-          if (/chieu|toi|pm/.test(norm) && hour < 12) {
-            hour += 12;
-          } else if (/sang|am/.test(norm) && hour === 12) {
-            hour = 0;
-          } else if (/trua/.test(norm) && hour < 11) {
-            hour += 12;
-          }
-          return { type: 'alarm', hour, minute, raw: rawText };
+          return { type: 'alarm', hour, minute, isRelative, relDesc, raw: rawText };
         }
       }
 
@@ -6021,10 +6056,12 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       }
       else if (cmd.type === 'alarm') {
         const timeStr = `${String(cmd.hour).padStart(2, '0')}:${String(cmd.minute).padStart(2, '0')}`;
-        const ok = window.JarvisNativeBridge?.setAlarm ? window.JarvisNativeBridge.setAlarm(cmd.hour, cmd.minute, "Báo thức Jarvis") : false;
-        if (actionPill) actionPill.innerHTML = `⏰ Báo thức: ${timeStr}`;
-        if (feedbackText) feedbackText.innerText = ok ? `Đã cài báo thức lúc ${timeStr} vào ứng dụng Đồng hồ hệ thống.` : `Đã đặt báo thức lúc ${timeStr} trên máy.`;
-        speakVoiceAssistant(`Dạ, em đã đặt báo thức lúc ${timeStr} cho anh rồi nhé!`);
+        const label = cmd.isRelative ? `Báo thức ${cmd.relDesc}` : "Báo thức Jarvis";
+        const ok = window.JarvisNativeBridge?.setAlarm ? window.JarvisNativeBridge.setAlarm(cmd.hour, cmd.minute, label) : false;
+        const relNotice = cmd.isRelative ? ` (${cmd.relDesc})` : '';
+        if (actionPill) actionPill.innerHTML = `⏰ Báo thức: ${timeStr}${relNotice}`;
+        if (feedbackText) feedbackText.innerText = ok ? `Đã cài báo thức lúc ${timeStr}${relNotice} vào ứng dụng Đồng hồ hệ thống.` : `Đã đặt báo thức lúc ${timeStr}${relNotice} trên máy.`;
+        speakVoiceAssistant(`Dạ, em đã đặt báo thức lúc ${timeStr}${cmd.isRelative ? ' (sau ' + cmd.relDesc + ')' : ''} cho anh rồi nhé!`);
       }
       else if (cmd.type === 'timer') {
         const mins = Math.floor(cmd.seconds / 60);
@@ -6078,8 +6115,63 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       }
     }
 
+    // Callbacks nhận diện giọng nói từ Native Android SpeechRecognizer
+    window.onNativeVoiceState = function(state, msg) {
+      if (state === 'listening' || state === 'hearing') {
+        vaIsListening = true;
+        setOrbState('listening');
+        const micBtnText = $('va-mic-btn-text');
+        if (micBtnText) micBtnText.innerText = "Đang nghe...";
+      } else if (state === 'processing') {
+        setOrbState('processing');
+      }
+      const statusEl = $('va-status');
+      if (statusEl && msg) statusEl.innerText = msg;
+    };
+
+    window.onNativeVoiceRms = function(rmsdB) {
+      const bars = document.querySelectorAll('#va-wave-bars span');
+      if (bars && bars.length) {
+        const h = Math.min(26, Math.max(6, (rmsdB + 2) * 2.8));
+        bars.forEach((b, i) => {
+          const factor = 1 - Math.abs(i - 2) * 0.2;
+          b.style.height = `${h * factor}px`;
+        });
+      }
+    };
+
+    window.onNativeVoiceResult = function(recognizedText, isFinal) {
+      const transcriptEl = $('va-transcript');
+      if (!transcriptEl) return;
+
+      const text = (recognizedText || '').trim();
+      if (!text) return;
+
+      transcriptEl.innerText = text;
+      if (!isFinal) {
+        transcriptEl.classList.add('interim');
+        if (vaSilenceTimer) clearTimeout(vaSilenceTimer);
+        vaSilenceTimer = setTimeout(() => {
+          handleVoiceCommandInput(text);
+        }, 1100);
+      } else {
+        transcriptEl.classList.remove('interim');
+        if (vaSilenceTimer) clearTimeout(vaSilenceTimer);
+        handleVoiceCommandInput(text);
+      }
+    };
+
+    window.onNativeVoiceError = function(errMsg) {
+      console.warn("Native voice error:", errMsg);
+      vaIsListening = false;
+      setOrbState('idle');
+      const statusEl = $('va-status');
+      if (statusEl) statusEl.innerText = errMsg || "Không nghe rõ, vui lòng chạm 'Nói lại'";
+      const micBtnText = $('va-mic-btn-text');
+      if (micBtnText) micBtnText.innerText = "Nói lại";
+    };
+
     function startVoiceAssistantListening() {
-      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
       const transcriptEl = $('va-transcript');
       const feedbackBox = $('va-feedback-box');
 
@@ -6089,14 +6181,26 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         transcriptEl.classList.remove('interim');
       }
 
-      if (!SpeechRec) {
-        setOrbState('idle');
-        if (transcriptEl) transcriptEl.innerText = "Trình duyệt không hỗ trợ nhận diện giọng nói SpeechRecognition. Hãy dùng các gợi ý bên dưới!";
+      stopVoiceAssistantListening();
+      if (typeof window.stopCurrentSpeaking === 'function') window.stopCurrentSpeaking();
+
+      // 1. NẾU CHẠY TRÊN ỨNG DỤNG NATIVE ANDROID: Dùng Google SpeechRecognizer gốc
+      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.startListening === 'function') {
+        vaIsListening = true;
+        setOrbState('listening');
+        const micBtnText = $('va-mic-btn-text');
+        if (micBtnText) micBtnText.innerText = "Đang nghe...";
+        window.JarvisNativeBridge.startListening();
         return;
       }
 
-      stopVoiceAssistantListening();
-      if (typeof window.stopCurrentSpeaking === 'function') window.stopCurrentSpeaking();
+      // 2. NẾU CHẠY TRÊN TRÌNH DUYỆT WEB (PC Chrome/Cốc Cốc): Dùng Web Speech API
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRec) {
+        setOrbState('idle');
+        if (transcriptEl) transcriptEl.innerText = "Trình duyệt không hỗ trợ Web Speech. Vui lòng bấm vào các gợi ý bên dưới!";
+        return;
+      }
 
       try {
         vaRecognition = new SpeechRec();
@@ -6167,6 +6271,9 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       if (vaSilenceTimer) {
         clearTimeout(vaSilenceTimer);
         vaSilenceTimer = null;
+      }
+      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.stopListening === 'function') {
+        try { window.JarvisNativeBridge.stopListening(); } catch {}
       }
       if (vaRecognition) {
         try { vaRecognition.stop(); } catch {}
