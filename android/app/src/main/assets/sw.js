@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v86 - Native SpeechRecognizer & Relative Alarm Support)
-const CACHE_NAME = 'jarvis-ai-pwa-v86';
+// Jarvis AI Service Worker for PWA (v87 - Google Voice Dialog & Silence Tolerance)
+const CACHE_NAME = 'jarvis-ai-pwa-v87';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',

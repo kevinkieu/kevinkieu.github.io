@@ -65,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TARGET_URL = "https://appassets.androidplatform.net/assets/index.html";
     private static final int PERMISSION_REQ_CODE = 1001;
     private static final int FILE_CHOOSER_REQ_CODE = 1002;
+    private static final int SPEECH_DIALOG_REQ_CODE = 1003;
 
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
@@ -513,6 +514,29 @@ public class MainActivity extends AppCompatActivity {
         }
 
         /**
+         * Mở hộp thoại nhận diện giọng nói chính chủ của Google (Google Voice Dialog)
+         * Đảm bảo hoạt động 100% trên mọi dòng máy Xiaomi, Samsung, Oppo, Vivo...
+         */
+        @JavascriptInterface
+        public void openGoogleVoiceDialog() {
+            runOnUiThread(() -> {
+                try {
+                    stopNativeSpeechRecognition();
+                    Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "vi-VN");
+                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "vi-VN");
+                    intent.putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", new String[]{"vi-VN", "en-US"});
+                    intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Jarvis: Nói câu lệnh tiếng Việt của bạn...");
+                    startActivityForResult(intent, SPEECH_DIALOG_REQ_CODE);
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "Không thể mở Google Voice: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    startNativeSpeechRecognition();
+                }
+            });
+        }
+
+        /**
          * Dừng nhận diện giọng nói
          */
         @JavascriptInterface
@@ -532,12 +556,66 @@ public class MainActivity extends AppCompatActivity {
     private SpeechRecognizer speechRecognizer;
     private Intent speechRecognizerIntent;
     private boolean isListeningSpeech = false;
+    private boolean hasUserSpoken = false;
+    private boolean isVoiceActive = false;
+    private int silenceRetryCount = 0;
+
+    private SpeechRecognizer createBestSpeechRecognizer() {
+        try {
+            // Ưu tiên kết nối Google Speech Recognition Service
+            android.content.ComponentName googleComponent = android.content.ComponentName.unflattenFromString("com.google.android.googlequicksearchbox/com.google.android.voicesearch.serviceapi.GoogleRecognitionService");
+            if (googleComponent != null) {
+                Intent intent = new Intent(android.speech.RecognitionService.SERVICE_INTERFACE);
+                intent.setComponent(googleComponent);
+                List<ResolveInfo> list = getPackageManager().queryIntentServices(intent, 0);
+                if (list != null && !list.isEmpty()) {
+                    android.util.Log.d("JarvisVoice", "Using Google Speech Recognition Service component");
+                    return SpeechRecognizer.createSpeechRecognizer(this, googleComponent);
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.w("JarvisVoice", "Could not bind Google recognition service: " + e.getMessage());
+        }
+        return SpeechRecognizer.createSpeechRecognizer(this);
+    }
+
+    private String getSpeechErrorDescription(int error) {
+        switch (error) {
+            case SpeechRecognizer.ERROR_AUDIO:
+                return "Lỗi ghi âm Micro (Mã 3)";
+            case SpeechRecognizer.ERROR_CLIENT:
+                return "Lỗi phần mềm Client (Mã 5)";
+            case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
+                return "Chưa cấp quyền Micro cho ứng dụng (Mã 9)";
+            case SpeechRecognizer.ERROR_NETWORK:
+                return "Lỗi kết nối mạng (Mã 2)";
+            case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
+                return "Mạng bị nghẽn (Mã 1)";
+            case SpeechRecognizer.ERROR_NO_MATCH:
+                return "Chưa nghe rõ câu lệnh (Mã 7)";
+            case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
+                return "Dịch vụ giọng nói đang bận (Mã 8)";
+            case SpeechRecognizer.ERROR_SERVER:
+                return "Máy chủ giọng nói lỗi (Mã 4)";
+            case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
+                return "Hết thời gian chờ âm thanh (Mã 6)";
+            default:
+                return "Lỗi nhận diện số " + error;
+        }
+    }
 
     private void startNativeSpeechRecognition() {
+        silenceRetryCount = 0;
+        hasUserSpoken = false;
+        isVoiceActive = true;
+        startNativeSpeechRecognitionInternal();
+    }
+
+    private void startNativeSpeechRecognitionInternal() {
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
             android.util.Log.w("JarvisVoice", "SpeechRecognizer not available");
             if (webView != null) {
-                webView.evaluateJavascript("if (window.onNativeVoiceError) window.onNativeVoiceError('Dịch vụ nhận diện giọng nói chưa bật trên máy!');", null);
+                webView.evaluateJavascript("if (window.onNativeVoiceError) window.onNativeVoiceError('Dịch vụ giọng nói chưa được bật trên máy!');", null);
             }
             return;
         }
@@ -553,13 +631,17 @@ public class MainActivity extends AppCompatActivity {
                 speechRecognizer = null;
             }
 
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+            speechRecognizer = createBestSpeechRecognizer();
             speechRecognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
             speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
             speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "vi-VN");
             speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "vi-VN");
+            speechRecognizerIntent.putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", new String[]{"vi-VN", "en-US"});
             speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
             speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3);
+            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 4000L);
+            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2500L);
+            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2500L);
             speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
 
             speechRecognizer.setRecognitionListener(new RecognitionListener() {
@@ -573,6 +655,7 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public void onBeginningOfSpeech() {
+                    hasUserSpoken = true;
                     if (webView != null) {
                         webView.evaluateJavascript("if (window.onNativeVoiceState) window.onNativeVoiceState('hearing', 'Đang nhận diện giọng nói...');", null);
                     }
@@ -580,6 +663,9 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public void onRmsChanged(float rmsdB) {
+                    if (rmsdB > 2.0f) {
+                        hasUserSpoken = true;
+                    }
                     if (webView != null && rmsdB > 0) {
                         webView.evaluateJavascript("if (window.onNativeVoiceRms) window.onNativeVoiceRms(" + rmsdB + ");", null);
                     }
@@ -598,27 +684,40 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public void onError(int error) {
-                    isListeningSpeech = false;
-                    android.util.Log.w("JarvisVoice", "Speech error: " + error);
-                    String msg = "Không nghe rõ câu lệnh, bạn chạm 'Nói lại' nhé!";
-                    if (error == SpeechRecognizer.ERROR_NO_MATCH) {
-                        msg = "Không nghe rõ câu lệnh, bạn chạm 'Nói lại' nhé!";
-                    } else if (error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
-                        msg = "Hết thời gian chờ, bạn chạm 'Nói lại' nhé!";
-                    } else if (error == SpeechRecognizer.ERROR_AUDIO) {
-                        msg = "Lỗi micro, vui lòng kiểm tra micro!";
-                    } else if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
-                        msg = "Chưa cấp quyền Micro cho ứng dụng!";
+                    android.util.Log.w("JarvisVoice", "Speech error code: " + error);
+                    if (!isVoiceActive) return;
+
+                    // Nếu người dùng chưa kịp nói và bị timeout hoặc no_match, tự động nghe tiếp tối đa 3 lần (~6-8 giây)
+                    if ((error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) && !hasUserSpoken && silenceRetryCount < 3) {
+                        silenceRetryCount++;
+                        android.util.Log.d("JarvisVoice", "User silence, auto re-listening (cycle " + silenceRetryCount + "/3)...");
+                        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                            if (isVoiceActive) {
+                                try {
+                                    if (speechRecognizer != null) {
+                                        speechRecognizer.cancel();
+                                        speechRecognizer.startListening(speechRecognizerIntent);
+                                    }
+                                } catch (Exception e) {
+                                    android.util.Log.e("JarvisVoice", "Re-listen error: " + e.getMessage());
+                                }
+                            }
+                        }, 250);
+                        return;
                     }
-                    final String finalMsg = msg;
+
+                    isListeningSpeech = false;
+                    isVoiceActive = false;
+                    String desc = getSpeechErrorDescription(error);
                     if (webView != null) {
-                        webView.evaluateJavascript("if (window.onNativeVoiceError) window.onNativeVoiceError('" + escapeJs(finalMsg) + "');", null);
+                        webView.evaluateJavascript("if (window.onNativeVoiceError) window.onNativeVoiceError('" + escapeJs(desc) + "', " + error + ");", null);
                     }
                 }
 
                 @Override
                 public void onResults(Bundle results) {
                     isListeningSpeech = false;
+                    isVoiceActive = false;
                     ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                     if (matches != null && !matches.isEmpty()) {
                         String text = matches.get(0);
@@ -645,11 +744,12 @@ public class MainActivity extends AppCompatActivity {
 
             speechRecognizer.startListening(speechRecognizerIntent);
         } catch (Exception e) {
-            android.util.Log.e("JarvisVoice", "Error in startNativeSpeechRecognition: " + e.getMessage());
+            android.util.Log.e("JarvisVoice", "Error in startNativeSpeechRecognitionInternal: " + e.getMessage());
         }
     }
 
     private void stopNativeSpeechRecognition() {
+        isVoiceActive = false;
         if (speechRecognizer != null) {
             try {
                 speechRecognizer.stopListening();
@@ -889,8 +989,10 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQ_CODE) {
             for (int i = 0; i < permissions.length; i++) {
-                if (grantResults.length > i && grantResults[i] == PackageManager.PERMISSION_GRANTED) {
-                    // Quyền đã được cấp
+                if (Manifest.permission.RECORD_AUDIO.equals(permissions[i]) && grantResults.length > i && grantResults[i] == PackageManager.PERMISSION_GRANTED) {
+                    if (isVoiceActive) {
+                        runOnUiThread(() -> startNativeSpeechRecognition());
+                    }
                 }
             }
         }
@@ -899,6 +1001,22 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == SPEECH_DIALOG_REQ_CODE) {
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                ArrayList<String> matches = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                if (matches != null && !matches.isEmpty()) {
+                    String spokenText = matches.get(0);
+                    if (webView != null) {
+                        webView.evaluateJavascript("if (window.onNativeVoiceResult) window.onNativeVoiceResult('" + escapeJs(spokenText) + "', true);", null);
+                    }
+                }
+            } else {
+                if (webView != null) {
+                    webView.evaluateJavascript("if (window.onNativeVoiceState) window.onNativeVoiceState('idle', 'Chạm để nói lệnh mới');", null);
+                }
+            }
+            return;
+        }
         if (requestCode == FILE_CHOOSER_REQ_CODE) {
             if (filePathCallback != null) {
                 Uri[] results = null;

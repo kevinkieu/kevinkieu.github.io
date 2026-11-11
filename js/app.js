@@ -6161,12 +6161,14 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       }
     };
 
-    window.onNativeVoiceError = function(errMsg) {
-      console.warn("Native voice error:", errMsg);
+    window.onNativeVoiceError = function(errMsg, errorCode) {
+      console.warn("Native voice error:", errMsg, errorCode);
       vaIsListening = false;
       setOrbState('idle');
       const statusEl = $('va-status');
-      if (statusEl) statusEl.innerText = errMsg || "Không nghe rõ, vui lòng chạm 'Nói lại'";
+      if (statusEl) {
+        statusEl.innerText = `${errMsg || "Chưa nghe rõ"} (chạm 'Nói lại' hoặc 'Google Mic')`;
+      }
       const micBtnText = $('va-mic-btn-text');
       if (micBtnText) micBtnText.innerText = "Nói lại";
     };
@@ -6329,6 +6331,15 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       if (vaIsListening) {
         stopVoiceAssistantListening();
         setOrbState('idle');
+      } else {
+        startVoiceAssistantListening();
+      }
+    });
+
+    $('btn-va-google-mic')?.addEventListener('click', () => {
+      stopVoiceAssistantListening();
+      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.openGoogleVoiceDialog === 'function') {
+        window.JarvisNativeBridge.openGoogleVoiceDialog();
       } else {
         startVoiceAssistantListening();
       }
