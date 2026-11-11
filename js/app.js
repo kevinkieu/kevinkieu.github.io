@@ -85,9 +85,15 @@ import { GoogleGenAI } from "@google/genai";
     marked.use({ breaks: true });
     mermaid.initialize({ startOnLoad: false, theme: 'default' });
 
-    // Register PWA Service Worker
+    // Register PWA Service Worker (only for web browser, disabled in Native Android app)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+      if (window.JarvisNativeBridge) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          for (const reg of regs) reg.unregister();
+        }).catch(() => {});
+      } else {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      }
     }
 
     function escapeHtml(str) {
@@ -559,6 +565,7 @@ import { GoogleGenAI } from "@google/genai";
       ['global-context-input', 'jarvis_global_context'],
       ['tavily-key-input', 'tavily_api_key'],
       ['serper-key-input', 'serper_api_key'],
+      ['explabs-key-input', 'explabs_api_key', 'xpl_71c47c840e1af2b6e28d3f04909884a5eaf35752'],
       ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
       ['web-extract-engine-input', 'web_extract_engine', 'auto'],
       ['live-temperature', 'live_temperature', '0.7']
@@ -4581,6 +4588,161 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         });
 
         const thk = DOM.thinking.value;
+
+        // --- ENGINE 0: EXPERIENTIAL LABS GATEWAY (gpt-6-luna, claude-fable-5.2:free, clef) ---
+        const isExplabsModel = (am === 'gpt-6-luna' || am === 'claude-fable-5.2:free' || am === 'claude-fable-5.2' || am === 'clef');
+        if (isExplabsModel) {
+          const expKey = (ls.getItem('explabs_api_key') || 'xpl_71c47c840e1af2b6e28d3f04909884a5eaf35752').trim();
+          if (!expKey) {
+            bD.remove();
+            showToast("Vui lòng nhập Experiential Labs API Key trong Cài đặt (⚙️)!", "danger");
+            return;
+          }
+
+          bD.querySelector('.typing-bubble')?.remove();
+
+          if (am === 'clef') {
+            // Clef is Cloudflare Decision Model on /v1/systemone
+            try {
+              const res = await fetch('https://api.experientiallabs.ai/v1/systemone', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer ' + expKey
+                },
+                body: JSON.stringify({
+                  model: 'clef',
+                  state: fnP,
+                  questions: {
+                    analysis: {
+                      type: 'choice',
+                      instructions: 'Đánh giá trạng thái hoặc câu hỏi của người dùng',
+                      criteria: {
+                        positive_or_valid: 'Nội dung tích cực, hợp lệ hoặc yêu cầu xử lý bình thường',
+                        negative_or_alert: 'Nội dung cảnh báo, sự cố, cần can thiệp khẩn cấp hoặc câu hỏi tiêu cực'
+                      }
+                    }
+                  }
+                }),
+                signal: abortController.signal
+              });
+
+              if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData?.error?.message || ('HTTP ' + res.status));
+              }
+
+              const data = await res.json();
+              const ans = data?.answers?.analysis;
+              finalResp = "### 🎯 Kết quả Quyết định từ Mô hình Clef (Decision Engine)\n" +
+                "- **Quyết định (Choice):** `" + (ans?.choice || 'N/A') + "`\n" +
+                "- **Độ tin cậy (Confidence):** `" + (ans?.confidence ? (Math.round(ans.confidence * 100) + '%') : 'N/A') + "`\n" +
+                "- **Xác suất phân bổ (Probabilities):**\n" +
+                "```json\n" +
+                JSON.stringify(ans?.probabilities || {}, null, 2) + "\n" +
+                "```\n" +
+                "- **Token đã dùng:** `" + (data?.usage?.input_tokens || 0) + "` input tokens (Provider: `" + (data?.provider || 'experiential_cloud') + "`)";
+
+              await renderer.flush(finalResp);
+              pS = true;
+              if ($('latency-val')) $('latency-val').innerText = Math.round(performance.now() - startTime);
+            } catch (clefErr) {
+              if (clefErr.name === 'AbortError' || abortController.signal.aborted) throw clefErr;
+              lastErr = clefErr;
+              finalResp = `*(⚠️ Lỗi Experiential Labs [Clef]: ${clefErr.message})*`;
+              await renderer.flush(finalResp);
+              pS = true;
+            }
+          } else {
+            // Conversational Models (gpt-6-luna, claude-fable-5.2) on /v1/chat/completions (SSE Stream)
+            try {
+              const expMessages = [];
+              const dynamicSI = getDynamicSI(ragSnippet);
+              if (dynamicSI) {
+                expMessages.push({ role: 'system', content: dynamicSI });
+              }
+              if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
+                chatHistory.slice(-10).forEach(m => {
+                  expMessages.push({
+                    role: m.role === 'model' ? 'assistant' : 'user',
+                    content: m.text
+                  });
+                });
+              }
+              expMessages.push({ role: 'user', content: promptWithTime });
+
+              const expRes = await fetch('https://api.experientiallabs.ai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer ' + expKey
+                },
+                body: JSON.stringify({
+                  model: am,
+                  messages: expMessages,
+                  stream: true,
+                  max_tokens: 4096
+                }),
+                signal: abortController.signal
+              });
+
+              if (!expRes.ok) {
+                const errData = await expRes.json().catch(() => ({}));
+                throw new Error(errData?.error?.message || ('HTTP ' + expRes.status));
+              }
+
+              const reader = expRes.body.getReader();
+              const decoder = new TextDecoder();
+              let sseDone = false;
+              let sseBuffer = '';
+
+              while (!sseDone) {
+                const { value, done: streamDone } = await reader.read();
+                if (streamDone) break;
+                sseBuffer += decoder.decode(value, { stream: true });
+
+                const lines = sseBuffer.split('\n');
+                sseBuffer = lines.pop() || '';
+
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (!trimmed || trimmed === 'data: [DONE]') continue;
+                  if (trimmed.startsWith('data:')) {
+                    const jsonStr = trimmed.slice(5).trim();
+                    try {
+                      const parsed = JSON.parse(jsonStr);
+                      const deltaText = parsed.choices?.[0]?.delta?.content || '';
+                      if (deltaText) {
+                        finalResp += deltaText;
+                        renderer.push(finalResp);
+                        if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
+                        pS = true;
+                      }
+                    } catch (_) {}
+                  }
+                }
+              }
+
+              await renderer.flush(finalResp);
+              pS = true;
+            } catch (expErr) {
+              if (expErr.name === 'AbortError' || abortController.signal.aborted) throw expErr;
+              lastErr = expErr;
+              if (pS) {
+                finalResp += `\n\n*(⚠️ Quá trình stream bị ngắt: ${expErr.message})*`;
+                await renderer.flush(finalResp);
+              } else {
+                bD.remove();
+                return showToast(`Lỗi Experiential Labs: ${expErr.message}`, 'danger');
+              }
+            }
+          }
+
+          if (pS) {
+            await saveTurn();
+            return;
+          }
+        }
 
         // ENGINE 1: INTERACTIONS API
         if (currentEngine === 'interactions') {
