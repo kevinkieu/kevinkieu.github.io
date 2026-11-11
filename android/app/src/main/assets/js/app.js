@@ -5761,9 +5761,488 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         enableHorizontalScrollAndDrag($('tabs-container'));
         enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
         enableHorizontalScrollAndDrag($('image-preview-grid'));
+        checkVoiceAssistantAutoLaunch();
       });
     } else {
       enableHorizontalScrollAndDrag($('tabs-container'));
       enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
       enableHorizontalScrollAndDrag($('image-preview-grid'));
+      checkVoiceAssistantAutoLaunch();
     }
+
+    // ==========================================
+    // KHỐI: JARVIS 1-TAP VOICE ASSISTANT ENGINE
+    // (Tích hợp hệ thống Android: Báo thức, Hẹn giờ, Mở app, Đèn pin, Bản đồ, Lịch, AI)
+    // ==========================================
+    let vaRecognition = null;
+    let vaIsListening = false;
+    let vaSilenceTimer = null;
+    let vaCurrentTranscript = '';
+    let vaCurrentSpeechUtter = null;
+
+    function normalizeVi(str) {
+      if (!str) return '';
+      return str.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/[^a-z0-9\s:]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function parseVoiceCommand(rawText) {
+      const norm = normalizeVi(rawText);
+
+      // 1. ĐÈN PIN (FLASHLIGHT)
+      if (/^(bat|mo)\s+(den\s+pin|flash)/.test(norm) || norm === 'bat den pin' || norm === 'mo den pin') {
+        return { type: 'flashlight', enable: true, raw: rawText };
+      }
+      if (/^(tat)\s+(den\s+pin|flash)/.test(norm) || norm === 'tat den pin') {
+        return { type: 'flashlight', enable: false, raw: rawText };
+      }
+
+      // 2. BÁO THỨC (ALARM)
+      if (/bao\s*thuc|cai\s*bao\s*thuc|dat\s*bao\s*thuc|danh\s*thuc|keu\s*(toi\s*)?day|goi\s*(toi\s*)?day/.test(norm)) {
+        let hour = 7;
+        let minute = 0;
+        let foundTime = false;
+
+        const m1 = norm.match(/(\d{1,2})\s*(gio|h|:)\s*(\d{1,2})?/);
+        if (m1) {
+          hour = parseInt(m1[1], 10);
+          minute = m1[3] ? parseInt(m1[3], 10) : 0;
+          foundTime = true;
+        } else {
+          const m2 = norm.match(/(\d{1,2})\s*ruoi/);
+          if (m2) {
+            hour = parseInt(m2[1], 10);
+            minute = 30;
+            foundTime = true;
+          }
+        }
+
+        if (foundTime) {
+          if (/ruoi/.test(norm) && minute === 0) minute = 30;
+          const kemMatch = norm.match(/kem\s*(\d{1,2})/);
+          if (kemMatch) {
+            const kemMin = parseInt(kemMatch[1], 10);
+            minute = 60 - kemMin;
+            hour = (hour - 1 + 24) % 24;
+          }
+          if (/chieu|toi|pm/.test(norm) && hour < 12) {
+            hour += 12;
+          } else if (/sang|am/.test(norm) && hour === 12) {
+            hour = 0;
+          } else if (/trua/.test(norm) && hour < 11) {
+            hour += 12;
+          }
+          return { type: 'alarm', hour, minute, raw: rawText };
+        }
+      }
+
+      // 3. HẸN GIỜ (TIMER)
+      if (/hen\s*gio|dem\s*nguoc|bam\s*gio/.test(norm)) {
+        let totalSecs = 0;
+        const hMatch = norm.match(/(\d+)\s*(tieng|gio)/);
+        const mMatch = norm.match(/(\d+)\s*(phut|p)/);
+        const sMatch = norm.match(/(\d+)\s*(giay|s)/);
+
+        if (hMatch) totalSecs += parseInt(hMatch[1], 10) * 3600;
+        if (mMatch) totalSecs += parseInt(mMatch[1], 10) * 60;
+        if (sMatch) totalSecs += parseInt(sMatch[1], 10);
+
+        if (totalSecs === 0) {
+          const numOnly = norm.match(/(?:hen\s*gio|dem\s*nguoc)\s*(\d+)/);
+          if (numOnly) {
+            totalSecs = parseInt(numOnly[1], 10) * 60;
+          }
+        }
+
+        if (totalSecs > 0) {
+          return { type: 'timer', seconds: totalSecs, raw: rawText };
+        }
+      }
+
+      // 4. CHỈ ĐƯỜNG / BẢN ĐỒ (NAVIGATION)
+      const navMatch = norm.match(/(?:chi\s*duong|tim\s*duong|dan\s*duong|duong\s*di\s*den|duong\s*di\s*toi|di\s*den|di\s*toi)\s+(.+)/);
+      if (navMatch && !/bao\s*thuc|hen\s*gio/.test(norm)) {
+        let dest = rawText.substring(rawText.toLowerCase().indexOf(navMatch[1].split(' ')[0]) || 0);
+        dest = dest.replace(/^(den|toi|ve)\s+/i, '').trim();
+        if (dest) {
+          return { type: 'navigation', destination: dest, raw: rawText };
+        }
+      }
+
+      // 5. GỌI ĐIỆN (PHONE CALL)
+      const callMatch = norm.match(/(?:goi\s*dien|goi\s*cho|quay\s*so)\s*(?:cho\s*)?(\d{9,11})/);
+      if (callMatch) {
+        return { type: 'call', phone: callMatch[1], raw: rawText };
+      }
+
+      // 6. MỞ ỨNG DỤNG (OPEN APP)
+      const appMatch = norm.match(/^(?:mo|vao|bat|chay)\s+(?:ung\s*dung\s+|app\s+)?(.+)/);
+      if (appMatch) {
+        let targetApp = appMatch[1].trim();
+        if (!/^(den\s*pin|flash|bao\s*thuc|hen\s*gio)$/.test(targetApp)) {
+          targetApp = targetApp.replace(/\s+(cho\s*toi|cho\s*anh|len|ngay|gium|nhe)$/i, '').trim();
+          if (targetApp) {
+            return { type: 'open_app', appName: targetApp, raw: rawText };
+          }
+        }
+      }
+
+      // 7. LỊCH / NHẮC NHỞ (CALENDAR)
+      const calMatch = norm.match(/(?:nhac\s*toi|tao\s*lich|dat\s*lich|lich\s*hen)\s+(.+)/);
+      if (calMatch) {
+        return { type: 'calendar', title: calMatch[1], raw: rawText };
+      }
+
+      // 8. CÂU HỎI AI THÔNG THƯỜNG
+      return { type: 'ai_query', prompt: rawText };
+    }
+
+    function setOrbState(state) {
+      const orb = $('va-orb');
+      const statusEl = $('va-status');
+      const orbIcon = $('va-orb-icon');
+      if (!orb) return;
+
+      orb.classList.remove('listening', 'processing', 'speaking');
+      if (state === 'listening') {
+        orb.classList.add('listening');
+        if (statusEl) statusEl.innerText = "Jarvis đang lắng nghe bạn nói...";
+        if (orbIcon) orbIcon.innerText = "🎙️";
+      } else if (state === 'processing') {
+        orb.classList.add('processing');
+        if (statusEl) statusEl.innerText = "Đang thực hiện lệnh...";
+        if (orbIcon) orbIcon.innerText = "⚡";
+      } else if (state === 'speaking') {
+        orb.classList.add('speaking');
+        if (statusEl) statusEl.innerText = "Jarvis đang phản hồi...";
+        if (orbIcon) orbIcon.innerText = "🔊";
+      } else {
+        if (statusEl) statusEl.innerText = "Chạm để nói lệnh mới";
+        if (orbIcon) orbIcon.innerText = "🎙️";
+      }
+    }
+
+    async function speakVoiceAssistant(text) {
+      if (!text) return;
+      setOrbState('speaking');
+      const stopBtn = $('btn-va-stop-speaking');
+      if (stopBtn) stopBtn.style.display = 'inline-flex';
+
+      try {
+        if (typeof window.playTextAudio === 'function') {
+          await window.playTextAudio(text, {
+            onEnd: () => {
+              setOrbState('idle');
+              if (stopBtn) stopBtn.style.display = 'none';
+            },
+            onError: () => {
+              setOrbState('idle');
+              if (stopBtn) stopBtn.style.display = 'none';
+            }
+          });
+        } else if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const utter = new SpeechSynthesisUtterance(text);
+          utter.lang = 'vi-VN';
+          utter.rate = 1.05;
+          utter.onend = () => {
+            setOrbState('idle');
+            if (stopBtn) stopBtn.style.display = 'none';
+          };
+          utter.onerror = () => {
+            setOrbState('idle');
+            if (stopBtn) stopBtn.style.display = 'none';
+          };
+          window.speechSynthesis.speak(utter);
+        } else {
+          setOrbState('idle');
+          if (stopBtn) stopBtn.style.display = 'none';
+        }
+      } catch (err) {
+        console.warn("Lỗi phát giọng nói:", err);
+        setOrbState('idle');
+        if (stopBtn) stopBtn.style.display = 'none';
+      }
+    }
+
+    async function fetchQuickAIAnswer(promptText) {
+      const k = (typeof apiKeys !== 'undefined' && apiKeys.length) ? apiKeys[0] : '';
+      if (!k) {
+        return "Dạ, em nghe anh nói rồi ạ. Để em trả lời chi tiết hơn, anh vui lòng thêm API Key trong cài đặt nhé!";
+      }
+      try {
+        const ai = new GoogleGenAI({ apiKey: k });
+        const res = await ai.models.generateContent({
+          model: 'gemini-3.1-flash-lite',
+          contents: promptText,
+          config: {
+            systemInstruction: "Bạn là Jarvis AI trợ lý cá nhân tiếng Việt. Hãy trả lời cực kỳ ngắn gọn, súc tích (1-2 câu), tự nhiên, thông minh và thân thiện để phản hồi bằng giọng nói cho người dùng.",
+            safetySettings: SAFETY,
+            maxOutputTokens: 120,
+            temperature: 0.6
+          }
+        });
+        return res.text || "Em đã hiểu ý anh rồi ạ!";
+      } catch (e) {
+        console.warn("AI quick answer error:", e);
+        return "Dạ em đã ghi nhận câu hỏi của anh rồi ạ!";
+      }
+    }
+
+    async function handleVoiceCommandInput(rawText) {
+      if (!rawText || !rawText.trim()) return;
+      stopVoiceAssistantListening();
+
+      const transcriptEl = $('va-transcript');
+      const feedbackBox = $('va-feedback-box');
+      const actionPill = $('va-action-pill');
+      const feedbackText = $('va-feedback-text');
+
+      if (transcriptEl) {
+        transcriptEl.innerText = rawText.trim();
+        transcriptEl.classList.remove('interim');
+      }
+
+      setOrbState('processing');
+      if (feedbackBox) feedbackBox.style.display = 'flex';
+
+      const cmd = parseVoiceCommand(rawText);
+
+      if (cmd.type === 'flashlight') {
+        const ok = window.JarvisNativeBridge?.setFlashlight ? window.JarvisNativeBridge.setFlashlight(cmd.enable) : false;
+        if (actionPill) actionPill.innerHTML = cmd.enable ? "🔦 Bật đèn pin" : "🔦 Tắt đèn pin";
+        if (feedbackText) feedbackText.innerText = cmd.enable ? "Đã bật đèn pin của điện thoại." : "Đã tắt đèn pin.";
+        speakVoiceAssistant(cmd.enable ? "Em đã bật đèn pin rồi ạ!" : "Đã tắt đèn pin rồi ạ!");
+      }
+      else if (cmd.type === 'alarm') {
+        const timeStr = `${String(cmd.hour).padStart(2, '0')}:${String(cmd.minute).padStart(2, '0')}`;
+        const ok = window.JarvisNativeBridge?.setAlarm ? window.JarvisNativeBridge.setAlarm(cmd.hour, cmd.minute, "Báo thức Jarvis") : false;
+        if (actionPill) actionPill.innerHTML = `⏰ Báo thức: ${timeStr}`;
+        if (feedbackText) feedbackText.innerText = ok ? `Đã cài báo thức lúc ${timeStr} vào ứng dụng Đồng hồ hệ thống.` : `Đã đặt báo thức lúc ${timeStr} trên máy.`;
+        speakVoiceAssistant(`Dạ, em đã đặt báo thức lúc ${timeStr} cho anh rồi nhé!`);
+      }
+      else if (cmd.type === 'timer') {
+        const mins = Math.floor(cmd.seconds / 60);
+        const secs = cmd.seconds % 60;
+        const durStr = mins > 0 ? (mins + " phút" + (secs > 0 ? " " + secs + " giây" : "")) : (secs + " giây");
+        const ok = window.JarvisNativeBridge?.setTimer ? window.JarvisNativeBridge.setTimer(cmd.seconds, "Hẹn giờ Jarvis") : false;
+        if (actionPill) actionPill.innerHTML = `⏳ Hẹn giờ: ${durStr}`;
+        if (feedbackText) feedbackText.innerText = ok ? `Đã kích hoạt hẹn giờ ${durStr} trong ứng dụng Đồng hồ.` : `Đang hẹn giờ đếm ngược ${durStr}.`;
+        speakVoiceAssistant(`Đã hẹn giờ ${durStr} cho anh rồi ạ!`);
+      }
+      else if (cmd.type === 'open_app') {
+        const ok = window.JarvisNativeBridge?.openApp ? window.JarvisNativeBridge.openApp(cmd.appName) : false;
+        if (actionPill) actionPill.innerHTML = `🚀 Mở app: ${cmd.appName}`;
+        if (feedbackText) feedbackText.innerText = ok ? `Đang khởi chạy ứng dụng ${cmd.appName}...` : `Đang tìm và mở ${cmd.appName}...`;
+        speakVoiceAssistant(`Đang mở ${cmd.appName} cho anh ạ!`);
+      }
+      else if (cmd.type === 'navigation') {
+        const ok = window.JarvisNativeBridge?.openMapNavigation ? window.JarvisNativeBridge.openMapNavigation(cmd.destination) : false;
+        if (!ok) {
+          window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(cmd.destination)}`, '_blank');
+        }
+        if (actionPill) actionPill.innerHTML = `🗺️ Chỉ đường: ${cmd.destination}`;
+        if (feedbackText) feedbackText.innerText = `Đang mở Google Maps chỉ đường đến ${cmd.destination}...`;
+        speakVoiceAssistant(`Đang mở bản đồ chỉ đường đến ${cmd.destination} cho anh ạ!`);
+      }
+      else if (cmd.type === 'call') {
+        if (window.JarvisNativeBridge?.makeCall) {
+          window.JarvisNativeBridge.makeCall(cmd.phone);
+        } else {
+          window.open(`tel:${cmd.phone}`);
+        }
+        if (actionPill) actionPill.innerHTML = `📞 Gọi: ${cmd.phone}`;
+        if (feedbackText) feedbackText.innerText = `Đang mở giao diện quay số gọi đến ${cmd.phone}...`;
+        speakVoiceAssistant(`Đang mở màn hình gọi cho số ${cmd.phone}.`);
+      }
+      else if (cmd.type === 'calendar') {
+        if (window.JarvisNativeBridge?.addCalendarEvent) {
+          window.JarvisNativeBridge.addCalendarEvent(cmd.title, 0, 0, "");
+        }
+        if (actionPill) actionPill.innerHTML = `📅 Lịch hẹn: ${cmd.title}`;
+        if (feedbackText) feedbackText.innerText = `Đang mở ứng dụng Lịch để tạo sự kiện...`;
+        speakVoiceAssistant(`Đang mở lịch thêm sự kiện ${cmd.title} cho anh nhé!`);
+      }
+      else {
+        // AI Fallback
+        if (actionPill) actionPill.innerHTML = `✨ Jarvis AI`;
+        if (feedbackText) feedbackText.innerText = `Đang suy nghĩ...`;
+        const aiAnswer = await fetchQuickAIAnswer(cmd.prompt);
+        if (feedbackText) feedbackText.innerText = aiAnswer;
+        speakVoiceAssistant(aiAnswer);
+      }
+    }
+
+    function startVoiceAssistantListening() {
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const transcriptEl = $('va-transcript');
+      const feedbackBox = $('va-feedback-box');
+
+      if (feedbackBox) feedbackBox.style.display = 'none';
+      if (transcriptEl) {
+        transcriptEl.innerText = "Đang lắng nghe... Hãy nói lệnh của bạn!";
+        transcriptEl.classList.remove('interim');
+      }
+
+      if (!SpeechRec) {
+        setOrbState('idle');
+        if (transcriptEl) transcriptEl.innerText = "Trình duyệt không hỗ trợ nhận diện giọng nói SpeechRecognition. Hãy dùng các gợi ý bên dưới!";
+        return;
+      }
+
+      stopVoiceAssistantListening();
+      if (typeof window.stopCurrentSpeaking === 'function') window.stopCurrentSpeaking();
+
+      try {
+        vaRecognition = new SpeechRec();
+        vaRecognition.lang = 'vi-VN';
+        vaRecognition.continuous = true;
+        vaRecognition.interimResults = true;
+
+        vaRecognition.onstart = () => {
+          vaIsListening = true;
+          setOrbState('listening');
+          const micBtnText = $('va-mic-btn-text');
+          if (micBtnText) micBtnText.innerText = "Đang nghe...";
+        };
+
+        vaRecognition.onresult = (event) => {
+          let finalTxt = '';
+          let interimTxt = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) finalTxt += event.results[i][0].transcript;
+            else interimTxt += event.results[i][0].transcript;
+          }
+
+          const current = (finalTxt || interimTxt).trim();
+          if (current && transcriptEl) {
+            transcriptEl.innerText = current;
+            if (!finalTxt) transcriptEl.classList.add('interim');
+            else transcriptEl.classList.remove('interim');
+          }
+
+          if (finalTxt.trim()) {
+            vaCurrentTranscript = finalTxt.trim();
+            if (vaSilenceTimer) clearTimeout(vaSilenceTimer);
+            vaSilenceTimer = setTimeout(() => {
+              handleVoiceCommandInput(vaCurrentTranscript);
+            }, 800);
+          } else if (interimTxt.trim()) {
+            vaCurrentTranscript = interimTxt.trim();
+            if (vaSilenceTimer) clearTimeout(vaSilenceTimer);
+            vaSilenceTimer = setTimeout(() => {
+              handleVoiceCommandInput(vaCurrentTranscript);
+            }, 1400);
+          }
+        };
+
+        vaRecognition.onerror = (e) => {
+          console.warn("Speech recognition error:", e);
+          vaIsListening = false;
+          setOrbState('idle');
+          const micBtnText = $('va-mic-btn-text');
+          if (micBtnText) micBtnText.innerText = "Nói lại";
+        };
+
+        vaRecognition.onend = () => {
+          vaIsListening = false;
+          const micBtnText = $('va-mic-btn-text');
+          if (micBtnText) micBtnText.innerText = "Nói lại";
+        };
+
+        vaRecognition.start();
+      } catch (err) {
+        console.warn("Không thể khởi động SpeechRecognition:", err);
+        setOrbState('idle');
+      }
+    }
+
+    function stopVoiceAssistantListening() {
+      if (vaSilenceTimer) {
+        clearTimeout(vaSilenceTimer);
+        vaSilenceTimer = null;
+      }
+      if (vaRecognition) {
+        try { vaRecognition.stop(); } catch {}
+        vaRecognition = null;
+      }
+      vaIsListening = false;
+      const micBtnText = $('va-mic-btn-text');
+      if (micBtnText) micBtnText.innerText = "Nói lại";
+    }
+
+    function openVoiceAssistantModal() {
+      const modal = $('voice-assistant-overlay');
+      if (!modal) return;
+      modal.style.display = 'flex';
+      startVoiceAssistantListening();
+    }
+
+    function closeVoiceAssistantModal() {
+      const modal = $('voice-assistant-overlay');
+      if (!modal) return;
+      stopVoiceAssistantListening();
+      if (typeof window.stopCurrentSpeaking === 'function') window.stopCurrentSpeaking();
+      modal.style.display = 'none';
+      setOrbState('idle');
+    }
+
+    function checkVoiceAssistantAutoLaunch() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isVoiceUrl = urlParams.get('mode') === 'voice_command';
+      const isNativeVoice = window.JarvisNativeBridge?.isVoiceLaunchMode && window.JarvisNativeBridge.isVoiceLaunchMode();
+
+      if (isVoiceUrl || isNativeVoice) {
+        setTimeout(() => {
+          openVoiceAssistantModal();
+        }, 350);
+      }
+    }
+
+    window.triggerVoiceAssistantMode = function() {
+      openVoiceAssistantModal();
+    };
+
+    window.triggerVoiceSample = function(sampleText) {
+      if (!sampleText) return;
+      openVoiceAssistantModal();
+      handleVoiceCommandInput(sampleText);
+    };
+
+    // Gắn sự kiện các nút điều khiển của Voice Assistant Modal
+    $('btn-va-close')?.addEventListener('click', closeVoiceAssistantModal);
+
+    $('btn-va-mic-toggle')?.addEventListener('click', () => {
+      if (vaIsListening) {
+        stopVoiceAssistantListening();
+        setOrbState('idle');
+      } else {
+        startVoiceAssistantListening();
+      }
+    });
+
+    $('btn-va-stop-speaking')?.addEventListener('click', () => {
+      if (typeof window.stopCurrentSpeaking === 'function') window.stopCurrentSpeaking();
+      setOrbState('idle');
+      $('btn-va-stop-speaking').style.display = 'none';
+    });
+
+    $('btn-va-switch-chat')?.addEventListener('click', () => {
+      const transcript = $('va-transcript')?.innerText;
+      const feedback = $('va-feedback-text')?.innerText;
+      closeVoiceAssistantModal();
+      const input = $('user-input');
+      if (input) {
+        if (transcript && !transcript.startsWith('Đang')) {
+          input.value = transcript;
+          autoResize(input);
+        }
+        input.focus();
+      }
+    });

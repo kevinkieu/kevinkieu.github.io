@@ -225,6 +225,11 @@
             <span class="mobile-hidden">Gọi Live AI</span>
           </button>
 
+          <!-- VOICE ASSISTANT 1-TAP BUTTON -->
+          <button id="btn-open-voice-assistant" class="btn" onclick="if(window.triggerVoiceAssistantMode) window.triggerVoiceAssistantMode();" style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(6,182,212,0.35);display:flex;align-items:center;gap:5px;" title="Trợ lý giọng nói 1-chạm (Báo thức, hẹn giờ, mở app, đèn pin, hỏi đáp...)">
+            🗣️ <span class="mobile-hidden">Trợ lý Thoại</span>
+          </button>
+
           <!-- TTS STUDIO BUTTON -->
           <button id="btn-tts-studio-header" class="btn" onclick="openTTSStudioModal()" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(139,92,246,0.3);display:flex;align-items:center;gap:5px;" title="Gemini TTS Studio Pro (Chuyển văn bản thành giọng nói, xuất MP3)">
             🎙️ <span class="mobile-hidden">Studio TTS</span>
@@ -1459,6 +1464,73 @@
 
   <div id="toast" class="toast"></div>
   <button id="scroll-to-top" title="Cuộn lên đầu trang">▲</button>
+
+  <!-- ==========================================
+       JARVIS VOICE ASSISTANT MODAL (1-CHẠM)
+       ========================================== -->
+  <div id="voice-assistant-overlay" class="voice-assistant-overlay" style="display:none;">
+    <div class="va-container">
+      <!-- HEADER -->
+      <div class="va-header">
+        <div class="va-brand">
+          <span class="va-pulse-icon">🎙️</span>
+          <div>
+            <div class="va-title">Jarvis Voice Assistant</div>
+            <div id="va-status" class="va-status">Đang sẵn sàng...</div>
+          </div>
+        </div>
+        <button id="btn-va-close" class="va-close-btn" title="Đóng">&times;</button>
+      </div>
+
+      <!-- VISUALIZER / GLOWING ORB -->
+      <div class="va-visualizer-wrap">
+        <div id="va-orb" class="va-orb">
+          <div class="va-orb-ring ring-1"></div>
+          <div class="va-orb-ring ring-2"></div>
+          <div class="va-orb-ring ring-3"></div>
+          <div class="va-orb-core">
+            <span id="va-orb-icon">🎙️</span>
+          </div>
+        </div>
+        <div id="va-wave-bars" class="va-wave-bars">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <!-- TRANSCRIPT DISPLAY -->
+      <div class="va-content-box">
+        <div class="va-label">LỆNH CỦA BẠN:</div>
+        <div id="va-transcript" class="va-transcript">Đang chờ bạn nói... Thử lệnh: "Báo thức 7 giờ sáng", "Hẹn giờ 15 phút", "Mở Zalo", "Bật đèn pin"...</div>
+        <div id="va-feedback-box" class="va-feedback-box" style="display:none;">
+          <div id="va-action-pill" class="va-action-pill"></div>
+          <div id="va-feedback-text" class="va-feedback-text"></div>
+        </div>
+      </div>
+
+      <!-- ACTION BUTTONS -->
+      <div class="va-controls">
+        <button id="btn-va-switch-chat" class="va-btn secondary" title="Đưa nội dung này vào ô Chatbot chính">
+          💬 Về Chatbot
+        </button>
+        <button id="btn-va-mic-toggle" class="va-btn primary" title="Chạm để nói lệnh mới">
+          <span id="va-mic-btn-icon">🎙️</span>
+          <span id="va-mic-btn-text">Nói lại</span>
+        </button>
+        <button id="btn-va-stop-speaking" class="va-btn secondary" style="display:none;" title="Dừng đọc giọng nói">
+          ⏹️ Dừng đọc
+        </button>
+      </div>
+
+      <!-- QUICK SUGGESTIONS -->
+      <div class="va-suggestions">
+        <span class="va-sug-item" onclick="if(window.triggerVoiceSample) window.triggerVoiceSample('Báo thức lúc 7 giờ sáng')">⏰ Báo thức 7h sáng</span>
+        <span class="va-sug-item" onclick="if(window.triggerVoiceSample) window.triggerVoiceSample('Hẹn giờ 15 phút')">⏳ Hẹn giờ 15p</span>
+        <span class="va-sug-item" onclick="if(window.triggerVoiceSample) window.triggerVoiceSample('Mở Zalo')">💬 Mở Zalo</span>
+        <span class="va-sug-item" onclick="if(window.triggerVoiceSample) window.triggerVoiceSample('Bật đèn pin')">🔦 Đèn pin</span>
+        <span class="va-sug-item" onclick="if(window.triggerVoiceSample) window.triggerVoiceSample('Chỉ đường đến Landmark 81')">🗺️ Chỉ đường</span>
+      </div>
+    </div>
+  </div>
 
   <!-- JAVASCRIPT APPLICATION MODULES -->
   <script type="module" src="./js/app.js?v=80"></script>

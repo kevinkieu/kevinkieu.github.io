@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Jarvis AI</string>
+    <string name="voice_app_name">Jarvis Voice</string>
 </resources>
