@@ -755,17 +755,91 @@
       background: transparent !important;
     }
 
-    /* THINKING TAG */
+    /* THINKING BLOCK & ACCORDION (DEEPSEEK / REASONING) */
+    details.thinking-block {
+      background: rgba(139, 92, 246, 0.04);
+      border: 1px solid rgba(139, 92, 246, 0.22);
+      border-left: 3px solid #8b5cf6;
+      border-radius: var(--radius-sm);
+      margin: 8px 0 12px 0;
+      overflow: hidden;
+      font-size: 0.84rem;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    details.thinking-block summary {
+      padding: 7px 12px;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+      background: rgba(139, 92, 246, 0.06);
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    details.thinking-block summary:hover {
+      background: rgba(139, 92, 246, 0.12);
+      color: var(--text-main);
+    }
+
+    details.thinking-block[open] {
+      background: rgba(0, 0, 0, 0.04);
+      border-color: rgba(139, 92, 246, 0.35);
+    }
+
+    details.thinking-block[open] summary {
+      border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+      color: var(--text-main);
+    }
+
+    .thinking-content {
+      padding: 10px 14px;
+      color: var(--text-muted);
+      font-style: italic;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 360px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .thinking-streaming {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      background: rgba(139, 92, 246, 0.08);
+      border: 1px dashed rgba(139, 92, 246, 0.4);
+      border-radius: var(--radius-sm);
+      color: #8b5cf6;
+      font-size: 0.82rem;
+      font-weight: 500;
+      margin: 4px 0 8px 0;
+      animation: pulseThinking 1.6s infinite ease-in-out;
+    }
+
+    @keyframes pulseThinking {
+      0%, 100% { opacity: 0.65; transform: scale(0.99); }
+      50% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Fallback for legacy bare <think> tags */
     think {
       display: block;
-      background: var(--bg-sidebar);
-      border-left: 3px dashed var(--accent);
-      padding: 10px 14px;
-      margin: 10px 0;
-      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      background: rgba(139, 92, 246, 0.04);
+      border-left: 3px dashed #8b5cf6;
+      padding: 8px 12px;
+      margin: 8px 0;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
       font-style: italic;
       color: var(--text-muted);
-      font-size: 0.88em;
+      font-size: 0.84rem;
+      max-height: 250px;
+      overflow-y: auto;
     }
 
     /* BOTTOM INPUT PANEL */

@@ -258,7 +258,20 @@ import { GoogleGenAI } from "@google/genai";
             pending = true;
             rafId = requestAnimationFrame(() => {
               try {
-                targetEl.innerHTML = marked.parse(latest);
+                let toRender = latest;
+                const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true';
+                if (hideThinking) {
+                  toRender = toRender.replace(/<think>[\s\S]*?<\/think>/gi, '')
+                                     .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');
+                } else {
+                  toRender = toRender.replace(/<think>([\s\S]*?)<\/think>/gi, (m, p1) => {
+                    const clean = p1.trim();
+                    if (!clean) return '';
+                    const wc = Math.max(1, Math.round(clean.length / 4));
+                    return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
+                  });
+                }
+                targetEl.innerHTML = marked.parse(toRender);
               } catch (_) {}
               pending = false;
             });
@@ -620,6 +633,12 @@ import { GoogleGenAI } from "@google/genai";
       if ($('live-temp-val')) $('live-temp-val').innerText = ls.getItem('live_temperature') || '0.7';
       if ($('live-toggle-search')) $('live-toggle-search').checked = ls.getItem('live_search_enabled') !== 'false';
       if ($('live-toggle-context')) $('live-toggle-context').checked = ls.getItem('live_context_enabled') !== 'false';
+      if ($('hide-deepseek-thinking-checkbox')) {
+        $('hide-deepseek-thinking-checkbox').checked = ls.getItem('jarvis_hide_deepseek_thinking') === 'true';
+        $('hide-deepseek-thinking-checkbox').onchange = e => {
+          ls.setItem('jarvis_hide_deepseek_thinking', e.target.checked ? 'true' : 'false');
+        };
+      }
     }
 
     $('live-temperature').oninput = e => { if ($('live-temp-val')) $('live-temp-val').innerText = e.target.value; };
@@ -643,6 +662,7 @@ import { GoogleGenAI } from "@google/genai";
       cfgMap.forEach(([id, k]) => ls.setItem(k, $(id)?.value.trim() || ''));
       ls.setItem('live_search_enabled', $('live-toggle-search')?.checked ? 'true' : 'false');
       ls.setItem('live_context_enabled', $('live-toggle-context')?.checked ? 'true' : 'false');
+      ls.setItem('jarvis_hide_deepseek_thinking', $('hide-deepseek-thinking-checkbox')?.checked ? 'true' : 'false');
       initAPIKeys();
       initExternalConfigs();
       showToast("Đã lưu cấu hình Google & Hệ thống!");
@@ -3774,6 +3794,18 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     // --- MARKDOWN & SYNTAX HIGHLIGHTING RENDERER ---
     async function renderMsgContent(el, t) {
       t = t || "";
+      const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true';
+      if (hideThinking) {
+        t = t.replace(/<think>[\s\S]*?<\/think>/gi, '')
+             .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');
+      } else {
+        t = t.replace(/<think>([\s\S]*?)<\/think>/gi, (m, p1) => {
+          const clean = p1.trim();
+          if (!clean) return '';
+          const wc = Math.max(1, Math.round(clean.length / 4));
+          return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
+        });
+      }
       el.innerHTML = marked.parse(t.replace(/\[URL:\s*(https?:\/\/[^\s]+)\]/g, '<a href="$1" target="_blank" style="color:var(--primary);text-decoration:underline;">$1</a>'));
       
       // Math KaTeX
@@ -4718,7 +4750,25 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
                       if (deltaThinking) currentThinking += deltaThinking;
                       if (deltaText) currentContent += deltaText;
                       if (deltaThinking || deltaText) {
-                        finalResp = (currentThinking ? `<think>\n${currentThinking}\n</think>\n\n` : '') + currentContent;
+                        const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true';
+                        if (hideThinking) {
+                          if (currentContent) {
+                            finalResp = currentContent;
+                          } else {
+                            finalResp = '<div class="thinking-streaming"><span class="thinking-spinner">⏳</span> <em>DeepSeek đang suy nghĩ...</em></div>';
+                          }
+                        } else {
+                          if (currentContent) {
+                            const wc = Math.max(1, Math.round(currentThinking.length / 4));
+                            const thinkingBlock = currentThinking
+                              ? `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(currentThinking)}</div></details>\n\n`
+                              : '';
+                            finalResp = thinkingBlock + currentContent;
+                          } else {
+                            const wc = Math.max(1, Math.round(currentThinking.length / 4));
+                            finalResp = `<div class="thinking-streaming"><span class="thinking-spinner">⏳</span> <em>DeepSeek đang suy luận (${wc} từ)...</em></div>`;
+                          }
+                        }
                         renderer.push(finalResp);
                         if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
                         pS = true;
@@ -4728,6 +4778,16 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
                 }
               }
 
+              const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true';
+              if (hideThinking) {
+                finalResp = currentContent;
+              } else {
+                const wc = Math.max(1, Math.round(currentThinking.length / 4));
+                const thinkingBlock = currentThinking
+                  ? `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(currentThinking)}</div></details>\n\n`
+                  : '';
+                finalResp = thinkingBlock + (currentContent || (currentThinking ? '*(Đã hoàn tất quá trình suy luận)*' : ''));
+              }
               await renderer.flush(finalResp);
               pS = true;
             } catch (expErr) {

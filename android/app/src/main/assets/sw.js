@@ -1,5 +1,5 @@
-// Jarvis AI Service Worker for PWA (v57 - Distributed Key Quota & Optimized Auxiliary Models)
-const CACHE_NAME = 'jarvis-ai-pwa-v80';
+// Jarvis AI Service Worker for PWA (v81 - DeepSeek Collapsible Reasoning & Clean UI)
+const CACHE_NAME = 'jarvis-ai-pwa-v81';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
