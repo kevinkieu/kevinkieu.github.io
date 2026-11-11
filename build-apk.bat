@@ -36,11 +36,11 @@ copy /y "icon*.png" "android\app\src\main\assets\" >nul
 xcopy /s /e /y "js" "android\app\src\main\assets\js\" >nul
 xcopy /s /e /y "css" "android\app\src\main\assets\css\" >nul
 
-cd "android"
+:: 3. Tu dong tang Version Code & Version Name bang bump-version.js
+echo [2/3] Dang cap nhat so phien ban Version Code va Version Name...
+call node "%~dp0bump-version.js"
 
-:: 3. Tu dong tang Version Code de cai de len ban cu khong can go app
-echo [2/3] Dang cap nhat so phien ban Version Code...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$f='app/build.gradle'; $c=[IO.File]::ReadAllText($f); if($c -match 'versionCode\s+(\d+)'){ $old=[int]$matches[1]; $new=$old+1; $c=$c -replace 'versionCode\s+\d+', \"versionCode $new\"; $c=$c -replace 'versionName\s+\"[^\"]+\"', \"versionName `\"1.1.$new`\"\"; [IO.File]::WriteAllText($f,$c); Write-Host \"[TANG PHIEN BAN] versionCode: $old -^> $new (versionName: 1.1.$new)\" -ForegroundColor Cyan }"
+cd "android"
 
 :: 4. Bien dich file APK Release
 echo [3/3] Dang bien dich APK Release...

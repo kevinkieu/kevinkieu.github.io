@@ -4701,7 +4701,22 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
                   });
                 });
               }
-              expMessages.push({ role: 'user', content: promptWithTime });
+              if (base64Files && base64Files.length > 0) {
+                const userContent = [{ type: 'text', text: promptWithTime }];
+                for (const f of base64Files) {
+                  if (f.mimeType && f.mimeType.startsWith('image/')) {
+                    userContent.push({
+                      type: 'image_url',
+                      image_url: {
+                        url: `data:${f.mimeType};base64,${f.data}`
+                      }
+                    });
+                  }
+                }
+                expMessages.push({ role: 'user', content: userContent });
+              } else {
+                expMessages.push({ role: 'user', content: promptWithTime });
+              }
 
               const expRes = await fetch('https://api.experientiallabs.ai/v1/chat/completions', {
                 method: 'POST',
