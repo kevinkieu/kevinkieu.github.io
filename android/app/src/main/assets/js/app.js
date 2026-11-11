@@ -3823,7 +3823,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         try {
           const { svg } = await mermaid.render('m_' + Date.now() + '_' + i, mds[i].textContent);
           const d = document.createElement('div');
-          d.style.cssText = 'overflow-x:auto;padding:10px;text-align:center;background:var(--bg-card);border-radius:var(--radius-md);margin:10px 0;';
+          d.style.cssText = 'overflow-x:auto;padding:10px;text-align:center;background:var(--bg-card);border-radius:var(--radius-md);margin:10px 0;max-width:100%;box-sizing:border-box;';
           d.innerHTML = svg;
           mds[i].parentElement.replaceWith(d);
         } catch {}
