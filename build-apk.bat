@@ -47,11 +47,13 @@ echo [3/3] Dang bien dich APK Release...
 call gradlew.bat assembleRelease
 if %ERRORLEVEL% EQU 0 (
     copy /y "app\build\outputs\apk\release\app-release.apk" "%~dp0JarvisAI.apk" >nul
+    copy /y "app\build\outputs\apk\release\app-release.apk" "%~dp0JarvisAI_Offline.apk" >nul
     echo.
     echo ========================================================
     echo   BUILD THANH CONG!
-    echo   File APK da san sang cai de len dien thoai:
+    echo   File APK da san sang ngay thu muc goc du an:
     echo   %~dp0JarvisAI.apk
+    echo   %~dp0JarvisAI_Offline.apk
     echo ========================================================
 ) else (
     echo.
