@@ -1640,13 +1640,12 @@
 
     .max-med-card {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
+      gap: 10px;
       background: var(--bg-main, rgba(0, 0, 0, 0.03));
       border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
       border-radius: 14px;
       padding: 12px 14px;
-      gap: 12px;
       transition: all 0.2s;
     }
 
@@ -1655,8 +1654,15 @@
     }
 
     .max-med-card.is-taken {
-      background: rgba(16, 185, 129, 0.1);
+      background: rgba(16, 185, 129, 0.08);
       border-color: rgba(16, 185, 129, 0.35);
+    }
+
+    .max-med-card-body {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
     }
 
     .max-med-icon-box {
@@ -1682,16 +1688,20 @@
       min-width: 0;
     }
 
+    .max-med-name-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+    }
+
     .max-med-name {
       font-size: 0.98rem;
       font-weight: 700;
       color: var(--text-main, #0f172a);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      word-break: break-word;
+      line-height: 1.35;
     }
 
     .max-pill-time-tag {
@@ -1704,38 +1714,45 @@
       display: inline-flex;
       align-items: center;
       gap: 3px;
-      margin-left: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .max-med-meta {
       font-size: 0.78rem;
       color: var(--text-muted, #64748b);
-      margin-top: 3px;
+      margin-top: 4px;
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 6px 10px;
       align-items: center;
+      line-height: 1.35;
     }
 
     .max-med-actions {
       display: flex;
       align-items: center;
-      gap: 6px;
-      flex-shrink: 0;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border, rgba(0, 0, 0, 0.08));
     }
 
     .max-btn-taken {
+      width: 100%;
+      justify-content: center;
       background: linear-gradient(135deg, #10b981, #059669);
       color: white;
       border: none;
       border-radius: 10px;
-      padding: 7px 14px;
-      font-size: 0.82rem;
+      padding: 9px 16px;
+      font-size: 0.85rem;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
       transition: all 0.2s;
     }
@@ -1750,12 +1767,33 @@
       color: #059669;
       border: 1px solid rgba(16, 185, 129, 0.35);
       border-radius: 9999px;
-      padding: 4px 10px;
-      font-size: 0.74rem;
+      padding: 5px 12px;
+      font-size: 0.76rem;
       font-weight: 700;
       display: flex;
       align-items: center;
+      gap: 5px;
+    }
+
+    .max-btn-undo-pill {
+      background: var(--bg-main, rgba(0, 0, 0, 0.05));
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.1));
+      color: var(--text-muted, #64748b);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
       gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .max-btn-undo-pill:hover {
+      background: rgba(239, 68, 68, 0.12);
+      color: #ef4444;
+      border-color: rgba(239, 68, 68, 0.3);
     }
 
     .max-btn-undo {
@@ -1980,31 +2018,61 @@
       justify-content: space-between;
       padding: 10px 14px;
       background: var(--bg-main, rgba(0, 0, 0, 0.03));
-      border-radius: 10px;
+      border-radius: 12px;
       border-left: 3.5px solid #10b981;
       font-size: 0.84rem;
+      gap: 10px;
     }
 
     .max-hist-info {
       display: flex;
       flex-direction: column;
+      flex: 1;
+      min-width: 0;
     }
 
     .max-hist-name {
       font-weight: 700;
       color: var(--text-main, #0f172a);
+      word-break: break-word;
     }
 
     .max-hist-time {
       font-size: 0.74rem;
       color: var(--text-muted, #64748b);
       margin-top: 2px;
+      word-break: break-word;
     }
 
     .max-hist-status {
       font-size: 0.78rem;
       font-weight: 700;
       color: #10b981;
+      white-space: nowrap;
+    }
+
+    .max-hist-delete-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      padding: 6px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      opacity: 0.75;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted, #64748b);
+    }
+
+    .max-hist-delete-btn:hover, .max-hist-delete-btn:active {
+      opacity: 1;
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+      transform: scale(1.1);
     }
 
     /* EMPTY STATE */
