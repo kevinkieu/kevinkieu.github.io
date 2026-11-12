@@ -183,6 +183,10 @@
           <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
           ☁️ Đồng bộ Cloud (Gist)
         </button>
+        <!-- NÚT NHẮC THUỐC MAX (CHỈ HIỆN KHI CHẠY TRONG ANDROID APP) -->
+        <button id="btn-sidebar-max-medication" class="btn" onclick="if(window.openMedicationTab) window.openMedicationTab();" style="display:none;width:100%;margin-top:6px;padding:9px;background:linear-gradient(135deg, #ec4899, #f43f5e);color:white;border:none;font-weight:600;align-items:center;justify-content:center;gap:6px;border-radius:var(--radius-md);box-shadow:0 2px 6px rgba(244,63,94,0.35);" title="Nhắc nhở uống thuốc Max Care">
+          🐶 💊 Nhắc Uống Thuốc (Max)
+        </button>
         <button id="btn-open-settings" class="btn primary" style="width:100%;padding:10px;">
           <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           Hệ thống & Cấu hình
@@ -225,9 +229,10 @@
             <span class="mobile-hidden">Gọi Live AI</span>
           </button>
 
-          <!-- VOICE ASSISTANT 1-TAP BUTTON -->
-          <button id="btn-open-voice-assistant" class="btn" onclick="if(window.triggerVoiceAssistantMode) window.triggerVoiceAssistantMode();" style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(6,182,212,0.35);display:flex;align-items:center;gap:5px;" title="Trợ lý giọng nói 1-chạm (Báo thức, hẹn giờ, mở app, đèn pin, hỏi đáp...)">
-            🗣️ <span class="mobile-hidden">Trợ lý Thoại</span>
+          <!-- MAX MEDICATION REMINDER BUTTON (CHỈ HIỂN THỊ KHI CHẠY TRONG ANDROID APP) -->
+          <button id="btn-open-max-medication" class="btn" onclick="if(window.openMedicationTab) window.openMedicationTab();" style="display:none;background:linear-gradient(135deg,#ec4899,#f43f5e);color:white;border:none;border-radius:var(--radius-full);padding:6px 12px;font-weight:600;font-size:0.8rem;box-shadow:0 2px 8px rgba(244,63,94,0.35);align-items:center;gap:5px;" title="Max Care - Nhắc nhở uống thuốc & Thực phẩm chức năng">
+            🐶 <span class="mobile-hidden">Nhắc thuốc Max</span>
+            <span id="max-med-badge" style="display:none;background:white;color:#e11d48;font-size:0.68rem;font-weight:800;border-radius:10px;padding:1px 5px;margin-left:3px;">0</span>
           </button>
 
           <!-- TTS STUDIO BUTTON -->
@@ -1466,69 +1471,197 @@
   <button id="scroll-to-top" title="Cuộn lên đầu trang">▲</button>
 
   <!-- ==========================================
-       JARVIS VOICE ASSISTANT MODAL (1-CHẠM)
+       MAX CARE - NHẮC UỐNG THUỐC (PILL REMINDER)
+       (Mô phỏng app Max Care - com.artifyapp.mcare)
+       Chỉ hiển thị khi chạy trong Native Android App
        ========================================== -->
-  <div id="voice-assistant-overlay" class="voice-assistant-overlay" style="display:none;">
-    <div class="va-container">
+  <div id="max-medication-modal" class="max-med-overlay" style="display:none;">
+    <div class="max-med-container">
+      
       <!-- HEADER -->
-      <div class="va-header">
-        <div class="va-brand">
-          <span class="va-pulse-icon">🎙️</span>
+      <div class="max-med-header">
+        <div class="max-med-brand">
+          <div class="max-mascot-avatar">🐶</div>
           <div>
-            <div class="va-title">Jarvis Voice Assistant</div>
-            <div id="va-status" class="va-status">Đang sẵn sàng...</div>
+            <div class="max-med-title">Max Care • Nhắc Uống Thuốc</div>
+            <div class="max-med-subtitle" id="max-mascot-speech">Gâu Gâu! Max cùng bạn chăm sóc sức khỏe mỗi ngày!</div>
           </div>
         </div>
-        <button id="btn-va-close" class="va-close-btn" title="Đóng">&times;</button>
+        <button id="btn-close-max-med" class="max-med-close-btn" title="Đóng">&times;</button>
       </div>
 
-      <!-- VISUALIZER / GLOWING ORB -->
-      <div class="va-visualizer-wrap">
-        <div id="va-orb" class="va-orb">
-          <div class="va-orb-ring ring-1"></div>
-          <div class="va-orb-ring ring-2"></div>
-          <div class="va-orb-ring ring-3"></div>
-          <div class="va-orb-core">
-            <span id="va-orb-icon">🎙️</span>
+      <!-- TODAY SUMMARY BAR -->
+      <div class="max-progress-card">
+        <div class="max-progress-info">
+          <span class="max-progress-text" id="max-progress-text">Hôm nay: Đã uống 0/0 liều</span>
+          <span class="max-progress-percent" id="max-progress-percent">0%</span>
+        </div>
+        <div class="max-progress-bar-bg">
+          <div class="max-progress-bar-fill" id="max-progress-bar-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- TABS SWITCHER -->
+      <div class="max-nav-tabs">
+        <button class="max-nav-tab active" data-tab="today">📅 Hôm nay</button>
+        <button class="max-nav-tab" data-tab="cabinet">💊 Tủ thuốc</button>
+        <button class="max-nav-tab" data-tab="history">📊 Lịch sử</button>
+      </div>
+
+      <!-- TAB 1: TODAY SCHEDULE -->
+      <div id="max-tab-view-today" class="max-tab-content active">
+        <div id="max-today-list" class="max-timeline-wrap">
+          <!-- Dynamic generated daily cards -->
+        </div>
+      </div>
+
+      <!-- TAB 2: MEDICINE CABINET -->
+      <div id="max-tab-view-cabinet" class="max-tab-content">
+        <div class="max-cabinet-actions">
+          <button id="btn-add-new-med" class="max-btn-action primary">
+            ➕ Thêm thuốc mới
+          </button>
+          <button id="btn-test-notification" class="max-btn-action secondary" title="Kiểm tra âm báo và rung mẫu">
+            🔔 Thử chuông Max (3s)
+          </button>
+        </div>
+        <div id="max-cabinet-list" class="max-cabinet-grid">
+          <!-- Dynamic generated cabinet cards -->
+        </div>
+      </div>
+
+      <!-- TAB 3: HISTORY LOG -->
+      <div id="max-tab-view-history" class="max-tab-content">
+        <div class="max-history-header">
+          <div class="max-history-stat-box">
+            <div class="max-stat-val" id="max-history-total-taken">0</div>
+            <div class="max-stat-lbl">Lần đã uống</div>
+          </div>
+          <div class="max-history-stat-box">
+            <div class="max-stat-val" id="max-history-streak">0 ngày</div>
+            <div class="max-stat-lbl">Chuỗi duy trì</div>
+          </div>
+          <button id="btn-clear-med-history" class="max-btn-clear" title="Xóa lịch sử">🗑️ Xóa lịch sử</button>
+        </div>
+        <div id="max-history-list" class="max-history-timeline">
+          <!-- Dynamic generated history records -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: FORM THÊM / SỬA THUỐC -->
+  <div id="max-form-modal" class="max-sub-overlay" style="display:none;">
+    <div class="max-form-box">
+      <div class="max-form-header">
+        <h3 id="max-form-title">➕ Thêm thuốc vào Tủ</h3>
+        <button id="btn-close-max-form" class="max-med-close-btn">&times;</button>
+      </div>
+
+      <div class="max-form-body">
+        <!-- TÊN THUỐC -->
+        <div class="max-field">
+          <label>Tên thuốc / Thực phẩm chức năng <span style="color:#ef4444;">*</span></label>
+          <input type="text" id="max-input-name" class="modern-input" placeholder="Ví dụ: Panadol Extra, Vitamin C, Omega-3...">
+          <div class="max-quick-chips" id="max-name-chips">
+            <span class="max-chip" data-name="Panadol Extra">Panadol</span>
+            <span class="max-chip" data-name="Vitamin C 500mg">Vitamin C</span>
+            <span class="max-chip" data-name="Omega 3 Dầu cá">Omega 3</span>
+            <span class="max-chip" data-name="Canxi D3">Canxi</span>
+            <span class="max-chip" data-name="Men vi sinh Bio">Men vi sinh</span>
+            <span class="max-chip" data-name="Glucosamine">Khớp</span>
+            <span class="max-chip" data-name="Thuốc huyết áp">Huyết áp</span>
           </div>
         </div>
-        <div id="va-wave-bars" class="va-wave-bars">
-          <span></span><span></span><span></span><span></span><span></span>
+
+        <!-- DẠNG THUỐC & BIỂU TƯỢNG -->
+        <div class="max-field">
+          <label>Dạng thuốc</label>
+          <div class="max-type-grid" id="max-type-selector">
+            <div class="max-type-opt active" data-type="pill" data-icon="💊">
+              <span class="type-icon">💊</span>
+              <span class="type-name">Viên nén</span>
+            </div>
+            <div class="max-type-opt" data-type="capsule" data-icon="💊">
+              <span class="type-icon">💊</span>
+              <span class="type-name">Viên nang</span>
+            </div>
+            <div class="max-type-opt" data-type="liquid" data-icon="🧴">
+              <span class="type-icon">🧴</span>
+              <span class="type-name">Siro / Nước</span>
+            </div>
+            <div class="max-type-opt" data-type="injection" data-icon="💉">
+              <span class="type-icon">💉</span>
+              <span class="type-name">Tiêm</span>
+            </div>
+            <div class="max-type-opt" data-type="drop" data-icon="💧">
+              <span class="type-icon">💧</span>
+              <span class="type-name">Nhỏ mắt</span>
+            </div>
+            <div class="max-type-opt" data-type="powder" data-icon="🧂">
+              <span class="type-icon">🧂</span>
+              <span class="type-name">Gói bột</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- LIỀU LƯỢNG -->
+        <div class="max-field">
+          <label>Liều lượng mỗi lần</label>
+          <input type="text" id="max-input-dosage" class="modern-input" placeholder="Ví dụ: 1 viên, 2 viên, 5ml, 1 gói..." value="1 viên">
+          <div class="max-quick-chips" id="max-dosage-chips">
+            <span class="max-chip" data-dose="1 viên">1 viên</span>
+            <span class="max-chip" data-dose="2 viên">2 viên</span>
+            <span class="max-chip" data-dose="1/2 viên">1/2 viên</span>
+            <span class="max-chip" data-dose="5ml">5ml</span>
+            <span class="max-chip" data-dose="10ml">10ml</span>
+            <span class="max-chip" data-dose="1 gói">1 gói</span>
+          </div>
+        </div>
+
+        <!-- KHUNG GIỜ NHẮC TRONG NGÀY -->
+        <div class="max-field">
+          <label>Giờ nhắc uống thuốc trong ngày (chọn 1 hoặc nhiều)</label>
+          <div class="max-time-quick-grid">
+            <button type="button" class="max-time-chip" data-time="08:00">🌅 Sáng (08:00)</button>
+            <button type="button" class="max-time-chip" data-time="12:00">☀️ Trưa (12:00)</button>
+            <button type="button" class="max-time-chip" data-time="17:30">🌇 Chiều (17:30)</button>
+            <button type="button" class="max-time-chip" data-time="20:30">🌙 Tối (20:30)</button>
+          </div>
+          <div class="max-selected-times-wrap">
+            <span style="font-size:0.78rem;color:var(--text-muted);">Các giờ đã chọn:</span>
+            <div id="max-selected-times-list" class="max-selected-times-list"></div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <input type="time" id="max-custom-time-picker" class="modern-input" style="flex:1;">
+            <button type="button" id="btn-add-custom-time" class="btn secondary" style="font-size:0.8rem;padding:6px 12px;">+ Thêm giờ</button>
+          </div>
+        </div>
+
+        <!-- THỜI ĐIỂM UỐNG SO VỚI BỮA ĂN -->
+        <div class="max-field">
+          <label>Thời điểm uống</label>
+          <select id="max-select-meal" class="modern-select">
+            <option value="Sau bữa ăn (30 phút) 🍽️" selected>🍽️ Sau bữa ăn (30 phút)</option>
+            <option value="Trước bữa ăn (30 phút) ⏰">⏰ Trước bữa ăn (30 phút)</option>
+            <option value="Trong bữa ăn 🥗">🥗 Trong bữa ăn</option>
+            <option value="Khi bụng đói ⚡">⚡ Khi bụng đói</option>
+            <option value="Trước khi đi ngủ 🌙">🌙 Trước khi đi ngủ</option>
+            <option value="Bất kỳ lúc nào ✨">✨ Bất kỳ lúc nào</option>
+          </select>
+        </div>
+
+        <!-- GHI CHÚ -->
+        <div class="max-field">
+          <label>Ghi chú thêm</label>
+          <input type="text" id="max-input-notes" class="modern-input" placeholder="Ví dụ: Uống với nhiều nước ấm, để ngăn mát...">
         </div>
       </div>
 
-      <!-- TRANSCRIPT DISPLAY -->
-      <div class="va-content-box">
-        <div class="va-label">LỆNH CỦA BẠN:</div>
-        <div id="va-transcript" class="va-transcript">Đang chờ bạn nói... Thử lệnh: "Báo thức 7 giờ sáng", "Hẹn giờ 15 phút", "Mở Zalo", "Bật đèn pin"...</div>
-        <div id="va-feedback-box" class="va-feedback-box" style="display:none;">
-          <div id="va-action-pill" class="va-action-pill"></div>
-          <div id="va-feedback-text" class="va-feedback-text"></div>
-        </div>
-      </div>
-
-      <!-- ACTION BUTTONS -->
-      <div class="va-controls">
-        <button id="btn-va-switch-chat" class="va-btn secondary" title="Đưa nội dung này vào ô Chatbot chính">
-          💬 Về Chatbot
-        </button>
-        <button id="btn-va-mic-toggle" class="va-btn primary" title="Chạm để nói lệnh mới">
-          <span id="va-mic-btn-icon">🎙️</span>
-          <span id="va-mic-btn-text">Nói lại</span>
-        </button>
-        <button id="btn-va-stop-speaking" class="va-btn secondary" style="display:none;" title="Dừng đọc giọng nói">
-          ⏹️ Dừng đọc
-        </button>
-      </div>
-
-      <!-- QUICK SUGGESTIONS -->
-      <div class="va-suggestions">
-        <span class="va-sug-item" onclick="if(window.triggerVoiceSample) window.triggerVoiceSample('Cài báo thức trong 10 phút nữa')">⏰ Báo thức 10p nữa</span>
-        <span class="va-sug-item" onclick="if(window.triggerVoiceSample) window.triggerVoiceSample('Báo thức lúc 7 giờ sáng')">⏰ Báo thức 7h sáng</span>
-        <span class="va-sug-item" onclick="if(window.triggerVoiceSample) window.triggerVoiceSample('Hẹn giờ 15 phút')">⏳ Hẹn giờ 15p</span>
-        <span class="va-sug-item" onclick="if(window.triggerVoiceSample) window.triggerVoiceSample('Mở Zalo')">💬 Mở Zalo</span>
-        <span class="va-sug-item" onclick="if(window.triggerVoiceSample) window.triggerVoiceSample('Bật đèn pin')">🔦 Đèn pin</span>
-        <span class="va-sug-item" onclick="if(window.triggerVoiceSample) window.triggerVoiceSample('Chỉ đường đến Landmark 81')">🗺️ Chỉ đường</span>
+      <div class="max-form-footer">
+        <button type="button" id="btn-cancel-max-form" class="btn secondary">Hủy bỏ</button>
+        <button type="button" id="btn-save-max-med" class="btn primary">💾 Lưu vào Tủ thuốc</button>
       </div>
     </div>
   </div>
