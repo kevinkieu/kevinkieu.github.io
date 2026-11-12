@@ -259,16 +259,17 @@ import { GoogleGenAI } from "@google/genai";
             rafId = requestAnimationFrame(() => {
               try {
                 let toRender = latest;
-                const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true';
+                const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true' || ls.getItem('jarvis_hide_thinking') === 'true';
                 if (hideThinking) {
-                  toRender = toRender.replace(/<think>[\s\S]*?<\/think>/gi, '')
+                  toRender = toRender.replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>/gi, '')
                                      .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');
                 } else {
-                  toRender = toRender.replace(/<think>([\s\S]*?)<\/think>/gi, (m, p1) => {
+                  toRender = toRender.replace(/<(?:think|thought)>([\s\S]*?)<\/(?:think|thought)>/gi, (m, p1) => {
                     const clean = p1.trim();
                     if (!clean) return '';
                     const wc = Math.max(1, Math.round(clean.length / 4));
-                    return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
+                    const chars = clean.length;
+                    return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ • ${chars} ký tự - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
                   });
                 }
                 targetEl.innerHTML = marked.parse(toRender);
@@ -283,6 +284,68 @@ import { GoogleGenAI } from "@google/genai";
           await renderMsgContent(targetEl, finalText);
         }
       };
+    }
+
+    // --- REASONING ACCORDION & THINKING FORMATTER (GEMINI & DEEPSEEK) ---
+    function formatThinkingResponse(currentThinking, currentContent, modelDisplayName = 'AI') {
+      const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true' || ls.getItem('jarvis_hide_thinking') === 'true';
+
+      let displayThinking = currentThinking || '';
+      let displayContent = currentContent || '';
+
+      if (!displayThinking && (displayContent.includes('<think>') || displayContent.includes('<thought>'))) {
+        const match = displayContent.match(/<(?:think|thought)>([\s\S]*?)(?:<\/(?:think|thought)>|$)/i);
+        if (match) {
+          displayThinking = match[1];
+          displayContent = displayContent.replace(/<(?:think|thought)>[\s\S]*?(?:<\/(?:think|thought)>|$)/i, '').trim();
+        }
+      }
+
+      if (hideThinking) {
+        if (displayContent) {
+          return displayContent;
+        } else {
+          return `<div class="thinking-streaming"><span class="thinking-spinner">⏳</span> <em>${modelDisplayName} đang suy nghĩ...</em></div>`;
+        }
+      } else {
+        const wc = Math.max(1, Math.round(displayThinking.length / 4));
+        const chars = displayThinking.length;
+        if (displayContent) {
+          const thinkingBlock = displayThinking
+            ? `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ • ${chars} ký tự - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(displayThinking)}</div></details>\n\n`
+            : '';
+          return thinkingBlock + displayContent;
+        } else if (displayThinking) {
+          return `<div class="thinking-streaming"><span class="thinking-spinner">⏳</span> <em>${modelDisplayName} đang suy luận (${wc} từ • ${chars} ký tự)...</em></div>`;
+        }
+        return '';
+      }
+    }
+
+    function formatFinalThinkingResponse(currentThinking, currentContent, modelDisplayName = 'AI') {
+      const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true' || ls.getItem('jarvis_hide_thinking') === 'true';
+
+      let displayThinking = currentThinking || '';
+      let displayContent = currentContent || '';
+
+      if (!displayThinking && (displayContent.includes('<think>') || displayContent.includes('<thought>'))) {
+        const match = displayContent.match(/<(?:think|thought)>([\s\S]*?)(?:<\/(?:think|thought)>|$)/i);
+        if (match) {
+          displayThinking = match[1];
+          displayContent = displayContent.replace(/<(?:think|thought)>[\s\S]*?(?:<\/(?:think|thought)>|$)/i, '').trim();
+        }
+      }
+
+      if (hideThinking) {
+        return displayContent;
+      } else {
+        const wc = Math.max(1, Math.round(displayThinking.length / 4));
+        const chars = displayThinking.length;
+        const thinkingBlock = displayThinking
+          ? `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ • ${chars} ký tự - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(displayThinking)}</div></details>\n\n`
+          : '';
+        return thinkingBlock + (displayContent || (displayThinking ? '*(Đã hoàn tất quá trình suy luận)*' : ''));
+      }
     }
 
     // --- EXPORT & COPY HELPERS ---
@@ -3794,16 +3857,17 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     // --- MARKDOWN & SYNTAX HIGHLIGHTING RENDERER ---
     async function renderMsgContent(el, t) {
       t = t || "";
-      const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true';
+      const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true' || ls.getItem('jarvis_hide_thinking') === 'true';
       if (hideThinking) {
-        t = t.replace(/<think>[\s\S]*?<\/think>/gi, '')
+        t = t.replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>/gi, '')
              .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');
       } else {
-        t = t.replace(/<think>([\s\S]*?)<\/think>/gi, (m, p1) => {
+        t = t.replace(/<(?:think|thought)>([\s\S]*?)<\/(?:think|thought)>/gi, (m, p1) => {
           const clean = p1.trim();
           if (!clean) return '';
           const wc = Math.max(1, Math.round(clean.length / 4));
-          return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
+          const chars = clean.length;
+          return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ • ${chars} ký tự - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
         });
       }
       el.innerHTML = marked.parse(t.replace(/\[URL:\s*(https?:\/\/[^\s]+)\]/g, '<a href="$1" target="_blank" style="color:var(--primary);text-decoration:underline;">$1</a>'));
@@ -4765,25 +4829,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
                       if (deltaThinking) currentThinking += deltaThinking;
                       if (deltaText) currentContent += deltaText;
                       if (deltaThinking || deltaText) {
-                        const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true';
-                        if (hideThinking) {
-                          if (currentContent) {
-                            finalResp = currentContent;
-                          } else {
-                            finalResp = '<div class="thinking-streaming"><span class="thinking-spinner">⏳</span> <em>DeepSeek đang suy nghĩ...</em></div>';
-                          }
-                        } else {
-                          if (currentContent) {
-                            const wc = Math.max(1, Math.round(currentThinking.length / 4));
-                            const thinkingBlock = currentThinking
-                              ? `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(currentThinking)}</div></details>\n\n`
-                              : '';
-                            finalResp = thinkingBlock + currentContent;
-                          } else {
-                            const wc = Math.max(1, Math.round(currentThinking.length / 4));
-                            finalResp = `<div class="thinking-streaming"><span class="thinking-spinner">⏳</span> <em>DeepSeek đang suy luận (${wc} từ)...</em></div>`;
-                          }
-                        }
+                        finalResp = formatThinkingResponse(currentThinking, currentContent, 'DeepSeek');
                         renderer.push(finalResp);
                         if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
                         pS = true;
@@ -4793,24 +4839,21 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
                 }
               }
 
-              const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true';
-              if (hideThinking) {
-                finalResp = currentContent;
-              } else {
-                const wc = Math.max(1, Math.round(currentThinking.length / 4));
-                const thinkingBlock = currentThinking
-                  ? `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(currentThinking)}</div></details>\n\n`
-                  : '';
-                finalResp = thinkingBlock + (currentContent || (currentThinking ? '*(Đã hoàn tất quá trình suy luận)*' : ''));
-              }
-              await renderer.flush(finalResp);
+              finalResp = formatFinalThinkingResponse(currentThinking, currentContent, 'DeepSeek');
+              if (currentThinking || currentContent) {
+            finalResp = formatFinalThinkingResponse(currentThinking, currentContent, 'Gemini');
+          }
+          await renderer.flush(finalResp);
               pS = true;
             } catch (expErr) {
               if (expErr.name === 'AbortError' || abortController.signal.aborted) throw expErr;
               lastErr = expErr;
               if (pS) {
                 finalResp += `\n\n*(⚠️ Quá trình stream bị ngắt: ${expErr.message})*`;
-                await renderer.flush(finalResp);
+                if (currentThinking || currentContent) {
+            finalResp = formatFinalThinkingResponse(currentThinking, currentContent, 'Gemini');
+          }
+          await renderer.flush(finalResp);
               } else {
                 bD.remove();
                 return showToast(`Lỗi Experiential Labs: ${expErr.message}`, 'danger');
@@ -4940,30 +4983,44 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
           if (streamObj) {
             try {
+              let currentThinking = "";
+              let currentContent = "";
+
               for await (const event of streamObj) {
                 const foundId = event.interaction?.id || event.id || event.interaction_id;
                 if (foundId) recordedIxId = foundId;
 
                 let chunkText = "";
-                if (event.event_type === "step.delta" && event.delta?.type === "text") {
-                  chunkText = event.delta.text || "";
+                let chunkThought = "";
+                if (event.event_type === "step.delta") {
+                  if (event.delta?.type === "thought" || event.delta?.type === "reasoning") {
+                    chunkThought = event.delta.text || "";
+                  } else if (event.delta?.type === "text") {
+                    chunkText = event.delta.text || "";
+                  }
+                } else if (event.delta?.thought) {
+                  chunkThought = event.delta.thought;
                 } else if (event.delta?.text) {
                   chunkText = event.delta.text;
                 } else if (event.text) {
                   chunkText = event.text;
-                } else if (event.event_type === "interaction.completed" && !finalResp && event.interaction?.output_text) {
+                } else if (event.event_type === "interaction.completed" && !currentContent && event.interaction?.output_text) {
                   chunkText = event.interaction.output_text;
                 }
 
-                if (chunkText) {
+                if (chunkThought) currentThinking += chunkThought;
+                if (chunkText) currentContent += chunkText;
+
+                if (chunkThought || chunkText) {
                   bD.querySelector('.typing-bubble')?.remove();
-                  finalResp += chunkText;
+                  finalResp = formatThinkingResponse(currentThinking, currentContent, 'Gemini');
                   renderer.push(finalResp);
                   if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
                   pS = true;
                 }
               }
 
+              finalResp = formatFinalThinkingResponse(currentThinking, currentContent, 'Gemini');
               await renderer.flush(finalResp);
             } catch (streamErr) {
               lastErr = streamErr;
@@ -5032,6 +5089,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
           let streamAttempts = 0;
           const maxStreamAttempts = Math.max(Math.min(apiKeys.length || 1, 3), 2);
+          let currentThinking = "";
+          let currentContent = "";
 
           while (streamAttempts < maxStreamAttempts) {
             streamAttempts++;
@@ -5047,21 +5106,29 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
                 const reason = ck.candidates?.[0]?.finishReason;
                 if (reason && reason !== 'STOP') streamFinishReason = reason;
 
-                let chunkText = "";
-                try {
-                  chunkText = ck.text || "";
-                } catch (_) {}
+                let deltaThought = "";
+                let deltaText = "";
 
-                if (!chunkText && ck.candidates?.[0]?.content?.parts) {
-                  chunkText = ck.candidates[0].content.parts
-                    .filter(p => !p.thought && typeof p.text === 'string')
-                    .map(p => p.text)
-                    .join('');
+                if (ck.candidates?.[0]?.content?.parts) {
+                  for (const part of ck.candidates[0].content.parts) {
+                    if (part.thought) {
+                      if (typeof part.text === 'string') deltaThought += part.text;
+                    } else if (typeof part.text === 'string') {
+                      deltaText += part.text;
+                    }
+                  }
+                } else {
+                  try {
+                    deltaText = ck.text || "";
+                  } catch (_) {}
                 }
 
-                if (chunkText) {
+                if (deltaThought) currentThinking += deltaThought;
+                if (deltaText) currentContent += deltaText;
+
+                if (deltaThought || deltaText) {
                   bD.querySelector('.typing-bubble')?.remove();
-                  finalResp += chunkText;
+                  finalResp = formatThinkingResponse(currentThinking, currentContent, 'Gemini');
                   renderer.push(finalResp);
                   if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
                   pS = true;
@@ -5172,6 +5239,9 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
             showToast("Nội dung bị dừng do phát hiện trùng lặp bản quyền!", "warning");
           }
 
+          if (currentThinking || currentContent) {
+            finalResp = formatFinalThinkingResponse(currentThinking, currentContent, 'Gemini');
+          }
           await renderer.flush(finalResp);
         }
 
