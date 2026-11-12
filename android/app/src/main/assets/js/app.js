@@ -6086,14 +6086,22 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       if (fillEl) fillEl.style.width = `${percent}%`;
 
       if (speechEl) {
+        function getMaxGreeting() {
+          const h = new Date().getHours();
+          if (h >= 5 && h < 11) return "Gâu Gâu! Chào buổi sáng! Hãy khởi đầu ngày mới tràn đầy năng lượng và nhớ uống thuốc đầy đủ nhé!";
+          if (h >= 11 && h < 14) return "Gâu Gâu! Chúc bạn bữa trưa ngon miệng! Nhớ kiểm tra cữ thuốc buổi trưa nha!";
+          if (h >= 14 && h < 18) return "Gâu Gâu! Buổi chiều an lành! Đừng quên uống đủ nước và cữ thuốc buổi chiều nhé!";
+          return "Gâu Gâu! Buổi tối thư giãn! Nhớ cữ thuốc buổi tối trước khi nghỉ ngơi để ngủ thật ngon nhé!";
+        }
+
         if (total === 0) {
           speechEl.innerText = "Gâu Gâu! Chưa có lịch uống thuốc nào hôm nay. Hãy thêm thuốc vào Tủ nhé!";
         } else if (takenCount === total) {
-          speechEl.innerText = "Gâu Gâu! Tuyệt vời lắm! Bạn đã hoàn thành 100% liều thuốc hôm nay rồi!";
+          speechEl.innerText = "Gâu Gâu! Tuyệt vời lắm! Bạn đã hoàn thành tất cả các cữ thuốc hôm nay rồi!";
         } else if (takenCount > 0) {
-          speechEl.innerText = `Gâu Gâu! Giỏi lắm, đã uống ${takenCount} cữ rồi, chỉ còn ${total - takenCount} cữ nữa thôi!`;
+          speechEl.innerText = `Gâu Gâu! Đã uống ${takenCount}/${total} cữ rồi! Còn ${total - takenCount} cữ nữa thôi, cố lên nhé!`;
         } else {
-          speechEl.innerText = "Gâu Gâu! Chào buổi sáng! Nhớ uống thuốc đúng giờ để luôn khỏe mạnh nha!";
+          speechEl.innerText = getMaxGreeting();
         }
       }
 
@@ -6145,11 +6153,11 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
               <div class="max-med-icon-box">${icon}</div>
               <div class="max-med-info">
                 <div class="max-med-name">
-                  ${escapeHtml(m.name)}
-                  <span style="font-size:0.75rem;font-weight:700;color:#38bdf8;background:rgba(56,189,248,0.15);padding:1px 6px;border-radius:6px;margin-left:4px;">${item.timeStr}</span>
+                  <span>${escapeHtml(m.name)}</span>
+                  <span class="max-pill-time-tag">⏰ ${item.timeStr}</span>
                 </div>
                 <div class="max-med-meta">
-                  <span>Liều: <b>${escapeHtml(m.dosage || '1 liều')}</b></span>
+                  <span>💊 <b>${escapeHtml(m.dosage || '1 liều')}</b></span>
                   <span>• ${escapeHtml(m.meal || 'Sau bữa ăn')}</span>
                 </div>
               </div>
@@ -6266,12 +6274,15 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         }) : `${h.date} ${h.timeStr}`;
 
         html += `
-          <div class="max-history-row">
+          <div class="max-history-row" data-id="${h.id || ''}">
             <div class="max-hist-info">
               <span class="max-hist-name">🐶 ${escapeHtml(h.medName || 'Thuốc')}</span>
               <span class="max-hist-time">Đã uống lúc: ${timeStr} (Cữ: ${h.timeStr})</span>
             </div>
-            <span class="max-hist-status">✓ Đã uống</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="max-hist-status">✓ Đã uống</span>
+              <button class="max-btn-undo" title="Xóa mục này khỏi lịch sử" onclick="window.maxDeleteHistoryItem('${h.id || ''}', '${h.medId || ''}', ${h.timestamp || 0})">🗑️</button>
+            </div>
           </div>
         `;
       });
