@@ -267,9 +267,10 @@ import { GoogleGenAI } from "@google/genai";
                   toRender = toRender.replace(/<(?:think|thought)>([\s\S]*?)<\/(?:think|thought)>/gi, (m, p1) => {
                     const clean = p1.trim();
                     if (!clean) return '';
-                    const wc = Math.max(1, Math.round(clean.length / 4));
+                    const words = clean.split(/\s+/).filter(Boolean).length;
                     const chars = clean.length;
-                    return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ • ${chars} ký tự - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
+                    const tokens = Math.max(1, Math.round(chars / 4));
+                    return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
                   });
                 }
                 targetEl.innerHTML = marked.parse(toRender);
@@ -308,15 +309,18 @@ import { GoogleGenAI } from "@google/genai";
           return `<div class="thinking-streaming"><span class="thinking-spinner">⏳</span> <em>${modelDisplayName} đang suy nghĩ...</em></div>`;
         }
       } else {
-        const wc = Math.max(1, Math.round(displayThinking.length / 4));
-        const chars = displayThinking.length;
+        const clean = displayThinking.trim();
+        const words = clean ? clean.split(/\s+/).filter(Boolean).length : 0;
+        const chars = clean.length;
+        const tokens = Math.max(1, Math.round(chars / 4));
+
         if (displayContent) {
-          const thinkingBlock = displayThinking
-            ? `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ • ${chars} ký tự - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(displayThinking)}</div></details>\n\n`
+          const thinkingBlock = clean
+            ? `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>\n\n`
             : '';
           return thinkingBlock + displayContent;
-        } else if (displayThinking) {
-          return `<div class="thinking-streaming"><span class="thinking-spinner">⏳</span> <em>${modelDisplayName} đang suy luận (${wc} từ • ${chars} ký tự)...</em></div>`;
+        } else if (clean) {
+          return `<div class="thinking-streaming"><span class="thinking-spinner">⏳</span> <em>${modelDisplayName} đang suy luận (${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens)...</em></div>`;
         }
         return '';
       }
@@ -339,12 +343,15 @@ import { GoogleGenAI } from "@google/genai";
       if (hideThinking) {
         return displayContent;
       } else {
-        const wc = Math.max(1, Math.round(displayThinking.length / 4));
-        const chars = displayThinking.length;
-        const thinkingBlock = displayThinking
-          ? `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ • ${chars} ký tự - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(displayThinking)}</div></details>\n\n`
+        const clean = displayThinking.trim();
+        const words = clean ? clean.split(/\s+/).filter(Boolean).length : 0;
+        const chars = clean.length;
+        const tokens = Math.max(1, Math.round(chars / 4));
+
+        const thinkingBlock = clean
+          ? `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>\n\n`
           : '';
-        return thinkingBlock + (displayContent || (displayThinking ? '*(Đã hoàn tất quá trình suy luận)*' : ''));
+        return thinkingBlock + (displayContent || (clean ? '*(Đã hoàn tất quá trình suy luận)*' : ''));
       }
     }
 
@@ -3865,9 +3872,10 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         t = t.replace(/<(?:think|thought)>([\s\S]*?)<\/(?:think|thought)>/gi, (m, p1) => {
           const clean = p1.trim();
           if (!clean) return '';
-          const wc = Math.max(1, Math.round(clean.length / 4));
+          const words = clean.split(/\s+/).filter(Boolean).length;
           const chars = clean.length;
-          return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${wc} từ • ${chars} ký tự - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
+          const tokens = Math.max(1, Math.round(chars / 4));
+          return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
         });
       }
       el.innerHTML = marked.parse(t.replace(/\[URL:\s*(https?:\/\/[^\s]+)\]/g, '<a href="$1" target="_blank" style="color:var(--primary);text-decoration:underline;">$1</a>'));
@@ -5080,7 +5088,10 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
             maxOutputTokens: 8192
           };
           if (thk && thk !== 'none') {
-            config.thinkingConfig = { thinkingLevel: thk };
+            config.thinkingConfig = {
+              thinkingLevel: thk,
+              includeThoughts: true
+            };
           } else {
             config.temperature = DOM.temp?.value !== undefined ? +DOM.temp.value : 0.5;
             config.topP = DOM.topP?.value !== undefined ? +DOM.topP.value : 0.9;
@@ -5112,7 +5123,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
                 if (ck.candidates?.[0]?.content?.parts) {
                   for (const part of ck.candidates[0].content.parts) {
                     if (part.thought) {
-                      if (typeof part.text === 'string') deltaThought += part.text;
+                      const t = typeof part.thought === 'string' ? part.thought : (typeof part.text === 'string' ? part.text : '');
+                      if (t) deltaThought += t;
                     } else if (typeof part.text === 'string') {
                       deltaText += part.text;
                     }
@@ -5145,8 +5157,15 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
               if (!pS) {
                 console.warn(`generateContentStream lần ${streamAttempts} lỗi:`, e.message);
 
-                // A. Nếu lỗi do thinkingConfig (400 Bad Request): gỡ bỏ thinkingConfig và thử lại ngay
+                // A. Nếu lỗi do thinkingConfig (400 Bad Request): Thử chuyển sang thinkingBudget hoặc gỡ bỏ
                 if (config.thinkingConfig && (e.message?.includes('thinking') || e.message?.includes('400') || e.message?.includes('INVALID_ARGUMENT'))) {
+                  if (config.thinkingConfig.thinkingLevel) {
+                    const budgetMap = { minimal: 1024, low: 2048, medium: 4096, high: 8192 };
+                    const b = budgetMap[config.thinkingConfig.thinkingLevel] || -1;
+                    config.thinkingConfig = { thinkingBudget: b, includeThoughts: true };
+                    console.info(`[Fallback] Thử lại thinkingConfig với thinkingBudget: ${b}...`);
+                    continue;
+                  }
                   delete config.thinkingConfig;
                   config.temperature = 0.5;
                   console.info("[Fallback] Gỡ thinkingConfig, thử lại với cấu hình chuẩn...");
