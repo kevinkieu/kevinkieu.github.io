@@ -5850,596 +5850,745 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         enableHorizontalScrollAndDrag($('tabs-container'));
         enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
         enableHorizontalScrollAndDrag($('image-preview-grid'));
-        checkVoiceAssistantAutoLaunch();
+        initMaxMedicationReminder();
       });
     } else {
       enableHorizontalScrollAndDrag($('tabs-container'));
       enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
       enableHorizontalScrollAndDrag($('image-preview-grid'));
-      checkVoiceAssistantAutoLaunch();
+      initMaxMedicationReminder();
     }
 
     // ==========================================
-    // KHỐI: JARVIS 1-TAP VOICE ASSISTANT ENGINE
-    // (Tích hợp hệ thống Android: Báo thức, Hẹn giờ, Mở app, Đèn pin, Bản đồ, Lịch, AI)
+    // KHỐI: MAX CARE • NHẮC UỐNG THUỐC (PILL REMINDER)
+    // Mô phỏng app Max Care (com.artifyapp.mcare)
+    // CHỈ KÍCH HOẠT VÀ HIỂN THỊ KHI CHẠY TRONG NATIVE ANDROID APP
     // ==========================================
-    let vaRecognition = null;
-    let vaIsListening = false;
-    let vaSilenceTimer = null;
-    let vaCurrentTranscript = '';
-    let vaCurrentSpeechUtter = null;
 
-    function normalizeVi(str) {
-      if (!str) return '';
-      return str.toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/đ/g, 'd')
-        .replace(/[^a-z0-9\s:]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
+    let maxMedications = [];
+    let maxMedHistory = [];
+    let maxFormSelectedTimes = ['08:00'];
+    let maxEditingMedId = null;
+
+    function isNativeAndroidApp() {
+      return Boolean(window.JarvisNativeBridge && (window.JarvisNativeBridge.isNativeApp || window.JarvisNativeBridge.getItem));
     }
 
-    function parseVoiceCommand(rawText) {
-      const norm = normalizeVi(rawText);
-
-      // 1. ĐÈN PIN (FLASHLIGHT)
-      if (/^(bat|mo)\s+(den\s+pin|flash)/.test(norm) || norm === 'bat den pin' || norm === 'mo den pin') {
-        return { type: 'flashlight', enable: true, raw: rawText };
-      }
-      if (/^(tat)\s+(den\s+pin|flash)/.test(norm) || norm === 'tat den pin') {
-        return { type: 'flashlight', enable: false, raw: rawText };
-      }
-
-      // 2. BÁO THỨC (ALARM)
-      if (/bao\s*thuc|cai\s*bao\s*thuc|dat\s*bao\s*thuc|danh\s*thuc|keu\s*(toi\s*)?day|goi\s*(toi\s*)?day/.test(norm)) {
-        let hour = 7;
-        let minute = 0;
-        let foundTime = false;
-        let isRelative = false;
-        let relDesc = '';
-
-        // A. Kiểm tra thời gian tương đối (vd: "trong 10 phút nữa", "sau 15 phút", "20 phút nữa", "sau 1 tiếng", "nửa tiếng nữa")
-        const relHalfMatch = norm.match(/(?:trong|sau)?\s*nua\s*(?:tieng|gio)(?:\s*nua)?/);
-        const relMatch = norm.match(/(?:trong|sau)?\s*(\d+)\s*(phut|p|tieng|gio)(?:\s*nua)?/);
-
-        if (relHalfMatch) {
-          const now = new Date();
-          const target = new Date(now.getTime() + 30 * 60 * 1000);
-          hour = target.getHours();
-          minute = target.getMinutes();
-          foundTime = true;
-          isRelative = true;
-          relDesc = 'nửa tiếng nữa';
-        } else if (relMatch) {
-          const val = parseInt(relMatch[1], 10);
-          const unit = relMatch[2];
-          const offsetMins = (unit === 'tieng' || unit === 'gio') ? (val * 60) : val;
-          if (offsetMins > 0) {
-            const now = new Date();
-            const target = new Date(now.getTime() + offsetMins * 60 * 1000);
-            hour = target.getHours();
-            minute = target.getMinutes();
-            foundTime = true;
-            isRelative = true;
-            relDesc = `${val} ${unit.startsWith('t') || unit === 'gio' ? 'tiếng' : 'phút'} nữa`;
-          }
-        }
-
-        // B. Kiểm tra thời gian tuyệt đối (vd: "7 giờ 30", "6 rưỡi sáng", "8h kém 15", "14:00")
-        if (!foundTime) {
-          const m1 = norm.match(/(\d{1,2})\s*(gio|h|:)\s*(\d{1,2})?/);
-          if (m1) {
-            hour = parseInt(m1[1], 10);
-            minute = m1[3] ? parseInt(m1[3], 10) : 0;
-            foundTime = true;
-          } else {
-            const m2 = norm.match(/(\d{1,2})\s*ruoi/);
-            if (m2) {
-              hour = parseInt(m2[1], 10);
-              minute = 30;
-              foundTime = true;
-            }
-          }
-
-          if (foundTime) {
-            if (/ruoi/.test(norm) && minute === 0) minute = 30;
-            const kemMatch = norm.match(/kem\s*(\d{1,2})/);
-            if (kemMatch) {
-              const kemMin = parseInt(kemMatch[1], 10);
-              minute = 60 - kemMin;
-              hour = (hour - 1 + 24) % 24;
-            }
-            if (/chieu|toi|pm/.test(norm) && hour < 12) {
-              hour += 12;
-            } else if (/sang|am/.test(norm) && hour === 12) {
-              hour = 0;
-            } else if (/trua/.test(norm) && hour < 11) {
-              hour += 12;
-            }
-          }
-        }
-
-        if (foundTime) {
-          return { type: 'alarm', hour, minute, isRelative, relDesc, raw: rawText };
-        }
+    function initMaxMedicationReminder() {
+      if (!isNativeAndroidApp()) {
+        // Trên môi trường trình duyệt thông thường (GitHub Pages): Hoàn toàn không hiển thị
+        const btnHeader = $('btn-open-max-medication');
+        if (btnHeader) btnHeader.style.display = 'none';
+        const btnSidebar = $('btn-sidebar-max-medication');
+        if (btnSidebar) btnSidebar.style.display = 'none';
+        return;
       }
 
-      // 3. HẸN GIỜ (TIMER)
-      if (/hen\s*gio|dem\s*nguoc|bam\s*gio/.test(norm)) {
-        let totalSecs = 0;
-        const hMatch = norm.match(/(\d+)\s*(tieng|gio)/);
-        const mMatch = norm.match(/(\d+)\s*(phut|p)/);
-        const sMatch = norm.match(/(\d+)\s*(giay|s)/);
+      // Khi chạy trong Native Android App: Hiện các nút mở Max Care
+      const btnHeader = $('btn-open-max-medication');
+      if (btnHeader) btnHeader.style.display = 'inline-flex';
+      const btnSidebar = $('btn-sidebar-max-medication');
+      if (btnSidebar) btnSidebar.style.display = 'flex';
 
-        if (hMatch) totalSecs += parseInt(hMatch[1], 10) * 3600;
-        if (mMatch) totalSecs += parseInt(mMatch[1], 10) * 60;
-        if (sMatch) totalSecs += parseInt(sMatch[1], 10);
+      loadMedicationData();
+      updateMedicationBadge();
+      setupMaxEventListeners();
 
-        if (totalSecs === 0) {
-          const numOnly = norm.match(/(?:hen\s*gio|dem\s*nguoc)\s*(\d+)/);
-          if (numOnly) {
-            totalSecs = parseInt(numOnly[1], 10) * 60;
-          }
-        }
-
-        if (totalSecs > 0) {
-          return { type: 'timer', seconds: totalSecs, raw: rawText };
-        }
-      }
-
-      // 4. CHỈ ĐƯỜNG / BẢN ĐỒ (NAVIGATION)
-      const navMatch = norm.match(/(?:chi\s*duong|tim\s*duong|dan\s*duong|duong\s*di\s*den|duong\s*di\s*toi|di\s*den|di\s*toi)\s+(.+)/);
-      if (navMatch && !/bao\s*thuc|hen\s*gio/.test(norm)) {
-        let dest = rawText.substring(rawText.toLowerCase().indexOf(navMatch[1].split(' ')[0]) || 0);
-        dest = dest.replace(/^(den|toi|ve)\s+/i, '').trim();
-        if (dest) {
-          return { type: 'navigation', destination: dest, raw: rawText };
-        }
-      }
-
-      // 5. GỌI ĐIỆN (PHONE CALL)
-      const callMatch = norm.match(/(?:goi\s*dien|goi\s*cho|quay\s*so)\s*(?:cho\s*)?(\d{9,11})/);
-      if (callMatch) {
-        return { type: 'call', phone: callMatch[1], raw: rawText };
-      }
-
-      // 6. MỞ ỨNG DỤNG (OPEN APP)
-      const appMatch = norm.match(/^(?:mo|vao|bat|chay)\s+(?:ung\s*dung\s+|app\s+)?(.+)/);
-      if (appMatch) {
-        let targetApp = appMatch[1].trim();
-        if (!/^(den\s*pin|flash|bao\s*thuc|hen\s*gio)$/.test(targetApp)) {
-          targetApp = targetApp.replace(/\s+(cho\s*toi|cho\s*anh|len|ngay|gium|nhe)$/i, '').trim();
-          if (targetApp) {
-            return { type: 'open_app', appName: targetApp, raw: rawText };
-          }
-        }
-      }
-
-      // 7. LỊCH / NHẮC NHỞ (CALENDAR)
-      const calMatch = norm.match(/(?:nhac\s*toi|tao\s*lich|dat\s*lich|lich\s*hen)\s+(.+)/);
-      if (calMatch) {
-        return { type: 'calendar', title: calMatch[1], raw: rawText };
-      }
-
-      // 8. CÂU HỎI AI THÔNG THƯỜNG
-      return { type: 'ai_query', prompt: rawText };
+      // Đăng ký bridge toàn cục để mở tab từ Notification Android (intent extra "OPEN_TAB": "medication")
+      window.openMedicationTab = openMedicationModal;
+      window.onMedicationStatusChanged = function(medId, timeStr, status) {
+        loadMedicationData();
+        renderMaxTodaySchedule();
+        renderMaxCabinetList();
+        renderMaxHistoryList();
+        updateMedicationBadge();
+      };
     }
 
-    function setOrbState(state) {
-      const orb = $('va-orb');
-      const statusEl = $('va-status');
-      const orbIcon = $('va-orb-icon');
-      if (!orb) return;
-
-      orb.classList.remove('listening', 'processing', 'speaking');
-      if (state === 'listening') {
-        orb.classList.add('listening');
-        if (statusEl) statusEl.innerText = "Jarvis đang lắng nghe bạn nói...";
-        if (orbIcon) orbIcon.innerText = "🎙️";
-      } else if (state === 'processing') {
-        orb.classList.add('processing');
-        if (statusEl) statusEl.innerText = "Đang thực hiện lệnh...";
-        if (orbIcon) orbIcon.innerText = "⚡";
-      } else if (state === 'speaking') {
-        orb.classList.add('speaking');
-        if (statusEl) statusEl.innerText = "Jarvis đang phản hồi...";
-        if (orbIcon) orbIcon.innerText = "🔊";
-      } else {
-        if (statusEl) statusEl.innerText = "Chạm để nói lệnh mới";
-        if (orbIcon) orbIcon.innerText = "🎙️";
-      }
-    }
-
-    async function speakVoiceAssistant(text) {
-      if (!text) return;
-      setOrbState('speaking');
-      const stopBtn = $('btn-va-stop-speaking');
-      if (stopBtn) stopBtn.style.display = 'inline-flex';
-
+    function loadMedicationData() {
       try {
-        if (typeof window.playTextAudio === 'function') {
-          await window.playTextAudio(text, {
-            onEnd: () => {
-              setOrbState('idle');
-              if (stopBtn) stopBtn.style.display = 'none';
+        let medsRaw = null;
+        let histRaw = null;
+
+        if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.getItem === 'function') {
+          medsRaw = window.JarvisNativeBridge.getItem('jarvis_medications');
+          histRaw = window.JarvisNativeBridge.getItem('jarvis_med_history');
+        } else {
+          medsRaw = localStorage.getItem('jarvis_medications');
+          histRaw = localStorage.getItem('jarvis_med_history');
+        }
+
+        maxMedications = medsRaw ? JSON.parse(medsRaw) : [];
+        maxMedHistory = histRaw ? JSON.parse(histRaw) : [];
+
+        // Nếu mới cài lần đầu chưa có thuốc nào, thêm 1-2 mẫu thân thiện để người dùng trải nghiệm ngay
+        if (!maxMedications || maxMedications.length === 0) {
+          maxMedications = [
+            {
+              id: 'med_sample_1',
+              name: 'Vitamin C 500mg',
+              dosage: '1 viên',
+              type: 'pill',
+              icon: '💊',
+              times: ['08:00'],
+              meal: 'Sau bữa ăn (30 phút) 🍽️',
+              notes: 'Uống nhiều nước để hấp thu tốt',
+              active: true,
+              createdAt: Date.now()
             },
-            onError: () => {
-              setOrbState('idle');
-              if (stopBtn) stopBtn.style.display = 'none';
+            {
+              id: 'med_sample_2',
+              name: 'Omega 3 Dầu cá',
+              dosage: '2 viên',
+              type: 'capsule',
+              icon: '💊',
+              times: ['12:00', '20:30'],
+              meal: 'Trong bữa ăn 🥗',
+              notes: 'Tốt cho mắt và trí nhớ',
+              active: true,
+              createdAt: Date.now()
             }
-          });
-        } else if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-          const utter = new SpeechSynthesisUtterance(text);
-          utter.lang = 'vi-VN';
-          utter.rate = 1.05;
-          utter.onend = () => {
-            setOrbState('idle');
-            if (stopBtn) stopBtn.style.display = 'none';
-          };
-          utter.onerror = () => {
-            setOrbState('idle');
-            if (stopBtn) stopBtn.style.display = 'none';
-          };
-          window.speechSynthesis.speak(utter);
-        } else {
-          setOrbState('idle');
-          if (stopBtn) stopBtn.style.display = 'none';
+          ];
+          saveMedicationData(false);
         }
-      } catch (err) {
-        console.warn("Lỗi phát giọng nói:", err);
-        setOrbState('idle');
-        if (stopBtn) stopBtn.style.display = 'none';
-      }
-    }
-
-    async function fetchQuickAIAnswer(promptText) {
-      const k = (typeof apiKeys !== 'undefined' && apiKeys.length) ? apiKeys[0] : '';
-      if (!k) {
-        return "Dạ, em nghe anh nói rồi ạ. Để em trả lời chi tiết hơn, anh vui lòng thêm API Key trong cài đặt nhé!";
-      }
-      try {
-        const ai = new GoogleGenAI({ apiKey: k });
-        const res = await ai.models.generateContent({
-          model: 'gemini-3.1-flash-lite',
-          contents: promptText,
-          config: {
-            systemInstruction: "Bạn là Jarvis AI trợ lý cá nhân tiếng Việt. Hãy trả lời cực kỳ ngắn gọn, súc tích (1-2 câu), tự nhiên, thông minh và thân thiện để phản hồi bằng giọng nói cho người dùng.",
-            safetySettings: SAFETY,
-            maxOutputTokens: 120,
-            temperature: 0.6
-          }
-        });
-        return res.text || "Em đã hiểu ý anh rồi ạ!";
       } catch (e) {
-        console.warn("AI quick answer error:", e);
-        return "Dạ em đã ghi nhận câu hỏi của anh rồi ạ!";
+        console.warn('Lỗi nạp dữ liệu Max Care:', e);
+        maxMedications = [];
+        maxMedHistory = [];
       }
     }
 
-    async function handleVoiceCommandInput(rawText) {
-      if (!rawText || !rawText.trim()) return;
-      stopVoiceAssistantListening();
+    function saveMedicationData(syncAlarms = true) {
+      try {
+        const medsStr = JSON.stringify(maxMedications);
+        const histStr = JSON.stringify(maxMedHistory);
 
-      const transcriptEl = $('va-transcript');
-      const feedbackBox = $('va-feedback-box');
-      const actionPill = $('va-action-pill');
-      const feedbackText = $('va-feedback-text');
-
-      if (transcriptEl) {
-        transcriptEl.innerText = rawText.trim();
-        transcriptEl.classList.remove('interim');
-      }
-
-      setOrbState('processing');
-      if (feedbackBox) feedbackBox.style.display = 'flex';
-
-      const cmd = parseVoiceCommand(rawText);
-
-      if (cmd.type === 'flashlight') {
-        const ok = window.JarvisNativeBridge?.setFlashlight ? window.JarvisNativeBridge.setFlashlight(cmd.enable) : false;
-        if (actionPill) actionPill.innerHTML = cmd.enable ? "🔦 Bật đèn pin" : "🔦 Tắt đèn pin";
-        if (feedbackText) feedbackText.innerText = cmd.enable ? "Đã bật đèn pin của điện thoại." : "Đã tắt đèn pin.";
-        speakVoiceAssistant(cmd.enable ? "Em đã bật đèn pin rồi ạ!" : "Đã tắt đèn pin rồi ạ!");
-      }
-      else if (cmd.type === 'alarm') {
-        const timeStr = `${String(cmd.hour).padStart(2, '0')}:${String(cmd.minute).padStart(2, '0')}`;
-        const label = cmd.isRelative ? `Báo thức ${cmd.relDesc}` : "Báo thức Jarvis";
-        const ok = window.JarvisNativeBridge?.setAlarm ? window.JarvisNativeBridge.setAlarm(cmd.hour, cmd.minute, label) : false;
-        const relNotice = cmd.isRelative ? ` (${cmd.relDesc})` : '';
-        if (actionPill) actionPill.innerHTML = `⏰ Báo thức: ${timeStr}${relNotice}`;
-        if (feedbackText) feedbackText.innerText = ok ? `Đã cài báo thức lúc ${timeStr}${relNotice} vào ứng dụng Đồng hồ hệ thống.` : `Đã đặt báo thức lúc ${timeStr}${relNotice} trên máy.`;
-        speakVoiceAssistant(`Dạ, em đã đặt báo thức lúc ${timeStr}${cmd.isRelative ? ' (sau ' + cmd.relDesc + ')' : ''} cho anh rồi nhé!`);
-      }
-      else if (cmd.type === 'timer') {
-        const mins = Math.floor(cmd.seconds / 60);
-        const secs = cmd.seconds % 60;
-        const durStr = mins > 0 ? (mins + " phút" + (secs > 0 ? " " + secs + " giây" : "")) : (secs + " giây");
-        const ok = window.JarvisNativeBridge?.setTimer ? window.JarvisNativeBridge.setTimer(cmd.seconds, "Hẹn giờ Jarvis") : false;
-        if (actionPill) actionPill.innerHTML = `⏳ Hẹn giờ: ${durStr}`;
-        if (feedbackText) feedbackText.innerText = ok ? `Đã kích hoạt hẹn giờ ${durStr} trong ứng dụng Đồng hồ.` : `Đang hẹn giờ đếm ngược ${durStr}.`;
-        speakVoiceAssistant(`Đã hẹn giờ ${durStr} cho anh rồi ạ!`);
-      }
-      else if (cmd.type === 'open_app') {
-        const ok = window.JarvisNativeBridge?.openApp ? window.JarvisNativeBridge.openApp(cmd.appName) : false;
-        if (actionPill) actionPill.innerHTML = `🚀 Mở app: ${cmd.appName}`;
-        if (feedbackText) feedbackText.innerText = ok ? `Đang khởi chạy ứng dụng ${cmd.appName}...` : `Đang tìm và mở ${cmd.appName}...`;
-        speakVoiceAssistant(`Đang mở ${cmd.appName} cho anh ạ!`);
-      }
-      else if (cmd.type === 'navigation') {
-        const ok = window.JarvisNativeBridge?.openMapNavigation ? window.JarvisNativeBridge.openMapNavigation(cmd.destination) : false;
-        if (!ok) {
-          window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(cmd.destination)}`, '_blank');
-        }
-        if (actionPill) actionPill.innerHTML = `🗺️ Chỉ đường: ${cmd.destination}`;
-        if (feedbackText) feedbackText.innerText = `Đang mở Google Maps chỉ đường đến ${cmd.destination}...`;
-        speakVoiceAssistant(`Đang mở bản đồ chỉ đường đến ${cmd.destination} cho anh ạ!`);
-      }
-      else if (cmd.type === 'call') {
-        if (window.JarvisNativeBridge?.makeCall) {
-          window.JarvisNativeBridge.makeCall(cmd.phone);
+        if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.setItem === 'function') {
+          window.JarvisNativeBridge.setItem('jarvis_medications', medsStr);
+          window.JarvisNativeBridge.setItem('jarvis_med_history', histStr);
+          if (typeof window.JarvisNativeBridge.commit === 'function') {
+            window.JarvisNativeBridge.commit();
+          }
+          if (syncAlarms && typeof window.JarvisNativeBridge.rescheduleAllMedications === 'function') {
+            window.JarvisNativeBridge.rescheduleAllMedications();
+          }
         } else {
-          window.open(`tel:${cmd.phone}`);
+          localStorage.setItem('jarvis_medications', medsStr);
+          localStorage.setItem('jarvis_med_history', histStr);
         }
-        if (actionPill) actionPill.innerHTML = `📞 Gọi: ${cmd.phone}`;
-        if (feedbackText) feedbackText.innerText = `Đang mở giao diện quay số gọi đến ${cmd.phone}...`;
-        speakVoiceAssistant(`Đang mở màn hình gọi cho số ${cmd.phone}.`);
-      }
-      else if (cmd.type === 'calendar') {
-        if (window.JarvisNativeBridge?.addCalendarEvent) {
-          window.JarvisNativeBridge.addCalendarEvent(cmd.title, 0, 0, "");
-        }
-        if (actionPill) actionPill.innerHTML = `📅 Lịch hẹn: ${cmd.title}`;
-        if (feedbackText) feedbackText.innerText = `Đang mở ứng dụng Lịch để tạo sự kiện...`;
-        speakVoiceAssistant(`Đang mở lịch thêm sự kiện ${cmd.title} cho anh nhé!`);
-      }
-      else {
-        // AI Fallback
-        if (actionPill) actionPill.innerHTML = `✨ Jarvis AI`;
-        if (feedbackText) feedbackText.innerText = `Đang suy nghĩ...`;
-        const aiAnswer = await fetchQuickAIAnswer(cmd.prompt);
-        if (feedbackText) feedbackText.innerText = aiAnswer;
-        speakVoiceAssistant(aiAnswer);
+      } catch (e) {
+        console.warn('Lỗi lưu dữ liệu Max Care:', e);
       }
     }
 
-    // Callbacks nhận diện giọng nói từ Native Android SpeechRecognizer
-    window.onNativeVoiceState = function(state, msg) {
-      if (state === 'listening' || state === 'hearing') {
-        vaIsListening = true;
-        setOrbState('listening');
-        const micBtnText = $('va-mic-btn-text');
-        if (micBtnText) micBtnText.innerText = "Đang nghe...";
-      } else if (state === 'processing') {
-        setOrbState('processing');
+    function getTodayDateStr() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function updateMedicationBadge() {
+      const badge = $('max-med-badge');
+      if (!badge) return;
+
+      const todayStr = getTodayDateStr();
+      let totalDosesToday = 0;
+      let takenDosesToday = 0;
+
+      maxMedications.filter(m => m.active).forEach(med => {
+        (med.times || []).forEach(t => {
+          totalDosesToday++;
+          const isTaken = maxMedHistory.some(h => h.medId === med.id && h.timeStr === t && h.date === todayStr);
+          if (isTaken) takenDosesToday++;
+        });
+      });
+
+      const pending = Math.max(0, totalDosesToday - takenDosesToday);
+      if (pending > 0) {
+        badge.innerText = pending;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
       }
-      const statusEl = $('va-status');
-      if (statusEl && msg) statusEl.innerText = msg;
+    }
+
+    function openMedicationModal() {
+      const modal = $('max-medication-modal');
+      if (!modal) return;
+      loadMedicationData();
+      modal.style.display = 'flex';
+      switchMaxTab('today');
+    }
+
+    function closeMedicationModal() {
+      const modal = $('max-medication-modal');
+      if (modal) modal.style.display = 'none';
+      updateMedicationBadge();
+    }
+
+    function switchMaxTab(tabName) {
+      document.querySelectorAll('.max-nav-tab').forEach(t => {
+        t.classList.toggle('active', t.getAttribute('data-tab') === tabName);
+      });
+      document.querySelectorAll('.max-tab-content').forEach(c => c.classList.remove('active'));
+
+      const target = $('max-tab-view-' + tabName);
+      if (target) target.classList.add('active');
+
+      if (tabName === 'today') renderMaxTodaySchedule();
+      else if (tabName === 'cabinet') renderMaxCabinetList();
+      else if (tabName === 'history') renderMaxHistoryList();
+    }
+
+    function renderMaxTodaySchedule() {
+      const container = $('max-today-list');
+      if (!container) return;
+
+      const todayStr = getTodayDateStr();
+      const activeMeds = maxMedications.filter(m => m.active);
+
+      // Thu thập toàn bộ các cữ thuốc trong ngày
+      const allDoses = [];
+      activeMeds.forEach(med => {
+        (med.times || []).forEach(timeStr => {
+          const isTaken = maxMedHistory.some(h => h.medId === med.id && h.timeStr === timeStr && h.date === todayStr);
+          const historyRecord = maxMedHistory.find(h => h.medId === med.id && h.timeStr === timeStr && h.date === todayStr);
+          allDoses.push({
+            med,
+            timeStr,
+            isTaken,
+            takenRecord: historyRecord
+          });
+        });
+      });
+
+      // Sắp xếp theo giờ tăng dần (VD: 08:00 -> 12:00 -> 20:30)
+      allDoses.sort((a, b) => a.timeStr.localeCompare(b.timeStr));
+
+      // Cập nhật thanh tiến độ
+      const total = allDoses.length;
+      const takenCount = allDoses.filter(d => d.isTaken).length;
+      const percent = total > 0 ? Math.round((takenCount / total) * 100) : 0;
+
+      const textEl = $('max-progress-text');
+      const percentEl = $('max-progress-percent');
+      const fillEl = $('max-progress-bar-fill');
+      const speechEl = $('max-mascot-speech');
+
+      if (textEl) textEl.innerText = `Hôm nay: Đã uống ${takenCount}/${total} liều`;
+      if (percentEl) percentEl.innerText = `${percent}%`;
+      if (fillEl) fillEl.style.width = `${percent}%`;
+
+      if (speechEl) {
+        if (total === 0) {
+          speechEl.innerText = "Gâu Gâu! Chưa có lịch uống thuốc nào hôm nay. Hãy thêm thuốc vào Tủ nhé!";
+        } else if (takenCount === total) {
+          speechEl.innerText = "Gâu Gâu! Tuyệt vời lắm! Bạn đã hoàn thành 100% liều thuốc hôm nay rồi!";
+        } else if (takenCount > 0) {
+          speechEl.innerText = `Gâu Gâu! Giỏi lắm, đã uống ${takenCount} cữ rồi, chỉ còn ${total - takenCount} cữ nữa thôi!`;
+        } else {
+          speechEl.innerText = "Gâu Gâu! Chào buổi sáng! Nhớ uống thuốc đúng giờ để luôn khỏe mạnh nha!";
+        }
+      }
+
+      if (allDoses.length === 0) {
+        container.innerHTML = `
+          <div class="max-empty-state">
+            <div class="max-empty-mascot">🐶</div>
+            <div class="max-empty-title">Tủ thuốc đang trống</div>
+            <div class="max-empty-desc">Bạn chưa lên lịch uống thuốc nào. Hãy bấm sang tab <b>"Tủ thuốc"</b> để thêm thuốc mới nhé!</div>
+          </div>
+        `;
+        return;
+      }
+
+      // Phân nhóm theo 4 khung giờ: Sáng, Trưa, Chiều, Tối
+      const sections = {
+        morning: { label: '🌅 Buổi Sáng (06:00 - 11:00)', items: [] },
+        noon: { label: '☀️ Buổi Trưa (11:00 - 14:00)', items: [] },
+        afternoon: { label: '🌇 Buổi Chiều (14:00 - 18:00)', items: [] },
+        evening: { label: '🌙 Buổi Tối (18:00 - 23:59)', items: [] }
+      };
+
+      allDoses.forEach(dose => {
+        const hour = parseInt(dose.timeStr.split(':')[0], 10);
+        if (hour < 11) sections.morning.items.push(dose);
+        else if (hour < 14) sections.noon.items.push(dose);
+        else if (hour < 18) sections.afternoon.items.push(dose);
+        else sections.evening.items.push(dose);
+      });
+
+      let html = '';
+      Object.keys(sections).forEach(secKey => {
+        const sec = sections[secKey];
+        if (sec.items.length === 0) return;
+
+        html += `
+          <div class="max-time-section">
+            <div class="max-time-section-title">${sec.label}</div>
+        `;
+
+        sec.items.forEach(item => {
+          const m = item.med;
+          const cardClass = item.isTaken ? 'max-med-card is-taken' : 'max-med-card';
+          const icon = m.icon || '💊';
+          const takenTimeDisplay = item.takenRecord ? new Date(item.takenRecord.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : item.timeStr;
+
+          html += `
+            <div class="${cardClass}" data-id="${m.id}" data-time="${item.timeStr}">
+              <div class="max-med-icon-box">${icon}</div>
+              <div class="max-med-info">
+                <div class="max-med-name">
+                  ${escapeHtml(m.name)}
+                  <span style="font-size:0.75rem;font-weight:700;color:#38bdf8;background:rgba(56,189,248,0.15);padding:1px 6px;border-radius:6px;margin-left:4px;">${item.timeStr}</span>
+                </div>
+                <div class="max-med-meta">
+                  <span>Liều: <b>${escapeHtml(m.dosage || '1 liều')}</b></span>
+                  <span>• ${escapeHtml(m.meal || 'Sau bữa ăn')}</span>
+                </div>
+              </div>
+              <div class="max-med-actions">
+          `;
+
+          if (item.isTaken) {
+            html += `
+                <div class="max-badge-taken">
+                  ✓ Đã uống (${takenTimeDisplay})
+                </div>
+                <button class="max-btn-undo" title="Hoàn tác (chưa uống)" onclick="window.maxUndoTaken('${m.id}', '${item.timeStr}')">↩️</button>
+            `;
+          } else {
+            html += `
+                <button class="max-btn-taken" onclick="window.maxMarkTaken('${m.id}', '${item.timeStr}')">
+                  ✅ Uống ngay
+                </button>
+            `;
+          }
+
+          html += `
+              </div>
+            </div>
+          `;
+        });
+
+        html += `</div>`;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function renderMaxCabinetList() {
+      const container = $('max-cabinet-list');
+      if (!container) return;
+
+      if (maxMedications.length === 0) {
+        container.innerHTML = `
+          <div class="max-empty-state">
+            <div class="max-empty-mascot">💊</div>
+            <div class="max-empty-title">Chưa có thuốc trong tủ</div>
+            <div class="max-empty-desc">Bấm nút <b>"+ Thêm thuốc mới"</b> phía trên để thêm đơn thuốc hoặc vitamin của bạn.</div>
+          </div>
+        `;
+        return;
+      }
+
+      let html = '';
+      maxMedications.forEach(m => {
+        const icon = m.icon || '💊';
+        const timesPills = (m.times || []).map(t => `<span class="max-cab-time-tag">⏰ ${t}</span>`).join(' ');
+
+        html += `
+          <div class="max-cabinet-item" data-id="${m.id}">
+            <div class="max-cab-main">
+              <div class="max-med-icon-box">${icon}</div>
+              <div class="max-med-info">
+                <div class="max-med-name">${escapeHtml(m.name)}</div>
+                <div class="max-med-meta">
+                  <span>${escapeHtml(m.dosage || '1 liều')}</span>
+                  <span>• ${escapeHtml(m.meal || 'Sau bữa ăn')}</span>
+                </div>
+                <div class="max-cab-times">${timesPills}</div>
+              </div>
+            </div>
+            <div class="max-cab-controls">
+              <label class="max-switch" title="Bật/Tắt chuông nhắc thuốc này">
+                <input type="checkbox" ${m.active ? 'checked' : ''} onchange="window.maxToggleActive('${m.id}', this.checked)">
+                <span class="max-slider"></span>
+              </label>
+              <button class="max-icon-btn" title="Chỉnh sửa thuốc" onclick="window.maxEditMedicine('${m.id}')">✏️</button>
+              <button class="max-icon-btn" title="Xóa thuốc khỏi tủ" onclick="window.maxDeleteMedicine('${m.id}')">🗑️</button>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function renderMaxHistoryList() {
+      const container = $('max-history-list');
+      const totalTakenEl = $('max-history-total-taken');
+      const streakEl = $('max-history-streak');
+
+      if (!container) return;
+
+      if (totalTakenEl) totalTakenEl.innerText = maxMedHistory.length;
+
+      // Tính chuỗi ngày liên tục uống thuốc
+      const uniqueDays = new Set(maxMedHistory.map(h => h.date));
+      if (streakEl) streakEl.innerText = `${uniqueDays.size} ngày`;
+
+      if (maxMedHistory.length === 0) {
+        container.innerHTML = `
+          <div class="max-empty-state">
+            <div class="max-empty-mascot">📊</div>
+            <div class="max-empty-title">Chưa có nhật ký uống thuốc</div>
+            <div class="max-empty-desc">Khi bạn bấm xác nhận "Đã uống" hoặc bấm trên thông báo Android, Max sẽ ghi nhận lịch sử tại đây.</div>
+          </div>
+        `;
+        return;
+      }
+
+      // Sắp xếp giảm dần theo thời gian (mới nhất lên đầu)
+      const sorted = [...maxMedHistory].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+      let html = '';
+      sorted.slice(0, 50).forEach(h => {
+        const timeStr = h.timestamp ? new Date(h.timestamp).toLocaleString('vi-VN', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        }) : `${h.date} ${h.timeStr}`;
+
+        html += `
+          <div class="max-history-row">
+            <div class="max-hist-info">
+              <span class="max-hist-name">🐶 ${escapeHtml(h.medName || 'Thuốc')}</span>
+              <span class="max-hist-time">Đã uống lúc: ${timeStr} (Cữ: ${h.timeStr})</span>
+            </div>
+            <span class="max-hist-status">✓ Đã uống</span>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    // Window action bindings
+    window.maxMarkTaken = function(medId, timeStr) {
+      const med = maxMedications.find(m => m.id === medId);
+      if (!med) return;
+
+      const todayStr = getTodayDateStr();
+      const existing = maxMedHistory.find(h => h.medId === medId && h.timeStr === timeStr && h.date === todayStr);
+      if (existing) return;
+
+      const record = {
+        id: 'take_' + Date.now(),
+        medId: medId,
+        medName: med.name,
+        timeStr: timeStr,
+        date: todayStr,
+        timestamp: Date.now()
+      };
+
+      maxMedHistory.push(record);
+      saveMedicationData(false);
+
+      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.markMedicationTakenNative === 'function') {
+        window.JarvisNativeBridge.markMedicationTakenNative(medId, med.name, timeStr);
+      }
+
+      renderMaxTodaySchedule();
+      updateMedicationBadge();
+      showToast(`🐶 Max: Giỏi lắm! Đã ghi nhận bạn uống ${med.name}`, 'success');
     };
 
-    window.onNativeVoiceRms = function(rmsdB) {
-      const bars = document.querySelectorAll('#va-wave-bars span');
-      if (bars && bars.length) {
-        const h = Math.min(26, Math.max(6, (rmsdB + 2) * 2.8));
-        bars.forEach((b, i) => {
-          const factor = 1 - Math.abs(i - 2) * 0.2;
-          b.style.height = `${h * factor}px`;
+    window.maxUndoTaken = function(medId, timeStr) {
+      const todayStr = getTodayDateStr();
+      const idx = maxMedHistory.findIndex(h => h.medId === medId && h.timeStr === timeStr && h.date === todayStr);
+      if (idx !== -1) {
+        maxMedHistory.splice(idx, 1);
+        saveMedicationData(false);
+        renderMaxTodaySchedule();
+        updateMedicationBadge();
+        showToast('Đã hoàn tác cữ thuốc.', 'info');
+      }
+    };
+
+    window.maxToggleActive = function(medId, active) {
+      const med = maxMedications.find(m => m.id === medId);
+      if (!med) return;
+      med.active = active;
+      saveMedicationData(true);
+      renderMaxTodaySchedule();
+      updateMedicationBadge();
+      showToast(active ? `Đã bật chuông nhắc cho ${med.name}` : `Đã tạm tắt nhắc nhở cho ${med.name}`, 'info');
+    };
+
+    window.maxDeleteMedicine = function(medId) {
+      const med = maxMedications.find(m => m.id === medId);
+      if (!med) return;
+      if (!confirm(`Bạn có chắc muốn xóa "${med.name}" khỏi Tủ thuốc không?`)) return;
+
+      // Hủy toàn bộ alarm trên Android native
+      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.cancelMedicationAlarm === 'function') {
+        (med.times || []).forEach(t => {
+          window.JarvisNativeBridge.cancelMedicationAlarm(med.id, t);
         });
       }
+
+      maxMedications = maxMedications.filter(m => m.id !== medId);
+      saveMedicationData(true);
+      renderMaxCabinetList();
+      renderMaxTodaySchedule();
+      updateMedicationBadge();
+      showToast(`Đã xóa "${med.name}" khỏi tủ thuốc.`, 'info');
     };
 
-    window.onNativeVoiceResult = function(recognizedText, isFinal) {
-      const transcriptEl = $('va-transcript');
-      if (!transcriptEl) return;
-
-      const text = (recognizedText || '').trim();
-      if (!text) return;
-
-      transcriptEl.innerText = text;
-      if (!isFinal) {
-        transcriptEl.classList.add('interim');
-        if (vaSilenceTimer) clearTimeout(vaSilenceTimer);
-        vaSilenceTimer = setTimeout(() => {
-          handleVoiceCommandInput(text);
-        }, 1100);
-      } else {
-        transcriptEl.classList.remove('interim');
-        if (vaSilenceTimer) clearTimeout(vaSilenceTimer);
-        handleVoiceCommandInput(text);
-      }
+    window.maxEditMedicine = function(medId) {
+      const med = maxMedications.find(m => m.id === medId);
+      if (!med) return;
+      openMaxFormModal(med);
     };
 
-    window.onNativeVoiceError = function(errMsg, errorCode) {
-      console.warn("Native voice error:", errMsg, errorCode);
-      vaIsListening = false;
-      setOrbState('idle');
-      const statusEl = $('va-status');
-      if (statusEl) {
-        statusEl.innerText = `${errMsg || "Chưa nghe rõ"} (chạm 'Nói lại' hoặc 'Google Mic')`;
+    function openMaxFormModal(editMed = null) {
+      const formModal = $('max-form-modal');
+      if (!formModal) return;
+
+      maxEditingMedId = editMed ? editMed.id : null;
+      const titleEl = $('max-form-title');
+      if (titleEl) titleEl.innerText = editMed ? '✏️ Chỉnh sửa thuốc' : '➕ Thêm thuốc vào Tủ';
+
+      const nameInput = $('max-input-name');
+      const dosageInput = $('max-input-dosage');
+      const mealSelect = $('max-select-meal');
+      const notesInput = $('max-input-notes');
+
+      if (nameInput) nameInput.value = editMed ? editMed.name : '';
+      if (dosageInput) dosageInput.value = editMed ? (editMed.dosage || '1 viên') : '1 viên';
+      if (mealSelect && editMed && editMed.meal) mealSelect.value = editMed.meal;
+      if (notesInput) notesInput.value = editMed ? (editMed.notes || '') : '';
+
+      // Type & Icon selector
+      const currentType = editMed ? (editMed.type || 'pill') : 'pill';
+      document.querySelectorAll('.max-type-opt').forEach(opt => {
+        opt.classList.toggle('active', opt.getAttribute('data-type') === currentType);
+      });
+
+      // Times list
+      maxFormSelectedTimes = editMed && editMed.times && editMed.times.length ? [...editMed.times] : ['08:00'];
+      renderFormSelectedTimes();
+
+      formModal.style.display = 'flex';
+    }
+
+    function closeMaxFormModal() {
+      const formModal = $('max-form-modal');
+      if (formModal) formModal.style.display = 'none';
+      maxEditingMedId = null;
+    }
+
+    function renderFormSelectedTimes() {
+      const container = $('max-selected-times-list');
+      if (!container) return;
+
+      maxFormSelectedTimes.sort();
+
+      // Cập nhật trạng thái active cho quick time chips
+      document.querySelectorAll('.max-time-chip').forEach(btn => {
+        const timeVal = btn.getAttribute('data-time');
+        btn.classList.toggle('selected', maxFormSelectedTimes.includes(timeVal));
+      });
+
+      let html = '';
+      maxFormSelectedTimes.forEach((t, i) => {
+        html += `
+          <span class="max-time-pill">
+            ⏰ ${t}
+            <span class="max-time-pill-del" onclick="window.maxRemoveFormTime(${i})" title="Bỏ giờ này">&times;</span>
+          </span>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    window.maxRemoveFormTime = function(index) {
+      if (maxFormSelectedTimes.length <= 1) {
+        showToast('Cần ít nhất 1 khung giờ uống thuốc trong ngày.', 'warning');
+        return;
       }
-      const micBtnText = $('va-mic-btn-text');
-      if (micBtnText) micBtnText.innerText = "Nói lại";
+      maxFormSelectedTimes.splice(index, 1);
+      renderFormSelectedTimes();
     };
 
-    function startVoiceAssistantListening() {
-      const transcriptEl = $('va-transcript');
-      const feedbackBox = $('va-feedback-box');
+    function saveMedicineFromForm() {
+      const nameInput = $('max-input-name');
+      const dosageInput = $('max-input-dosage');
+      const mealSelect = $('max-select-meal');
+      const notesInput = $('max-input-notes');
 
-      if (feedbackBox) feedbackBox.style.display = 'none';
-      if (transcriptEl) {
-        transcriptEl.innerText = "Đang lắng nghe... Hãy nói lệnh của bạn!";
-        transcriptEl.classList.remove('interim');
-      }
-
-      stopVoiceAssistantListening();
-      if (typeof window.stopCurrentSpeaking === 'function') window.stopCurrentSpeaking();
-
-      // 1. NẾU CHẠY TRÊN ỨNG DỤNG NATIVE ANDROID: Dùng Google SpeechRecognizer gốc
-      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.startListening === 'function') {
-        vaIsListening = true;
-        setOrbState('listening');
-        const micBtnText = $('va-mic-btn-text');
-        if (micBtnText) micBtnText.innerText = "Đang nghe...";
-        window.JarvisNativeBridge.startListening();
+      const name = nameInput ? nameInput.value.trim() : '';
+      if (!name) {
+        showToast('Vui lòng nhập tên thuốc hoặc thực phẩm chức năng!', 'warning');
+        if (nameInput) nameInput.focus();
         return;
       }
 
-      // 2. NẾU CHẠY TRÊN TRÌNH DUYỆT WEB (PC Chrome/Cốc Cốc): Dùng Web Speech API
-      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRec) {
-        setOrbState('idle');
-        if (transcriptEl) transcriptEl.innerText = "Trình duyệt không hỗ trợ Web Speech. Vui lòng bấm vào các gợi ý bên dưới!";
+      if (maxFormSelectedTimes.length === 0) {
+        showToast('Vui lòng chọn ít nhất một khung giờ uống thuốc!', 'warning');
         return;
       }
 
-      try {
-        vaRecognition = new SpeechRec();
-        vaRecognition.lang = 'vi-VN';
-        vaRecognition.continuous = true;
-        vaRecognition.interimResults = true;
+      const dosage = dosageInput ? (dosageInput.value.trim() || '1 liều') : '1 liều';
+      const meal = mealSelect ? mealSelect.value : 'Sau bữa ăn (30 phút) 🍽️';
+      const notes = notesInput ? notesInput.value.trim() : '';
 
-        vaRecognition.onstart = () => {
-          vaIsListening = true;
-          setOrbState('listening');
-          const micBtnText = $('va-mic-btn-text');
-          if (micBtnText) micBtnText.innerText = "Đang nghe...";
-        };
+      const activeTypeOpt = document.querySelector('.max-type-opt.active');
+      const type = activeTypeOpt ? activeTypeOpt.getAttribute('data-type') : 'pill';
+      const icon = activeTypeOpt ? (activeTypeOpt.getAttribute('data-icon') || '💊') : '💊';
 
-        vaRecognition.onresult = (event) => {
-          let finalTxt = '';
-          let interimTxt = '';
-
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) finalTxt += event.results[i][0].transcript;
-            else interimTxt += event.results[i][0].transcript;
+      if (maxEditingMedId) {
+        // Cập nhật thuốc cũ
+        const med = maxMedications.find(m => m.id === maxEditingMedId);
+        if (med) {
+          // Hủy các alarm cũ
+          if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.cancelMedicationAlarm === 'function') {
+            (med.times || []).forEach(t => window.JarvisNativeBridge.cancelMedicationAlarm(med.id, t));
           }
-
-          const current = (finalTxt || interimTxt).trim();
-          if (current && transcriptEl) {
-            transcriptEl.innerText = current;
-            if (!finalTxt) transcriptEl.classList.add('interim');
-            else transcriptEl.classList.remove('interim');
-          }
-
-          if (finalTxt.trim()) {
-            vaCurrentTranscript = finalTxt.trim();
-            if (vaSilenceTimer) clearTimeout(vaSilenceTimer);
-            vaSilenceTimer = setTimeout(() => {
-              handleVoiceCommandInput(vaCurrentTranscript);
-            }, 800);
-          } else if (interimTxt.trim()) {
-            vaCurrentTranscript = interimTxt.trim();
-            if (vaSilenceTimer) clearTimeout(vaSilenceTimer);
-            vaSilenceTimer = setTimeout(() => {
-              handleVoiceCommandInput(vaCurrentTranscript);
-            }, 1400);
-          }
-        };
-
-        vaRecognition.onerror = (e) => {
-          console.warn("Speech recognition error:", e);
-          vaIsListening = false;
-          setOrbState('idle');
-          const micBtnText = $('va-mic-btn-text');
-          if (micBtnText) micBtnText.innerText = "Nói lại";
-        };
-
-        vaRecognition.onend = () => {
-          vaIsListening = false;
-          const micBtnText = $('va-mic-btn-text');
-          if (micBtnText) micBtnText.innerText = "Nói lại";
-        };
-
-        vaRecognition.start();
-      } catch (err) {
-        console.warn("Không thể khởi động SpeechRecognition:", err);
-        setOrbState('idle');
-      }
-    }
-
-    function stopVoiceAssistantListening() {
-      if (vaSilenceTimer) {
-        clearTimeout(vaSilenceTimer);
-        vaSilenceTimer = null;
-      }
-      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.stopListening === 'function') {
-        try { window.JarvisNativeBridge.stopListening(); } catch {}
-      }
-      if (vaRecognition) {
-        try { vaRecognition.stop(); } catch {}
-        vaRecognition = null;
-      }
-      vaIsListening = false;
-      const micBtnText = $('va-mic-btn-text');
-      if (micBtnText) micBtnText.innerText = "Nói lại";
-    }
-
-    function openVoiceAssistantModal() {
-      const modal = $('voice-assistant-overlay');
-      if (!modal) return;
-      modal.style.display = 'flex';
-      startVoiceAssistantListening();
-    }
-
-    function closeVoiceAssistantModal() {
-      const modal = $('voice-assistant-overlay');
-      if (!modal) return;
-      stopVoiceAssistantListening();
-      if (typeof window.stopCurrentSpeaking === 'function') window.stopCurrentSpeaking();
-      modal.style.display = 'none';
-      setOrbState('idle');
-    }
-
-    function checkVoiceAssistantAutoLaunch() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const isVoiceUrl = urlParams.get('mode') === 'voice_command';
-      const isNativeVoice = window.JarvisNativeBridge?.isVoiceLaunchMode && window.JarvisNativeBridge.isVoiceLaunchMode();
-
-      if (isVoiceUrl || isNativeVoice) {
-        setTimeout(() => {
-          openVoiceAssistantModal();
-        }, 350);
-      }
-    }
-
-    window.triggerVoiceAssistantMode = function() {
-      openVoiceAssistantModal();
-    };
-
-    window.triggerVoiceSample = function(sampleText) {
-      if (!sampleText) return;
-      openVoiceAssistantModal();
-      handleVoiceCommandInput(sampleText);
-    };
-
-    // Gắn sự kiện các nút điều khiển của Voice Assistant Modal
-    $('btn-va-close')?.addEventListener('click', closeVoiceAssistantModal);
-
-    $('btn-va-mic-toggle')?.addEventListener('click', () => {
-      startVoiceAssistantListening();
-    });
-
-    $('va-orb')?.addEventListener('click', () => {
-      startVoiceAssistantListening();
-    });
-
-    $('btn-va-stop-speaking')?.addEventListener('click', () => {
-      if (typeof window.stopCurrentSpeaking === 'function') window.stopCurrentSpeaking();
-      setOrbState('idle');
-      $('btn-va-stop-speaking').style.display = 'none';
-    });
-
-    $('btn-va-switch-chat')?.addEventListener('click', () => {
-      const transcript = $('va-transcript')?.innerText;
-      const feedback = $('va-feedback-text')?.innerText;
-      closeVoiceAssistantModal();
-      const input = $('user-input');
-      if (input) {
-        if (transcript && !transcript.startsWith('Đang')) {
-          input.value = transcript;
-          autoResize(input);
+          med.name = name;
+          med.dosage = dosage;
+          med.type = type;
+          med.icon = icon;
+          med.times = [...maxFormSelectedTimes];
+          med.meal = meal;
+          med.notes = notes;
         }
-        input.focus();
+      } else {
+        // Thêm thuốc mới
+        const newMed = {
+          id: 'med_' + Date.now(),
+          name: name,
+          dosage: dosage,
+          type: type,
+          icon: icon,
+          times: [...maxFormSelectedTimes],
+          meal: meal,
+          notes: notes,
+          active: true,
+          createdAt: Date.now()
+        };
+        maxMedications.push(newMed);
       }
-    });
+
+      saveMedicationData(true);
+      closeMaxFormModal();
+      renderMaxCabinetList();
+      renderMaxTodaySchedule();
+      updateMedicationBadge();
+      showToast(`🐶 Max: Đã lưu "${name}" vào Tủ thuốc thành công!`, 'success');
+    }
+
+    function setupMaxEventListeners() {
+      // Đóng modal
+      $('btn-close-max-med')?.addEventListener('click', closeMedicationModal);
+      $('btn-close-max-form')?.addEventListener('click', closeMaxFormModal);
+      $('btn-cancel-max-form')?.addEventListener('click', closeMaxFormModal);
+
+      // Chuyển tab
+      document.querySelectorAll('.max-nav-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tab = btn.getAttribute('data-tab');
+          switchMaxTab(tab);
+        });
+      });
+
+      // Mở form thêm mới
+      $('btn-add-new-med')?.addEventListener('click', () => openMaxFormModal());
+
+      // Thử chuông thông báo Max (3 giây sau reo)
+      $('btn-test-notification')?.addEventListener('click', () => {
+        if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.testMedicationReminder === 'function') {
+          window.JarvisNativeBridge.testMedicationReminder('Panadol Extra', '1 viên', 'Sau bữa ăn 🍽️');
+          showToast('🐶 Max: Chuông thông báo mẫu sẽ reo sau 3 giây trên điện thoại...', 'info');
+        } else {
+          showToast('🐶 Max: Tính năng thử chuông chỉ hoạt động trên ứng dụng Android.', 'info');
+        }
+      });
+
+      // Xóa toàn bộ lịch sử
+      $('btn-clear-med-history')?.addEventListener('click', () => {
+        if (!confirm('Bạn có chắc muốn xóa toàn bộ lịch sử uống thuốc không?')) return;
+        maxMedHistory = [];
+        saveMedicationData(false);
+        renderMaxHistoryList();
+        renderMaxTodaySchedule();
+        updateMedicationBadge();
+        showToast('Đã xóa toàn bộ lịch sử uống thuốc.', 'info');
+      });
+
+      // Gợi ý tên thuốc
+      document.querySelectorAll('#max-name-chips .max-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const name = chip.getAttribute('data-name');
+          const input = $('max-input-name');
+          if (input && name) {
+            input.value = name;
+            input.focus();
+          }
+        });
+      });
+
+      // Gợi ý liều lượng
+      document.querySelectorAll('#max-dosage-chips .max-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const dose = chip.getAttribute('data-dose');
+          const input = $('max-input-dosage');
+          if (input && dose) input.value = dose;
+        });
+      });
+
+      // Chọn dạng thuốc (Type selector)
+      document.querySelectorAll('.max-type-opt').forEach(opt => {
+        opt.addEventListener('click', () => {
+          document.querySelectorAll('.max-type-opt').forEach(o => o.classList.remove('active'));
+          opt.classList.add('active');
+        });
+      });
+
+      // Chọn nhanh giờ (Sáng 08:00, Trưa 12:00, Chiều 17:30, Tối 20:30)
+      document.querySelectorAll('.max-time-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const timeVal = btn.getAttribute('data-time');
+          if (!timeVal) return;
+          const idx = maxFormSelectedTimes.indexOf(timeVal);
+          if (idx === -1) {
+            maxFormSelectedTimes.push(timeVal);
+          } else {
+            if (maxFormSelectedTimes.length <= 1) {
+              showToast('Cần ít nhất 1 khung giờ uống thuốc.', 'warning');
+              return;
+            }
+            maxFormSelectedTimes.splice(idx, 1);
+          }
+          renderFormSelectedTimes();
+        });
+      });
+
+      // Thêm giờ tùy chỉnh (custom time picker)
+      $('btn-add-custom-time')?.addEventListener('click', () => {
+        const picker = $('max-custom-time-picker');
+        if (!picker || !picker.value) return;
+        const val = picker.value.trim();
+        if (!maxFormSelectedTimes.includes(val)) {
+          maxFormSelectedTimes.push(val);
+          renderFormSelectedTimes();
+        }
+        picker.value = '';
+      });
+
+      // Lưu từ form
+      $('btn-save-max-med')?.addEventListener('click', saveMedicineFromForm);
+    }
+
