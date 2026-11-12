@@ -132,8 +132,8 @@ public class MedicationAlarmReceiver extends BroadcastReceiver {
 
         nm.notify(notificationId, builder.build());
 
-        // Tự động lên lịch lại cho ngày hôm sau vào cùng khung giờ này
-        if (medId != null && !timeStr.isEmpty()) {
+        // Tự động lên lịch lại cho ngày hôm sau vào cùng khung giờ này (chỉ khi là thuốc thật)
+        if (medId != null && !medId.startsWith("test_med_") && !timeStr.isEmpty()) {
             scheduleNextDayAlarm(context, medId, medName, dosage, timeStr, mealNote);
         }
     }
@@ -147,6 +147,14 @@ public class MedicationAlarmReceiver extends BroadcastReceiver {
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) {
             nm.cancel(notificationId);
+        }
+
+        // Nếu là cữ chuông thử nghiệm, không ghi vào lịch sử thật
+        if (medId != null && medId.startsWith("test_med_")) {
+            new Handler(Looper.getMainLooper()).post(() -> {
+                Toast.makeText(context, "🐶 Max: Đã thử nghiệm chuông báo và xác nhận thành công!", Toast.LENGTH_SHORT).show();
+            });
+            return;
         }
 
         // Ghi vào lịch sử SharedPreferences
