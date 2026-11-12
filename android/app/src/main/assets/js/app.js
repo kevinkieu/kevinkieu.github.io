@@ -5922,6 +5922,15 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         maxMedications = medsRaw ? JSON.parse(medsRaw) : [];
         maxMedHistory = histRaw ? JSON.parse(histRaw) : [];
 
+        // Đảm bảo mọi bản ghi lịch sử luôn có id duy nhất
+        if (Array.isArray(maxMedHistory)) {
+          maxMedHistory.forEach((h, i) => {
+            if (!h.id) {
+              h.id = 'take_' + (h.timestamp || Date.now()) + '_' + i;
+            }
+          });
+        }
+
         // Nếu mới cài lần đầu chưa có thuốc nào, thêm 1-2 mẫu thân thiện để người dùng trải nghiệm ngay
         if (!maxMedications || maxMedications.length === 0) {
           maxMedications = [
@@ -6150,15 +6159,17 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
           html += `
             <div class="${cardClass}" data-id="${m.id}" data-time="${item.timeStr}">
-              <div class="max-med-icon-box">${icon}</div>
-              <div class="max-med-info">
-                <div class="max-med-name">
-                  <span>${escapeHtml(m.name)}</span>
-                  <span class="max-pill-time-tag">⏰ ${item.timeStr}</span>
-                </div>
-                <div class="max-med-meta">
-                  <span>💊 <b>${escapeHtml(m.dosage || '1 liều')}</b></span>
-                  <span>• ${escapeHtml(m.meal || 'Sau bữa ăn')}</span>
+              <div class="max-med-card-body">
+                <div class="max-med-icon-box">${icon}</div>
+                <div class="max-med-info">
+                  <div class="max-med-name-row">
+                    <span class="max-med-name">${escapeHtml(m.name)}</span>
+                    <span class="max-pill-time-tag">⏰ ${item.timeStr}</span>
+                  </div>
+                  <div class="max-med-meta">
+                    <span>💊 <b>${escapeHtml(m.dosage || '1 liều')}</b></span>
+                    <span>• ${escapeHtml(m.meal || 'Sau bữa ăn')}</span>
+                  </div>
                 </div>
               </div>
               <div class="max-med-actions">
@@ -6169,12 +6180,12 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
                 <div class="max-badge-taken">
                   ✓ Đã uống (${takenTimeDisplay})
                 </div>
-                <button class="max-btn-undo" title="Hoàn tác (chưa uống)" onclick="window.maxUndoTaken('${m.id}', '${item.timeStr}')">↩️</button>
+                <button class="max-btn-undo-pill" title="Hoàn tác (chưa uống)" onclick="window.maxUndoTaken('${m.id}', '${item.timeStr}')">↩️ Hoàn tác</button>
             `;
           } else {
             html += `
                 <button class="max-btn-taken" onclick="window.maxMarkTaken('${m.id}', '${item.timeStr}')">
-                  ✅ Uống ngay
+                  ✅ Đã uống cữ này
                 </button>
             `;
           }
@@ -6279,9 +6290,9 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
               <span class="max-hist-name">🐶 ${escapeHtml(h.medName || 'Thuốc')}</span>
               <span class="max-hist-time">Đã uống lúc: ${timeStr} (Cữ: ${h.timeStr})</span>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
               <span class="max-hist-status">✓ Đã uống</span>
-              <button class="max-btn-undo" title="Xóa mục này khỏi lịch sử" onclick="window.maxDeleteHistoryItem('${h.id || ''}', '${h.medId || ''}', ${h.timestamp || 0})">🗑️</button>
+              <button class="max-hist-delete-btn" title="Xóa cữ này khỏi lịch sử" onclick="window.maxDeleteHistoryItem('${h.id || ''}', '${h.medId || ''}', ${h.timestamp || 0})">🗑️</button>
             </div>
           </div>
         `;
@@ -6291,6 +6302,28 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     }
 
     // Window action bindings
+    window.maxDeleteHistoryItem = function(histId, medId, timestamp) {
+      let idx = -1;
+      if (histId) {
+        idx = maxMedHistory.findIndex(h => h.id === histId);
+      }
+      if (idx === -1 && timestamp) {
+        idx = maxMedHistory.findIndex(h => Number(h.timestamp) === Number(timestamp));
+      }
+      if (idx === -1 && medId) {
+        idx = maxMedHistory.findIndex(h => h.medId === medId);
+      }
+      if (idx !== -1) {
+        const removed = maxMedHistory.splice(idx, 1)[0];
+        saveMedicationData(false);
+        renderMaxHistoryList();
+        renderMaxTodaySchedule();
+        updateMedicationBadge();
+        showToast(`Đã xóa cữ "${removed?.medName || 'thuốc'}" khỏi lịch sử.`, 'info');
+      } else {
+        showToast('Không tìm thấy mục cần xóa.', 'error');
+      }
+    };
     window.maxMarkTaken = function(medId, timeStr) {
       const med = maxMedications.find(m => m.id === medId);
       if (!med) return;
