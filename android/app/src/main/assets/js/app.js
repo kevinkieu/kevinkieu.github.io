@@ -5850,14 +5850,12 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         enableHorizontalScrollAndDrag($('tabs-container'));
         enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
         enableHorizontalScrollAndDrag($('image-preview-grid'));
-        initMaxMedicationReminder();
-      });
+              });
     } else {
       enableHorizontalScrollAndDrag($('tabs-container'));
       enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
       enableHorizontalScrollAndDrag($('image-preview-grid'));
-      initMaxMedicationReminder();
-    }
+          }
 
     // ==========================================
     // KHỐI: MAX CARE • NHẮC UỐNG THUỐC (PILL REMINDER)
@@ -5865,14 +5863,19 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     // CHỈ KÍCH HOẠT VÀ HIỂN THỊ KHI CHẠY TRONG NATIVE ANDROID APP
     // ==========================================
 
-    let maxMedications = [];
-    let maxMedHistory = [];
-    let maxFormSelectedTimes = ['08:00'];
-    let maxEditingMedId = null;
+    var maxMedications = [];
+    var maxMedHistory = [];
+    var maxFormSelectedTimes = ['08:00'];
+    var maxEditingMedId = null;
 
     function isNativeAndroidApp() {
       return Boolean(window.JarvisNativeBridge && (window.JarvisNativeBridge.isNativeApp || window.JarvisNativeBridge.getItem));
     }
+
+    // Expose toàn cục ngay từ đầu để onclick từ HTML button hoạt động 100%
+    window.openMedicationTab = function() {
+      openMedicationModal();
+    };
 
     function initMaxMedicationReminder() {
       if (!isNativeAndroidApp()) {
@@ -5894,8 +5897,6 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       updateMedicationBadge();
       setupMaxEventListeners();
 
-      // Đăng ký bridge toàn cục để mở tab từ Notification Android (intent extra "OPEN_TAB": "medication")
-      window.openMedicationTab = openMedicationModal;
       window.onMedicationStatusChanged = function(medId, timeStr, status) {
         loadMedicationData();
         renderMaxTodaySchedule();
@@ -6016,7 +6017,10 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
     function openMedicationModal() {
       const modal = $('max-medication-modal');
-      if (!modal) return;
+      if (!modal) {
+        console.warn('Modal #max-medication-modal không tìm thấy trong DOM!');
+        return;
+      }
       loadMedicationData();
       modal.style.display = 'flex';
       switchMaxTab('today');
@@ -6491,6 +6495,16 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     }
 
     function setupMaxEventListeners() {
+      // Mở modal từ nút Header và Sidebar
+      $('btn-open-max-medication')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openMedicationModal();
+      });
+      $('btn-sidebar-max-medication')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openMedicationModal();
+      });
+
       // Đóng modal
       $('btn-close-max-med')?.addEventListener('click', closeMedicationModal);
       $('btn-close-max-form')?.addEventListener('click', closeMaxFormModal);
@@ -6590,5 +6604,12 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
       // Lưu từ form
       $('btn-save-max-med')?.addEventListener('click', saveMedicineFromForm);
+    }
+
+    // Khởi tạo Max Medication Reminder khi DOM sẵn sàng
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initMaxMedicationReminder);
+    } else {
+      setTimeout(initMaxMedicationReminder, 80);
     }
 
