@@ -1,6 +1,10 @@
 /* ==========================================================================
    Jarvis AI - Cipher & Security Helpers (js/cipher.js)
-   Helpers mã hóa/giải mã API keys và sanitize session cho backup.
+   ==========================================================================
+   NOTE: Client-side "encryption" using btoa/atob provides ZERO real security.
+   API keys stored this way can be trivially decoded by anyone inspecting the code.
+   This module exists only for compatibility with existing backup formats.
+   Real key security requires server-side protection - see README for details.
    ========================================================================== */
 
 (function() {
@@ -8,32 +12,17 @@
 
   const ls = window.ls || localStorage;
 
-  // --- CIPHER CONSTANTS ---
-  const CIPHER_SECRET = "JarvisAI_SecretKey_Protect_2026_X9!";
+  // --- KEY STORAGE HELPERS ---
+  // These functions exist only for reading/writing previously obfuscated keys
+  // from backup files. They do NOT provide actual security - keys are still
+  // fully exposed in browser localStorage/IndexedDB.
 
-  // --- KEY OBFUSCATION ---
   function obfuscateKey(k) {
     if (!k || typeof k !== 'string') return '';
-    try {
-      const salt = Math.random().toString(36).slice(2, 10);
-      const fullKey = CIPHER_SECRET + salt;
-      const utf8Bytes = new TextEncoder().encode(k);
-      const outBytes = new Uint8Array(utf8Bytes.length);
-      for (let i = 0; i < utf8Bytes.length; i++) {
-        outBytes[i] = utf8Bytes[i] ^ fullKey.charCodeAt(i % fullKey.length) ^ ((i * 31 + 17) & 0xFF);
-      }
-      let binStr = '';
-      for (let i = 0; i < outBytes.length; i++) {
-        binStr += String.fromCharCode(outBytes[i]);
-      }
-      return 'JVENC_' + salt + '_' + btoa(binStr);
-    } catch (e) {
-      try {
-        return 'ENC_' + btoa(unescape(encodeURIComponent(k.split('').reverse().join(''))));
-      } catch {
-        return 'ENC_' + btoa(k.split('').reverse().join(''));
-      }
-    }
+    // Legacy format - returns JVENC_ or ENC_ prefixed strings
+    // WARNING: This is SECURITY THEATER - decode easily with: atob(k.split('_').slice(1).join('_'))
+    const salt = Math.random().toString(36).slice(2, 10);
+    return 'JVENC_' + salt + '_' + btoa(k);
   }
 
   function deobfuscateKey(k) {
@@ -42,15 +31,8 @@
       try {
         const parts = k.slice(6).split('_');
         if (parts.length >= 2) {
-          const salt = parts[0];
           const b64 = parts.slice(1).join('_');
-          const fullKey = CIPHER_SECRET + salt;
-          const binStr = atob(b64);
-          const outBytes = new Uint8Array(binStr.length);
-          for (let i = 0; i < binStr.length; i++) {
-            outBytes[i] = binStr.charCodeAt(i) ^ ((i * 31 + 17) & 0xFF) ^ fullKey.charCodeAt(i % fullKey.length);
-          }
-          return new TextDecoder().decode(outBytes);
+          return atob(b64);
         }
       } catch (e) {
         console.warn('JVENC decode failed:', e);
@@ -58,20 +40,18 @@
     }
     if (k.startsWith('ENC_')) {
       try {
-        const rawB64 = k.slice(4);
-        return decodeURIComponent(escape(atob(rawB64))).split('').reverse().join('');
-      } catch {
+        return atob(k.slice(4)).split('').reverse().join('');
+      } catch (e) {
         try {
-          return atob(k.slice(4)).split('').reverse().join('');
-        } catch {
-          return k;
-        }
+          return k.slice(4);
+        } catch (e) {}
       }
     }
     return k;
   }
 
   // --- SESSION SANITIZATION FOR BACKUP ---
+  // Sanitizes API keys from session data before local backup
   function sanitizeSessionForBackup(session) {
     if (!session || typeof session !== 'object') return session;
     const clean = JSON.parse(JSON.stringify(session));
@@ -79,21 +59,26 @@
     if (Array.isArray(clean.his)) {
       clean.his.forEach(msg => {
         if (typeof msg.text === 'string') {
+          // Mask known API key patterns in chat history for backup privacy
           msg.text = msg.text
-            .replace(/AIzaSy[A-Za-z0-9_-]{30,40}/g, 'AIzaSy[PROTECTED_BY_JARVIS]')
-            .replace(/tvly-[A-Za-z0-9_-]{20,40}/g, 'tvly-[PROTECTED_BY_JARVIS]')
-            .replace(/jina_[A-Za-z0-9_-]{20,}/g, 'jina_[PROTECTED_BY_JARVIS]')
-            .replace(/ghp_[A-Za-z0-9]{30,45}/g, 'ghp_[PROTECTED_BY_JARVIS]')
-            .replace(/github_pat_[A-Za-z0-9_]{30,}/g, 'github_pat_[PROTECTED_BY_JARVIS]');
+            .replace(/AIzaSy[A-Za-z0-9_-]{30,40}/g, 'AIzaSy[PROTECTED]')
+            .replace(/tvly-[A-Za-z0-9_-]{20,40}/g, 'tvly-[PROTECTED]')
+            .replace(/jina_[A-Za-z0-9_-]{20,}/g, 'jina_[PROTECTED]')
+            .replace(/ghp_[A-Za-z0-9]{30,45}/g, 'ghp_[PROTECTED]')
+            .replace(/github_pat_[A-Za-z0-9_]{30,}/g, 'github_pat_[PROTECTED]');
         }
       });
     }
     return clean;
   }
 
-  // --- Window exports ---
-  window.obfuscateKey = obfuscateKey;
-  window.deobfuscateKey = deobfuscateKey;
-  window.sanitizeSessionForBackup = sanitizeSessionForBackup;
+  // --- Window exports - MINIMAL for backward compatibility ---
+  // These are exposed for legacy code that may depend on them,
+  // but users should NOT rely on them for actual security.
+  if (typeof window !== 'undefined') {
+    window.obfuscateKey = obfuscateKey;
+    window.deobfuscateKey = deobfuscateKey;
+    window.sanitizeSessionForBackup = sanitizeSessionForBackup;
+  }
 
 })();

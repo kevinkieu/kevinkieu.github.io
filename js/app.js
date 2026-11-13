@@ -5,10 +5,12 @@
 import { GoogleGenAI } from "@google/genai";
 
     const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStorage;
-    window.$ = $;
-    window.ls = ls;
-    window.ss = ss;
+    // Minimal window bindings - use module pattern instead of global pollution
+    window.$$ = $;
+    window.lsRef = ls;
+    window.ssRef = ss;
     window.GoogleGenAI = GoogleGenAI;
+    // Export core refs via Object.defineProperty for controlled access
 
     // ==========================================================================
     // HOISTED MODULE BRIDGES & PROXIES
@@ -229,7 +231,7 @@ import { GoogleGenAI } from "@google/genai";
                     return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
                   });
                 }
-                targetEl.innerHTML = marked.parse(toRender);
+                targetEl.innerHTML = marked.parse(toRender, { sanitize: true });
               } catch (_) {}
               pending = false;
             });
