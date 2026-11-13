@@ -1,6 +1,8 @@
-// Jarvis AI Service Worker for PWA (v88 - Primary Google Voice Engine for Vivo OriginOS/iQOO)
-const CACHE_NAME = 'jarvis-ai-pwa-v88';
+// Jarvis AI Service Worker for PWA
+const CACHE_NAME = 'jarvis-ai-pwa-v44';
 const STATIC_ASSETS = [
+  './',
+  './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -35,7 +37,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = event.request.url;
 
-  // Pass-through API calls, CDNs, and WebSockets directly
+  // Pass-through live API calls, search endpoints, and WebSockets directly
   if (
     url.includes('googleapis.com') ||
     url.includes('tavily.com') ||
@@ -43,11 +45,29 @@ self.addEventListener('fetch', event => {
     url.includes('serper.dev') ||
     url.includes('brave.com') ||
     url.includes('api.github.com') ||
-    url.includes('gist.githubusercontent.com') ||
+    url.includes('gist.githubusercontent.com')
+  ) {
+    return;
+  }
+
+  // Cache CDN assets (marked, katex, mermaid, highlight, lamejs, @google/genai)
+  if (
     url.includes('esm.run') ||
     url.includes('cdnjs.cloudflare.com') ||
     url.includes('cdn.jsdelivr.net')
   ) {
+    event.respondWith(
+      caches.match(event.request).then(cached => {
+        if (cached) return cached;
+        return fetch(event.request).then(response => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          }
+          return response;
+        }).catch(() => null);
+      })
+    );
     return;
   }
 

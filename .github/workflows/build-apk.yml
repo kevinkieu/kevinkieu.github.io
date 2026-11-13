@@ -2,11 +2,15 @@ name: Build Jarvis AI Android APK
 
 on:
   workflow_dispatch: # Cho phép bấm nút "Run workflow" thủ công trên tab Actions của GitHub
-  # Chỉ tự động kích hoạt khi có thay đổi thực sự trong thư mục android/ (không build thừa khi sửa web)
   push:
     branches: [ main, master ]
     paths:
       - 'android/**'
+      - 'js/**'
+      - 'css/**'
+      - 'index.html'
+      - 'manifest.json'
+      - 'sw.js'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -31,6 +35,15 @@ jobs:
       with:
         cache-disabled: true
 
+    - name: 🔄 Đồng bộ mã nguồn Web mới nhất vào Android Assets
+      run: |
+        mkdir -p android/app/src/main/assets/js android/app/src/main/assets/css
+        cp -f index.html manifest.json sw.js android/app/src/main/assets/ || true
+        cp -f icon*.png android/app/src/main/assets/ || true
+        cp -rf js/* android/app/src/main/assets/js/
+        cp -rf css/* android/app/src/main/assets/css/
+        echo "Đã đồng bộ toàn bộ tài nguyên Web vào Android Assets"
+
     - name: ⚙️ Khởi tạo Gradle Wrapper & Cấp quyền thực thi
       run: |
         cd android
@@ -39,8 +52,12 @@ jobs:
 
     - name: 🏷️ Đồng bộ Version Code & Version Name với GitHub Release
       run: |
-        sed -i 's/versionCode [0-9]*/versionCode ${{ github.run_number }}/g' android/app/build.gradle
-        sed -i 's/versionName "[^"]*"/versionName "1.1.${{ github.run_number }}"/g' android/app/build.gradle
+        CURRENT_CODE=$(grep -oE 'versionCode [0-9]+' android/app/build.gradle | awk '{print $2}')
+        RUN_NUM=${{ github.run_number }}
+        NEW_CODE=$(( CURRENT_CODE >= RUN_NUM ? CURRENT_CODE + 1 : RUN_NUM ))
+        sed -i "s/versionCode [0-9]*/versionCode $NEW_CODE/g" android/app/build.gradle
+        sed -i "s/versionName \"[^\"]*\"/versionName \"1.1.$NEW_CODE\"/g" android/app/build.gradle
+        echo "TARGET_VERSION_NAME=1.1.$NEW_CODE" >> $GITHUB_ENV
         cat android/app/build.gradle | grep -E "versionCode|versionName"
 
     - name: 🚀 Biên dịch file Android APK
@@ -66,9 +83,9 @@ jobs:
     - name: 🏷️ Tạo GitHub Release tải về
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: v1.1.${{ github.run_number }}
-        name: "Jarvis AI APK v1.1.${{ github.run_number }}"
-        body: "Bản cập nhật v1.1 tích hợp cầu nối lưu file Native (MP3, WAV, JSON vào thư mục Download) và sửa giao diện TTS Studio Pro."
+        tag_name: v${{ env.TARGET_VERSION_NAME }}
+        name: "Jarvis AI APK v${{ env.TARGET_VERSION_NAME }}"
+        body: "Bản cập nhật v1.1 tích hợp Tủ thuốc thông minh Max Care, Gemini 3.8 Live, TTS Studio Pro và Đồng bộ Cloud 2 chiều."
         files: JarvisAI.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -350,6 +350,65 @@
               if (usageChanged) hasChanges = true;
             }
 
+            // F. HỢP NHẤT DỮ LIỆU TỦ THUỐC & LỊCH SỬ UỐNG THUỐC (MAX CARE)
+            let localMeds = JSON.parse(ls.getItem('jarvis_medications') || '[]');
+            let localHistory = JSON.parse(ls.getItem('jarvis_med_history') || '[]');
+            let medChanged = false;
+
+            if (Array.isArray(cloudData.medications) && cloudData.medications.length > 0) {
+              const medMap = new Map();
+              localMeds.forEach(m => { if (m && m.id) medMap.set(m.id, m); });
+              for (const cm of cloudData.medications) {
+                if (!cm || !cm.id) continue;
+                if (!medMap.has(cm.id)) {
+                  medMap.set(cm.id, cm);
+                  medChanged = true;
+                  hasChanges = true;
+                } else {
+                  const lm = medMap.get(cm.id);
+                  const lTime = lm.updatedAt || lm.createdAt || 0;
+                  const cTime = cm.updatedAt || cm.createdAt || 0;
+                  if (cTime > lTime) {
+                    medMap.set(cm.id, cm);
+                    medChanged = true;
+                    hasChanges = true;
+                  }
+                }
+              }
+              localMeds = Array.from(medMap.values());
+            }
+
+            if (Array.isArray(cloudData.medHistory) && cloudData.medHistory.length > 0) {
+              const histMap = new Map();
+              localHistory.forEach(h => {
+                const k = h.id || (h.medId + '_' + h.timeStr + '_' + (h.date || h.timestamp));
+                histMap.set(k, h);
+              });
+              for (const ch of cloudData.medHistory) {
+                if (!ch) continue;
+                const k = ch.id || (ch.medId + '_' + ch.timeStr + '_' + (ch.date || ch.timestamp));
+                if (!histMap.has(k)) {
+                  histMap.set(k, ch);
+                  medChanged = true;
+                  hasChanges = true;
+                }
+              }
+              localHistory = Array.from(histMap.values());
+              localHistory.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            }
+
+            if (medChanged) {
+              ls.setItem('jarvis_medications', JSON.stringify(localMeds));
+              ls.setItem('jarvis_med_history', JSON.stringify(localHistory));
+              if (window.saveToNativeBridge) {
+                window.saveToNativeBridge('jarvis_medications', JSON.stringify(localMeds));
+                window.saveToNativeBridge('jarvis_med_history', JSON.stringify(localHistory));
+              }
+              if (typeof window.reloadMaxMedicationsFromStorage === 'function') {
+                window.reloadMaxMedicationsFromStorage();
+              }
+            }
+
           } catch (fetchErr) {
             console.warn("[SmartSync] Không thể tải dữ liệu cũ từ Cloud để merge:", fetchErr);
           }
@@ -363,6 +422,14 @@
 
           // 1. So sánh số lượng phiên và số lượng tri thức
           if (localSessions.length > remoteSessions.length || localKnowledge.length > remoteKnowledge.length) {
+            isLocalAhead = true;
+          }
+
+          const remoteMeds = Array.isArray(cloudData.medications) ? cloudData.medications : [];
+          const remoteHist = Array.isArray(cloudData.medHistory) ? cloudData.medHistory : [];
+          const curMeds = JSON.parse(ls.getItem('jarvis_medications') || '[]');
+          const curHist = JSON.parse(ls.getItem('jarvis_med_history') || '[]');
+          if (curMeds.length > remoteMeds.length || curHist.length > remoteHist.length) {
             isLocalAhead = true;
           }
 
@@ -458,6 +525,8 @@
             customPrompts: finalPrompts,
             folders: finalFolders,
             knowledgeBase: finalKnowledge,
+            medications: JSON.parse(ls.getItem('jarvis_medications') || '[]'),
+            medHistory: JSON.parse(ls.getItem('jarvis_med_history') || '[]'),
             keyUsageFlash: (typeof window.loadKeyUsageData === 'function') ? window.loadKeyUsageData() : null,
             settings: {
               keys: getGoogleKeysList(true),
@@ -689,6 +758,8 @@
           customPrompts: JSON.parse(ls.getItem('jarvis_custom_prompts') || '[]'),
           folders: JSON.parse(ls.getItem('jarvis_folders') || '["Mặc định"]'),
           knowledgeBase: allKnowledge,
+          medications: JSON.parse(ls.getItem('jarvis_medications') || '[]'),
+          medHistory: JSON.parse(ls.getItem('jarvis_med_history') || '[]'),
           keyUsageFlash: (typeof window.loadKeyUsageData === 'function') ? window.loadKeyUsageData() : null,
           settings: {
             keys: getGoogleKeysList(true),
@@ -768,6 +839,18 @@
 
         if (parsed.customPrompts && Array.isArray(parsed.customPrompts)) {
           ls.setItem('jarvis_custom_prompts', JSON.stringify(parsed.customPrompts));
+        }
+
+        if (parsed.medications && Array.isArray(parsed.medications)) {
+          ls.setItem('jarvis_medications', JSON.stringify(parsed.medications));
+          if (window.saveToNativeBridge) window.saveToNativeBridge('jarvis_medications', JSON.stringify(parsed.medications));
+        }
+        if (parsed.medHistory && Array.isArray(parsed.medHistory)) {
+          ls.setItem('jarvis_med_history', JSON.stringify(parsed.medHistory));
+          if (window.saveToNativeBridge) window.saveToNativeBridge('jarvis_med_history', JSON.stringify(parsed.medHistory));
+        }
+        if (typeof window.reloadMaxMedicationsFromStorage === 'function') {
+          window.reloadMaxMedicationsFromStorage();
         }
 
         if (parsed.settings) {

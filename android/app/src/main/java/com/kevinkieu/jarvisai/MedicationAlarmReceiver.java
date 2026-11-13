@@ -200,10 +200,17 @@ public class MedicationAlarmReceiver extends BroadcastReceiver {
             PendingIntent pi = PendingIntent.getBroadcast(context, notificationId, alarmIntent, piFlags);
 
             long snoozeTime = System.currentTimeMillis() + 10 * 60 * 1000L;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, snoozeTime, pi);
-            } else {
-                am.setExact(AlarmManager.RTC_WAKEUP, snoozeTime, pi);
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, snoozeTime, pi);
+                } else {
+                    am.setExact(AlarmManager.RTC_WAKEUP, snoozeTime, pi);
+                }
+            } catch (SecurityException se) {
+                Log.w(TAG, "SecurityException snoozing alarm: " + se.getMessage() + ", falling back to inexact");
+                am.set(AlarmManager.RTC_WAKEUP, snoozeTime, pi);
+            } catch (Exception ex) {
+                Log.e(TAG, "Exception snoozing alarm: " + ex.getMessage());
             }
         }
 

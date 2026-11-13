@@ -2447,8 +2447,6 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     const btnSendHf = $('btn-send-hands-free');
     if (btnSendHf) btnSendHf.onclick = () => commitAndSendHandsFree();
 
-    // --- [MULTI-AGENT ARENA MODULE MOVED TO js/arena.js] ---
-
     // --- WEB SHARE TARGET & SHORTCUTS CONTROLLER ---
     function openShareTargetModal(content, detectedUrl) {
       const modal = $('share-target-modal');
@@ -3706,10 +3704,6 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       DOM.input.dispatchEvent(new Event('input'));
       DOM.sendBtn.click();
     };
-
-    if ($('btn-move-session')) {
-      $('btn-move-session').onclick = async () => {};
-    }
 
     $('btn-delete-session').onclick = async () => {
       if (sessions.length <= 1) return showToast("Cần giữ lại ít nhất 1 phiên!", "warning");
@@ -5346,6 +5340,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       cfgs['live_context_enabled'] = ls.getItem('live_context_enabled') || 'true';
       cfgs['jarvis_folders'] = ls.getItem('jarvis_folders') || '["Mặc định"]';
       cfgs['jarvis_custom_prompts'] = ls.getItem('jarvis_custom_prompts') || '[]';
+      cfgs['jarvis_medications'] = ls.getItem('jarvis_medications') || '[]';
+      cfgs['jarvis_med_history'] = ls.getItem('jarvis_med_history') || '[]';
       
       const rawSessions = await getAllFromDB();
       const cleanSessions = rawSessions.map(sanitizeSessionForBackup);
@@ -5397,6 +5393,9 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
             initAPIKeys();
             initExternalConfigs();
             applyFontSize(parseInt(ls.getItem('chat_font_size') || '16', 10));
+            if (typeof window.reloadMaxMedicationsFromStorage === 'function') {
+              window.reloadMaxMedicationsFromStorage();
+            }
             await loadSess();
             showToast('🎉 Đã khôi phục toàn bộ dữ liệu Jarvis AI thành công!');
           }
@@ -5903,6 +5902,17 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         renderMaxCabinetList();
         renderMaxHistoryList();
         updateMedicationBadge();
+      };
+
+      window.reloadMaxMedicationsFromStorage = function() {
+        loadMedicationData();
+        renderMaxTodaySchedule();
+        renderMaxCabinetList();
+        renderMaxHistoryList();
+        updateMedicationBadge();
+        if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.rescheduleAllMedications === 'function') {
+          try { window.JarvisNativeBridge.rescheduleAllMedications(); } catch (e) {}
+        }
       };
     }
 
@@ -6650,10 +6660,84 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       $('btn-save-max-med')?.addEventListener('click', saveMedicineFromForm);
     }
 
+    // Đóng Modal đang mở khi nhấn phím Back phần cứng Android
+    window.closeActiveModal = function() {
+      if ($('max-form-modal') && $('max-form-modal').style.display !== 'none') {
+        closeMaxFormModal();
+        return true;
+      }
+      if ($('max-medication-modal') && $('max-medication-modal').style.display !== 'none') {
+        closeMedicationModal();
+        return true;
+      }
+      if ($('tts-studio-modal') && $('tts-studio-modal').style.display === 'flex') {
+        if (typeof window.closeTTSStudioModal === 'function') window.closeTTSStudioModal();
+        else { $('tts-studio-modal').style.display = 'none'; $('modal-overlay').style.display = 'none'; }
+        return true;
+      }
+      if ($('knowledge-modal') && $('knowledge-modal').style.display === 'flex') {
+        if (typeof window.closeKnowledgeModal === 'function') window.closeKnowledgeModal();
+        else { $('knowledge-modal').style.display = 'none'; $('modal-overlay').style.display = 'none'; }
+        return true;
+      }
+      if ($('settings-modal') && $('settings-modal').style.display === 'flex') {
+        $('settings-modal').style.display = 'none';
+        $('modal-overlay').style.display = 'none';
+        return true;
+      }
+      if ($('key-quota-modal') && $('key-quota-modal').style.display === 'block') {
+        closeKeyQuotaModal();
+        return true;
+      }
+      if ($('search-modal') && $('search-modal').style.display === 'flex') {
+        $('search-modal').style.display = 'none';
+        $('modal-overlay').style.display = 'none';
+        return true;
+      }
+      if ($('daily-briefing-modal') && $('daily-briefing-modal').style.display === 'block') {
+        $('daily-briefing-modal').style.display = 'none';
+        $('modal-overlay').style.display = 'none';
+        return true;
+      }
+      if ($('prompt-library-modal') && $('prompt-library-modal').style.display === 'flex') {
+        $('prompt-library-modal').style.display = 'none';
+        $('modal-overlay').style.display = 'none';
+        return true;
+      }
+      if ($('share-target-modal') && $('share-target-modal').style.display === 'block') {
+        $('share-target-modal').style.display = 'none';
+        $('modal-overlay').style.display = 'none';
+        return true;
+      }
+      if ($('command-palette-modal') && $('command-palette-modal').style.display === 'block') {
+        $('command-palette-modal').style.display = 'none';
+        $('modal-overlay').style.display = 'none';
+        return true;
+      }
+      if ($('live-call-modal') && $('live-call-modal').style.display === 'flex') {
+        if (typeof window.endLiveCall === 'function') window.endLiveCall();
+        else { $('live-call-modal').style.display = 'none'; $('modal-overlay').style.display = 'none'; }
+        return true;
+      }
+      if ($('live-translate-modal') && $('live-translate-modal').style.display === 'flex') {
+        $('live-translate-modal').style.display = 'none';
+        $('modal-overlay').style.display = 'none';
+        return true;
+      }
+      return false;
+    };
+
     // Khởi tạo Max Medication Reminder khi DOM sẵn sàng
+    const launchAppInits = () => {
+      initMaxMedicationReminder();
+      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.onAppReady === 'function') {
+        try { window.JarvisNativeBridge.onAppReady(); } catch (e) {}
+      }
+    };
+
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initMaxMedicationReminder);
+      document.addEventListener('DOMContentLoaded', launchAppInits);
     } else {
-      setTimeout(initMaxMedicationReminder, 80);
+      setTimeout(launchAppInits, 80);
     }
 
