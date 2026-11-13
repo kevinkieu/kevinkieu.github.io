@@ -79,7 +79,8 @@ import { GoogleGenAI } from "@google/genai";
     };
 
     // CENTRAL CONSTANT FOR SECONDARY & BACKGROUND TASKS (FLASH LITE)
-    const FLASH_LITE_MODEL = 'gemini-3.5-flash-lite';
+    const FLASH_LITE_MODEL = 'gemini-flash-lite-latest';
+    const AUX_FALLBACK_MODELS = ['gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
 
     // Init libraries
     marked.use({ breaks: true });
@@ -640,7 +641,7 @@ import { GoogleGenAI } from "@google/genai";
         <span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);min-width:30px;text-align:center;background:rgba(255,255,255,0.05);padding:6px 0;border-radius:var(--radius-sm);border:1px solid var(--border);">#${i+1}</span>
         <input type="text" id="api-key-name-${i+1}" placeholder="Tên gợi nhớ ${i+1}" class="modern-input" style="width:115px;flex:0 0 115px;font-size:0.8rem;padding:7px 10px;" title="Tên gợi nhớ cho Key ${i+1} (Ví dụ: Gmail A, Key chính, Dự phòng...)">
         <input type="password" id="api-key-${i+1}" placeholder="Google API Key ${i+1} (AIzaSy...)" class="modern-input" style="flex:1;min-width:110px;font-size:0.8rem;padding:7px 10px;" title="Dán Google AI Studio API Key vào đây">
-        <span id="api-key-badge-${i+1}" style="font-size:0.7rem;font-weight:700;padding:4px 7px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.05);white-space:nowrap;border:1px solid var(--border);flex-shrink:0;" title="Hạn ngạch hôm nay (20 RPD mỗi model)"><span style="color:#10b981;">3.6: 0/20</span> | <span style="color:#3b82f6;">3.8: 0/20</span></span>
+        <span id="api-key-badge-${i+1}" style="font-size:0.68rem;font-weight:700;padding:4px 6px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.05);white-space:nowrap;border:1px solid var(--border);flex-shrink:0;" title="Hạn ngạch hôm nay (20 RPD mỗi model)"><span style="color:#a855f7;">H4: 0/20</span> | <span style="color:#10b981;">3.6: 0/20</span> | <span style="color:#3b82f6;">3.8: 0/20</span></span>
       </div>
     `).join('');
 
@@ -754,7 +755,7 @@ import { GoogleGenAI } from "@google/genai";
           await new GoogleGenAI({ apiKey: k }).models.generateContent({
             model: FLASH_LITE_MODEL,
             contents: "hi",
-            config: { maxOutputTokens: 1 }
+            config: { maxOutputTokens: 1, thinkingConfig: { thinkingBudget: 0 } }
           });
           el.style.border = "2px solid var(--success)";
           if (nameEl) nameEl.style.border = "2px solid var(--success)";
@@ -1220,7 +1221,7 @@ import { GoogleGenAI } from "@google/genai";
     window.closeKeyQuotaModal = closeKeyQuotaModal;
 
     const COMMANDS = [
-      { id: 'quota', title: 'Xem hạn ngạch 10 Key (20 RPD cho 3.6/3.8 Flash)', shortcut: '/quota', icon: '🔑', run: () => openKeyQuotaModal() },
+      { id: 'quota', title: 'Xem hạn ngạch 10 Key (20 RPD cho Gemini 4 Hydrogen, 3.6 & 3.8)', shortcut: '/quota', icon: '🔑', run: () => openKeyQuotaModal() },
       { id: 'cloud', title: 'Đồng bộ Cloud đa thiết bị (GitHub Gist)', shortcut: '/cloud', icon: '☁️', run: () => $('btn-open-cloud-sync').click() },
       { id: 'new', title: 'Tạo phiên hội thoại mới', shortcut: '/new', icon: '➕', run: () => newSess() },
       { id: 'brief', title: 'Bản tin Ngày Mới (Thời tiết, Tin tức AI/Tech, Kế hoạch)', shortcut: '/brief', icon: '🌅', run: () => openDailyBriefing() },
@@ -1404,12 +1405,8 @@ import { GoogleGenAI } from "@google/genai";
 
       let title = '';
 
-      // Cố gắng gọi AI: Thử model siêu nhẹ FLASH_LITE_MODEL trước, nếu lỗi thì thử model chính của phiên
-      const candidateModels = [
-        FLASH_LITE_MODEL,
-        sessionObj.mod || 'gemini-3.6-flash',
-        'gemini-3.1-flash-lite'
-      ];
+      // Cố gắng gọi AI: Bắt buộc dùng Flash-Lite với thinking tắt hoàn toàn để tiết kiệm quota
+      const candidateModels = AUX_FALLBACK_MODELS;
 
       for (const mod of candidateModels) {
         if (!mod) continue;
@@ -1421,8 +1418,8 @@ import { GoogleGenAI } from "@google/genai";
             config: {
               safetySettings: SAFETY,
               maxOutputTokens: 100,
-              temperature: 0.4
-              // KHÔNG dùng thinkingConfig ở đây để tránh lỗi 400 Bad Request trên Flash-Lite và tránh tràn token
+              temperature: 0.4,
+              thinkingConfig: { thinkingBudget: 0 }
             }
           });
 
@@ -1482,17 +1479,21 @@ import { GoogleGenAI } from "@google/genai";
 
         const ai = new GoogleGenAI({ apiKey: k });
         let res = null;
-        try {
-          res = await ai.models.generateContent({
-            model: FLASH_LITE_MODEL,
-            contents: promptText
-          });
-        } catch (mErr) {
-          console.warn('Thử lại Auto-Summary với gemini-3.1-flash-lite:', mErr);
-          res = await ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite',
-            contents: promptText
-          });
+        for (const m of AUX_FALLBACK_MODELS) {
+          try {
+            res = await ai.models.generateContent({
+              model: m,
+              contents: promptText,
+              config: {
+                safetySettings: SAFETY,
+                temperature: 0.3,
+                thinkingConfig: { thinkingBudget: 0 }
+              }
+            });
+            if (res && res.text) break;
+          } catch (mErr) {
+            console.warn(`[Auto-Summary] Model ${m} lỗi:`, mErr?.message || mErr);
+          }
         }
 
         if (res && res.text) {
@@ -1796,7 +1797,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 Định dạng Markdown đẹp mắt, phân đoạn rõ ràng bằng tiêu đề và bullet points, icon sinh động. Giữ giọng văn tự tin, tinh tế, tận tụy chuẩn phong cách Jarvis.`;
 
         const ai = new GoogleGenAI({ apiKey: key });
-        const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-3.6-flash'];
+        const modelsToTry = AUX_FALLBACK_MODELS;
         let generatedText = '';
         let lastError = null;
 
@@ -1807,7 +1808,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
               contents: synthesisPrompt,
               config: {
                 temperature: 0.35,
-                safetySettings: SAFETY
+                safetySettings: SAFETY,
+                thinkingConfig: { thinkingBudget: 0 }
               }
             });
             if (res.text) {
@@ -2108,9 +2110,9 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           if (!candidateKeys.includes(k)) candidateKeys.push(k);
         }
 
-        // 4. Chuyển giọng nói sang văn bản tiếng Việt với cơ chế Xoay Key & Fallback Model đa tầng
+        // 4. Chuyển giọng nói sang văn bản tiếng Việt với cơ chế Xoay Key & Fallback Model Flash-Lite (thinking tắt hoàn toàn)
         handsFreeTranscribeController = new AbortController();
-        const candidateTranscribeModels = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite'];
+        const candidateTranscribeModels = AUX_FALLBACK_MODELS;
         let spokenText = '';
         let lastErr = null;
 
@@ -2144,7 +2146,10 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
                       }
                     ]
                   }
-                ]
+                ],
+                config: {
+                  thinkingConfig: { thinkingBudget: 0 }
+                }
               });
               spokenText = (res.text || '').trim();
               if (!spokenText && res.candidates?.[0]?.content?.parts) {
@@ -2499,7 +2504,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
               const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
                 model: FLASH_LITE_MODEL,
                 contents: `Phân tích và tóm tắt chi tiết video YouTube sau:\n- Tiêu đề: ${yt.title}\n- Kênh: ${yt.author}\n- Link: ${url}\n${yt.content ? yt.content : ''}\nHãy nêu rõ chủ đề chính, các luận điểm nổi bật và ý nghĩa của video. Tuyệt đối KHÔNG từ chối là không xem được video.`,
-                config: { safetySettings: SAFETY }
+                config: { safetySettings: SAFETY, thinkingConfig: { thinkingBudget: 0 } }
               });
               summary = res.text;
             } catch(e) {
@@ -2698,6 +2703,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
     function getFlashModelBucket(modelName) {
       const m = (modelName || '').toLowerCase();
+      if (m.includes('hydrogen') || m.includes('gemini-4')) return 'hydrogen';
       if (m.includes('3.8-flash') || m.includes('3.8')) return '3.8';
       if (m.includes('3.6-flash') || m.includes('3.6')) return '3.6';
       return null;
@@ -2706,17 +2712,18 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
     function getSelectedFlashModelBucket() {
       try {
         const modEl = $('model-select');
-        const modVal = modEl ? modEl.value : 'gemini-3.8-flash';
-        return getFlashModelBucket(modVal) || '3.8';
+        const modVal = modEl ? modEl.value : 'gemini-4-hydrogen';
+        return getFlashModelBucket(modVal) || 'hydrogen';
       } catch (_) {
-        return '3.8';
+        return 'hydrogen';
       }
     }
 
     function normalizeSlotData(slotObj) {
-      if (!slotObj || typeof slotObj !== 'object') return { '3.6': {}, '3.8': {} };
-      if (slotObj['3.6'] || slotObj['3.8']) {
+      if (!slotObj || typeof slotObj !== 'object') return { 'hydrogen': {}, '3.6': {}, '3.8': {} };
+      if (slotObj['hydrogen'] || slotObj['3.6'] || slotObj['3.8']) {
         return {
+          'hydrogen': (typeof slotObj['hydrogen'] === 'object' && slotObj['hydrogen']) ? slotObj['hydrogen'] : {},
           '3.6': (typeof slotObj['3.6'] === 'object' && slotObj['3.6']) ? slotObj['3.6'] : {},
           '3.8': (typeof slotObj['3.8'] === 'object' && slotObj['3.8']) ? slotObj['3.8'] : {}
         };
@@ -2726,7 +2733,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       for (const [k, v] of Object.entries(slotObj)) {
         if (typeof v === 'number') legacyMap[k] = v;
       }
-      return { '3.6': {}, '3.8': legacyMap };
+      return { 'hydrogen': {}, '3.6': {}, '3.8': legacyMap };
     }
 
     function loadKeyUsageData() {
@@ -2768,7 +2775,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       for (const [slotKey, localSlotRaw] of Object.entries(localData.keys)) {
         const localNorm = normalizeSlotData(localSlotRaw);
         const remoteNorm = normalizeSlotData(remoteUsage.keys?.[slotKey]);
-        for (const b of ['3.6', '3.8']) {
+        for (const b of ['hydrogen', '3.6', '3.8']) {
           for (const [devId, count] of Object.entries(localNorm[b] || {})) {
             const remoteCount = remoteNorm[b]?.[devId] || 0;
             if (count > remoteCount) return true;
@@ -2786,11 +2793,11 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
       if (remoteUsage.cycle === curCycle) {
         for (const [slotKey, remoteSlotRaw] of Object.entries(remoteUsage.keys)) {
-          if (!localData.keys[slotKey]) localData.keys[slotKey] = { '3.6': {}, '3.8': {} };
+          if (!localData.keys[slotKey]) localData.keys[slotKey] = { 'hydrogen': {}, '3.6': {}, '3.8': {} };
           else localData.keys[slotKey] = normalizeSlotData(localData.keys[slotKey]);
 
           const remoteNorm = normalizeSlotData(remoteSlotRaw);
-          for (const b of ['3.6', '3.8']) {
+          for (const b of ['hydrogen', '3.6', '3.8']) {
             if (!localData.keys[slotKey][b]) localData.keys[slotKey][b] = {};
             for (const [devId, remoteCount] of Object.entries(remoteNorm[b] || {})) {
               const localCount = localData.keys[slotKey][b][devId] || 0;
@@ -2811,12 +2818,12 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
     function recordKeyRequest(slotIndex, model) {
       const bucket = getFlashModelBucket(model);
-      if (!bucket) return; // Chỉ tính model 3.6 và 3.8 Flash (20 RPD mỗi con)
+      if (!bucket) return; // Chỉ tính model Gemini 4 Hydrogen, 3.6 và 3.8 Flash (20 RPD mỗi con)
 
       const data = loadKeyUsageData();
       const devId = getMyDeviceId();
       const slotKey = String(slotIndex);
-      if (!data.keys[slotKey]) data.keys[slotKey] = { '3.6': {}, '3.8': {} };
+      if (!data.keys[slotKey]) data.keys[slotKey] = { 'hydrogen': {}, '3.6': {}, '3.8': {} };
       else data.keys[slotKey] = normalizeSlotData(data.keys[slotKey]);
 
       if (!data.keys[slotKey][bucket]) data.keys[slotKey][bucket] = {};
@@ -2868,18 +2875,19 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
     function updateKeyQuotaUI() {
       const curSlot = getActiveKeySlot();
-      const curBucket = getSelectedFlashModelBucket(); // '3.8' | '3.6'
+      const curBucket = getSelectedFlashModelBucket(); // 'hydrogen' | '3.8' | '3.6'
       const count = getKeyUsageCount(curSlot, curBucket);
       const name = (ls.getItem(`jarvis_api_name_${curSlot}`) || ls.getItem(`huanmu_api_name_${curSlot}`) || `Key ${curSlot}`).trim();
 
-      // 1. Cập nhật Chip trên Header: Hiển thị rõ model đang active (3.6 hay 3.8)
+      // 1. Cập nhật Chip trên Header: Hiển thị rõ model đang active (H4, 3.6 hay 3.8)
       const quotaLabel = $('key-quota-label');
       const quotaDot = $('key-quota-dot');
       const quotaBtn = $('btn-key-quota-header');
 
       if (quotaLabel && quotaDot && quotaBtn) {
         const shortName = name.length > 7 ? name.slice(0, 7) + '..' : name;
-        quotaLabel.innerText = `🔑 ${shortName}: ${count}/20 (${curBucket})`;
+        const bucketDisplay = curBucket === 'hydrogen' ? 'H4' : curBucket;
+        quotaLabel.innerText = `🔑 ${shortName}: ${count}/20 (${bucketDisplay})`;
         if (count < 15) {
           quotaDot.style.background = '#10b981';
           quotaBtn.style.borderColor = 'var(--border)';
@@ -2892,13 +2900,14 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         }
       }
 
-      // 2. Cập nhật các badge trong modal Cấu hình (api-key-badge-1..10): Hiển thị cả 3.6 và 3.8
+      // 2. Cập nhật các badge trong modal Cấu hình (api-key-badge-1..10): Hiển thị cả H4, 3.6 và 3.8
       for (let i = 1; i <= 10; i++) {
         const badge = $(`api-key-badge-${i}`);
         if (badge) {
+          const uH = getKeyUsageCount(i, 'hydrogen');
           const u36 = getKeyUsageCount(i, '3.6');
           const u38 = getKeyUsageCount(i, '3.8');
-          badge.innerHTML = `<span style="color:${u36 >= 20 ? '#ef4444' : u36 >= 15 ? '#f59e0b' : '#10b981'}">3.6: ${u36}/20</span> | <span style="color:${u38 >= 20 ? '#ef4444' : u38 >= 15 ? '#f59e0b' : '#3b82f6'}">3.8: ${u38}/20</span>`;
+          badge.innerHTML = `<span style="color:${uH >= 20 ? '#ef4444' : uH >= 15 ? '#f59e0b' : '#a855f7'}">H4: ${uH}/20</span> | <span style="color:${u36 >= 20 ? '#ef4444' : u36 >= 15 ? '#f59e0b' : '#10b981'}">3.6: ${u36}/20</span> | <span style="color:${u38 >= 20 ? '#ef4444' : u38 >= 15 ? '#f59e0b' : '#3b82f6'}">3.8: ${u38}/20</span>`;
         }
       }
 
@@ -2911,7 +2920,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       const n = (ls.getItem(`jarvis_api_name_${keyNum}`) || ls.getItem(`huanmu_api_name_${keyNum}`) || '').trim();
       const label = n ? `Key #${keyNum} (${n})` : `Key #${keyNum}`;
       const bucket = modelName ? getFlashModelBucket(modelName) : getSelectedFlashModelBucket();
-      const bucketTag = bucket ? ` · ${bucket}` : '';
+      const bucketTag = bucket ? (bucket === 'hydrogen' ? ' · H4' : ` · ${bucket}`) : '';
       return `<span class="key-indicator-badge" title="Tin nhắn này được phản hồi bằng Google ${escapeHtml(label)}${bucketTag}" style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:rgba(59,130,246,0.12);color:#3b82f6;font-weight:600;margin-left:6px;border:1px solid rgba(59,130,246,0.3);display:inline-flex;align-items:center;gap:3px;vertical-align:middle;cursor:default;">🔑 ${escapeHtml(label)}${bucketTag}</span>`;
     }
     window.getKeyBadgeHtml = getKeyBadgeHtml;
@@ -2920,7 +2929,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       const listEl = $('key-quota-list');
       if (!listEl) return;
       const curSlot = getActiveKeySlot();
-      const curBucket = getSelectedFlashModelBucket(); // '3.8' | '3.6'
+      const curBucket = getSelectedFlashModelBucket(); // 'hydrogen' | '3.8' | '3.6'
 
       let html = '';
       let hasAnyKey = false;
@@ -2932,11 +2941,16 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         if (!k) continue;
 
         hasAnyKey = true;
+        const uH = getKeyUsageCount(i, 'hydrogen');
         const u36 = getKeyUsageCount(i, '3.6');
         const u38 = getKeyUsageCount(i, '3.8');
         const isCurrent = (i === curSlot);
 
         // Highlight badge của model đang chọn
+        const badgeHStyle = curBucket === 'hydrogen'
+          ? `background:${uH >= 20 ? 'rgba(239,68,68,0.2)' : 'rgba(168,85,247,0.2)'};color:${uH >= 20 ? '#ef4444' : '#a855f7'};font-weight:800;border:1.5px solid ${uH >= 20 ? '#ef4444' : '#a855f7'}`
+          : `background:rgba(255,255,255,0.06);color:var(--text-muted);border:1px solid var(--border)`;
+
         const badge36Style = curBucket === '3.6' 
           ? `background:${u36 >= 20 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)'};color:${u36 >= 20 ? '#ef4444' : '#10b981'};font-weight:800;border:1.5px solid ${u36 >= 20 ? '#ef4444' : '#10b981'}`
           : `background:rgba(255,255,255,0.06);color:var(--text-muted);border:1px solid var(--border)`;
@@ -2957,6 +2971,9 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+              <span title="Hạn ngạch Gemini 4 Hydrogen (20 RPD)" style="font-size:0.68rem;padding:2px 5px;border-radius:4px;${badgeHStyle}">
+                H4: ${uH}/20
+              </span>
               <span title="Hạn ngạch 3.6 Flash (20 RPD)" style="font-size:0.68rem;padding:2px 5px;border-radius:4px;${badge36Style}">
                 3.6: ${u36}/20
               </span>
@@ -3012,10 +3029,10 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         return manualKey;
       }
 
-      // Kiểm tra model đang sử dụng có phải 20 RPD (3.6 hoặc 3.8 Flash) không:
+      // Kiểm tra model đang sử dụng có phải 20 RPD (Hydrogen, 3.6 hoặc 3.8 Flash) không:
       const activeModEl = $('model-select');
-      const activeMod = activeModEl ? activeModEl.value : 'gemini-3.8-flash';
-      const flashBucket = getFlashModelBucket(activeMod); // '3.8' | '3.6' | null
+      const activeMod = activeModEl ? activeModEl.value : 'gemini-4-hydrogen';
+      const flashBucket = getFlashModelBucket(activeMod); // 'hydrogen' | '3.8' | '3.6' | null
       const shouldAvoidExhausted = ls.getItem('jarvis_skip_exhausted_keys') !== 'false';
 
       // Nếu không forceRotate và phiên đã gán key (Interactions API cần giữ key cố định cho interactionId):
@@ -3040,7 +3057,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
           if (notExhausted.length > 0) {
             candidates = notExhausted;
           } else {
-            showToast(`⚠️ Tất cả các Google Key đều đã đạt 20/20 RPD cho Gemini ${flashBucket} Flash hôm nay!`, "warning");
+            const modelLabel = flashBucket === 'hydrogen' ? 'Gemini 4 Hydrogen' : `Gemini ${flashBucket} Flash`;
+            showToast(`⚠️ Tất cả các Google Key đều đã đạt 20/20 RPD cho ${modelLabel} hôm nay!`, "warning");
           }
         }
 
@@ -3182,7 +3200,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       try {
         const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
           model: FLASH_LITE_MODEL,
-          contents: `Hãy tối ưu và mở rộng câu lệnh prompt sau đây để rõ ràng, chi tiết, chuyên nghiệp và hiệu quả nhất khi gửi cho AI:\n\n"${txt}"\n\nChỉ trả về duy nhất nội dung prompt đã được tối ưu, không giải thích gì thêm.`
+          contents: `Hãy tối ưu và mở rộng câu lệnh prompt sau đây để rõ ràng, chi tiết, chuyên nghiệp và hiệu quả nhất khi gửi cho AI:\n\n"${txt}"\n\nChỉ trả về duy nhất nội dung prompt đã được tối ưu, không giải thích gì thêm.`,
+          config: { safetySettings: SAFETY, thinkingConfig: { thinkingBudget: 0 } }
         });
         if (res.text) {
           DOM.input.value = res.text.trim();
@@ -3340,7 +3359,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
               const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
                 model: FLASH_LITE_MODEL,
                 contents: `Phân tích và tóm tắt chi tiết video YouTube sau:\n- Tiêu đề: ${yt.title}\n- Kênh: ${yt.author}\n- Link: ${u}\n${yt.content ? yt.content : ''}\nHãy nêu rõ chủ đề chính, các luận điểm nổi bật và ý nghĩa của video. Tuyệt đối KHÔNG từ chối là không xem được video.`,
-                config: { safetySettings: SAFETY }
+                config: { safetySettings: SAFETY, thinkingConfig: { thinkingBudget: 0 } }
               });
               summary = res.text;
             } catch(e) {
@@ -3581,7 +3600,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
         folder: "Mặc định",
         his: [],
         sys: '',
-        mod: 'gemini-3.6-flash',
+        mod: 'gemini-4-hydrogen',
         engine: 'stream',
         lastInteractionId: null,
         assignedApiKey: null,
@@ -3621,7 +3640,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
       if (s) {
         DOM.sysInst.value = s.sys || '';
-        DOM.model.value = s.mod || 'gemini-3.6-flash';
+        DOM.model.value = s.mod || 'gemini-4-hydrogen';
         DOM.engineSel.value = s.engine || 'stream';
         DOM.apiKeySel.value = s.keySel || 'auto';
         DOM.temp.value = s.tmp || 0.5;
@@ -5644,7 +5663,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
             safetySettings: SAFETY,
             maxOutputTokens: 350,
             temperature: 0.7,
-            thinkingConfig: { thinkingLevel: 'minimal' }
+            thinkingConfig: { thinkingBudget: 0 }
           }
         });
 

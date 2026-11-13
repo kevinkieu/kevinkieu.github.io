@@ -26,8 +26,12 @@ set "PATH=%JAVA_HOME%\bin;%PATH%"
 
 cd /d "%~dp0"
 
-:: 2. Tu dong dong bo code Web moi nhat (HTML/JS/CSS/Icons) vao thu muc Android Assets
-echo [1/3] Dang dong bo code moi nhat vao Android Assets...
+:: 2. Tu dong tang Version Code & Version Name bang bump-version.js
+echo [1/3] Dang cap nhat so phien ban Version Code va Version Name...
+call node "%~dp0bump-version.js"
+
+:: 3. Tu dong dong bo code Web moi nhat (HTML/JS/CSS/Icons) vao thu muc Android Assets
+echo [2/3] Dang dong bo code moi nhat vao Android Assets...
 if not exist "android\app\src\main\assets" mkdir "android\app\src\main\assets"
 copy /y "index.html" "android\app\src\main\assets\" >nul
 copy /y "manifest.json" "android\app\src\main\assets\" >nul
@@ -35,10 +39,6 @@ copy /y "sw.js" "android\app\src\main\assets\" >nul
 copy /y "icon*.png" "android\app\src\main\assets\" >nul
 xcopy /s /e /y "js" "android\app\src\main\assets\js\" >nul
 xcopy /s /e /y "css" "android\app\src\main\assets\css\" >nul
-
-:: 3. Tu dong tang Version Code & Version Name bang bump-version.js
-echo [2/3] Dang cap nhat so phien ban Version Code va Version Name...
-call node "%~dp0bump-version.js"
 
 cd "android"
 
