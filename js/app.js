@@ -855,6 +855,8 @@ import { GoogleGenAI } from "@google/genai";
     const openPromptLibraryModal = () => (typeof window.openPromptLibraryModal === 'function') ? window.openPromptLibraryModal() : null;
     const openCommandPalette = () => (typeof window.openCommandPalette === 'function') ? window.openCommandPalette() : null;
     const closeCommandPalette = () => (typeof window.closeCommandPalette === 'function') ? window.closeCommandPalette() : null;
+    const renderSnippets = () => (typeof window.renderSnippets === 'function') ? window.renderSnippets() : null;
+    const renderPromptList = () => (typeof window.renderPromptList === 'function') ? window.renderPromptList() : null;
 
     // --- SWIPE GESTURES FOR MOBILE ---
     let touchStartX = 0, touchStartY = 0;
@@ -1755,6 +1757,8 @@ import { GoogleGenAI } from "@google/genai";
     const findSlotIndexForKey = (k) => (typeof window.findSlotIndexForKey === 'function') ? window.findSlotIndexForKey(k) : -1;
     const getActiveKeySlot = () => (typeof window.getActiveKeySlot === 'function') ? window.getActiveKeySlot() : null;
     const getKeyBadgeHtml = (s) => (typeof window.getKeyBadgeHtml === 'function') ? window.getKeyBadgeHtml(s) : '';
+    const openKeyQuotaModal = () => (typeof window.openKeyQuotaModal === 'function') ? window.openKeyQuotaModal() : null;
+    const closeKeyQuotaModal = () => (typeof window.closeKeyQuotaModal === 'function') ? window.closeKeyQuotaModal() : null;
 
     window.selectKeySlotQuick = (slotIndex) => {
       if (DOM.apiKeySel) {
@@ -1854,11 +1858,18 @@ import { GoogleGenAI } from "@google/genai";
       const m = DOM.model?.value || '', t = DOM.thinking;
       if (!t) return;
       const prev = t.value;
+      if (m.includes('lite')) {
+        t.innerHTML = '<option value="none">Tắt (Flash Lite)</option>';
+        t.value = 'none';
+        t.disabled = true;
+        return;
+      }
+      t.disabled = false;
       const opts = (m === 'gemini-3.8-flash') 
         ? [['low', 'Low (Thấp)'], ['medium', 'Med (Chuẩn)'], ['high', 'High (Sâu)']] 
         : [['minimal', 'Min (Tối thiểu)'], ['low', 'Low (Thấp)'], ['medium', 'Med (Chuẩn)'], ['high', 'High (Sâu)']];
       t.innerHTML = opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
-      t.value = opts.some(([v]) => v === prev) ? prev : (m === 'gemini-3.5-flash-lite' ? 'minimal' : opts[0][0]);
+      t.value = opts.some(([v]) => v === prev) ? prev : opts[0][0];
     }
 
     const updateTokenCount = () => {
@@ -2330,20 +2341,20 @@ import { GoogleGenAI } from "@google/genai";
         }
         if (d && d.length > 0) {
           sessions = d.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
-          renderFolders();
-          renderSnippets();
+          try { renderFolders(); } catch (_) {}
+          try { if (typeof renderSnippets === 'function') renderSnippets(); } catch (_) {}
           activeId = ls.getItem('jarvis_active_id') || ls.getItem('huanmu_active_id') || ls.getItem('javiss_active_id') || sessions[0].id;
           if (!sessions.find(s => s.id === activeId)) activeId = sessions[0].id;
           await switchSess(activeId);
         } else {
-          renderFolders();
-          renderSnippets();
+          try { renderFolders(); } catch (_) {}
+          try { if (typeof renderSnippets === 'function') renderSnippets(); } catch (_) {}
           await newSess();
         }
       } catch (e) {
         console.error("Lỗi khởi động loadSess:", e);
-        renderFolders();
-        renderSnippets();
+        try { renderFolders(); } catch (_) {}
+        try { if (typeof renderSnippets === 'function') renderSnippets(); } catch (_) {}
       }
     }
 
@@ -3869,13 +3880,14 @@ import { GoogleGenAI } from "@google/genai";
           }
           contents.push({ role: 'user', parts: currentParts });
 
+          const isFlashLite = am.includes('flash-lite') || am.includes('lite');
           const budgetMap = { minimal: 1024, low: 2048, medium: 4096, high: 8192 };
           const config = {
             systemInstruction: getDynamicSI(ragSnippet),
             safetySettings: SAFETY,
-            maxOutputTokens: 32768
+            maxOutputTokens: isFlashLite ? 8192 : 32768
           };
-          if (thk && thk !== 'none') {
+          if (!isFlashLite && thk && thk !== 'none') {
             const b = budgetMap[thk] || 4096;
             config.thinkingConfig = {
               thinkingBudget: b,
