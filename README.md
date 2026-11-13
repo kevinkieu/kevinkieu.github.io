@@ -62,9 +62,12 @@
   - Tô màu mã nguồn (Syntax Highlighting) kèm nút sao chép nhanh 1 chạm.
 - **Đa phương thức (Multimodal Input)**: Kéo thả hình ảnh, tài liệu PDF, file mã nguồn TXT/JS/PY, file ghi âm để phân tích.
 
-#### 4. ⚔️ Đấu Trường Tranh Biện AI (AI Arena)
-- So tài song song giữa 2 mô hình AI cùng một lúc trên màn hình chia đôi.
-- So sánh chất lượng câu trả lời, góc nhìn phản biện, độ sâu phân tích và tốc độ phản hồi.
+#### 4. 💊 Tủ Thuốc Max Care & Báo Thức Nhắc Uống Thuốc (Max Care Pill & Health Reminder)
+- **Quản lý đơn thuốc & TPCN thông minh**: Lên lịch uống thuốc hàng ngày, liều lượng, chủng loại (viên nén, viên nang, siro, tiêm, nhỏ mắt, gói bột) kèm hướng dẫn uống (trước/sau bữa ăn, bụng đói, trước khi ngủ).
+- **Báo thức hệ thống Android chuẩn xác (Exact Alarms)**: Tích hợp sâu vào `AlarmManager` và `NotificationManager` của hệ điều hành, đánh thức thiết bị và phát chuông báo đúng từng phút kể cả khi điện thoại tắt màn hình hoặc app bị tắt hoàn toàn (`RTC_WAKEUP`).
+- **Tự động đặt lại lịch khi khởi động lại máy (`RECEIVE_BOOT_COMPLETED`)**: Không bao giờ bỏ sót giờ uống thuốc dù điện thoại vừa khởi động lại.
+- **Thao tác nhanh trên Notification**: Tương tác 1 chạm ngay trên thanh thông báo để bấm **"Đã uống"** (ghi nhận vào sổ nhật ký) hoặc **"Nhắc lại sau 10 phút"** (Snooze).
+- **Đồng bộ Cloud 2 chiều**: Tự động đồng bộ toàn bộ đơn thuốc và lịch sử uống thuốc qua GitHub Gist, đổi máy không bao giờ lo mất dữ liệu.
 
 #### 5. 🎙️ Phòng Thu Giọng Nói AI (Gemini TTS Studio)
 - Chuyển đổi văn bản thành giọng đọc tự nhiên như người thật.
@@ -128,20 +131,18 @@ Jarvis AI/
 │   ├── style.css       # Giao diện chính Cyberpunk Glassmorphism
 │   ├── live.css        # Giao diện Cuộc gọi Live Voice & Video
 │   ├── translate.css   # Giao diện Thông dịch viên đối diện 2 nửa
-│   ├── arena.css       # Giao diện Đấu trường AI Arena
 │   ├── tts.css         # Giao diện Studio TTS
 │   └── rag.css         # Giao diện Kho Tri Thức, RAG & Tìm kiếm Ngữ nghĩa
 │
 ├── js/
-│   ├── app.js          # Logic ứng dụng, Chat, Markdown, Quản lý Key
+│   ├── app.js          # Logic ứng dụng, Chat, Markdown, Quản lý Key & Max Care
 │   ├── sync.js         # Đồng bộ Cloud 2 chiều & Tự động hợp nhất GitHub Gist
 │   ├── live.js         # Multimodal Live Voice & Video WebSocket
 │   ├── translate.js    # Thông dịch viên 2 chiều Gemini 3.8 Bilateral
-│   ├── arena.js        # Đấu trường so tài song song
 │   ├── tts.js          # Chuyển văn bản thành giọng nói
 │   └── rag.js          # Động cơ RAG, Vector IndexedDB & Gemini Embedding 2
 │
-└── android/            # Mã nguồn dự án Android (Capacitor/Gradle)
+└── android/            # Mã nguồn dự án Android (WebView Bridge & Max Care Native Alarms)
 ```
 
 ---
@@ -219,9 +220,12 @@ Leveraging the cutting-edge **Google Gemini 3.8 Live API** via bidirectional Web
   - Syntax highlighted code blocks with one-click copying.
 - **Multimodal Uploads**: Drag-and-drop support for images, PDFs, audio clips, and source code files.
 
-#### 4. ⚔️ AI Arena (Model Benchmark & Debate)
-- Compare two AI models side-by-side answering the exact same query.
-- Evaluate reasoning quality, response speed, and diverse viewpoints.
+#### 4. 💊 Max Care Pill & Health Medication Reminder
+- **Comprehensive Medication & Supplement Tracking**: Schedule daily medication regimens, dosages, formulations (tablets, capsules, syrup, injections, eye drops, powders), and timing relative to meals.
+- **Android System Exact Alarms**: Deep integration with native `AlarmManager` and `NotificationManager`, triggering exact wake-up notifications and ringtones even while in deep Doze mode or terminated (`RTC_WAKEUP`).
+- **Auto-Rescheduling on System Boot (`RECEIVE_BOOT_COMPLETED`)**: Seamlessly reschedules all active alarms automatically whenever your phone restarts.
+- **Interactive Action Notifications**: One-tap "Taken" logging and 10-minute "Snooze" triggers directly from notifications and lock screen.
+- **Full Cloud Sync**: Prescriptions and medication intake history seamlessly sync across devices via GitHub Gist.
 
 #### 5. 🎙️ Studio Text-to-Speech (Gemini TTS)
 - Studio-grade natural voice generation with Google voices (*Charon, Puck, Aoede, Kore, Fenrir...*).
@@ -275,19 +279,18 @@ Jarvis AI/
 │   ├── style.css       # Main Cyberpunk & Glassmorphism styles
 │   ├── live.css        # Live Voice & Video call modal styles
 │   ├── translate.css   # Dual-Screen Face-to-Face translator layout
-│   ├── arena.css       # Side-by-side AI Arena styles
 │   ├── tts.css         # Studio TTS styles
 │   └── rag.css         # Knowledge Base & Semantic Search styles
 │
 ├── js/
-│   ├── app.js          # Core app controller, chat, markdown & key pool
+│   ├── app.js          # Core app controller, chat, markdown, keys & Max Care
+│   ├── sync.js         # 2-Way Smart Merge GitHub Gist sync engine
 │   ├── live.js         # Multimodal Live WebSockets streaming module
 │   ├── translate.js    # Gemini 3.8 bilateral translation engine
-│   ├── arena.js        # Parallel model debate & benchmark module
 │   ├── tts.js          # Speech synthesis audio studio
 │   └── rag.js          # Gemini Embedding 2 RAG & Vector Engine
 │
-└── android/            # Android native project assets & Capacitor wrapper
+└── android/            # Android native project assets (WebView Bridge & Max Care Alarms)
 ```
 
 ---

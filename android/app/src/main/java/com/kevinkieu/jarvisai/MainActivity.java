@@ -61,6 +61,8 @@ public class MainActivity extends AppCompatActivity {
     private ValueCallback<Uri[]> filePathCallback;
     private long lastBackPressTime = 0;
     private WebViewAssetLoader assetLoader;
+    private String pendingOpenTab = null;
+    private boolean isPageLoaded = false;
 
     public static void notifyMedicationStatusChanged(String medId, String timeStr, String status) {
         if (sInstance != null && sInstance.webView != null) {
@@ -133,6 +135,19 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public boolean isNativeApp() {
             return true;
+        }
+
+        @JavascriptInterface
+        public void onAppReady() {
+            runOnUiThread(() -> {
+                isPageLoaded = true;
+                if ("medication".equals(pendingOpenTab)) {
+                    pendingOpenTab = null;
+                    if (webView != null) {
+                        webView.evaluateJavascript("if (window.openMedicationTab) window.openMedicationTab();", null);
+                    }
+                }
+            });
         }
 
         /**
@@ -342,10 +357,12 @@ public class MainActivity extends AppCompatActivity {
         if (intent == null) return;
         String openTab = intent.getStringExtra("OPEN_TAB");
         if ("medication".equals(openTab)) {
-            if (webView != null) {
-                webView.postDelayed(() -> {
+            pendingOpenTab = "medication";
+            if (webView != null && isPageLoaded) {
+                pendingOpenTab = null;
+                webView.post(() -> {
                     webView.evaluateJavascript("if (window.openMedicationTab) window.openMedicationTab();", null);
-                }, 600);
+                });
             }
         }
     }
@@ -415,6 +432,18 @@ public class MainActivity extends AppCompatActivity {
                     return true;
                 } catch (Exception e) {
                     return false;
+                }
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                isPageLoaded = true;
+                if ("medication".equals(pendingOpenTab)) {
+                    pendingOpenTab = null;
+                    view.postDelayed(() -> {
+                        view.evaluateJavascript("if (window.openMedicationTab) window.openMedicationTab();", null);
+                    }, 250);
                 }
             }
 
@@ -518,12 +547,39 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
+        if (webView != null) {
+            // Kiểm tra xem có Modal nào đang mở không để đóng modal trước thay vì thoát app
+            String checkModalJs = "(function() { " +
+                    "  if (window.closeActiveModal && window.closeActiveModal()) return 'CLOSED_MODAL'; " +
+                    "  const overlays = ['max-form-modal', 'max-medication-modal', 'tts-studio-modal', 'knowledge-modal', 'settings-modal', 'live-call-modal', 'live-translate-modal', 'search-modal', 'daily-briefing-modal', 'share-target-modal']; " +
+                    "  for (const id of overlays) { " +
+                    "    const el = document.getElementById(id); " +
+                    "    if (el && (el.style.display === 'flex' || el.style.display === 'block')) { " +
+                    "      el.style.display = 'none'; " +
+                    "      const ov = document.getElementById('modal-overlay'); if (ov) ov.style.display = 'none'; " +
+                    "      return 'CLOSED_MODAL'; " +
+                    "    } " +
+                    "  } " +
+                    "  return 'NONE'; " +
+                    "})();";
+
+            webView.evaluateJavascript(checkModalJs, result -> {
+                if (result != null && result.contains("CLOSED_MODAL")) {
+                    return;
+                }
+                if (webView.canGoBack()) {
+                    webView.goBack();
+                    return;
+                }
+                handleExitApp();
+            });
             return;
         }
 
-        // Nhấn phím Back 2 lần trong vòng 2 giây để thoát ứng dụng
+        handleExitApp();
+    }
+
+    private void handleExitApp() {
         if (System.currentTimeMillis() - lastBackPressTime < 2000) {
             super.onBackPressed();
         } else {
