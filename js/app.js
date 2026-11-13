@@ -161,86 +161,7 @@ import { GoogleGenAI } from "@google/genai";
     window.escapeHtml = escapeHtml;
 
 
-    // --- KEY CIPHER & SECURITY HELPERS ---
-    const CIPHER_SECRET = "JarvisAI_SecretKey_Protect_2026_X9!";
-
-    function obfuscateKey(k) {
-      if (!k || typeof k !== 'string') return '';
-      try {
-        const salt = Math.random().toString(36).slice(2, 10);
-        const fullKey = CIPHER_SECRET + salt;
-        const utf8Bytes = new TextEncoder().encode(k);
-        const outBytes = new Uint8Array(utf8Bytes.length);
-        for (let i = 0; i < utf8Bytes.length; i++) {
-          outBytes[i] = utf8Bytes[i] ^ fullKey.charCodeAt(i % fullKey.length) ^ ((i * 31 + 17) & 0xFF);
-        }
-        let binStr = '';
-        for (let i = 0; i < outBytes.length; i++) {
-          binStr += String.fromCharCode(outBytes[i]);
-        }
-        return 'JVENC_' + salt + '_' + btoa(binStr);
-      } catch (e) {
-        try {
-          return 'ENC_' + btoa(unescape(encodeURIComponent(k.split('').reverse().join(''))));
-        } catch {
-          return 'ENC_' + btoa(k.split('').reverse().join(''));
-        }
-      }
-    }
-
-    function deobfuscateKey(k) {
-      if (!k || typeof k !== 'string') return '';
-      if (k.startsWith('JVENC_')) {
-        try {
-          const parts = k.slice(6).split('_');
-          if (parts.length >= 2) {
-            const salt = parts[0];
-            const b64 = parts.slice(1).join('_');
-            const fullKey = CIPHER_SECRET + salt;
-            const binStr = atob(b64);
-            const outBytes = new Uint8Array(binStr.length);
-            for (let i = 0; i < binStr.length; i++) {
-              outBytes[i] = binStr.charCodeAt(i) ^ ((i * 31 + 17) & 0xFF) ^ fullKey.charCodeAt(i % fullKey.length);
-            }
-            return new TextDecoder().decode(outBytes);
-          }
-        } catch (e) {
-          console.warn('JVENC decode failed:', e);
-        }
-      }
-      if (k.startsWith('ENC_')) {
-        try {
-          const rawB64 = k.slice(4);
-          return decodeURIComponent(escape(atob(rawB64))).split('').reverse().join('');
-        } catch {
-          try {
-            return atob(k.slice(4)).split('').reverse().join('');
-          } catch {
-            return k;
-          }
-        }
-      }
-      return k;
-    }
-
-    function sanitizeSessionForBackup(session) {
-      if (!session || typeof session !== 'object') return session;
-      const clean = JSON.parse(JSON.stringify(session));
-      clean.assignedApiKey = null;
-      if (Array.isArray(clean.his)) {
-        clean.his.forEach(msg => {
-          if (typeof msg.text === 'string') {
-            msg.text = msg.text
-              .replace(/AIzaSy[A-Za-z0-9_-]{30,40}/g, 'AIzaSy[PROTECTED_BY_JARVIS]')
-              .replace(/tvly-[A-Za-z0-9_-]{20,40}/g, 'tvly-[PROTECTED_BY_JARVIS]')
-              .replace(/jina_[A-Za-z0-9_-]{20,}/g, 'jina_[PROTECTED_BY_JARVIS]')
-              .replace(/ghp_[A-Za-z0-9]{30,45}/g, 'ghp_[PROTECTED_BY_JARVIS]')
-              .replace(/github_pat_[A-Za-z0-9_]{30,}/g, 'github_pat_[PROTECTED_BY_JARVIS]');
-          }
-        });
-      }
-      return clean;
-    }
+    // [Đã tách sang js/cipher.js: obfuscateKey / deobfuscateKey / sanitizeSessionForBackup]
 
     let apiKeys = [], globalKeyIndex = 0, liveKeyIndex = 0, liveRetryCount = 0, abortController = null;
     const SAFETY = [
@@ -400,17 +321,8 @@ import { GoogleGenAI } from "@google/genai";
 
     // --- EXPORT & TOOLS PROXIES (Đã chuyển sang js/export.js và js/tools.js) ---
 
-    // --- QUẢN LÝ 10 GOOGLE API KEYS & CẤU HÌNH ---
-    // --- QUẢN LÝ 10 GOOGLE API KEYS & CẤU HÌNH ---
-    $('api-keys-container').innerHTML = Array.from({ length: 10 }, (_, i) => `
-      <div class="api-key-row" style="display:flex;gap:6px;align-items:center;">
-        <span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);min-width:30px;text-align:center;background:rgba(255,255,255,0.05);padding:6px 0;border-radius:var(--radius-sm);border:1px solid var(--border);">#${i+1}</span>
-        <input type="text" id="api-key-name-${i+1}" placeholder="Tên gợi nhớ ${i+1}" class="modern-input" style="width:115px;flex:0 0 115px;font-size:0.8rem;padding:7px 10px;" title="Tên gợi nhớ cho Key ${i+1} (Ví dụ: Gmail A, Key chính, Dự phòng...)">
-        <input type="password" id="api-key-${i+1}" placeholder="Google API Key ${i+1} (AIzaSy...)" class="modern-input" style="flex:1;min-width:110px;font-size:0.8rem;padding:7px 10px;" title="Dán Google AI Studio API Key vào đây">
-        <span id="api-key-badge-${i+1}" style="font-size:0.68rem;font-weight:700;padding:4px 6px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.05);white-space:nowrap;border:1px solid var(--border);flex-shrink:0;" title="Hạn ngạch hôm nay (20 RPD mỗi model)"><span style="color:#a855f7;">H4: 0/20</span> | <span style="color:#10b981;">3.6: 0/20</span> | <span style="color:#3b82f6;">3.8: 0/20</span></span>
-      </div>
-    `).join('');
-
+    // [Đã tách sang js/api-keys.js: render container 10 API keys + init + handlers]
+    // cfgMap vẫn giữ tại đây (getExternalConfigsObj dùng) và publish lên window
     const cfgMap = [
       ['global-context-input', 'jarvis_global_context'],
       ['tavily-key-input', 'tavily_api_key'],
@@ -420,193 +332,11 @@ import { GoogleGenAI } from "@google/genai";
       ['web-extract-engine-input', 'web_extract_engine', 'auto'],
       ['live-temperature', 'live_temperature', '0.7']
     ];
+    window.cfgMap = cfgMap;
 
-    function initAPIKeys() {
-      apiKeys = [];
-      for (let i = 1; i <= 10; i++) {
-        let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
-        const n = (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || "").trim();
-        if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
-          k = deobfuscateKey(k);
-          ls.setItem(`jarvis_api_${i}`, k);
-        }
-        if ($(`api-key-${i}`)) $(`api-key-${i}`).value = k;
-        if ($(`api-key-name-${i}`)) $(`api-key-name-${i}`).value = n;
-        if (k) apiKeys.push(k);
-      }
-      const s = $('key-status-msg');
-      if (s) {
-        s.innerText = apiKeys.length ? `✅ Có ${apiKeys.length} Google Key` : "⚠️ Chưa có Key";
-        s.style.color = apiKeys.length ? "var(--success)" : "var(--danger)";
-      }
-      [$('api-key-select'), $('live-key-select')].forEach(d => {
-        if (!d) return;
-        const cur = d.value;
-        d.innerHTML = '<option value="auto">🔄 Tự động xoay Key</option>';
-        for (let i = 1; i <= 10; i++) {
-          let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
-          const n = (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || "").trim();
-          if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
-          if (k) {
-            const label = n ? `🔑 ${n} (${k.substring(0, 5)}...)` : `🔑 Key ${i} (${k.substring(0, 5)}...)`;
-            d.innerHTML += `<option value="${i-1}">${label}</option>`;
-          }
-        }
-        if ([...d.options].some(o => o.value === cur)) d.value = cur;
-      });
-      if (typeof updateKeyQuotaUI === 'function') updateKeyQuotaUI();
-    }
-
-    function initExternalConfigs() {
-      cfgMap.forEach(([id, k, def = '']) => {
-        if ($(id)) {
-          let val = ls.getItem(k) || (k === 'jarvis_global_context' ? (ls.getItem('huanmu_global_context') || ls.getItem('javiss_global_context') || '') : '') || def;
-          if (typeof val === 'string' && (val.startsWith('JVENC_') || val.startsWith('ENC_'))) {
-            val = deobfuscateKey(val);
-          }
-          $(id).value = val;
-        }
-      });
-      if ($('live-temp-val')) $('live-temp-val').innerText = ls.getItem('live_temperature') || '0.7';
-      if ($('live-toggle-search')) $('live-toggle-search').checked = ls.getItem('live_search_enabled') !== 'false';
-      if ($('live-toggle-context')) $('live-toggle-context').checked = ls.getItem('live_context_enabled') !== 'false';
-      if ($('hide-deepseek-thinking-checkbox')) {
-        $('hide-deepseek-thinking-checkbox').checked = ls.getItem('jarvis_hide_deepseek_thinking') === 'true';
-        $('hide-deepseek-thinking-checkbox').onchange = e => {
-          ls.setItem('jarvis_hide_deepseek_thinking', e.target.checked ? 'true' : 'false');
-        };
-      }
-    }
-
-    $('live-temperature').oninput = e => { if ($('live-temp-val')) $('live-temp-val').innerText = e.target.value; };
-
-    if ($('global-context-input')) {
-      $('global-context-input').oninput = e => {
-        ls.setItem('jarvis_global_context', e.target.value);
-        ls.setItem('huanmu_global_context', e.target.value);
-      };
-    }
-
-    $('btn-save-keys').onclick = () => {
-      for (let i = 1; i <= 10; i++) {
-        const val = $(`api-key-${i}`)?.value.trim() || '';
-        const nameVal = $(`api-key-name-${i}`)?.value.trim() || '';
-        ls.setItem(`jarvis_api_${i}`, val);
-        ls.setItem(`huanmu_api_${i}`, val);
-        ls.setItem(`jarvis_api_name_${i}`, nameVal);
-        ls.setItem(`huanmu_api_name_${i}`, nameVal);
-      }
-      cfgMap.forEach(([id, k]) => ls.setItem(k, $(id)?.value.trim() || ''));
-      ls.setItem('live_search_enabled', $('live-toggle-search')?.checked ? 'true' : 'false');
-      ls.setItem('live_context_enabled', $('live-toggle-context')?.checked ? 'true' : 'false');
-      ls.setItem('jarvis_hide_deepseek_thinking', $('hide-deepseek-thinking-checkbox')?.checked ? 'true' : 'false');
-      initAPIKeys();
-      initExternalConfigs();
-      showToast("Đã lưu cấu hình Google & Hệ thống!");
-    };
-
-    $('btn-check-keys').onclick = async () => {
-      const b = $('btn-check-keys');
-      b.innerText = "⏳ Đang kiểm tra...";
-      b.disabled = true;
-      let ok = 0, leaked = 0, quota = 0, invalid = 0, tot = 0;
-
-      for (let i = 1; i <= 10; i++) {
-        const el = $(`api-key-${i}`), k = el?.value.trim();
-        const nameEl = $(`api-key-name-${i}`);
-        const kn = nameEl?.value.trim() || `Key ${i}`;
-        if (!k) continue;
-        tot++;
-        try {
-          await new GoogleGenAI({ apiKey: k }).models.generateContent({
-            model: FLASH_LITE_MODEL,
-            contents: "hi",
-            config: { maxOutputTokens: 1 }
-          });
-          el.style.border = "2px solid var(--success)";
-          if (nameEl) nameEl.style.border = "2px solid var(--success)";
-          el.title = `${kn}: ✅ Hoạt động tốt`;
-          ok++;
-        } catch (err) {
-          const errStr = (err.message || String(err)).toLowerCase();
-          if (errStr.includes("leak") || errStr.includes("403") || errStr.includes("permission_denied")) {
-            el.style.border = "2px solid #ef4444";
-            if (nameEl) nameEl.style.border = "2px solid #ef4444";
-            el.title = `${kn}: 🚫 BỊ GOOGLE KHÓA (Reported as leaked - 403). Cần xóa và tạo key mới!`;
-            leaked++;
-          } else if (errStr.includes("quota") || errStr.includes("429") || errStr.includes("rate") || errStr.includes("resource_exhausted")) {
-            el.style.border = "2px solid #f59e0b";
-            if (nameEl) nameEl.style.border = "2px solid #f59e0b";
-            el.title = `${kn}: ⚠️ Hết Quota tạm thời (429). Key vẫn sống!`;
-            quota++;
-          } else {
-            el.style.border = "2px solid var(--danger)";
-            if (nameEl) nameEl.style.border = "2px solid var(--danger)";
-            el.title = `${kn}: ❌ Lỗi (${err.message || 'Không hợp lệ'})`;
-            invalid++;
-          }
-        }
-      }
-      b.innerText = "🔍 Kiểm tra Keys";
-      b.disabled = false;
-
-      let msg = `Hoạt động: ${ok}/${tot} Keys.`;
-      if (leaked > 0) msg += ` 🚫 ${leaked} key bị Google khóa (Leaked 403).`;
-      if (quota > 0) msg += ` ⚠️ ${quota} key hết quota tạm thời.`;
-      showToast(msg, ok > 0 ? (leaked > 0 ? "warning" : "success") : "danger");
-    };
-
-    $('btn-check-duplicates').onclick = () => {
-      const m = {}, dups = [];
-      for (let i = 1; i <= 10; i++) {
-        const v = $(`api-key-${i}`)?.value.trim();
-        const kn = $(`api-key-name-${i}`)?.value.trim() || `Key ${i}`;
-        if (v) m[v] ? dups.push(`${kn} trùng với ${m[v]}`) : m[v] = kn;
-      }
-      showToast(dups.length ? `⚠️ Phát hiện trùng: ${dups.join(', ')}!` : "✅ Không có key trùng.");
-    };
-
-    initAPIKeys();
-    initExternalConfigs();
-
-    // --- INDEXED DB ENGINE ---
-    const DB_NAME = "JavissUltimateOS_DB", STORE_NAME = "chat_sessions", FILE_STORE = "file_library", TTS_STORE = "tts_audio_library";
-    let db;
-    function initDB() {
-      return new Promise((res, rej) => {
-        const rq = indexedDB.open(DB_NAME, 7);
-        rq.onupgradeneeded = e => {
-          let d = e.target.result;
-          if (!d.objectStoreNames.contains(STORE_NAME)) d.createObjectStore(STORE_NAME, { keyPath: "id" });
-          if (!d.objectStoreNames.contains(FILE_STORE)) d.createObjectStore(FILE_STORE, { keyPath: "id" });
-          if (!d.objectStoreNames.contains(TTS_STORE)) d.createObjectStore(TTS_STORE, { keyPath: "id", autoIncrement: true });
-        };
-        rq.onsuccess = async e => {
-          db = e.target.result;
-          try {
-            const checkHuan = indexedDB.open("HuanMU_DB", 6);
-            checkHuan.onsuccess = () => {
-              const hDb = checkHuan.result;
-              if (hDb.objectStoreNames.contains(STORE_NAME)) {
-                const getItems = hDb.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll();
-                getItems.onsuccess = () => {
-                  const hSessions = getItems.result || [];
-                  if (hSessions.length) {
-                    const wrTrans = db.transaction(STORE_NAME, "readwrite");
-                    hSessions.forEach(hs => {
-                      if (hs.his && hs.his.length > 0) wrTrans.objectStore(STORE_NAME).put(hs);
-                    });
-                  }
-                };
-              }
-            };
-          } catch {}
-          res();
-        };
-        rq.onerror = e => rej(e);
-      });
-    }
-
+    // [Đã tách sang js/api-keys.js: initAPIKeys / initExternalConfigs + 3 button handlers + auto-init]
+    // [Đã tách sang js/database.js: IndexedDB engine (db, initDB, saveToDB, getAllFromDB, clearAllDB, file/TTS stores)]
+    // Giữ lại: syncSessionsToNative (native-only) + expose window.db/getDB do js/database.js gán khi initDB xong
     let _nativeSyncTimer = null;
     function syncSessionsToNative() {
       if (!window.JarvisNativeBridge) return;
@@ -620,83 +350,7 @@ import { GoogleGenAI } from "@google/genai";
         } catch {}
       }, 300);
     }
-
-    const saveToDB = s => new Promise((resolve, reject) => {
-      try {
-        if (s && typeof s === 'object') {
-          s.updatedAt = Date.now();
-        }
-        const t = db.transaction(STORE_NAME, "readwrite");
-        t.objectStore(STORE_NAME).put(s);
-        t.oncomplete = () => {
-          syncSessionsToNative();
-          if (typeof scheduleAutoSync === 'function') {
-            scheduleAutoSync(10000);
-          }
-          resolve();
-        };
-        t.onerror = err => reject(err);
-      } catch (err) {
-        reject(err);
-      }
-    });
-
-    function recordDeletedSessionId(id) {
-      if (!id) return;
-      try {
-        const list = JSON.parse(ls.getItem('jarvis_deleted_session_ids') || '[]');
-        if (!list.includes(id)) {
-          list.push(id);
-          if (list.length > 200) list.shift();
-          ls.setItem('jarvis_deleted_session_ids', JSON.stringify(list));
-        }
-      } catch (e) {}
-    }
-
-    const deleteFromDB = i => new Promise((resolve, reject) => {
-      try {
-        const t = db.transaction(STORE_NAME, "readwrite");
-        t.objectStore(STORE_NAME).delete(i);
-        t.oncomplete = () => {
-          recordDeletedSessionId(i);
-          syncSessionsToNative();
-          if (typeof scheduleAutoSync === 'function') {
-            scheduleAutoSync(6000);
-          }
-          resolve();
-        };
-        t.onerror = err => reject(err);
-      } catch (err) {
-        reject(err);
-      }
-    });
-
-    const getAllFromDB = () => new Promise((resolve, reject) => {
-      try {
-        const rq = db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll();
-        rq.onsuccess = () => resolve(rq.result || []);
-        rq.onerror = err => reject(err);
-      } catch (err) {
-        reject(err);
-      }
-    });
-
-    const clearAllDB = () => new Promise((resolve, reject) => {
-      try {
-        const t = db.transaction(STORE_NAME, "readwrite");
-        t.objectStore(STORE_NAME).clear();
-        t.oncomplete = () => {
-          if (window.JarvisNativeBridge) saveToNativeBridge('jarvis_sessions_backup', '[]');
-          resolve();
-        };
-        t.onerror = err => reject(err);
-      } catch (err) {
-        reject(err);
-      }
-    });
-
-    const saveFileToLib = f => new Promise(r => { const t = db.transaction(FILE_STORE, "readwrite"); t.objectStore(FILE_STORE).put(f); t.oncomplete = () => r(); });
-    const getAllFilesFromLib = () => new Promise(r => { const rq = db.transaction(FILE_STORE, "readonly").objectStore(FILE_STORE).getAll(); rq.onsuccess = () => r(rq.result); });
+    window.syncSessionsToNative = syncSessionsToNative;
 
     // --- DOM REFERENCES ---
     const DOM = {
@@ -763,10 +417,7 @@ import { GoogleGenAI } from "@google/genai";
     }
     window.SAFETY = SAFETY;
     window.FLASH_LITE_MODEL = FLASH_LITE_MODEL;
-    window.DB_NAME = DB_NAME;
-    window.STORE_NAME = STORE_NAME;
-    window.FILE_STORE = FILE_STORE;
-    window.TTS_STORE = TTS_STORE;
+    // [window.DB_NAME / STORE_NAME / FILE_STORE / TTS_STORE: do js/database.js expose]
     window.getSessionApiKey = (cs, forceRotate) => getSessionApiKey(cs, forceRotate);
     window.showToast = (msg, type) => showToast(msg, type);
     window.getNowTime24h = () => getNowTime24h();
@@ -777,11 +428,7 @@ import { GoogleGenAI } from "@google/genai";
     window.fetchTavilySearch = q => fetchTavilySearch(q);
     window.fetchSerperSearch = q => fetchSerperSearch(q);
     window.fallbackBrowserDownload = (blob, fn) => fallbackBrowserDownload(blob, fn);
-    window.saveToDB = saveToDB;
-    window.getAllFromDB = getAllFromDB;
-    window.clearAllDB = clearAllDB;
-    window.initDB = initDB;
-    window.getDB = () => db;
+    // [window.saveToDB / getAllFromDB / clearAllDB / initDB / getDB: do js/database.js expose]
     window.switchSess = id => switchSess(id);
     window.renderSel = () => renderSel();
     window.updateTokenCount = () => updateTokenCount();
@@ -885,11 +532,11 @@ import { GoogleGenAI } from "@google/genai";
     Object.defineProperty(window, 'globalKeyIndex', { get: () => globalKeyIndex, set: v => { globalKeyIndex = v; }, configurable: true });
     Object.defineProperty(window, 'liveKeyIndex', { get: () => liveKeyIndex, set: v => { liveKeyIndex = v; }, configurable: true });
     Object.defineProperty(window, 'liveRetryCount', { get: () => liveRetryCount, set: v => { liveRetryCount = v; }, configurable: true });
-    Object.defineProperty(window, 'db', { get: () => db, set: v => { db = v; }, configurable: true });
+    // [window.db: do js/database.js gán trực tiếp khi initDB xong]
     Object.defineProperty(window, 'oLay', { get: () => oLay, set: v => { oLay = v; }, configurable: true });
     Object.defineProperty(window, 'filesData', { get: () => filesData, set: v => { filesData = v; }, configurable: true });
     Object.defineProperty(window, 'txtContent', { get: () => txtContent, set: v => { txtContent = v; }, configurable: true });
-    window.deobfuscateKey = deobfuscateKey;
+    // [window.deobfuscateKey / obfuscateKey: do js/cipher.js expose]
 
     // --- PROMPT LIBRARY & COMMAND PALETTE (Đã chuyển sang js/commands.js) ---
 
@@ -4542,8 +4189,7 @@ import { GoogleGenAI } from "@google/genai";
       console.warn("Property definition error:", e);
     }
 
-    window.clearAllDB = clearAllDB;
-    window.sanitizeSessionForBackup = sanitizeSessionForBackup;
+    // [window.clearAllDB / sanitizeSessionForBackup: do js/database.js + js/cipher.js expose]
     window.renderFolders = renderFolders;
     window.renderTabs = renderTabs;
     window.appendMsg = appendMsg;
@@ -4551,10 +4197,8 @@ import { GoogleGenAI } from "@google/genai";
     window.getExternalConfigsObj = getExternalConfigsObj;
     window.setExternalConfigsObj = setExternalConfigsObj;
     window.setGoogleKeysList = setGoogleKeysList;
-    window.obfuscateKey = obfuscateKey;
-    window.getDB = () => db;
     window.saveToNativeBridge = saveToNativeBridge;
-    window.STORE_NAME = STORE_NAME;
+    window.scheduleAutoSync = scheduleAutoSync;
 
 // --- [GEMINI TTS STUDIO PRO MODULE MOVED TO js/tts.js] ---
 
