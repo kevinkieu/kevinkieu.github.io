@@ -1,57 +1,81 @@
 /* ==========================================================================
    Jarvis AI - API Keys Management (js/api-keys.js)
    Quản lý 10 Google API keys, validation, checking status và cấu hình ngoài.
+   Load sau js/app.js (giữ proxy window.apiKeys/globalKeyIndex/liveKeyIndex/
+   liveRetryCount để live.js & rag.js/translate.js đọc được).
    ========================================================================== */
-
 (function() {
   'use strict';
 
-  const ls = window.ls || localStorage;
   const $ = id => document.getElementById(id);
-  const SAFETY = [
-    'HARM_CATEGORY_HARASSMENT',
-    'HARM_CATEGORY_HATE_SPEECH',
-    'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-    'HARM_CATEGORY_DANGEROUS_CONTENT',
-    'HARM_CATEGORY_CIVIC_INTEGRITY'
-  ].map(category => ({ category, threshold: 'BLOCK_NONE' }));
-
+  const ls = window.ls || localStorage;
+  const deobfuscateKey = k => (typeof window.deobfuscateKey === 'function') ? window.deobfuscateKey(k) : k;
+  const showToast = (m, t) => (typeof window.showToast === 'function') ? window.showToast(m, t) : console.log(`[toast:${t}] ${m}`);
   const FLASH_LITE_MODEL = 'gemini-3.5-flash-lite';
   const AUX_FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
 
-  // --- INIT API KEYS FROM LOCALStorage ---
-  function initAPIKeys() {
-    // Will be overwritten/appended by app.js init, but provide standalone capability
-    apiKeys = [];
-    globalKeyIndex = 0;
-    liveKeyIndex = 0;
-    liveRetryCount = 0;
+  const cfgMap = [
+    ['global-context-input', 'jarvis_global_context'],
+    ['tavily-key-input', 'tavily_api_key'],
+    ['serper-key-input', 'serper_api_key'],
+    ['explabs-key-input', 'explabs_api_key'],
+    ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
+    ['web-extract-engine-input', 'web_extract_engine', 'auto'],
+    ['live-temperature', 'live_temperature', '0.7']
+  ];
 
+  // Render container 10 dòng API keys (giữ nguyên template từ app.js)
+  const container = $('api-keys-container');
+  if (container) {
+    container.innerHTML = Array.from({ length: 10 }, (_, i) => `
+      <div class="api-key-row" style="display:flex;gap:6px;align-items:center;">
+        <span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);min-width:30px;text-align:center;background:rgba(255,255,255,0.05);padding:6px 0;border-radius:var(--radius-sm);border:1px solid var(--border);">#${i+1}</span>
+        <input type="text" id="api-key-name-${i+1}" placeholder="Tên gợi nhớ ${i+1}" class="modern-input" style="width:115px;flex:0 0 115px;font-size:0.8rem;padding:7px 10px;" title="Tên gợi nhớ cho Key ${i+1} (Ví dụ: Gmail A, Key chính, Dự phòng...)">
+        <input type="password" id="api-key-${i+1}" placeholder="Google API Key ${i+1} (AIzaSy...)" class="modern-input" style="flex:1;min-width:110px;font-size:0.8rem;padding:7px 10px;" title="Dán Google AI Studio API Key vào đây">
+        <span id="api-key-badge-${i+1}" style="font-size:0.68rem;font-weight:700;padding:4px 6px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.05);white-space:nowrap;border:1px solid var(--border);flex-shrink:0;" title="Hạn ngạch hôm nay (20 RPD mỗi model)"><span style="color:#a855f7;">H4: 0/20</span> | <span style="color:#10b981;">3.6: 0/20</span> | <span style="color:#3b82f6;">3.8: 0/20</span></span>
+      </div>
+    `).join('');
+  }
+
+  // Đọc key + tên từ localStorage (hỗ trợ 3 bộ key cũ: jarvis_/huanmu_/javiss_)
+  const readRawKey = i => (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
+  const readRawName = i => (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || "").trim();
+
+  // --- INIT API KEYS FROM LOCALSTORAGE ---
+  function initAPIKeys() {
+    const keys = [];
     for (let i = 1; i <= 10; i++) {
-      let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || '').trim();
-      const n = (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || '').trim();
+      let k = readRawKey(i);
+      const n = readRawName(i);
       if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
         k = deobfuscateKey(k);
         ls.setItem(`jarvis_api_${i}`, k);
       }
-      if ($( `api-key-${i}` )) $(`api-key-${i}`).value = k;
-      if ($( `api-key-name-${i}` )) $(`api-key-name-${i}`).value = n;
-      if (k) apiKeys.push(k);
+      const el = $(`api-key-${i}`);
+      if (el) el.value = k;
+      const nameEl = $(`api-key-name-${i}`);
+      if (nameEl) nameEl.value = n;
+      if (k) keys.push(k);
     }
+    // app.js giữ `let apiKeys` + proxy defineProperty → gán qua window để
+    // live.js (assign bare) và rag.js/translate.js (window.apiKeys) đọc chung 1 array
+    window.apiKeys = keys;
+    window.globalKeyIndex = 0;
+    window.liveKeyIndex = 0;
+    window.liveRetryCount = 0;
 
     const s = $('key-status-msg');
     if (s) {
-      s.innerText = apiKeys.length ? `✅ Có ${apiKeys.length} Google Key` : "⚠️ Chưa có Key";
-      s.style.color = apiKeys.length ? "var(--success)" : "var(--danger)";
+      s.innerText = keys.length ? `✅ Có ${keys.length} Google Key` : "⚠️ Chưa có Key";
+      s.style.color = keys.length ? "var(--success)" : "var(--danger)";
     }
-
-    $('api-key-select').forEach(d => {
+    [$('api-key-select'), $('live-key-select')].forEach(d => {
       if (!d) return;
       const cur = d.value;
       d.innerHTML = '<option value="auto">🔄 Tự động xoay Key</option>';
       for (let i = 1; i <= 10; i++) {
-        let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || '').trim();
-        const n = (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || '').trim();
+        let k = readRawKey(i);
+        const n = readRawName(i);
         if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
         if (k) {
           const label = n ? `🔑 ${n} (${k.substring(0, 5)}...)` : `🔑 Key ${i} (${k.substring(0, 5)}...)`;
@@ -60,45 +84,19 @@
       }
       if ([...d.options].some(o => o.value === cur)) d.value = cur;
     });
-
-    $('live-key-select').forEach(d => {
-      if (!d) return;
-      const cur = d.value;
-      d.innerHTML = '<option value="auto">🔄 Tự động xoay Key</option>';
-      for (let i = 1; i <= 10; i++) {
-        let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || '').trim();
-        const n = (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || '').trim();
-        if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
-        if (k) {
-          const label = n ? `🔑 ${n} (${k.substring(0, 5)}...)` : `🔑 Key ${i} (${k.substring(0, 5)}...)`;
-          d.innerHTML += `<option value="${i-1}">${label}</option>`;
-        }
-      }
-      if ([...d.options].some(o => o.value === cur)) d.value = cur;
-    });
-
-    if (typeof updateKeyQuotaUI === 'function') updateKeyQuotaUI();
+    if (typeof window.updateKeyQuotaUI === 'function') window.updateKeyQuotaUI();
   }
 
   // --- INIT EXTERNAL CONFIGURATIONS ---
   function initExternalConfigs() {
-    cfgMap = [
-      ['global-context-input', 'jarvis_global_context'],
-      ['tavily-key-input', 'tavily_api_key'],
-      ['serper-key-input', 'serper_api_key'],
-      ['explabs-key-input', 'explabs_api_key'],
-      ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
-      ['web-extract-engine-input', 'web_extract_engine', 'auto'],
-      ['live-temperature', 'live_temperature', '0.7']
-    ];
-
     cfgMap.forEach(([id, k, def = '']) => {
-      if ($(id)) {
+      const el = $(id);
+      if (el) {
         let val = ls.getItem(k) || (k === 'jarvis_global_context' ? (ls.getItem('huanmu_global_context') || ls.getItem('javiss_global_context') || '') : '') || def;
         if (typeof val === 'string' && (val.startsWith('JVENC_') || val.startsWith('ENC_'))) {
           val = deobfuscateKey(val);
         }
-        $(id).value = val;
+        el.value = val;
       }
     });
     if ($('live-temp-val')) $('live-temp-val').innerText = ls.getItem('live_temperature') || '0.7';
@@ -112,9 +110,21 @@
     }
   }
 
+  // --- LIVE TEMPERATURE + GLOBAL CONTEXT INPUT LISTENERS ---
+  const tempInput = $('live-temperature');
+  if (tempInput) {
+    tempInput.oninput = e => { if ($('live-temp-val')) $('live-temp-val').innerText = e.target.value; };
+  }
+  const ctxInput = $('global-context-input');
+  if (ctxInput) {
+    ctxInput.oninput = e => {
+      ls.setItem('jarvis_global_context', e.target.value);
+      ls.setItem('huanmu_global_context', e.target.value);
+    };
+  }
+
   // --- SAVE KEYS BUTTON HANDLER ---
   function handleSaveKeys() {
-    if (!$('btn-save-keys')) return;
     for (let i = 1; i <= 10; i++) {
       const val = $(`api-key-${i}`)?.value.trim() || '';
       const nameVal = $(`api-key-name-${i}`)?.value.trim() || '';
@@ -129,15 +139,15 @@
     ls.setItem('jarvis_hide_deepseek_thinking', $('hide-deepseek-thinking-checkbox')?.checked ? 'true' : 'false');
     initAPIKeys();
     initExternalConfigs();
-    if (typeof showToast === 'function') showToast("Đã lưu cấu hình Google & Hệ thống!");
+    showToast("Đã lưu cấu hình Google & Hệ thống!");
   }
 
   // --- CHECK KEYS BUTTON HANDLER ---
   async function handleCheckKeys() {
-    if (!$('btn-check-keys')) return;
     const b = $('btn-check-keys');
     b.innerText = "⏳ Đang kiểm tra...";
     b.disabled = true;
+    const GoogleGenAI = window.GoogleGenAI;
     let ok = 0, leaked = 0, quota = 0, invalid = 0, tot = 0;
 
     for (let i = 1; i <= 10; i++) {
@@ -187,7 +197,6 @@
 
   // --- CHECK DUPLICATES BUTTON HANDLER ---
   function handleCheckDuplicates() {
-    if (!$('btn-check-duplicates')) return;
     const m = {}, dups = [];
     for (let i = 1; i <= 10; i++) {
       const v = $(`api-key-${i}`)?.value.trim();
@@ -197,11 +206,23 @@
     showToast(dups.length ? `⚠️ Phát hiện trùng: ${dups.join(', ')}!` : "✅ Không có key trùng.");
   }
 
+  // Wiring buttons (guarded - chỉ chạy khi DOM đã có)
+  const saveBtn = $('btn-save-keys');
+  if (saveBtn) saveBtn.onclick = () => { handleSaveKeys(); };
+  const checkBtn = $('btn-check-keys');
+  if (checkBtn) checkBtn.onclick = async () => { await handleCheckKeys(); };
+  const dupBtn = $('btn-check-duplicates');
+  if (dupBtn) dupBtn.onclick = () => { handleCheckDuplicates(); };
+
   // --- PUBLIC API ---
   window.initAPIKeys = initAPIKeys;
   window.initExternalConfigs = initExternalConfigs;
   window.handleSaveKeys = handleSaveKeys;
   window.handleCheckKeys = handleCheckKeys;
   window.handleCheckDuplicates = handleCheckDuplicates;
+
+  // Tự khởi tạo khi module chạy (app.js load xong → proxy + window.* đã sẵn sàng)
+  initAPIKeys();
+  initExternalConfigs();
 
 })();

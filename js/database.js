@@ -26,6 +26,8 @@
       };
       rq.onsuccess = async e => {
         db = e.target.result;
+        window.db = db;
+        window.getDB = () => db;
         // Cross-DB migration: HuanMU_DB -> JavissUltimateOS_DB
         try {
           const checkHuan = indexedDB.open("HuanMU_DB", 6);
@@ -62,11 +64,11 @@
         t.objectStore(STORE_NAME).put(s);
         t.oncomplete = () => {
           // Sync to native bridge if available
-          if (typeof syncSessionsToNative === 'function') {
-            syncSessionsToNative();
+          if (typeof window.syncSessionsToNative === 'function') {
+            window.syncSessionsToNative();
           }
-          if (typeof scheduleAutoSync === 'function') {
-            scheduleAutoSync(10000);
+          if (typeof window.scheduleAutoSync === 'function') {
+            window.scheduleAutoSync(10000);
           }
           resolve();
         };
@@ -98,7 +100,7 @@
         t.objectStore(STORE_NAME).clear();
         t.oncomplete = () => {
           if (window.JarvisNativeBridge) {
-            saveToNativeBridge('jarvis_sessions_backup', '[]');
+            window.saveToNativeBridge('jarvis_sessions_backup', '[]');
           }
           resolve();
         };
@@ -146,11 +148,11 @@
               ls.setItem('jarvis_deleted_session_ids', JSON.stringify(list));
             }
           } catch { }
-          if (typeof syncSessionsToNative === 'function') {
-            syncSessionsToNative();
+          if (typeof window.syncSessionsToNative === 'function') {
+            window.syncSessionsToNative();
           }
-          if (typeof scheduleAutoSync === 'function') {
-            scheduleAutoSync(6000);
+          if (typeof window.scheduleAutoSync === 'function') {
+            window.scheduleAutoSync(6000);
           }
           resolve();
         };
@@ -182,6 +184,7 @@
   window.saveFileToLib = saveFileToLib;
   window.getAllFilesFromLib = getAllFilesFromLib;
   window.deleteFromDB = deleteFromDB;
+  window.recordDeletedSessionId = recordDeletedSessionId;
   window.DB_NAME = DB_NAME;
   window.STORE_NAME = STORE_NAME;
   window.FILE_STORE = FILE_STORE;
