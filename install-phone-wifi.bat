@@ -54,10 +54,14 @@ echo Xem dong "Dia chi IP va cong" tai man hinh chinh Go loi qua Wi-Fi.
 echo (Luu y: Cong Port nay thuong KHAC voi cong luc ghep noi).
 echo.
 set /p connect_target="Nhap IP va Cong ket noi (Vi du 192.168.1.15:42145): "
+set connect_target=%connect_target: =%
 
 echo.
 echo Dang ket noi toi %connect_target%...
 "%ADB_BIN%" connect %connect_target%
+
+set TARGET_ARG=
+if not "%connect_target%"=="" set TARGET_ARG=-s %connect_target%
 
 echo.
 echo Kiem tra danh sach thiet bi ket noi:
@@ -65,7 +69,7 @@ echo Kiem tra danh sach thiet bi ket noi:
 
 echo.
 echo Dang cai dat de file JarvisAI.apk len dien thoai...
-"%ADB_BIN%" install -r -d "%~dp0JarvisAI.apk"
+"%ADB_BIN%" %TARGET_ARG% install -r -d "%~dp0JarvisAI.apk"
 
 if %ERRORLEVEL% EQU 0 (
     echo.
@@ -73,8 +77,8 @@ if %ERRORLEVEL% EQU 0 (
     echo   CAI DAT THANH CONG 100%!
     echo   Dang tu dong khoi dong Jarvis AI tren dien thoai...
     echo ===================================================================
-    "%ADB_BIN%" shell am force-stop com.kevinkieu.jarvisai
-    "%ADB_BIN%" shell am start -n com.kevinkieu.jarvisai/.MainActivity
+    "%ADB_BIN%" %TARGET_ARG% shell am force-stop com.kevinkieu.jarvisai
+    "%ADB_BIN%" %TARGET_ARG% shell am start -n com.kevinkieu.jarvisai/.MainActivity
 ) else (
     echo.
     echo [LOI] Khong the cai dat. Vui long kiem tra lai IP/Port va bam Cho phep tren dien thoai.
