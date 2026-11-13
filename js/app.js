@@ -374,7 +374,7 @@ import { GoogleGenAI } from "@google/genai";
       ['global-context-input', 'jarvis_global_context'],
       ['tavily-key-input', 'tavily_api_key'],
       ['serper-key-input', 'serper_api_key'],
-      ['explabs-key-input', 'explabs_api_key', 'xpl_71c47c840e1af2b6e28d3f04909884a5eaf35752'],
+      ['explabs-key-input', 'explabs_api_key'],
       ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
       ['web-extract-engine-input', 'web_extract_engine', 'auto'],
       ['live-temperature', 'live_temperature', '0.7']
@@ -3463,7 +3463,8 @@ import { GoogleGenAI } from "@google/genai";
         // --- ENGINE 0: EXPERIENTIAL LABS GATEWAY (gpt-6-luna, deepseek-v4.1-flash, clef) ---
         const isExplabsModel = (am === 'gpt-6-luna' || am === 'deepseek-v4.1-flash' || am === 'clef');
         if (isExplabsModel) {
-          const expKey = (ls.getItem('explabs_api_key') || 'xpl_71c47c840e1af2b6e28d3f04909884a5eaf35752').trim();
+          let expKey = (ls.getItem('explabs_api_key') || '').trim();
+          if (expKey.startsWith('JVENC_') || expKey.startsWith('ENC_')) expKey = deobfuscateKey(expKey);
           if (!expKey) {
             bD.remove();
             showToast("Vui lòng nhập Experiential Labs API Key trong Cài đặt (⚙️)!", "danger");
@@ -3583,6 +3584,7 @@ import { GoogleGenAI } from "@google/genai";
               let sseBuffer = '';
               let currentThinking = '';
               let currentContent = '';
+              const expModelName = (am === 'gpt-6-luna') ? 'GPT-6 Luna' : (am.includes('deepseek') ? 'DeepSeek' : 'AI');
 
               while (!sseDone) {
                 const { value, done: streamDone } = await reader.read();
@@ -3599,12 +3601,14 @@ import { GoogleGenAI } from "@google/genai";
                     const jsonStr = trimmed.slice(5).trim();
                     try {
                       const parsed = JSON.parse(jsonStr);
-                      const deltaThinking = parsed.choices?.[0]?.delta?.reasoning_content || '';
+                      const deltaThinking = parsed.choices?.[0]?.delta?.reasoning_content 
+                                         || parsed.choices?.[0]?.delta?.reasoning 
+                                         || parsed.choices?.[0]?.delta?.thought || '';
                       const deltaText = parsed.choices?.[0]?.delta?.content || '';
                       if (deltaThinking) currentThinking += deltaThinking;
                       if (deltaText) currentContent += deltaText;
                       if (deltaThinking || deltaText) {
-                        finalResp = formatThinkingResponse(currentThinking, currentContent, 'DeepSeek');
+                        finalResp = formatThinkingResponse(currentThinking, currentContent, expModelName);
                         renderer.push(finalResp);
                         if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
                         pS = true;
@@ -3614,31 +3618,25 @@ import { GoogleGenAI } from "@google/genai";
                 }
               }
 
-              finalResp = formatFinalThinkingResponse(currentThinking, currentContent, 'DeepSeek');
-              if (currentThinking || currentContent) {
-            // FAIL-SAFE: Nếu mô hình chỉ trả về suy luận mà quên xuất câu trả lời cuối:
-            if (!currentContent.trim() && currentThinking.trim()) {
-              currentContent = currentThinking.trim();
-              currentThinking = "";
-            }
-            finalResp = formatFinalThinkingResponse(currentThinking, currentContent, 'Gemini');
-          }
-          await renderer.flush(finalResp);
+              finalResp = formatFinalThinkingResponse(currentThinking, currentContent, expModelName);
+              if (!currentContent.trim() && currentThinking.trim()) {
+                currentContent = currentThinking.trim();
+                currentThinking = "";
+                finalResp = formatFinalThinkingResponse(currentThinking, currentContent, expModelName);
+              }
+              await renderer.flush(finalResp);
               pS = true;
             } catch (expErr) {
               if (expErr.name === 'AbortError' || abortController.signal.aborted) throw expErr;
               lastErr = expErr;
               if (pS) {
                 finalResp += `\n\n*(⚠️ Quá trình stream bị ngắt: ${expErr.message})*`;
-                if (currentThinking || currentContent) {
-            // FAIL-SAFE: Nếu mô hình chỉ trả về suy luận mà quên xuất câu trả lời cuối:
-            if (!currentContent.trim() && currentThinking.trim()) {
-              currentContent = currentThinking.trim();
-              currentThinking = "";
-            }
-            finalResp = formatFinalThinkingResponse(currentThinking, currentContent, 'Gemini');
-          }
-          await renderer.flush(finalResp);
+                if (!currentContent.trim() && currentThinking.trim()) {
+                  currentContent = currentThinking.trim();
+                  currentThinking = "";
+                }
+                finalResp = formatFinalThinkingResponse(currentThinking, currentContent, expModelName);
+                await renderer.flush(finalResp);
               } else {
                 bD.remove();
                 return showToast(`Lỗi Experiential Labs: ${expErr.message}`, 'danger');
