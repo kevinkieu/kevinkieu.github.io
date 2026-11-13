@@ -18,9 +18,10 @@
   { 
     "imports": { 
       "@google/genai": "https://esm.run/@google/genai" 
-    } 
+    }
   }
-  </script>
+</script>
+<!-- Vite will auto-resolve @google/genai from esm.run -->
   
   <!-- VITE ROOT STYLESHEETS (Vite will process css/ imports) -->
   <link rel="stylesheet" href="./css/style.css">
@@ -39,12 +40,13 @@
 <body>
   <!-- DRAG & DROP OVERLAY (DESKTOP) -->
   <div id="drop-overlay">
-    <svg class="icon icon-lg" style="width:48px;height:48px; viewBox='0 0 24 24'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><polyline points='17 8 12 3 7 8'/><line x1='12' y1='3' x2='12' y2='15'/></svg>
+    <svg class="icon icon-lg" style="width:48px;height:48px;" viewBox="0 0 24 24"><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><polyline points='17 8 12 3 7 8'/><line x1='12' y1='3' x2='12' y2='15'/></svg>
     <span>Thả tệp vào đây để đính kèm</span>
   </div>
 
   <div class="app-container">
-    <!-- SIDEBAR -->
+      <!-- SIDEBAR -->
+  <!-- Fixed whitespace issue -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="brand-box">
@@ -125,7 +127,7 @@
               <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
               <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Siêu nhanh & Tiết kiệm)</option>
               <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
-              <optlabel="🌐 Experiential Labs">
+              <optgroup label="🌐 Experiential Labs">
                 <option value="gpt-6-luna">⚡ GPT-6 Luna (Experiential)</option>
                 <option value="deepseek-v4.1-flash">🧠 DeepSeek V4.1 Flash (Suy luận Free)</option>
                 <option value="clef">🎯 Clef (Decision Engine)</option>
@@ -337,7 +339,7 @@
         </div>
 
         <div class="input-container-box">
-          <textarea id="user-input" rows="1" placeholder="Nhập tin nhắn (Ctrl+Enter gửi, gõ "từ khóa" tìm web, Ctrl+K mở lệnh)..."></textarea>
+          <textarea id="user-input" rows="1" placeholder='Nhập tin nhắn (Ctrl+Enter gửi, gõ "từ khóa" tìm web, Ctrl+K mở lệnh)...'></textarea>
           <button id="btn-hands-free-voice" class="icon-btn hands-free-mic-btn" type="button" title="Trò chuyện rảnh tay 2 chiều liên tục (Hands-Free Voice Flow)">
             🎙️
           </button>
