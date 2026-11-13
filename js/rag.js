@@ -737,8 +737,8 @@ Nhiệm vụ:
 3. Nếu chỉ là câu chào hỏi, hỏi đáp kiến thức chung, nhờ viết văn/code/dịch thuật mà KHÔNG chứa thông tin về bản thân người dùng:
    Trả về JSON: { "learn": false }`;
 
-      // Tác vụ phụ trích xuất tri thức nền: Luôn dùng Flash-Lite (500 RPD) để không tốn quota của 3.6/3.8 Flash (20 RPD)
-      const uniqueModels = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
+      // Tác vụ phụ trích xuất tri thức nền: Bắt buộc dùng Flash-Lite với thinking tắt hoàn toàn để tiết kiệm quota 20 RPD
+      const uniqueModels = ['gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
 
       let res = null;
       let lastExtractErr = null;
@@ -750,7 +750,8 @@ Nhiệm vụ:
             config: {
               responseMimeType: "application/json",
               temperature: 0.1,
-              maxOutputTokens: 300
+              maxOutputTokens: 300,
+              thinkingConfig: { thinkingBudget: 0 }
             }
           });
           if (res) break;
@@ -1145,8 +1146,8 @@ Dựa trên dữ liệu trên, hãy phác họa chân dung tổng thể về ng�
 Giọng văn ấm áp, thông minh, tôn trọng, đúng chuẩn Jarvis. Không bịa đặt thông tin chưa có trong trí nhớ.`;
 
       const ai = new window.GoogleGenAI({ apiKey: key });
-      // Sử dụng model Flash tối ưu tốc độ: gemini-3.6-flash, fallback gemini-3.5-flash-lite
-      const candidateModels = ['gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+      // Bắt buộc dùng Flash-Lite với thinking tắt hoàn toàn để tiết kiệm quota 20 RPD
+      const candidateModels = ['gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
       let resultText = '';
       let lastErr = null;
 
@@ -1156,7 +1157,8 @@ Giọng văn ấm áp, thông minh, tôn trọng, đúng chuẩn Jarvis. Không 
             model: m,
             contents: prompt,
             config: {
-              temperature: 0.3
+              temperature: 0.3,
+              thinkingConfig: { thinkingBudget: 0 }
             }
           });
           if (res.text) {
