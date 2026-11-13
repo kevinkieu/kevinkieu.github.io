@@ -1,0 +1,217 @@
+commit 1dd506210ec61fd5fe1234cf17b3e6bd80cc55d7
+Author: kevinkieu <76687919+kevinkieu@users.noreply.github.com>
+Date:   Fri Nov 13 12:51:24 2026 +0700
+
+    fix(chat): fix thinking output cutoff, sanitize history, increase token budget and add fail-safe for reasoning models
+
+diff --git a/js/app.js b/js/app.js
+index 4f521da..55e63ec 100644
+--- a/js/app.js
++++ b/js/app.js
+@@ -79,8 +79,8 @@ import { GoogleGenAI } from "@google/genai";
+     };
+ 
+     // CENTRAL CONSTANT FOR SECONDARY & BACKGROUND TASKS (FLASH LITE)
+-    const FLASH_LITE_MODEL = 'gemini-flash-lite-latest';
+-    const AUX_FALLBACK_MODELS = ['gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
++    const FLASH_LITE_MODEL = 'gemini-3.5-flash-lite';
++    const AUX_FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
+ 
+     // Init libraries
+     marked.use({ breaks: true });
+@@ -341,6 +341,14 @@ import { GoogleGenAI } from "@google/genai";
+         }
+       }
+ 
++      // FAIL-SAFE CHỐNG LỖI CHỈ CÓ SUY LUẬN MÀ KHÔNG CÓ CÂU TRẢ LỜI:
++      // Nếu mô hình chỉ xuất phần suy luận mà quên xuất câu trả lời người dùng,
++      // chuyển ngay nội dung suy luận thành câu trả lời để người dùng luôn nhận được kết quả hoàn chỉnh!
++      if (!displayContent.trim() && displayThinking.trim()) {
++        displayContent = displayThinking.trim();
++        displayThinking = '';
++      }
++
+       if (hideThinking) {
+         return displayContent;
+       } else {
+@@ -352,7 +360,7 @@ import { GoogleGenAI } from "@google/genai";
+         const thinkingBlock = clean
+           ? `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>\n\n`
+           : '';
+-        return thinkingBlock + (displayContent || (clean ? '*(Đã hoàn tất quá trình suy luận)*' : ''));
++        return thinkingBlock + displayContent;
+       }
+     }
+ 
+@@ -755,7 +763,7 @@ import { GoogleGenAI } from "@google/genai";
+           await new GoogleGenAI({ apiKey: k }).models.generateContent({
+             model: FLASH_LITE_MODEL,
+             contents: "hi",
+-            config: { maxOutputTokens: 1, thinkingConfig: { thinkingBudget: 0 } }
++            config: { maxOutputTokens: 1 }
+           });
+           el.style.border = "2px solid var(--success)";
+           if (nameEl) nameEl.style.border = "2px solid var(--success)";
+@@ -1418,8 +1426,7 @@ import { GoogleGenAI } from "@google/genai";
+             config: {
+               safetySettings: SAFETY,
+               maxOutputTokens: 100,
+-              temperature: 0.4,
+-              thinkingConfig: { thinkingBudget: 0 }
++              temperature: 0.4
+             }
+           });
+ 
+@@ -1486,8 +1493,7 @@ import { GoogleGenAI } from "@google/genai";
+               contents: promptText,
+               config: {
+                 safetySettings: SAFETY,
+-                temperature: 0.3,
+-                thinkingConfig: { thinkingBudget: 0 }
++                temperature: 0.3
+               }
+             });
+             if (res && res.text) break;
+@@ -1808,8 +1814,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c
+               contents: synthesisPrompt,
+               config: {
+                 temperature: 0.35,
+-                safetySettings: SAFETY,
+-                thinkingConfig: { thinkingBudget: 0 }
++                safetySettings: SAFETY
+               }
+             });
+             if (res.text) {
+@@ -2148,7 +2153,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c
+                   }
+                 ],
+                 config: {
+-                  thinkingConfig: { thinkingBudget: 0 }
++                  maxOutputTokens: 500
+                 }
+               });
+               spokenText = (res.text || '').trim();
+@@ -2504,7 +2509,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c
+               const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
+                 model: FLASH_LITE_MODEL,
+                 contents: `Phân tích và tóm tắt chi tiết video YouTube sau:\n- Tiêu đề: ${yt.title}\n- Kênh: ${yt.author}\n- Link: ${url}\n${yt.content ? yt.content : ''}\nHãy nêu rõ chủ đề chính, các luận điểm nổi bật và ý nghĩa của video. Tuyệt đối KHÔNG từ chối là không xem được video.`,
+-                config: { safetySettings: SAFETY, thinkingConfig: { thinkingBudget: 0 } }
++                config: { safetySettings: SAFETY, maxOutputTokens: 700 }
+               });
+               summary = res.text;
+             } catch(e) {
+@@ -3201,7 +3206,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c
+         const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
+           model: FLASH_LITE_MODEL,
+           contents: `Hãy tối ưu và mở rộng câu lệnh prompt sau đây để rõ ràng, chi tiết, chuyên nghiệp và hiệu quả nhất khi gửi cho AI:\n\n"${txt}"\n\nChỉ trả về duy nhất nội dung prompt đã được tối ưu, không giải thích gì thêm.`,
+-          config: { safetySettings: SAFETY, thinkingConfig: { thinkingBudget: 0 } }
++          config: { safetySettings: SAFETY, maxOutputTokens: 400 }
+         });
+         if (res.text) {
+           DOM.input.value = res.text.trim();
+@@ -3253,7 +3258,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c
+   + Mọi phép tính toán số tuổi, thời gian đã trôi qua kể từ một mốc quá khứ (ví dụ: mốc sinh năm 2024, các sự kiện trong quá khứ) hay tính thời gian đến tương lai ĐỀU BẮT BUỘC PHẢI lấy mốc thời điểm HIỆN TẠI LÀ THÁNG ${month}/${year} (NĂM ${year}).
+   + Ví dụ: Một người hoặc đứa trẻ sinh vào tháng 01/2024, tính đến thời điểm hiện tại tháng ${month}/${year} đã là ${(year - 2024)} năm ${(month - 1)} tháng (khoảng ${((year - 2024) * 12 + month - 1)} tháng tuổi), TUYỆT ĐỐI KHÔNG được tính nhầm là 10 tháng tuổi!`;
+ 
+-      return `${timeInstruction}\n\n[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}${ragBlock}\n\n[QUY TẮC ỨNG XỬ TẾ NHỊ]: Khi người dùng hỏi các câu hỏi kiến thức khoa học, nấu ăn, công nghệ, học tập hoặc câu hỏi phổ thông (như thịt gà, kỹ thuật, thời tiết...), TUYỆT ĐỐI KHÔNG tự tiện nhắc đến thông tin gia đình, đời tư, con cái (như bé Bắp, bé Tiền) nếu người dùng không chủ động hỏi hay yêu cầu.`;
++      return `${timeInstruction}\n\n[CHỈ THỊ HỆ THỐNG]:\n${(DOM.toggleGlob?.checked !== false && g) ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}${ragBlock}\n\n[QUY TẮC ỨNG XỬ TẾ NHỊ]: Khi người dùng hỏi các câu hỏi kiến thức khoa học, nấu ăn, công nghệ, học tập hoặc câu hỏi phổ thông (như thịt gà, kỹ thuật, thời tiết...), TUYỆT ĐỐI KHÔNG tự tiện nhắc đến thông tin gia đình, đời tư, con cái (như bé Bắp, bé Tiền) nếu người dùng không chủ động hỏi hay yêu cầu.\n\n[QUY TẮC TRẢ LỜI CỦA MÔ HÌNH SUY LUẬN (THINKING)]: Sau khi hoàn tất quá trình suy luận nội bộ, bạn BẮT BUỘC PHẢI viết toàn bộ nội dung câu trả lời hoàn chỉnh, chi tiết, logic và thân thiện để gửi trực tiếp cho người dùng. TUYỆT ĐỐI KHÔNG kết thúc phản hồi khi chưa viết phần câu trả lời cho người dùng.`;
+     };
+ 
+     window.exportCleanArticle = () => {
+@@ -3359,7 +3364,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c
+               const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
+                 model: FLASH_LITE_MODEL,
+                 contents: `Phân tích và tóm tắt chi tiết video YouTube sau:\n- Tiêu đề: ${yt.title}\n- Kênh: ${yt.author}\n- Link: ${u}\n${yt.content ? yt.content : ''}\nHãy nêu rõ chủ đề chính, các luận điểm nổi bật và ý nghĩa của video. Tuyệt đối KHÔNG từ chối là không xem được video.`,
+-                config: { safetySettings: SAFETY, thinkingConfig: { thinkingBudget: 0 } }
++                config: { safetySettings: SAFETY, maxOutputTokens: 700 }
+               });
+               summary = res.text;
+             } catch(e) {
+@@ -4862,6 +4867,11 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c
+ 
+               finalResp = formatFinalThinkingResponse(currentThinking, currentContent, 'DeepSeek');
+               if (currentThinking || currentContent) {
++            // FAIL-SAFE: Nếu mô hình chỉ trả về suy luận mà quên xuất câu trả lời cuối:
++            if (!currentContent.trim() && currentThinking.trim()) {
++              currentContent = currentThinking.trim();
++              currentThinking = "";
++            }
+             finalResp = formatFinalThinkingResponse(currentThinking, currentContent, 'Gemini');
+           }
+           await renderer.flush(finalResp);
+@@ -4872,6 +4882,11 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c
+               if (pS) {
+                 finalResp += `\n\n*(⚠️ Quá trình stream bị ngắt: ${expErr.message})*`;
+                 if (currentThinking || currentContent) {
++            // FAIL-SAFE: Nếu mô hình chỉ trả về suy luận mà quên xuất câu trả lời cuối:
++            if (!currentContent.trim() && currentThinking.trim()) {
++              currentContent = currentThinking.trim();
++              currentThinking = "";
++            }
+             finalResp = formatFinalThinkingResponse(currentThinking, currentContent, 'Gemini');
+           }
+           await renderer.flush(finalResp);
+@@ -5088,21 +5103,35 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c
+         if (!pS) {
+           const contents = [];
+           if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
+-            chatHistory.slice(-16).forEach(m => contents.push({
+-              role: m.role === 'model' ? 'model' : 'user',
+-              parts: [{ text: m.text }]
+-            }));
++            chatHistory.slice(-16).forEach(m => {
++              let cleanText = (m.text || '');
++              // Loại bỏ khối HTML details hoặc thẻ think khỏi ngữ cảnh gửi cho AI để tránh làm nhiễu mô hình
++              cleanText = cleanText.replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '').trim();
++              cleanText = cleanText.replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>/gi, '').trim();
++              if (!cleanText && m.role === 'model') {
++                // Nếu tin nhắn cũ từng chỉ có suy luận, lọc thẻ HTML lấy văn bản thuần
++                cleanText = (m.text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
++              }
++              if (cleanText) {
++                contents.push({
++                  role: m.role === 'model' ? 'model' : 'user',
++                  parts: [{ text: cleanText }]
++                });
++              }
++            });
+           }
+           contents.push({ role: 'user', parts: currentParts });
+ 
++          const budgetMap = { minimal: 1024, low: 2048, medium: 4096, high: 8192 };
+           const config = {
+             systemInstruction: getDynamicSI(ragSnippet),
+             safetySettings: SAFETY,
+-            maxOutputTokens: 8192
++            maxOutputTokens: 32768
+           };
+           if (thk && thk !== 'none') {
++            const b = budgetMap[thk] || 4096;
+             config.thinkingConfig = {
+-              thinkingLevel: thk,
++              thinkingBudget: b,
+               includeThoughts: true
+             };
+           } else {
+@@ -5272,6 +5301,11 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c
+           }
+ 
+           if (currentThinking || currentContent) {
++            // FAIL-SAFE: Nếu mô hình chỉ trả về suy luận mà quên xuất câu trả lời cuối:
++            if (!currentContent.trim() && currentThinking.trim()) {
++              currentContent = currentThinking.trim();
++              currentThinking = "";
++            }
+             finalResp = formatFinalThinkingResponse(currentThinking, currentContent, 'Gemini');
+           }
+           await renderer.flush(finalResp);
+@@ -5662,8 +5696,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c
+           config: {
+             safetySettings: SAFETY,
+             maxOutputTokens: 350,
+-            temperature: 0.7,
+-            thinkingConfig: { thinkingBudget: 0 }
++            temperature: 0.7
+           }
+         });
+ 

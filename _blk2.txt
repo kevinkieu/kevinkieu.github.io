@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+    print(f'{i+1:5d}', a[i][:150])
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2705' in position 40: character maps to <undefined>
+  424     function initAPIKeys() {
+  425       apiKeys = [];
+  426       for (let i = 1; i <= 10; i++) {
+  427         let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
+  428         const n = (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || "").trim();
+  429         if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
+  430           k = deobfuscateKey(k);
+  431           ls.setItem(`jarvis_api_${i}`, k);
+  432         }
+  433         if ($(`api-key-${i}`)) $(`api-key-${i}`).value = k;
+  434         if ($(`api-key-name-${i}`)) $(`api-key-name-${i}`).value = n;
+  435         if (k) apiKeys.push(k);
+  436       }
+  437       const s = $('key-status-msg');
+  438       if (s) {
+  439 

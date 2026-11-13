@@ -1,0 +1,132 @@
+  571                       .replace(/["'“”«»#*_\n\r\t]/g, ' ')
+  572                       .trim();
+  573       let prev;
+  574       do {
+  575         prev = clean;
+  576         clean = clean.replace(/^(hãy|bạn hãy|xin hãy|cho tôi hỏi|cho hỏi|nhờ bạn|giúp tôi|làm sao để|làm thế nào để|hướng dẫn|giải thích|tóm
+  577       } while (clean !== prev);
+  578 
+  579       const words = clean.split(/\s+/).filter(Boolean);
+  580       if (!words.length) return '';
+  581       const title = words.slice(0, 5).join(' ');
+  582       return title.charAt(0).toUpperCase() + title.slice(1);
+  583     }
+  584     window.generateLocalFallbackTitle = generateLocalFallbackTitle;
+  585 
+  586     // --- AUTO-NAME SESSION ---
+  587     async function tryAutoNameSession(sessionObj, userText, botText, preferredKey = null) {
+  588       if (!sessionObj) return;
+  589       const normName = (sessionObj.name || '').normalize('NFC').trim();
+  590       const isDefault = !normName || /^(hội thoại|phiên|cuộc trò chuyện|new session)/i.test(normName);
+  591       if (!isDefault || sessionObj.isCustomNamed || sessionObj.isAutoNamed) return;
+  592 
+  593       const k = preferredKey || getSessionApiKey(sessionObj) || (apiKeys.length ? apiKeys[0] : '');
+  594       if (!k) return;
+  595 
+  596       const promptUserPart = (userText || '').slice(0, 180).trim();
+  597       const promptBotPart = (botText || '').slice(0, 180).trim();
+  598       const promptText = `Tóm tắt chủ đề chính của câu hỏi người dùng thành một tiêu đề ngắn gọn súc tích từ 3 đến 6 từ bằng tiếng Việt (chỉ
+  599 
+  600       let title = '';
+  601 
+  602       // Cố gắng gọi AI: Bắt buộc dùng Flash-Lite với thinking tắt hoàn toàn để tiết kiệm quota
+  603       const candidateModels = AUX_FALLBACK_MODELS;
+  604 
+  605       for (const mod of candidateModels) {
+  606         if (!mod) continue;
+  607         try {
+  608           const ai = new GoogleGenAI({ apiKey: k });
+  609           const res = await ai.models.generateContent({
+  610             model: mod,
+  611             contents: promptText,
+  612             config: {
+  613               safetySettings: SAFETY,
+  614               maxOutputTokens: 100,
+  615               temperature: 0.4
+  616             }
+  617           });
+  618 
+  619           let raw = '';
+  620           try { raw = res.text || ''; } catch (_) {}
+  621           if (!raw && res.candidates?.[0]?.content?.parts) {
+  622             raw = res.candidates[0].content.parts
+  623               .filter(p => !p.thought && typeof p.text === 'string')
+  624               .map(p => p.text)
+  625               .join(' ')
+  626               .trim();
+  627           }
+  628 
+  629           raw = raw.replace(/["“«»”*\n#:]/g, '')
+  630                    .replace(/^(tiêu đề|chủ đề|tóm tắt):\s*/i, '')
+  631                    .trim();
+  632 
+  633           if (raw && raw.length >= 2) {
+  634             title = raw;
+  635             break;
+  636           }
+  637         } catch (mErr) {
+  638           console.warn(`[Auto-Name] Thử model ${mod} không thành công:`, mErr?.message || mErr);
+  639         }
+  640       }
+  641 
+  642       // Nếu tất cả AI models đều không trả về được, dùng Local Fallback từ câu hỏi đầu tiên
+  643       if (!title || title.length < 2) {
+  644         title = generateLocalFallbackTitle(userText);
+  645       }
+  646 
+  647       if (title.length > 35) title = title.slice(0, 35).trim() + '...';
+  648 
+  649       if (title && title.length >= 2) {
+  650         sessionObj.name = title;
+  651         sessionObj.isAutoNamed = true;
+  652         await saveToDB(sessionObj);
+  653         renderSel();
+  654         renderTabs();
+  655         showToast(`🏷️ Đã tự động đặt tên: "${title}"`, 'info');
+  656       }
+  657     }
+  658 
+  659     // --- AUTO-SUMMARY LONG-TERM MEMORY (NÉN LỊCH SỬ DÀI) ---
+  660     async function condenseSessionMemory(sessionObj) {
+  661       if (!sessionObj || chatHistory.length <= 16 || DOM.toggleAutoSummary?.checked === false) return;
+  662       const lastCond = sessionObj.lastCondensedLength || 0;
+  663       if (chatHistory.length - lastCond < 10) return;
+  664 
+  665       const k = getSessionApiKey(sessionObj);
+  666       if (!k) return;
+  667 
+  668       try {
+  669         const toSummarize = chatHistory.slice(0, chatHistory.length - 10).map(m => `${m.role === 'model' ? 'AI' : 'User'}: ${m.text.slice(0,
+  670         const prevSummary = sessionObj.summaryMemory ? `[Bối cảnh cốt lõi trước đó]:\n${sessionObj.summaryMemory}\n\n[Diễn biến mới cần cập 
+  671         const promptText = `Hãy cập nhật và cô đọng các thông tin quan trọng, ngữ cảnh và các quyết định cốt lõi trong đoạn hội thoại sau th
+  672 
+  673         const ai = new GoogleGenAI({ apiKey: k });
+  674         let res = null;
+  675         for (const m of AUX_FALLBACK_MODELS) {
+  676           try {
+  677             res = await ai.models.generateContent({
+  678               model: m,
+  679               contents: promptText,
+  680               config: {
+  681                 safetySettings: SAFETY,
+  682                 temperature: 0.3
+  683               }
+  684             });
+  685             if (res && res.text) break;
+  686           } catch (mErr) {
+  687             console.warn(`[Auto-Summary] Model ${m} lỗi:`, mErr?.message || mErr);
+  688           }
+  689         }
+  690 
+  691         if (res && res.text) {
+  692           sessionObj.summaryMemory = res.text.trim();
+  693           sessionObj.lastCondensedLength = chatHistory.length;
+  694           await saveToDB(sessionObj);
+  695           console.log('[Auto-Summary] Đã nén trí nhớ dài hạn thành công:', sessionObj.summaryMemory);
+  696         }
+  697       } catch (e) {
+  698         console.warn('Lỗi tóm tắt bộ nhớ dài:', e);
+  699       }
+  700     }
+  701 
+  702     // --- CONVERSATION BRANCHING (RẼ NHÁNH HỘI THOẠI) ---
