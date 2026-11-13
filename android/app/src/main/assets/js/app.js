@@ -9,6 +9,58 @@ import { GoogleGenAI } from "@google/genai";
     window.ls = ls;
     window.ss = ss;
     window.GoogleGenAI = GoogleGenAI;
+
+    // ==========================================================================
+    // HOISTED MODULE BRIDGES & PROXIES
+    // (Hoisted as function declarations to prevent Temporal Dead Zone errors)
+    // ==========================================================================
+    function getMyDeviceId() { return (typeof window.getMyDeviceId === 'function') ? window.getMyDeviceId() : 'pc_default'; }
+    function getCurrentQuotaCycle() { return (typeof window.getCurrentQuotaCycle === 'function') ? window.getCurrentQuotaCycle() : ''; }
+    function getFlashModelBucket(m) { return (typeof window.getFlashModelBucket === 'function') ? window.getFlashModelBucket(m) : null; }
+    function getSelectedFlashModelBucket() { return (typeof window.getSelectedFlashModelBucket === 'function') ? window.getSelectedFlashModelBucket() : 'hydrogen'; }
+    function loadKeyUsageData() { return (typeof window.loadKeyUsageData === 'function') ? window.loadKeyUsageData() : { cycle: '', keys: {} }; }
+    function saveKeyUsageData(d) { return (typeof window.saveKeyUsageData === 'function') ? window.saveKeyUsageData(d) : null; }
+    function getKeyUsageCount(s, b) { return (typeof window.getKeyUsageCount === 'function') ? window.getKeyUsageCount(s, b) : 0; }
+    function recordKeyRequest(k, b) { return (typeof window.recordKeyRequest === 'function') ? window.recordKeyRequest(k, b) : null; }
+    function updateKeyQuotaUI() { return (typeof window.updateKeyQuotaUI === 'function') ? window.updateKeyQuotaUI() : null; }
+    function resetKeyUsageToday() { return (typeof window.resetKeyUsageToday === 'function') ? window.resetKeyUsageToday() : null; }
+    function findSlotIndexForKey(k) { return (typeof window.findSlotIndexForKey === 'function') ? window.findSlotIndexForKey(k) : -1; }
+    function getActiveKeySlot() { return (typeof window.getActiveKeySlot === 'function') ? window.getActiveKeySlot() : null; }
+    function getKeyBadgeHtml(s, m) { return (typeof window.getKeyBadgeHtml === 'function') ? window.getKeyBadgeHtml(s, m) : ''; }
+    function openKeyQuotaModal() { return (typeof window.openKeyQuotaModal === 'function') ? window.openKeyQuotaModal() : null; }
+    function closeKeyQuotaModal() { return (typeof window.closeKeyQuotaModal === 'function') ? window.closeKeyQuotaModal() : null; }
+
+    function saveOrShareBlob(b, fn) { return (typeof window.saveOrShareBlob === 'function') ? window.saveOrShareBlob(b, fn) : null; }
+    function copyRawText(t, m) { return (typeof window.copyRawText === 'function') ? window.copyRawText(t, m) : null; }
+    function exportAllSessions() { return (typeof window.exportAllSessions === 'function') ? window.exportAllSessions() : null; }
+    function exportChatDoc() { return (typeof window.exportChatDoc === 'function') ? window.exportChatDoc() : null; }
+    function exportChatPDF() { return (typeof window.exportChatPDF === 'function') ? window.exportChatPDF() : null; }
+
+    function getSearchCache(q, e) { return (typeof window.getSearchCache === 'function') ? window.getSearchCache(q, e) : null; }
+    function setSearchCache(q, e, d) { return (typeof window.setSearchCache === 'function') ? window.setSearchCache(q, e, d) : null; }
+    function fetchTavilySearch(q) { return (typeof window.fetchTavilySearch === 'function') ? window.fetchTavilySearch(q) : Promise.reject('No Tavily'); }
+    function fetchSerperSearch(q) { return (typeof window.fetchSerperSearch === 'function') ? window.fetchSerperSearch(q) : Promise.reject('No Serper'); }
+    function executeLiveSearch(q, p) { return (typeof window.executeLiveSearch === 'function') ? window.executeLiveSearch(q, p) : Promise.resolve(''); }
+    function extractYouTubeContent(u) { return (typeof window.extractYouTubeContent === 'function') ? window.extractYouTubeContent(u) : Promise.reject('No YT'); }
+    function extractWebPageContent(u) { return (typeof window.extractWebPageContent === 'function') ? window.extractWebPageContent(u) : Promise.reject('No Extract'); }
+
+    function executeChatSlashCommand(t) { return (typeof window.executeChatSlashCommand === 'function') ? window.executeChatSlashCommand(t) : false; }
+    function openPromptLibraryModal() { return (typeof window.openPromptLibraryModal === 'function') ? window.openPromptLibraryModal() : null; }
+    function openCommandPalette() { return (typeof window.openCommandPalette === 'function') ? window.openCommandPalette() : null; }
+    function closeCommandPalette() { return (typeof window.closeCommandPalette === 'function') ? window.closeCommandPalette() : null; }
+    function renderSnippets() { return (typeof window.renderSnippets === 'function') ? window.renderSnippets() : null; }
+    function renderPromptList() { return (typeof window.renderPromptList === 'function') ? window.renderPromptList() : null; }
+
+    function openDailyBriefing(f) { return (typeof window.openDailyBriefing === 'function') ? window.openDailyBriefing(f) : null; }
+    function generateDailyBriefing(f) { return (typeof window.generateDailyBriefing === 'function') ? window.generateDailyBriefing(f) : null; }
+
+    function openMedicationTab() { return (typeof window.openMedicationTab === 'function') ? window.openMedicationTab() : null; }
+    function openMedicationModal() { return (typeof window.openMedicationModal === 'function') ? window.openMedicationModal() : null; }
+    function closeMedicationModal() { return (typeof window.closeMedicationModal === 'function') ? window.closeMedicationModal() : null; }
+    function openMaxFormModal(m) { return (typeof window.openMaxFormModal === 'function') ? window.openMaxFormModal(m) : null; }
+    function closeMaxFormModal() { return (typeof window.closeMaxFormModal === 'function') ? window.closeMaxFormModal() : null; }
+    function initMaxMedicationReminder() { return (typeof window.initMaxMedicationReminder === 'function') ? window.initMaxMedicationReminder() : null; }
+
     
     // --- ANDROID NATIVE BRIDGE & PERSISTENCE ENGINE ---
     // Yêu cầu trình duyệt / WebView cấp quyền lưu trữ vĩnh viễn (Persistent Storage)
@@ -217,8 +269,6 @@ import { GoogleGenAI } from "@google/genai";
     };
 
     // --- SEARCH CACHE ENGINE (Đã chuyển sang js/tools.js) ---
-    const getSearchCache = (q, e) => (typeof window.getSearchCache === 'function') ? window.getSearchCache(q, e) : null;
-    const setSearchCache = (q, e, d) => (typeof window.setSearchCache === 'function') ? window.setSearchCache(q, e, d) : null;
 
     // --- FONT SIZE CONTROLLER ---
     let currentFontSize = parseInt(ls.getItem('chat_font_size') || '16', 10);
@@ -348,16 +398,7 @@ import { GoogleGenAI } from "@google/genai";
       }
     }
 
-    // --- EXPORT & COPY HELPERS (Đã chuyển sang js/export.js) ---
-    const saveOrShareBlob = (b, fn) => (typeof window.saveOrShareBlob === 'function') ? window.saveOrShareBlob(b, fn) : null;
-    const copyRawText = (t, m) => (typeof window.copyRawText === 'function') ? window.copyRawText(t, m) : null;
-
-    // --- TÌM KIẾM WEB & YOUTUBE INTEL (Đã chuyển sang js/tools.js) ---
-    const fetchTavilySearch = (q) => (typeof window.fetchTavilySearch === 'function') ? window.fetchTavilySearch(q) : Promise.reject('No Tavily');
-    const fetchSerperSearch = (q) => (typeof window.fetchSerperSearch === 'function') ? window.fetchSerperSearch(q) : Promise.reject('No Serper');
-    const executeLiveSearch = (q, p) => (typeof window.executeLiveSearch === 'function') ? window.executeLiveSearch(q, p) : Promise.resolve('');
-    const extractYouTubeContent = (u) => (typeof window.extractYouTubeContent === 'function') ? window.extractYouTubeContent(u) : Promise.reject('No YT');
-    const extractWebPageContent = (u) => (typeof window.extractWebPageContent === 'function') ? window.extractWebPageContent(u) : Promise.reject('No Extract');
+    // --- EXPORT & TOOLS PROXIES (Đã chuyển sang js/export.js và js/tools.js) ---
 
     // --- QUẢN LÝ 10 GOOGLE API KEYS & CẤU HÌNH ---
     // --- QUẢN LÝ 10 GOOGLE API KEYS & CẤU HÌNH ---
@@ -851,12 +892,6 @@ import { GoogleGenAI } from "@google/genai";
     window.deobfuscateKey = deobfuscateKey;
 
     // --- PROMPT LIBRARY & COMMAND PALETTE (Đã chuyển sang js/commands.js) ---
-    const executeChatSlashCommand = (t) => (typeof window.executeChatSlashCommand === 'function') ? window.executeChatSlashCommand(t) : false;
-    const openPromptLibraryModal = () => (typeof window.openPromptLibraryModal === 'function') ? window.openPromptLibraryModal() : null;
-    const openCommandPalette = () => (typeof window.openCommandPalette === 'function') ? window.openCommandPalette() : null;
-    const closeCommandPalette = () => (typeof window.closeCommandPalette === 'function') ? window.closeCommandPalette() : null;
-    const renderSnippets = () => (typeof window.renderSnippets === 'function') ? window.renderSnippets() : null;
-    const renderPromptList = () => (typeof window.renderPromptList === 'function') ? window.renderPromptList() : null;
 
     // --- SWIPE GESTURES FOR MOBILE ---
     let touchStartX = 0, touchStartY = 0;
@@ -1043,8 +1078,6 @@ import { GoogleGenAI } from "@google/genai";
     };
 
     // --- FEATURE 2: DAILY BRIEFING (Đã chuyển sang js/briefing.js) ---
-    const openDailyBriefing = (f) => (typeof window.openDailyBriefing === 'function') ? window.openDailyBriefing(f) : null;
-    const generateDailyBriefing = (f) => (typeof window.generateDailyBriefing === 'function') ? window.generateDailyBriefing(f) : null;
 
     // --- FEATURE 3: HANDS-FREE VOICE FLOW CONTROLLER (HARDWARE-GRADE getUserMedia + GEMINI STT) ---
     let isHandsFreeActive = false;
@@ -1741,24 +1774,7 @@ import { GoogleGenAI } from "@google/genai";
     }
 
     
-    // ==========================================================================
-    // DISTRIBUTED KEY QUOTA TRACKER (Đã tách sang js/quota.js)
-    // ==========================================================================
-    const getMyDeviceId = () => (typeof window.getMyDeviceId === 'function') ? window.getMyDeviceId() : 'pc_default';
-    const getCurrentQuotaCycle = () => (typeof window.getCurrentQuotaCycle === 'function') ? window.getCurrentQuotaCycle() : '';
-    const getFlashModelBucket = (m) => (typeof window.getFlashModelBucket === 'function') ? window.getFlashModelBucket(m) : null;
-    const getSelectedFlashModelBucket = () => (typeof window.getSelectedFlashModelBucket === 'function') ? window.getSelectedFlashModelBucket() : 'hydrogen';
-    const loadKeyUsageData = () => (typeof window.loadKeyUsageData === 'function') ? window.loadKeyUsageData() : { cycle: '', keys: {} };
-    const saveKeyUsageData = (d) => (typeof window.saveKeyUsageData === 'function') ? window.saveKeyUsageData(d) : null;
-    const getKeyUsageCount = (s, b) => (typeof window.getKeyUsageCount === 'function') ? window.getKeyUsageCount(s, b) : 0;
-    const recordKeyRequest = (k, b) => (typeof window.recordKeyRequest === 'function') ? window.recordKeyRequest(k, b) : null;
-    const updateKeyQuotaUI = () => (typeof window.updateKeyQuotaUI === 'function') ? window.updateKeyQuotaUI() : null;
-    const resetKeyUsageToday = () => (typeof window.resetKeyUsageToday === 'function') ? window.resetKeyUsageToday() : null;
-    const findSlotIndexForKey = (k) => (typeof window.findSlotIndexForKey === 'function') ? window.findSlotIndexForKey(k) : -1;
-    const getActiveKeySlot = () => (typeof window.getActiveKeySlot === 'function') ? window.getActiveKeySlot() : null;
-    const getKeyBadgeHtml = (s) => (typeof window.getKeyBadgeHtml === 'function') ? window.getKeyBadgeHtml(s) : '';
-    const openKeyQuotaModal = () => (typeof window.openKeyQuotaModal === 'function') ? window.openKeyQuotaModal() : null;
-    const closeKeyQuotaModal = () => (typeof window.closeKeyQuotaModal === 'function') ? window.closeKeyQuotaModal() : null;
+    // [Quản lý Key Quota Tracker đã được chuyển sang js/quota.js]
 
     window.selectKeySlotQuick = (slotIndex) => {
       if (DOM.apiKeySel) {
@@ -4529,7 +4545,6 @@ import { GoogleGenAI } from "@google/genai";
     window.clearAllDB = clearAllDB;
     window.sanitizeSessionForBackup = sanitizeSessionForBackup;
     window.renderFolders = renderFolders;
-    window.renderSnippets = renderSnippets;
     window.renderTabs = renderTabs;
     window.appendMsg = appendMsg;
     window.getGoogleKeyNamesList = getGoogleKeyNamesList;
