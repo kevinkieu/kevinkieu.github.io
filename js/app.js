@@ -2,14 +2,16 @@
    Jarvis AI - Main Application Core (Chat, Sessions, Models & Controllers)
    ========================================================================== */
 
-import { GoogleGenAI } from "@google/genai";
-
-    const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStorage;
+const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStorage;
     // Minimal window bindings - use module pattern instead of global pollution
     window.$$ = $;
     window.lsRef = ls;
     window.ssRef = ss;
-    window.GoogleGenAI = GoogleGenAI;
+    // GoogleGenAI is loaded globally from CDN in index.html via <script src="https://esm.run/@google/genai">
+    // Safely assign GoogleGenAI only if already available from CDN script
+    if (typeof GoogleGenAI !== 'undefined') {
+      window.GoogleGenAI = GoogleGenAI;
+    }
     // Export core refs via Object.defineProperty for controlled access
 
     // ==========================================================================
