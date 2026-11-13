@@ -1,5 +1,4 @@
 @echo off
-chcp 65001 >nul
 title Cai dat Jarvis AI truc tiep len dien thoai qua USB
 echo ========================================================
 echo   DANG CAI DAT TRUC TIEP FILE APK LEN DIEN THOAI VIA ADB
