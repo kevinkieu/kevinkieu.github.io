@@ -1,0 +1,152 @@
+{
+  "project": {
+    "name": "Jarvis AI",
+    "type": ["PWA", "Vanilla JS app", "Android WebView app"],
+    "language": "JavaScript (ES modules)",
+    "purpose": "Multimodal AI assistant with chat, live voice/video call, dual-screen live translation, TTS studio, personal knowledge base + RAG, semantic search, and GitHub Gist 2-way sync.",
+    "platforms": ["Web", "PWA", "Android (WebView + native medication alarms)"]
+  },
+  "runtime_entry": {
+    "web": "index.html",
+    "pwa": ["manifest.json", "sw.js"],
+    "build": ["vite.config.js", "package.json", "package-lock.json"],
+    "versioning": "bump-version.js"
+  },
+  "architecture": {
+    "pattern": "module-based vanilla JS, shared state exposed on window, IndexedDB for persistence, localStorage for settings/keys, native bridge in Android WebView",
+    "external_apis": [
+      "Google Gemini (chat + BidiGenerateContent live streaming + TTS + embeddings)",
+      "Tavily / Serper / Jina / Brave (web search and content extraction)",
+      "GitHub Gist (encrypted cloud sync)"
+    ],
+    "cdn_libs_loaded_in_index_html": [
+      "pdf.js",
+      "html2pdf.js",
+      "marked",
+      "katex + auto-render",
+      "mermaid",
+      "highlight.js",
+      "lamejs",
+      "@google/genai (via esm.run)"
+    ]
+  },
+  "features": [
+    {
+      "id": "shell_and_pwa",
+      "name": "App shell and PWA",
+      "files": {
+        "index.html": "Main UI skeleton: sidebar, header, chat, modals, input panel, file upload, transcript, token/latency bar, search/memory toggles.",
+        "manifest.json": "PWA manifest (icons, display, theme color, app name, start URL).",
+        "sw.js": "Service Worker: static asset cache, network-first for HTML/JS/CSS, bypass for live/API/search endpoints, cache CDN libs.",
+        "css/style.css": "Core UI styles, layout, sidebar, chat bubbles, modals, inputs, theme variables.",
+        "css/live.css": "Live call modal styles.",
+        "css/tts.css": "TTS studio styles.",
+        "css/translate.css": "Dual-screen translator styles.",
+        "css/rag.css": "Knowledge/RAG/search styles."
+      }
+    },
+    {
+      "id": "chat_and_core",
+      "name": "Chat, sessions, models, core app logic",
+      "files": {
+        "js/app.js": "Main controller: session management, chat history, rendering (markdown + thinking blocks), model/engine selection, API key wiring, system instruction + global context, temperature/top-p/top-k/thinking level, file attachments, auto-naming, auto-summary, branch-forking, hands-free voice recorder + VAD, token/latency counters, DOM helpers, PWA SW registration, localStorage quota handling, native bridge sync hooks.",
+        "js/database.js": "IndexedDB persistence for sessions and related stores, init + CRUD helpers.",
+        "js/api-keys.js": "API key pool UI + storage, key rotation, quota/usage tracking wiring, external config storage.",
+        "js/commands.js": "Command palette / prompt library / slash-command routing helpers.",
+        "js/tools.js": "Search cache, Tavily/Serper helpers, web page + YouTube content extraction, blob save/share, copy helpers, export helpers."
+      }
+    },
+    {
+      "id": "live_voice_video",
+      "name": "Multimodal live voice/video call",
+      "files": {
+        "js/live.js": "Gemini bidirectional live WebSocket (BidiGenerateContent), PCM streaming (16kHz in, 24kHz playback), camera streaming, live speech recognition, farewell/silence hangup detection, tool calls for search_web/read_url, key rotation on disconnect, transcript capture synced back to chat.",
+        "css/live.css": "Live call modal styles."
+      }
+    },
+    {
+      "id": "translate",
+      "name": "Dual-screen face-to-face live translator",
+      "files": {
+        "js/translate.js": "Bilingual interpretation via Gemini live translate/bidirectional model, speaker toggle, VU meter, local SpeechRecognition transcript, model/key fallback, guest language selection, screen flip helper.",
+        "css/translate.css": "Split-screen translator styles."
+      }
+    },
+    {
+      "id": "tts",
+      "name": "Text-to-speech studio",
+      "files": {
+        "js/tts.js": "Gemini TTS studio, voice presets, expression tags, smart chunking, WAV construction, MP3 encode (lamejs), visualizer, playback, IndexedDB TTS library, history list with play/download/delete.",
+        "css/tts.css": "TTS studio styles."
+      }
+    },
+    {
+      "id": "rag_and_memory",
+      "name": "Personal knowledge base, RAG, embeddings, semantic search",
+      "files": {
+        "js/rag.js": "Gemini Embedding 2 (+ fallback embedding-001), in-browser cosine similarity, IndexedDB vector store, document chunking with overlap, indexing with progress, hybrid vector + lexical search, smart intent filter for personal-identity queries, context retrieval for chat, auto-learn memory extraction, persona synthesis, knowledge modal UI.",
+        "css/rag.css": "Knowledge/RAG/search styles."
+      }
+    },
+    {
+      "id": "cloud_sync",
+      "name": "GitHub Gist 2-way sync and multi-device merge",
+      "files": {
+        "js/sync.js": "GitHub Gist 2-way sync with smart merge for sessions, knowledge base, folders, prompts, API keys/external configs, key-usage counters, medications + med history, tombstone handling, rate-limit recovery, background auto-sync, startup sync, pull/push restore flows, sync header status."
+      }
+    },
+    {
+      "id": "android_native",
+      "name": "Android WebView wrapper and medication reminders",
+      "files": {
+        "android/build.gradle": "Top-level Android build script (AGP 8.2.2).",
+        "android/gradle/wrapper/*": "Gradle wrapper jar + properties.",
+        "android/settings.gradle": "Project includes + repository config.",
+        "android/gradle.properties": "Gradle JVM args + AndroidX/R class settings.",
+        "android/app/build.gradle": "App module config: versioning, permissions, packaging, WebView assets.",
+        "android/app/src/main/AndroidManifest.xml": "Permissions and components: alarms, notifications, boot receiver, WebView activity.",
+        "android/app/src/main/java/com/kevinkieu/jarvisai/MainActivity.java": "WebView setup, JS bridge for native persistence/alarms, medication reminder integration.",
+        "android/app/src/main/java/com/kevinkieu/jarvisai/MedicationAlarmReceiver.java": "Alarm/receiver logic for medication notifications.",
+        "android/app/src/main/res/*": "UI resources: layout, strings, colors, themes, icons.",
+        "android/app/src/main/assets/*": "Bundled web app assets for offline APK (index.html, manifest, sw.js, css/, js/, icons).",
+        "build-apk.bat": "Windows script: bump version, copy web assets into Android assets, assemble release APK.",
+        "installphone.bat": "Install built APK to device via USB ADB.",
+        "installphone-wifi.bat": "Install built APK to device via Wi-Fi debugging ADB."
+      }
+    },
+    {
+      "id": "aux_files",
+      "name": "Auxiliary/project files",
+      "files": {
+        "_blk1.txt": "Auxiliary text file (likely notes/blocks).",
+        "_blk2.txt": "Auxiliary text file (likely notes/blocks).",
+        "_fix1dd.txt": "Auxiliary text file (likely notes/fixes).",
+        "scratch/test_browser.js": "Likely a quick browser/launch test helper.",
+        "icon.png": "App icon asset.",
+        "icon-192.png": "PWA/Android icon 192.",
+        "icon-512.png": "PWA/Android icon 512.",
+        ".gitattributes": "Git attribute rules.",
+        ".gitignore": "Git ignore rules.",
+        ".nojekyll": "GitHub Pages no-jekyll marker.",
+        ".well-known/assetlinks.json": "Android app links / asset links metadata."
+      }
+    }
+  ],
+  "state_and_storage": {
+    "browser": {
+      "localStorage": "Settings, API keys (optionally obfuscated), folders, tabs, theme, sync config, medication data, deleted-id tombstones, key usage data",
+      "indexeddb": "Chat sessions, knowledge/vector store, TTS history, file/TTS-related stores"
+    },
+    "android": {
+      "webview": "Runs the same web app with bundled assets",
+      "native": "AlarmManager/NotificationManager for medication reminders, RECEIVE_BOOT_COMPLETED rescheduling, notification actions (taken/snooze), JS bridge for persistence"
+    }
+  },
+  "developer_workflow": {
+    "local_run": "Serve the project via a local HTTP server (for example Python http.server / npx serve) and open index.html.",
+    "pwa_install": "Install from browser via manifest/Service Worker.",
+    "android_build": "Run build-apk.bat on Windows to bump version, bundle web assets, and assemble release APK.",
+    "android_deploy": "Use installphone.bat or installphone-wifi.bat to install to a connected device.",
+    "version_bump": "Run bump-version.js to increment Android versionCode/versionName and sync cache busters in index.html and sw.js."
+  }
+}
