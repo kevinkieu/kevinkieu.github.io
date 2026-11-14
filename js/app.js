@@ -2414,7 +2414,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       }
       if (idx !== undefined && idx !== null && chatHistory && chatHistory[idx]) {
         raw = chatHistory[idx].text || "";
-      }
+      const cleanRaw = stripThinkingForCopy(raw);}
       if (!raw && btnOrIdx instanceof Element) {
         const container = btnOrIdx.closest('.message-container');
         const msgEl = container?.querySelector('.bot-message, .msg-content');
@@ -2424,8 +2424,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         const lastBot = [...chatHistory].reverse().find(m => m.role === 'model');
         if (lastBot) raw = lastBot.text || "";
       }
-      const clean = sanitizeTranscript(raw);
-      const textToSend = clean || raw;
+      const clean = sanitizeTranscript(cleanRaw);
+      const textToSend = clean || cleanRaw;
       if (!textToSend.trim()) {
         showToast("Không tìm thấy nội dung tin nhắn để mở Studio!", "warning");
         return;
@@ -2696,7 +2696,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         return;
       }
       const raw = chatHistory[i]?.text || "";
-      playTextAudio(raw, { btn });
+      const cleanRaw = stripThinkingForCopy(raw);
+      playTextAudio(cleanRaw, { btn });
     };
 
     window.togglePinMsg = async i => {
@@ -2769,9 +2770,34 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     }
     window.reRenderHistory = reRenderHistory;
 
+    // Bo khoi suy nghi (thinking) khoi noi dung truoc khi sao chep
+    function stripThinkingForCopy(text) {
+      if (!text) return '';
+      return text
+        .replace(/<details\b[^>]*class="[^"]*thinking-block[^"]*"[^>]*>[\s\S]*?<\/details>\s*/gi, '')
+        .replace(/<details\b[^>]*>\s*<summary\b[^>]*class="[^"]*thinking-summary[^"]*"[^>]*>[\s\S]*?<\/details>\s*/gi, '')
+        .replace(/<div\b[^>]*class="[^"]*thinking-streaming[^"]*"[^>]*>[\s\S]*?<\/div>\s*/gi, '')
+        .replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>\s*/gi, '')
+        .replace(/<(?:think|thought)>[\s\S]*$/i, '')
+        .trim();
+    }
+
+    function getCopyText(el) {
+      if (!el) return '';
+      const raw = el.getAttribute('data-raw');
+      const isBot = el.classList.contains('bot-message');
+      if (!isBot) return raw || el.innerText || '';
+      if (raw && raw.trim()) return stripThinkingForCopy(raw);
+      const clone = el.cloneNode(true);
+      clone.querySelectorAll('.thinking-block, .thinking-streaming, .msg-actions, .code-copy-btn, .message-header').forEach(n => n.remove());
+      return (clone.innerText || '').trim();
+    }
+
     window.copy = b => {
       const c = b.closest('.message-container').querySelector('.user-message, .bot-message');
-      if (c) copyRawText(c.getAttribute('data-raw') || c.innerText || '');
+      const text = getCopyText(c);
+      if (!text) return showToast('Nội dung trống!', 'warning');
+      copyRawText(text);
     };
 
     window.deleteMsg = async i => {
