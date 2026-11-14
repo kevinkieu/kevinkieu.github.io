@@ -118,6 +118,14 @@
 
 ---
 
+### 🤖 Bản đồ cấu trúc dành cho mô hình khác (machine-readable)
+
+Nếu bạn muốn một mô hình khác làm quen nhanh với toàn bộ dự án mà không cần đọc từng file, hãy đọc trước:
+
+- `project-context.json` — bản đồ cấu trúc dự án theo tính năng và file.
+
+---
+
 ### 📂 Cấu Trúc Dự Án
 
 ```
