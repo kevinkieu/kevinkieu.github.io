@@ -4,14 +4,24 @@
 
 const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStorage;
     // Minimal window bindings - use module pattern instead of global pollution
+    window.$ = $;
     window.$$ = $;
+    window.ls = ls;
+    window.ss = ss;
     window.lsRef = ls;
     window.ssRef = ss;
-    // GoogleGenAI is loaded globally from CDN in index.html via <script src="https://esm.run/@google/genai">
-    // Safely assign GoogleGenAI only if already available from CDN script
-    if (typeof GoogleGenAI !== 'undefined') {
-      window.GoogleGenAI = GoogleGenAI;
-    }
+    // GoogleGenAI được nạp từ CDN trong index.html (esm.run) và gán vào window.
+    // Cầu nối lazy: module này có thể chạy trước hoặc sau khi CDN tải xong.
+    const GoogleGenAI = new Proxy(function () {}, {
+      construct(_target, args) {
+        if (!window.GoogleGenAI) throw new Error('GoogleGenAI chưa được tải từ CDN.');
+        return new window.GoogleGenAI(...args);
+      },
+      get(_target, prop) {
+        if (!window.GoogleGenAI) throw new Error('GoogleGenAI chưa được tải từ CDN.');
+        return window.GoogleGenAI[prop];
+      }
+    });
     // Export core refs via Object.defineProperty for controlled access
 
     // ==========================================================================
@@ -1519,7 +1529,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         DOM.scrollTopBtn.classList.remove('visible');
       }
     });
-    DOM.scrollTopBtn.onclick = () => DOM.chat.scrollTo({ top: 0, behavior: 'smooth' });
+    if (DOM.scrollTopBtn) {
+      DOM.scrollTopBtn.onclick = () => DOM.chat.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
     function updateThinkingVisibility() {
       const m = DOM.model?.value || '', t = DOM.thinking;
@@ -1850,8 +1862,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       if (oLay) oLay.style.display = 'none';
       if (typeof window.closeTTSStudioModal === 'function') window.closeTTSStudioModal();
     };
-    document.querySelectorAll('.close-btn').forEach(b => b.onclick = closeModals);
-    oLay.onclick = closeModals;
+    const closeBtns = document.querySelectorAll('.close-btn');
+    closeBtns.forEach(b => b && (b.onclick = closeModals));
+    if (oLay) oLay.onclick = closeModals;
 
     // CLIPBOARD PASTE (SCREENSHOTS & IMAGES)
     window.addEventListener('paste', async e => {
@@ -1896,20 +1909,23 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       };
     }
 
-    $('btn-take-photo').onclick = () => {
-      const v = $('camera-preview');
-      if (!v.srcObject) return;
-      const c = document.createElement('canvas');
-      c.width = v.videoWidth;
-      c.height = v.videoHeight;
-      c.getContext('2d').drawImage(v, 0, 0);
-      c.toBlob(b => {
-        processUploadFiles([new File([b], `Cam_${Date.now()}.jpg`, { type: 'image/jpeg' })]);
-        v.srcObject?.getTracks().forEach(t => t.stop());
-        closeModals();
-        showToast("Đã chụp và đính kèm ảnh!");
-      }, 'image/jpeg', 0.85);
-    };
+    const btnTakePhoto = $('btn-take-photo');
+    if (btnTakePhoto) {
+      btnTakePhoto.onclick = () => {
+        const v = $('camera-preview');
+        if (!v || !v.srcObject) return;
+        const c = document.createElement('canvas');
+        c.width = v.videoWidth;
+        c.height = v.videoHeight;
+        c.getContext('2d').drawImage(v, 0, 0);
+        c.toBlob(b => {
+          processUploadFiles([new File([b], `Cam_${Date.now()}.jpg`, { type: 'image/jpeg' })]);
+          v.srcObject?.getTracks().forEach(t => t.stop());
+          closeModals();
+          showToast("Đã chụp và đính kèm ảnh!");
+        }, 'image/jpeg', 0.85);
+      };
+    }
 
     DOM.btnFileLibrary.onclick = () => {
       $('file-library-modal').style.display = 'flex';
@@ -1917,23 +1933,26 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       renderLibrary();
     };
 
-    $('library-upload-input').onchange = async e => {
-      for (const f of e.target.files) {
-        if (f.size <= 50 * 1024 * 1024) {
-          await saveFileToLib({
-            id: Date.now() + Math.random().toString().slice(2, 7),
-            name: f.name,
-            type: f.type,
-            size: f.size,
-            blob: f,
-            added: new Date().toISOString()
-          });
+    const libraryUploadInput = $('library-upload-input');
+    if (libraryUploadInput) {
+      libraryUploadInput.onchange = async e => {
+        for (const f of e.target.files) {
+          if (f.size <= 50 * 1024 * 1024) {
+            await saveFileToLib({
+              id: Date.now() + Math.random().toString().slice(2, 7),
+              name: f.name,
+              type: f.type,
+              size: f.size,
+              blob: f,
+              added: new Date().toISOString()
+            });
+          }
         }
-      }
-      showToast("Đã thêm tệp vào thư viện!");
-      renderLibrary();
-      e.target.value = '';
-    };
+        showToast("Đã thêm tệp vào thư viện!");
+        renderLibrary();
+        e.target.value = '';
+      };
+    }
 
     async function renderLibrary() {
       const c = $('library-files-container'), fs = await getAllFilesFromLib();

@@ -25,13 +25,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
 
-  <!-- GOOGLE GENAI IMPORTMAP -->
-  <script type="importmap">
-  { 
-    "imports": { 
-      "@google/genai": "https://esm.run/@google/genai" 
-    } 
-  }
+  <!-- GOOGLE GENAI (nạp trực tiếp từ CDN, gán vào window để mọi module dùng chung) -->
+  <script type="module">
+    import * as genai from 'https://esm.run/@google/genai';
+    window.GoogleGenAI = genai.GoogleGenAI || genai.default || genai;
   </script>
 
   <!-- MODULAR STYLESHEETS -->

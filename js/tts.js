@@ -2,6 +2,10 @@
    Jarvis AI - Gemini TTS Studio Pro & Audio Converter Module
    ========================================================================== */
 
+    // Tự túc khai báo helper: module này có thể chạy trước khi app.js gán window.$
+    const $ = id => document.getElementById(id);
+    const ls = window.ls || localStorage;
+
     // ==========================================
     // KHỐI 5: GEMINI TTS STUDIO PRO ENGINE
     // ==========================================
