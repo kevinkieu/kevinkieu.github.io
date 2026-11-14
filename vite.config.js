@@ -28,15 +28,15 @@ export default defineConfig({
     // legacy plugin for older browser support if needed
     legacy()
   ],
-  // Optimization settings
-  optimizeDeps: {
-    include: ['@google/genai']
-  },
+  // GoogleGenAI được nạp trực tiếp từ CDN trong index.html (không qua npm),
+  // nên không khai báo trong optimizeDeps để tránh lỗi resolve khi khởi động.
   // Server settings for development
   server: {
     open: true,
+    // Giữ cố định cổng: IndexedDB/localStorage gắn theo origin (host + port).
+    // Nếu cổng đổi, trình duyệt coi như ứng dụng mới và mất toàn bộ phiên chat.
     port: 5173,
-    strictPort: false
+    strictPort: true
   },
   // Build output settings
   publicDir: 'public'
