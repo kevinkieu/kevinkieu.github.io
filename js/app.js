@@ -1535,7 +1535,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       const m = DOM.model?.value || '', t = DOM.thinking;
       if (!t) return;
       const prev = t.value;
-      if (m.includes('lite')) {
+      // Gemini 3.5 Flash Lite vẫn hỗ trợ thinking level; các bản lite khác (3.1) thì vẫn tắt.
+      const isThinkingCapableLite = m === 'gemini-3.5-flash-lite';
+      if (m.includes('lite') && !isThinkingCapableLite) {
         t.innerHTML = '<option value="none">Tắt (Flash Lite)</option>';
         t.value = 'none';
         t.disabled = true;
@@ -2099,6 +2101,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         DOM.topK.value = s.top || 40;
         updateThinkingVisibility();
         DOM.thinking.value = s.thk || 'minimal';
+        // Nếu phiên cũ lưu mức thinking không còn tồn tại (vd 'none' của Flash Lite), rơi về mức hợp lệ đầu tiên
+        if (!DOM.thinking.value) DOM.thinking.value = DOM.thinking.options[0]?.value || 'minimal';
         DOM.toggleGlob.checked = s.useGlob !== false;
         DOM.toggleSearch.checked = s.sch || false;
         DOM.searchEngineBox.style.display = s.sch ? 'block' : 'none';
@@ -3591,13 +3595,15 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           contents.push({ role: 'user', parts: currentParts });
 
           const isFlashLite = am.includes('flash-lite') || am.includes('lite');
+          // Gemini 3.5 Flash Lite hỗ trợ thinking theo level và nhận tối đa 65.000 output token.
+          const thinkingSupported = !isFlashLite || am === 'gemini-3.5-flash-lite';
           const budgetMap = { minimal: 1024, low: 2048, medium: 4096, high: 8192 };
           const config = {
             systemInstruction: getDynamicSI(ragSnippet),
             safetySettings: SAFETY,
-            maxOutputTokens: isFlashLite ? 8192 : 32768
+            maxOutputTokens: am === 'gemini-3.5-flash-lite' ? 65000 : (isFlashLite ? 8192 : 32768)
           };
-          if (!isFlashLite && thk && thk !== 'none') {
+          if (thinkingSupported && thk && thk !== 'none') {
             const b = budgetMap[thk] || 4096;
             config.thinkingConfig = {
               thinkingBudget: b,
