@@ -394,6 +394,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       searchEngineBox: $('search-engine-box'),
       searchEngineSel: $('search-engine-select'),
       toggleMemory: $('toggle-memory'),
+      contextMsgCount: $('context-message-count'),
       toggleAutoSummary: $('toggle-auto-summary'),
       toggleRagEmbedding: $('toggle-rag-embedding'),
       btnToggleSessionMem: $('btn-toggle-session-memory'),
@@ -420,6 +421,22 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     let folders = JSON.parse(ls.getItem('jarvis_folders') || ls.getItem('huanmu_folders') || ls.getItem('javiss_folders') || '["Mặc định"]');
     let activeFolder = ls.getItem('jarvis_active_folder') || ls.getItem('huanmu_active_folder') || "All";
     let openTabs = JSON.parse(ls.getItem('jarvis_tabs') || ls.getItem('huanmu_tabs') || '[]');
+
+    // --- SỐ TIN NHẠN NGỮ CẢNH GỬI ĐI KÈM CHO generateContentStream (lưu vào localStorage) ---
+    let contextMsgCount = parseInt(ls.getItem('jarvis_context_messages') || '16', 10);
+    if (!contextMsgCount || contextMsgCount < 1) contextMsgCount = 16;
+    if (DOM.contextMsgCount) {
+      DOM.contextMsgCount.value = contextMsgCount;
+      DOM.contextMsgCount.addEventListener('change', () => {
+        const v = parseInt(DOM.contextMsgCount.value, 10);
+        if (Number.isFinite(v) && v >= 1 && v <= 200) {
+          contextMsgCount = v;
+          ls.setItem('jarvis_context_messages', String(contextMsgCount));
+        } else {
+          DOM.contextMsgCount.value = contextMsgCount;
+        }
+      });
+    }
 
     // Global bindings & live proxies for modular access across js/live.js, js/arena.js, js/tts.js, js/quota.js, js/medication.js
     window.DOM = DOM;
@@ -3575,7 +3592,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         if (!pS) {
           const contents = [];
           if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
-            chatHistory.slice(-16).forEach(m => {
+            chatHistory.slice(-contextMsgCount).forEach(m => {
               let cleanText = (m.text || '');
               // Loại bỏ khối HTML details hoặc thẻ think khỏi ngữ cảnh gửi cho AI để tránh làm nhiễu mô hình
               cleanText = cleanText.replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '').trim();
