@@ -198,10 +198,10 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
            : m ? `❌ Lỗi: ${m}` : "❌ Lỗi máy chủ Google.";
     };
 
-    // Chỉ trích xuất từ khóa tìm kiếm web khi người dùng bọc trong cặp dấu ~từ khóa~.
-    // Dấu ngoặc kép được giữ nguyên cho mục đích nhấn mạnh, không còn kích hoạt tìm kiếm.
-    const extractTildeKeywords = t => {
-      const m = Array.from((t || '').matchAll(/(?:^|[^~])~([^~\n]+)~(?!~)/g)).map(x => x[1].trim()).filter(Boolean);
+    // Chỉ trích xuất từ khóa tìm kiếm web khi người dùng bọc trong cặp dấu #từ khóa#.
+    // Dấu ngoặc kép chỉ còn là nhấn mạnh; # không bị markdown gạch ngang và rất hiếm khi xuất hiện trong câu văn.
+    const extractHashKeywords = t => {
+      const m = Array.from((t || '').matchAll(/(?:^|[^\w#])#([^#\n]+)#(?!#)/g)).map(x => x[1].trim()).filter(Boolean);
       return m.length ? m.join(' ') : null;
     };
 
@@ -438,11 +438,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     window.showToast = (msg, type) => showToast(msg, type);
     window.getNowTime24h = () => getNowTime24h();
     window.formatGoogleApiError = err => formatGoogleApiError(err);
-    window.extractWebPageContent = url => extractWebPageContent(url);
-    window.extractYouTubeContent = url => extractYouTubeContent(url);
-    window.executeLiveSearch = (q, engine) => executeLiveSearch(q, engine);
-    window.fetchTavilySearch = q => fetchTavilySearch(q);
-    window.fetchSerperSearch = q => fetchSerperSearch(q);
+
     window.fallbackBrowserDownload = (blob, fn) => fallbackBrowserDownload(blob, fn);
     // [window.saveToDB / getAllFromDB / clearAllDB / initDB / getDB: do js/database.js expose]
     window.switchSess = id => switchSess(id);
@@ -3077,7 +3073,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
         // WEB SEARCH (TAVILY / SERPER)
-        const quoted = extractTildeKeywords(fnP);
+        const quoted = extractHashKeywords(fnP);
         if (quoted && DOM.toggleSearch.checked) {
           const tgt = DOM.searchEngineSel.value === 'serper' ? 'serper' : 'tavily';
 

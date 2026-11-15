@@ -55,7 +55,7 @@
 #### 3. 💬 Trò Chuyện Thông Minh & Tư Duy Độc Lập (Multi-Model Chat)
 - **Kho mô hình đa dạng**: Gemini 2.5 Flash, Gemini 2.5 Pro, Gemini 3.8 Live, Gemini 3.1 Flash Live Preview.
 - **Tư duy mở rộng (Thinking Mode)**: Cho phép điều chỉnh ngân sách tokens suy nghĩ để giải quyết các bài toán logic, lập trình phức tạp.
-- **Tra cứu Internet đa nền tảng**: Tích hợp Tavily AI, Serper Dev, Brave Search, Jina Reader với cơ chế trích xuất từ khóa tìm kiếm thông minh: chỉ tra cứu khi bật Tìm kiếm Web và từ khóa được bọc trong cặp dấu ~từ khóa~.
+- **Tra cứu Internet đa nền tảng**: Tích hợp Tavily AI, Serper Dev, Brave Search, Jina Reader với cơ chế trích xuất từ khóa tìm kiếm thông minh: chỉ tra cứu khi bật Tìm kiếm Web và từ khóa được bọc trong cặp dấu #từ khóa#.
 - **Định dạng văn bản & Đồ họa đỉnh cao**:
   - Hỗ trợ công thức Toán học chuẩn **KaTeX / LaTeX** ($E = mc^2$).
   - Vẽ sơ đồ tư duy, lưu trình tự động bằng mã **Mermaid.js**.
