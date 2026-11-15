@@ -13,6 +13,8 @@ import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
@@ -63,6 +65,11 @@ public class MainActivity extends AppCompatActivity {
     private WebViewAssetLoader assetLoader;
     private String pendingOpenTab = null;
     private boolean isPageLoaded = false;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private int mainPageLoadAttempts = 0;
+    private static final int MAX_MAIN_PAGE_LOAD_ATTEMPTS = 3;
+    private static final long MAIN_PAGE_LOAD_TIMEOUT_MS = 15000L;
+    private final Runnable mainPageLoadTimeout = () -> retryMainPageLoad("page load timeout");
 
     public static void notifyMedicationStatusChanged(String medId, String timeStr, String status) {
         if (sInstance != null && sInstance.webView != null) {
@@ -338,9 +345,10 @@ public class MainActivity extends AppCompatActivity {
         checkAndRequestPermissions();
 
         if (savedInstanceState == null) {
-            webView.loadUrl(TARGET_URL);
+            loadMainPage();
         } else {
             webView.restoreState(savedInstanceState);
+            scheduleMainPageLoadTimeout();
         }
 
         handleOpenTabIntent(getIntent());
@@ -351,6 +359,30 @@ public class MainActivity extends AppCompatActivity {
         super.onNewIntent(intent);
         setIntent(intent);
         handleOpenTabIntent(intent);
+    }
+
+    private void loadMainPage() {
+        if (webView == null || isFinishing() || isDestroyed()) return;
+        mainPageLoadAttempts++;
+        isPageLoaded = false;
+        webView.loadUrl(TARGET_URL);
+        scheduleMainPageLoadTimeout();
+    }
+
+    private void scheduleMainPageLoadTimeout() {
+        mainHandler.removeCallbacks(mainPageLoadTimeout);
+        mainHandler.postDelayed(mainPageLoadTimeout, MAIN_PAGE_LOAD_TIMEOUT_MS);
+    }
+
+    private void retryMainPageLoad(String reason) {
+        if (webView == null || isFinishing() || isDestroyed() || isPageLoaded) return;
+        if (mainPageLoadAttempts >= MAX_MAIN_PAGE_LOAD_ATTEMPTS) {
+            Log.e(TAG, "Main page failed after " + mainPageLoadAttempts + " attempts (" + reason + ")");
+            return;
+        }
+        Log.w(TAG, "Retrying main page load after " + reason + " (attempt "
+                + (mainPageLoadAttempts + 1) + "/" + MAX_MAIN_PAGE_LOAD_ATTEMPTS + ")");
+        mainHandler.postDelayed(this::loadMainPage, 500L);
     }
 
     private void handleOpenTabIntent(Intent intent) {
@@ -436,9 +468,19 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
+            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                if (url != null && url.startsWith(LOCAL_ORIGIN)) {
+                    isPageLoaded = false;
+                }
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                if (url == null || !url.startsWith(LOCAL_ORIGIN)) return;
                 isPageLoaded = true;
+                mainHandler.removeCallbacks(mainPageLoadTimeout);
                 if ("medication".equals(pendingOpenTab)) {
                     pendingOpenTab = null;
                     view.postDelayed(() -> {
@@ -451,6 +493,9 @@ public class MainActivity extends AppCompatActivity {
             public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && request != null && request.isForMainFrame()) {
                     Log.e(TAG, "MainFrame WebResourceError: " + error.getErrorCode() + " - " + error.getDescription());
+                    isPageLoaded = false;
+                    mainHandler.removeCallbacks(mainPageLoadTimeout);
+                    mainHandler.postDelayed(() -> retryMainPageLoad("main frame load error"), 500L);
                 }
             }
         });
@@ -590,6 +635,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        mainHandler.removeCallbacksAndMessages(null);
         sInstance = null;
         if (webView != null) {
             webView.destroy();
