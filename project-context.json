@@ -9,7 +9,7 @@
   "runtime_entry": {
     "web": "index.html",
     "pwa": ["manifest.json", "sw.js"],
-    "build": ["vite.config.js", "package.json", "package-lock.json"],
+    "build": ["package.json", "package-lock.json"],
     "versioning": "bump-version.js"
   },
   "architecture": {
