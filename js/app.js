@@ -198,8 +198,10 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
            : m ? `❌ Lỗi: ${m}` : "❌ Lỗi máy chủ Google.";
     };
 
-    const extractQuotedKeywords = t => {
-      const m = Array.from((t || '').matchAll(/["“«]([^"”»]+)["”»]/g)).map(x => x[1].trim()).filter(Boolean);
+    // Chỉ trích xuất từ khóa tìm kiếm web khi người dùng bọc trong cặp dấu ~từ khóa~.
+    // Dấu ngoặc kép được giữ nguyên cho mục đích nhấn mạnh, không còn kích hoạt tìm kiếm.
+    const extractTildeKeywords = t => {
+      const m = Array.from((t || '').matchAll(/(?:^|[^~])~([^~\n]+)~(?!~)/g)).map(x => x[1].trim()).filter(Boolean);
       return m.length ? m.join(' ') : null;
     };
 
@@ -3075,7 +3077,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
         // WEB SEARCH (TAVILY / SERPER)
-        const quoted = extractQuotedKeywords(fnP);
+        const quoted = extractTildeKeywords(fnP);
         if (quoted && DOM.toggleSearch.checked) {
           const tgt = DOM.searchEngineSel.value === 'serper' ? 'serper' : 'tavily';
 
