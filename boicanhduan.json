@@ -136,7 +136,7 @@
         "scratch/test_browser.js": "Likely a quick browser/launch test helper.",
         "check.js": "Temporary untracked Node script for JS parse checks; safe to delete.",
         "instrument.js": "Temporary untracked helper used while verifying Event Bus/worker wiring; safe to delete.",
-        "instrument_check.js": "Temporary untracked check variant; safe to delete."
+        "instrument_check.js": "Temporary untracked check variant; safe to delete.",
         "icon.png": "App icon asset.",
         "icon-192.png": "PWA/Android icon 192.",
         "icon-512.png": "PWA/Android icon 512.",
@@ -161,7 +161,7 @@
     "local_run": "Serve the project via a local HTTP server (for example Python http.server / npx serve) and open index.html.",
     "pwa_install": "Install from browser via manifest/Service Worker.",
     "android_build": "Three options: (1) node build.js cross-platform (needs JDK 17 + Android SDK; chmod +x gradlew on first run); (2) build-apk.bat on Windows; (3) push to main or workflow_dispatch so GitHub Actions builds the APK (artifact JarvisAI-Android-App + GitHub Release). Note: a sandboxed environment without Android SDK/Gradle cannot produce the APK locally.",
-    "android_deploy": "Use installphone.bat or installphone-wifi.bat to install to a connected device.",
+    "android_deploy": "Use install-phone.bat (USB ADB) or install-phone-wifi.bat (Wi-Fi debugging ADB) to install a built APK to a connected device.",
     "version_bump": "Run bump-version.js to increment Android versionCode/versionName and sync cache busters in index.html and sw.js.",
     "ci_cd": ".github/workflows/build-apk.yml builds the APK on push to main/master when android/**, js/**, css/**, index.html, manifest.json, sw.js or the workflow itself change, or via manual workflow_dispatch. Behaviour after hardening (commit a7d55c4): deterministic version bump (versionCode = current + 1 read via awk, versionName 1.1.X, no github.run_number), assembleRelease preferred, on failure builds debug and labels it JarvisAI-debug.apk; uploads artifact JarvisAI-Android-App (30-day retention); creates GitHub Release v1.1.X with dynamic notes + generate_release_notes only when the release build succeeds. Pushing boicanhduan.json alone does NOT trigger this workflow (not in its paths filter)."
   },
