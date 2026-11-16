@@ -63,6 +63,7 @@
           msg.text = msg.text
             .replace(/AIzaSy[A-Za-z0-9_-]{30,40}/g, 'AIzaSy[PROTECTED]')
             .replace(/tvly-[A-Za-z0-9_-]{20,40}/g, 'tvly-[PROTECTED]')
+            .replace(/sk-or-[A-Za-z0-9_-]{16,}/g, 'sk-or-[PROTECTED]')
             .replace(/jina_[A-Za-z0-9_-]{20,}/g, 'jina_[PROTECTED]')
             .replace(/ghp_[A-Za-z0-9]{30,45}/g, 'ghp_[PROTECTED]')
             .replace(/github_pat_[A-Za-z0-9_]{30,}/g, 'github_pat_[PROTECTED]');

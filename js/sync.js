@@ -344,6 +344,29 @@
               }
             }
 
+            // D2. HỢP NHẤT CẤU HÌNH NGOÀI & API KEY DỊCH VỤ ĐÃ MÃ HÓA
+            // (Tavily, Serper, Experiential Labs, OpenRouter, Orcarouter...).
+            // Nguyên tắc: máy nào đã có key thì giữ nguyên, chỉ nhận từ Cloud khi ô đó đang trống.
+            const remoteExtCfg = cloudData.settings?.externalConfigs;
+            if (remoteExtCfg && typeof remoteExtCfg === 'object') {
+              const localExtCfg = getExternalConfigsObj(false) || {};
+              const mergedExtCfg = {};
+              let extCfgChanged = false;
+              Object.entries(remoteExtCfg).forEach(([cfgKey, rawVal]) => {
+                let remoteVal = rawVal;
+                if (typeof remoteVal === 'string' && (remoteVal.startsWith('JVENC_') || remoteVal.startsWith('ENC_'))) {
+                  remoteVal = deobfuscateKey(remoteVal);
+                }
+                const localVal = localExtCfg[cfgKey];
+                const hasLocal = localVal !== undefined && localVal !== null && String(localVal).trim() !== '';
+                mergedExtCfg[cfgKey] = hasLocal ? localVal : (remoteVal ?? '');
+                if (!hasLocal && remoteVal) extCfgChanged = true;
+              });
+              if (extCfgChanged) {
+                setExternalConfigsObj(mergedExtCfg);
+              }
+            }
+
             // E. HỢP NHẤT BỘ ĐẾM HẠN NGẠCH KEY FLASH (DISTRIBUTED G-COUNTER)
             if (cloudData.keyUsageFlash && typeof window.mergeRemoteKeyUsage === 'function') {
               const usageChanged = window.mergeRemoteKeyUsage(cloudData.keyUsageFlash);

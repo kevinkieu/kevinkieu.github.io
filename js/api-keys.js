@@ -19,6 +19,8 @@
     ['tavily-key-input', 'tavily_api_key'],
     ['serper-key-input', 'serper_api_key'],
     ['explabs-key-input', 'explabs_api_key'],
+    ['openrouter-key-input', 'openrouter_api_key'],
+    ['orcarouter-key-input', 'orcarouter_api_key'],
     ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
     ['web-extract-engine-input', 'web_extract_engine', 'auto'],
     ['live-temperature', 'live_temperature', '0.7']

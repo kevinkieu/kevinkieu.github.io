@@ -344,11 +344,46 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       ['tavily-key-input', 'tavily_api_key'],
       ['serper-key-input', 'serper_api_key'],
       ['explabs-key-input', 'explabs_api_key'],
+      ['openrouter-key-input', 'openrouter_api_key'],
+      ['orcarouter-key-input', 'orcarouter_api_key'],
       ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
       ['web-extract-engine-input', 'web_extract_engine', 'auto'],
       ['live-temperature', 'live_temperature', '0.7']
     ];
     window.cfgMap = cfgMap;
+
+    // --- REGISTRY GATEWAY OpenAI-COMPATIBLE (OpenRouter / Orcarouter) ---
+    // Các model dưới đây gọi chung endpoint /chat/completions (SSE) thay vì Google Gemini.
+    const COMPAT_PROVIDERS = {
+      openrouter: {
+        id: 'openrouter',
+        label: 'OpenRouter',
+        baseUrl: 'https://openrouter.ai/api/v1',
+        keyStorage: 'openrouter_api_key',
+        keyLabel: 'OpenRouter',
+        models: ['nvidia/nemotron-3.5-lightning:free', 'particle-ai/particle-1:free'],
+        extraHeaders: () => ({ 'HTTP-Referer': location.origin, 'X-Title': 'Jarvis AI' }),
+        modelLabel: m => m.includes('nemotron') ? 'Nemotron 3.5 Lightning' : m.includes('particle') ? 'Particle-1' : m
+      },
+      orcarouter: {
+        id: 'orcarouter',
+        label: 'Orcarouter',
+        baseUrl: 'https://api.orcarouter.ai/v1',
+        keyStorage: 'orcarouter_api_key',
+        keyLabel: 'Orcarouter',
+        models: ['z-ai/glm-5.3-flash-free', 'deepseek/deepseek-v4.1-flash-free'],
+        extraHeaders: () => ({}),
+        modelLabel: m => m.includes('glm') ? 'GLM 5.3 Flash' : m.includes('deepseek') ? 'DeepSeek V4.1 Flash' : m
+      }
+    };
+    function resolveCompatProvider(modelId) {
+      const m = (modelId || '').trim();
+      for (const p of Object.values(COMPAT_PROVIDERS)) {
+        if (p.models.includes(m)) return { provider: p, model: m };
+      }
+      return null;
+    }
+    window.resolveCompatProvider = resolveCompatProvider;
 
     // [Đã tách sang js/api-keys.js: initAPIKeys / initExternalConfigs + 3 button handlers + auto-init]
     // [Đã tách sang js/database.js: IndexedDB engine (db, initDB, saveToDB, getAllFromDB, clearAllDB, file/TTS stores)]
@@ -2925,12 +2960,15 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         keyIndexNum = findSlotIndexForKey(gKey);
       }
 
-      if (!gKey) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
+      // Model từ gateway OpenAI-compatible (OpenRouter / Orcarouter) không dùng Google API Key
+      const usesCompatGateway = !!resolveCompatProvider(am);
+      if (!gKey && !usesCompatGateway) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
 
       ls.removeItem('jarvis_draft');
       isProcessing = true;
       abortController = new AbortController();
-      recordKeyRequest(keyIndexNum, am);
+      // Gateway OpenAI-compatible (OpenRouter / Orcarouter) không dùng Google Key nên không ghi quota Google
+      if (!usesCompatGateway) recordKeyRequest(keyIndexNum, am);
 
       DOM.sendBtn.innerHTML = `<span>Dừng</span> 🛑`;
       DOM.sendBtn.style.background = 'var(--danger)';
@@ -3383,6 +3421,135 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                 bD.remove();
                 return showToast(`Lỗi Experiential Labs: ${expErr.message}`, 'danger');
               }
+            }
+          }
+
+          if (pS) {
+            await saveTurn();
+            return;
+          }
+        }
+
+        // --- ENGINE 0B: GATEWAY OpenAI-COMPATIBLE (OpenRouter / Orcarouter) ---
+        const compatProv = resolveCompatProvider(am);
+        if (compatProv) {
+          const prov = compatProv.provider;
+          let compatKey = (ls.getItem(prov.keyStorage) || '').trim();
+          if (compatKey.startsWith('JVENC_') || compatKey.startsWith('ENC_')) compatKey = deobfuscateKey(compatKey);
+          if (!compatKey) {
+            bD.remove();
+            return showToast(`Vui lòng nhập ${prov.keyLabel} API Key trong Cài đặt (⚙️)!`, "danger");
+          }
+
+          bD.querySelector('.typing-bubble')?.remove();
+
+          // Dựng messages theo chuẩn OpenAI: system + 10 tin gần nhất + lượt hiện tại (kèm ảnh nếu có)
+          const compatMessages = [];
+          const compatSI = getDynamicSI(ragSnippet);
+          if (compatSI) compatMessages.push({ role: 'system', content: compatSI });
+          if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
+            chatHistory.slice(-10).forEach(m => {
+              compatMessages.push({ role: m.role === 'model' ? 'assistant' : 'user', content: m.text });
+            });
+          }
+          if (base64Files && base64Files.length > 0) {
+            const compatUserContent = [{ type: 'text', text: promptWithTime }];
+            for (const f of base64Files) {
+              if (f.mimeType && f.mimeType.startsWith('image/')) {
+                compatUserContent.push({
+                  type: 'image_url',
+                  image_url: { url: `data:${f.mimeType};base64,${f.data}` }
+                });
+              }
+            }
+            compatMessages.push({ role: 'user', content: compatUserContent });
+          } else {
+            compatMessages.push({ role: 'user', content: promptWithTime });
+          }
+
+          const compatLabel = prov.modelLabel(am);
+          let compatThinking = '';
+          let compatContent = '';
+
+          try {
+            const compatHeaders = {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + compatKey
+            };
+            if (typeof prov.extraHeaders === 'function' && /^https?:$/.test(location.protocol)) {
+              Object.assign(compatHeaders, prov.extraHeaders() || {});
+            }
+
+            const compatRes = await fetch(`${prov.baseUrl}/chat/completions`, {
+              method: 'POST',
+              headers: compatHeaders,
+              body: JSON.stringify({
+                model: am,
+                messages: compatMessages,
+                stream: true,
+                max_tokens: 8192
+              }),
+              signal: abortController.signal
+            });
+
+            if (!compatRes.ok) {
+              const errData = await compatRes.json().catch(() => ({}));
+              throw new Error(errData?.error?.message || errData?.message || ('HTTP ' + compatRes.status));
+            }
+
+            const compatReader = compatRes.body.getReader();
+            const compatDecoder = new TextDecoder();
+            let compatBuffer = '';
+            let compatDone = false;
+
+            while (!compatDone) {
+              const { value, done: chunkDone } = await compatReader.read();
+              if (chunkDone) break;
+              compatBuffer += compatDecoder.decode(value, { stream: true });
+
+              const lines = compatBuffer.split('\n');
+              compatBuffer = lines.pop() || '';
+
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                if (trimmed === 'data: [DONE]') { compatDone = true; break; }
+                if (!trimmed.startsWith('data:')) continue;
+                try {
+                  const parsed = JSON.parse(trimmed.slice(5).trim());
+                  const delta = parsed.choices?.[0]?.delta || {};
+                  const deltaThinking = delta.reasoning_content || delta.reasoning || delta.thought || '';
+                  const deltaText = delta.content || '';
+                  if (deltaThinking) compatThinking += deltaThinking;
+                  if (deltaText) compatContent += deltaText;
+                  if (deltaThinking || deltaText) {
+                    finalResp = formatThinkingResponse(compatThinking, compatContent, compatLabel);
+                    renderer.push(finalResp);
+                    if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
+                    pS = true;
+                  }
+                } catch (_) {}
+              }
+            }
+
+            finalResp = formatFinalThinkingResponse(compatThinking, compatContent, compatLabel);
+            if (!compatContent.trim() && compatThinking.trim()) {
+              compatContent = compatThinking.trim();
+              compatThinking = '';
+              finalResp = formatFinalThinkingResponse('', compatContent, compatLabel);
+            }
+            await renderer.flush(finalResp);
+            pS = true;
+          } catch (compatErr) {
+            if (compatErr.name === 'AbortError' || abortController.signal.aborted) throw compatErr;
+            lastErr = compatErr;
+            if (pS) {
+              finalResp = formatFinalThinkingResponse(compatThinking, compatContent, compatLabel)
+                + `\n\n*(⚠️ Quá trình stream bị ngắt: ${compatErr.message})*`;
+              await renderer.flush(finalResp);
+            } else {
+              bD.remove();
+              return showToast(`Lỗi ${prov.keyLabel}: ${compatErr.message}`, 'danger');
             }
           }
 
