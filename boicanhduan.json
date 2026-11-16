@@ -9,7 +9,8 @@
   "runtime_entry": {
     "web": "index.html",
     "pwa": ["manifest.json", "sw.js"],
-    "build": ["package.json", "package-lock.json"],
+    "build": ["package.json", "package-lock.json", "build.js", "build-apk.bat"],
+    "ci": ".github/workflows/build-apk.yml",
     "versioning": "bump-version.js"
   },
   "architecture": {
@@ -35,7 +36,7 @@
       "id": "shell_and_pwa",
       "name": "App shell and PWA",
       "files": {
-        "index.html": "Main UI skeleton: sidebar, header, chat, modals, input panel, file upload, transcript, token/latency bar, search/memory toggles.",
+        "index.html": "Main UI skeleton: sidebar, header, chat, modals, input panel, file upload, transcript, token/latency bar, search/memory toggles. Loads js/eventBus.js (v=55) before js/rag.js.",
         "manifest.json": "PWA manifest (icons, display, theme color, app name, start URL).",
         "sw.js": "Service Worker: static asset cache, network-first for HTML/JS/CSS, bypass for live/API/search endpoints, cache CDN libs.",
         "css/style.css": "Core UI styles, layout, sidebar, chat bubbles, modals, inputs, theme variables.",
@@ -84,8 +85,16 @@
       "id": "rag_and_memory",
       "name": "Personal knowledge base, RAG, embeddings, semantic search",
       "files": {
-        "js/rag.js": "Gemini Embedding 2 (+ fallback embedding-001), in-browser cosine similarity, IndexedDB vector store, document chunking with overlap, indexing with progress, hybrid vector + lexical search, smart intent filter for personal-identity queries, context retrieval for chat, auto-learn memory extraction, persona synthesis, knowledge modal UI.",
+        "js/rag.js": "Gemini Embedding 2 (+ fallback embedding-001), IndexedDB vector store, document chunking with overlap, indexing with progress, hybrid vector + lexical search, smart intent filter for personal-identity queries, context retrieval for chat, auto-learn memory extraction, persona synthesis, knowledge modal UI. Search is worker-first: searchSimilarVectors routes through js/rag.worker.js and falls back to searchSimilarVectorsMain on the main thread; both paths share computeHybridScore so ranking stays identical.",
         "css/rag.css": "Knowledge/RAG/search styles."
+      }
+    },
+    {
+      "id": "event_bus_and_rag_worker",
+      "name": "Cross-module Event Bus + RAG Web Worker (performance)",
+      "files": {
+        "js/eventBus.js": "Lightweight pub/sub event bus exposed as window.EventBus; emits app:ready once core modules are loaded; loaded in index.html before js/rag.js. Optional adoption - existing modules are not forced to migrate; bus is for light cross-module signals only (no large state).",
+        "js/rag.worker.js": "Web Worker computing cosine similarity + hybrid scoring off the main thread; single message handler; keeps RAG search responsive on large knowledge bases. Mirrored to android/app/src/main/assets/js/."
       }
     },
     {
@@ -108,10 +117,12 @@
         "android/app/src/main/java/com/kevinkieu/jarvisai/MainActivity.java": "WebView setup, JS bridge for native persistence/alarms, medication reminder integration.",
         "android/app/src/main/java/com/kevinkieu/jarvisai/MedicationAlarmReceiver.java": "Alarm/receiver logic for medication notifications.",
         "android/app/src/main/res/*": "UI resources: layout, strings, colors, themes, icons.",
-        "android/app/src/main/assets/*": "Bundled web app assets for offline APK (index.html, manifest, sw.js, css/, js/, icons).",
-        "build-apk.bat": "Windows script: bump version, copy web assets into Android assets, assemble release APK.",
-        "installphone.bat": "Install built APK to device via USB ADB.",
-        "installphone-wifi.bat": "Install built APK to device via Wi-Fi debugging ADB."
+        "android/app/src/main/assets/*": "Bundled web app assets for offline APK (index.html, manifest, sw.js, css/, js/ incl. eventBus.js + rag.worker.js mirrors, icons). Kept in sync with the web root by build.js/build-apk.bat and CI.",
+        "build-apk.bat": "Windows build script: runs node bump-version.js, syncs web assets into Android assets, auto-detects JAVA_HOME/ANDROID_HOME, runs gradlew.bat assembleRelease, copies APK to project root as JarvisAI.apk / JarvisAI_Offline.apk.",
+        "build.js": "Cross-platform Node build script: bump-version.js, copies index.html/manifest.json/sw.js/icons/js/css into Android assets, then gradlew assembleRelease (gradlew.bat on Windows) and copies APK to project root. Requires JDK 17 + Android SDK locally.",
+        ".github/workflows/build-apk.yml": "GitHub Actions CI building the APK automatically (behaviour documented in developer_workflow.ci_cd).",
+        "install-phone.bat": "Install built APK to device via USB ADB.",
+        "install-phone-wifi.bat": "Install built APK to device via Wi-Fi debugging ADB."
       }
     },
     {
@@ -121,7 +132,11 @@
         "_blk1.txt": "Auxiliary text file (likely notes/blocks).",
         "_blk2.txt": "Auxiliary text file (likely notes/blocks).",
         "_fix1dd.txt": "Auxiliary text file (likely notes/fixes).",
+        "boicanhduan.json": "This project context file (reference snapshot for new sessions).",
         "scratch/test_browser.js": "Likely a quick browser/launch test helper.",
+        "check.js": "Temporary untracked Node script for JS parse checks; safe to delete.",
+        "instrument.js": "Temporary untracked helper used while verifying Event Bus/worker wiring; safe to delete.",
+        "instrument_check.js": "Temporary untracked check variant; safe to delete."
         "icon.png": "App icon asset.",
         "icon-192.png": "PWA/Android icon 192.",
         "icon-512.png": "PWA/Android icon 512.",
@@ -145,8 +160,21 @@
   "developer_workflow": {
     "local_run": "Serve the project via a local HTTP server (for example Python http.server / npx serve) and open index.html.",
     "pwa_install": "Install from browser via manifest/Service Worker.",
-    "android_build": "Run build-apk.bat on Windows to bump version, bundle web assets, and assemble release APK.",
+    "android_build": "Three options: (1) node build.js cross-platform (needs JDK 17 + Android SDK; chmod +x gradlew on first run); (2) build-apk.bat on Windows; (3) push to main or workflow_dispatch so GitHub Actions builds the APK (artifact JarvisAI-Android-App + GitHub Release). Note: a sandboxed environment without Android SDK/Gradle cannot produce the APK locally.",
     "android_deploy": "Use installphone.bat or installphone-wifi.bat to install to a connected device.",
-    "version_bump": "Run bump-version.js to increment Android versionCode/versionName and sync cache busters in index.html and sw.js."
-  }
+    "version_bump": "Run bump-version.js to increment Android versionCode/versionName and sync cache busters in index.html and sw.js.",
+    "ci_cd": ".github/workflows/build-apk.yml builds the APK on push to main/master when android/**, js/**, css/**, index.html, manifest.json, sw.js or the workflow itself change, or via manual workflow_dispatch. Behaviour after hardening (commit a7d55c4): deterministic version bump (versionCode = current + 1 read via awk, versionName 1.1.X, no github.run_number), assembleRelease preferred, on failure builds debug and labels it JarvisAI-debug.apk; uploads artifact JarvisAI-Android-App (30-day retention); creates GitHub Release v1.1.X with dynamic notes + generate_release_notes only when the release build succeeds. Pushing boicanhduan.json alone does NOT trigger this workflow (not in its paths filter)."
+  },
+  "recent_changes": [
+    {
+      "date": "2026-11-15",
+      "commit": "a754122",
+      "summary": "RAG search is worker-first (new js/rag.worker.js; js/rag.js has worker path + searchSimilarVectorsMain fallback, shared computeHybridScore). Added js/eventBus.js exposing window.EventBus and emitting app:ready, loaded in index.html before rag.js. Added cross-platform build.js; build-apk.bat now runs node bump-version.js first. Mirrors updated under android/app/src/main/assets/."
+    },
+    {
+      "date": "2026-11-15",
+      "commit": "a7d55c4",
+      "summary": "Hardened .github/workflows/build-apk.yml: deterministic version bump (no github.run_number), separated release/debug APK naming, GitHub Release only on successful release build, dynamic release notes with generate_release_notes, fetch-depth 0 checkout."
+    }
+  ]
 }
