@@ -17,12 +17,45 @@
   // from backup files. They do NOT provide actual security - keys are still
   // fully exposed in browser localStorage/IndexedDB.
 
+  // --- BASE64 HELPERS (UTF-8 SAFE) ---
+  // btoa() chỉ nhận ký tự Latin1, nên tiếng Việt / emoji sẽ ném lỗi:
+  // "Failed to execute 'btoa' on 'Window': The string to be encoded contains
+  // characters outside of the Latin1 range." => luôn mã hóa qua UTF-8 bytes trước.
+  function utf8ToBase64(str) {
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    const CHUNK = 0x2000;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+    }
+    return btoa(bin);
+  }
+
+  function base64ToUtf8(b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    try {
+      // Bản mới: payload là UTF-8 bytes
+      return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch (e) {
+      // Bản cũ: btoa() trên chuỗi Latin1 => trả nguyên chuỗi nhị phân
+      return bin;
+    }
+  }
+
   function obfuscateKey(k) {
     if (!k || typeof k !== 'string') return '';
     // Legacy format - returns JVENC_ or ENC_ prefixed strings
     // WARNING: This is SECURITY THEATER - decode easily with: atob(k.split('_').slice(1).join('_'))
     const salt = Math.random().toString(36).slice(2, 10);
-    return 'JVENC_' + salt + '_' + btoa(k);
+    try {
+      return 'JVENC_' + salt + '_' + utf8ToBase64(k);
+    } catch (e) {
+      // Không bao giờ để việc mã hóa làm hỏng đồng bộ: giữ nguyên giá trị gốc
+      console.warn('obfuscateKey fallback:', e);
+      return k;
+    }
   }
 
   function deobfuscateKey(k) {
@@ -32,7 +65,7 @@
         const parts = k.slice(6).split('_');
         if (parts.length >= 2) {
           const b64 = parts.slice(1).join('_');
-          return atob(b64);
+          return base64ToUtf8(b64);
         }
       } catch (e) {
         console.warn('JVENC decode failed:', e);
@@ -40,7 +73,7 @@
     }
     if (k.startsWith('ENC_')) {
       try {
-        return atob(k.slice(4)).split('').reverse().join('');
+        return base64ToUtf8(k.slice(4)).split('').reverse().join('');
       } catch (e) {
         try {
           return k.slice(4);
