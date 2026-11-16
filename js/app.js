@@ -363,6 +363,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         keyLabel: 'OpenRouter',
         models: ['nvidia/nemotron-3.5-lightning:free', 'particle-ai/particle-1:free'],
         extraHeaders: () => ({ 'HTTP-Referer': location.origin, 'X-Title': 'Jarvis AI' }),
+        includeReasoning: true,
         modelLabel: m => m.includes('nemotron') ? 'Nemotron 3.5 Lightning' : m.includes('particle') ? 'Particle-1' : m
       },
       orcarouter: {
@@ -3480,21 +3481,50 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               Object.assign(compatHeaders, prov.extraHeaders() || {});
             }
 
-            const compatRes = await fetch(`${prov.baseUrl}/chat/completions`, {
+            // --- BẬT SUY LUẬN (REASONING) THEO MỨC "THINK DEPTH" ĐANG CHỌN ---
+            // OpenAI-compatible: reasoning.effort = minimal | low | medium | high (OpenRouter chuẩn hóa).
+            const compatBody = {
+              model: am,
+              messages: compatMessages,
+              stream: true,
+              max_tokens: 8192
+            };
+            if (thk && thk !== 'none') {
+              compatBody.reasoning = { effort: thk };
+              if (prov.includeReasoning) compatBody.include_reasoning = true;
+            }
+
+            const compatUrl = `${prov.baseUrl}/chat/completions`;
+            const sendCompat = () => fetch(compatUrl, {
               method: 'POST',
               headers: compatHeaders,
-              body: JSON.stringify({
-                model: am,
-                messages: compatMessages,
-                stream: true,
-                max_tokens: 8192
-              }),
+              body: JSON.stringify(compatBody),
               signal: abortController.signal
             });
 
-            if (!compatRes.ok) {
-              const errData = await compatRes.json().catch(() => ({}));
-              throw new Error(errData?.error?.message || errData?.message || ('HTTP ' + compatRes.status));
+            let compatRes = null;
+            let compatErrText = '';
+            for (let attempt = 0; attempt < 2; attempt++) {
+              compatRes = await sendCompat();
+              if (compatRes.ok) break;
+              compatErrText = await compatRes.text().catch(() => '');
+              // Gateway không hỗ trợ tham số reasoning (400/4xx + thông báo liên quan): gỡ ra và thử lại 1 lần
+              const rejectedReasoning = compatBody.reasoning
+                && compatRes.status >= 400 && compatRes.status < 500
+                && /reason|unknown|unsupported|unrecogni|invalid.?param|extra/i.test(compatErrText);
+              if (!rejectedReasoning) break;
+              delete compatBody.reasoning;
+              delete compatBody.include_reasoning;
+              compatErrText = '';
+            }
+
+            if (!compatRes || !compatRes.ok) {
+              let apiMsg = '';
+              try {
+                const parsedErr = JSON.parse(compatErrText);
+                apiMsg = parsedErr?.error?.message || parsedErr?.message || '';
+              } catch (_) {}
+              throw new Error(apiMsg || ('HTTP ' + (compatRes ? compatRes.status : '?')));
             }
 
             const compatReader = compatRes.body.getReader();
