@@ -3819,12 +3819,17 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           const noMinimalLevel = /^gemini-(3\.8|4)/.test(am);
           const thinkLevel = (thk === 'minimal' && noMinimalLevel) ? 'low' : thk;
           const budgetMap = { minimal: 1024, low: 2048, medium: 4096, high: 8192 };
+          const wantsThinking = thinkingSupported && thk && thk !== 'none';
+          // maxOutputTokens của Gemini tính CHUNG thinking + output. Để 8192 khi bật thinking
+          // thì thinking ăn hết hạn mức -> model không còn chỗ xuất chữ và stream bị treo.
+          // Vì thế: 8192 khi KHÔNG thinking, 32768 khi CÓ thinking (3.5 Flash Lite giữ 65000).
+          const maxOutputTokens = am === 'gemini-3.5-flash-lite' ? 65000 : (wantsThinking ? 32768 : 8192);
           const config = {
             systemInstruction: getDynamicSI(ragSnippet),
             safetySettings: SAFETY,
-            maxOutputTokens: am === 'gemini-3.5-flash-lite' ? 65000 : 8192
+            maxOutputTokens
           };
-          if (thinkingSupported && thk && thk !== 'none') {
+          if (wantsThinking) {
             config.thinkingConfig = usesThinkingLevel
               ? { thinkingLevel: thinkLevel, includeThoughts: true }
               : { thinkingBudget: budgetMap[thk] || 4096, includeThoughts: true };
@@ -3838,6 +3843,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           const maxStreamAttempts = Math.max(Math.min(apiKeys.length || 1, 3), 2);
           let currentThinking = "";
           let currentContent = "";
+          // Chẩn đoán: in ra đúng cấu hình gửi Google để đối chiếu khi request bị treo
+          console.info('[Gemini] model =', am, '| thk =', thk, '| thinking =', JSON.stringify(config.thinkingConfig || null), '| maxOutputTokens =', config.maxOutputTokens);
 
           while (streamAttempts < maxStreamAttempts) {
             streamAttempts++;
@@ -3848,7 +3855,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
             abortController.signal.addEventListener('abort', relayAbort, { once: true });
             let stalled = false;
             let gotFirstChunk = false;
-            let stallTimer = setTimeout(() => { stalled = true; attemptCtrl.abort(); }, 25000);
+            let stallTimer = setTimeout(() => { stalled = true; attemptCtrl.abort(); }, 20000);
             const stopStallTimer = () => { if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } };
             const cleanupAttempt = () => { stopStallTimer(); abortController.signal.removeEventListener('abort', relayAbort); };
             try {
@@ -3901,7 +3908,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               cleanupAttempt();
               // Ưu tiên xử lý treo stream trước khi xét lỗi thường
               if (stalled && !abortController.signal.aborted) {
-                console.warn('[Watchdog] Google không nhả chunk đầu tiên sau 25s, tự phục hồi cấu hình...');
+                console.warn('[Watchdog] Google không nhả chunk đầu tiên sau 20s, tự phục hồi cấu hình...');
+                // Nới hạn mức output để thinking không ăn hết chỗ của phần trả lời
+                config.maxOutputTokens = Math.max(Number(config.maxOutputTokens) || 0, 32768);
                 if (config.thinkingConfig && config.thinkingConfig.thinkingLevel) {
                   config.thinkingConfig = { thinkingBudget: 2048, includeThoughts: true };
                   continue;
@@ -3911,7 +3920,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                   config.temperature = 0.5;
                   continue;
                 }
-                lastErr = new Error('Google không phản hồi sau 25 giây (stream trò)');
+                lastErr = new Error('Google không phản hồi sau 20 giây (stream trò)');
                 break;
               }
               if (e.name === 'AbortError' || abortController.signal.aborted) throw e;

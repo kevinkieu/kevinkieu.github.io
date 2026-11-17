@@ -167,7 +167,7 @@
   "recent_changes": [
     {
       "date": "2026-11-17",
-      "summary": "Tối ưu độ trễ nhánh Google (generateContentStream): gửi thinkingConfig.thinkingLevel (kèm includeThoughts) cho Gemini 3.x/4 thay vì thinkingBudget cũ, giảm round-trip retry do sai tham số; tự hạ mức 'minimal' -> 'low' cho gemini-3.8/4 vì hai model này không nhận minimal (đây là nguyên nhân request 3.8 bị treo ở dấu 3 chấm); thêm watchdog 25s tự hủy attempt và fallback về thinkingBudget rồi bỏ thinkingConfig nếu Google không nhả chunk đầu tiên; maxOutputTokens mặc định 32768 -> 8192 (giữ 65000 riêng cho gemini-3.5-flash-lite); số tin ngữ cảnh mặc định 16 -> 10 khi người dùng chưa tự nhập (js/app.js + index.html). Đã mirror sang android/app/src/main/assets/."
+      "summary": "Tối ưu độ trễ nhánh Google (generateContentStream): gửi thinkingConfig.thinkingLevel (kèm includeThoughts) cho Gemini 3.x/4 thay vì thinkingBudget cũ, giảm round-trip retry do sai tham số; tự hạ mức 'minimal' -> 'low' cho gemini-3.8/4 vì hai model này không nhận minimal (đây là nguyên nhân request 3.8 bị treo ở dấu 3 chấm); thêm watchdog 25s tự hủy attempt và fallback về thinkingBudget rồi bỏ thinkingConfig nếu Google không nhả chunk đầu tiên; maxOutputTokens: 8192 khi tắt thinking, 32768 khi bật thinking (Gemini tính chung thinking + output nên để 8192 lúc bật thinking làm stream treo ở 3.6/3.8/Hydrogen), giữ 65000 riêng cho gemini-3.5-flash-lite; số tin ngữ cảnh mặc định 16 -> 10 khi người dùng chưa tự nhập (js/app.js + index.html). Đã mirror sang android/app/src/main/assets/."
     },
     {
       "date": "2026-11-17",
