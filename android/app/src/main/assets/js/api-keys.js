@@ -125,6 +125,18 @@
       ls.setItem('huanmu_global_context', e.target.value);
     };
   }
+  const nvidiaKeyInput = $('nvidia-key-input');
+  if (nvidiaKeyInput) {
+    nvidiaKeyInput.oninput = e => {
+      ls.setItem('nvidia_api_key', e.target.value.trim());
+    };
+  }
+  const nvidiaUrlInput = $('nvidia-base-url-input');
+  if (nvidiaUrlInput) {
+    nvidiaUrlInput.oninput = e => {
+      ls.setItem('nvidia_base_url', e.target.value.trim());
+    };
+  }
 
   // --- SAVE KEYS BUTTON HANDLER ---
   function handleSaveKeys() {

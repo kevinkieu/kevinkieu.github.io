@@ -3511,6 +3511,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
             }
             const activeBaseUrl = (prov.id === 'nvidia' && customBaseUrl) ? customBaseUrl : prov.baseUrl;
             const compatUrl = `${activeBaseUrl}/chat/completions`;
+            console.log(`[Gateway ${prov.keyLabel}] Endpoint:`, compatUrl);
             const sendCompat = () => fetch(compatUrl, {
               method: 'POST',
               headers: compatHeaders,
@@ -3538,7 +3539,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               let apiMsg = '';
               try {
                 const parsedErr = JSON.parse(compatErrText);
-                apiMsg = parsedErr?.error?.message || parsedErr?.message || '';
+                apiMsg = parsedErr?.detail || parsedErr?.error?.message || parsedErr?.message || parsedErr?.title || '';
               } catch (_) {}
               throw new Error(apiMsg || ('HTTP ' + (compatRes ? compatRes.status : '?')));
             }
