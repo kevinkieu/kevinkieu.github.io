@@ -166,6 +166,10 @@
   },
   "recent_changes": [
     {
+      "date": "2026-11-17",
+      "summary": "Đồng bộ & mã hóa NVIDIA key (nvidia_api_key) ngang các nền tảng khác. js/sync.js: thêm bước so sánh settings.externalConfigs (giải mã JVENC_ trước khi so) để máy có key mới/đổi key được đẩy lên Gist ngay cả khi chưa có tin nhắn chat mới (trước đây key mới không bao giờ tới Cloud). js/export.js: thêm nvidia_api_key vào danh sách cấu hình được mã hóa trong bản sao lưu JSON. js/cipher.js: che mẫu nvapi- trong lịch sử chat. js/api-keys.js: hẹn auto-sync sau khi bấm Lưu Cấu Hình. Đã mirror sang android/app/src/main/assets/js/."
+    },
+    {
       "date": "2026-11-15",
       "commit": "a754122",
       "summary": "RAG search is worker-first (new js/rag.worker.js; js/rag.js has worker path + searchSimilarVectorsMain fallback, shared computeHybridScore). Added js/eventBus.js exposing window.EventBus and emitting app:ready, loaded in index.html before rag.js. Added cross-platform build.js; build-apk.bat now runs node bump-version.js first. Mirrors updated under android/app/src/main/assets/."

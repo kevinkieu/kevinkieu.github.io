@@ -86,7 +86,7 @@
     }
     const cfgKeys = [
       'tavily_api_key', 'serper_api_key', 'brave_api_key', 'groq_api_key',
-      'deepseek_api_key', 'openrouter_api_key', 'jina_api_key', 'brave_worker_url'
+      'deepseek_api_key', 'openrouter_api_key', 'nvidia_api_key', 'jina_api_key', 'brave_worker_url'
     ];
     cfgKeys.forEach(k => {
       const val = ls.getItem(k) || "";

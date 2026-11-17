@@ -141,6 +141,11 @@
     ls.setItem('jarvis_hide_deepseek_thinking', $('hide-deepseek-thinking-checkbox')?.checked ? 'true' : 'false');
     initAPIKeys();
     initExternalConfigs();
+    // Đẩy ngay API key ngoài (Tavily, Serper, Experiential Labs, OpenRouter, NVIDIA...)
+    // lên Cloud Gist, không cần chờ có tin nhắn chat mới.
+    if (window.JarvisSync && typeof window.JarvisSync.scheduleAutoSync === 'function') {
+      window.JarvisSync.scheduleAutoSync(3000);
+    }
     showToast("Đã lưu cấu hình Google & Hệ thống!");
   }
 

@@ -495,6 +495,28 @@
               isLocalAhead = true;
             }
           }
+
+          // 5. Kiểm tra CẤU HÌNH NGOÀI (Tavily, Serper, Experiential Labs, OpenRouter, NVIDIA...)
+          // Máy này vừa nhập/đổi API key mà chưa chat thêm cũng phải được đẩy lên Cloud,
+          // nếu không key mới (ví dụ NVIDIA) sẽ không bao giờ tới Gist cho tới khi có tin nhắn mới.
+          if (!isLocalAhead) {
+            const remoteExtCfg = cloudData.settings?.externalConfigs;
+            if (remoteExtCfg && typeof remoteExtCfg === 'object') {
+              const localExtCfg = getExternalConfigsObj(false) || {};
+              const normCfgVal = v => {
+                let s = (v === undefined || v === null) ? '' : String(v).trim();
+                if (s.startsWith('JVENC_') || s.startsWith('ENC_')) s = String(deobfuscateKey(s) || '').trim();
+                return s;
+              };
+              for (const cfgKey of Object.keys(localExtCfg)) {
+                const lVal = normCfgVal(localExtCfg[cfgKey]);
+                if (lVal && lVal !== normCfgVal(remoteExtCfg[cfgKey])) {
+                  isLocalAhead = true;
+                  break;
+                }
+              }
+            }
+          }
         }
 
         // Chỉ lưu xuống IndexedDB khi thực sự có thay đổi từ Cloud
