@@ -3815,6 +3815,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           const thinkingSupported = !isFlashLite || am === 'gemini-3.5-flash-lite';
           // Gemini 3.x/4 điều khiển độ sâu bằng thinkingLevel; thinkingBudget là tham số cũ của dòng 2.5.
           const usesThinkingLevel = /^gemini-(3|4)/.test(am);
+          // 3.8 Flash và dòng Gemini 4 KHÔNG nhận mức 'minimal' -> hạ về 'low' để tránh request bị treo
+          const noMinimalLevel = /^gemini-(3\.8|4)/.test(am);
+          const thinkLevel = (thk === 'minimal' && noMinimalLevel) ? 'low' : thk;
           const budgetMap = { minimal: 1024, low: 2048, medium: 4096, high: 8192 };
           const config = {
             systemInstruction: getDynamicSI(ragSnippet),
@@ -3823,7 +3826,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           };
           if (thinkingSupported && thk && thk !== 'none') {
             config.thinkingConfig = usesThinkingLevel
-              ? { thinkingLevel: thk, includeThoughts: true }
+              ? { thinkingLevel: thinkLevel, includeThoughts: true }
               : { thinkingBudget: budgetMap[thk] || 4096, includeThoughts: true };
           } else {
             config.temperature = DOM.temp?.value !== undefined ? +DOM.temp.value : 0.5;
@@ -3838,15 +3841,26 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
           while (streamAttempts < maxStreamAttempts) {
             streamAttempts++;
+            // WATCHDOG: Google có thể nhận request nhưng không nhả chunk nào (treo im lặng).
+            // Nếu quá 25s không có chunk đầu tiên thì tự cắt và phục hồi thay vì để UI quay mãi.
+            const attemptCtrl = new AbortController();
+            const relayAbort = () => attemptCtrl.abort();
+            abortController.signal.addEventListener('abort', relayAbort, { once: true });
+            let stalled = false;
+            let gotFirstChunk = false;
+            let stallTimer = setTimeout(() => { stalled = true; attemptCtrl.abort(); }, 25000);
+            const stopStallTimer = () => { if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } };
+            const cleanupAttempt = () => { stopStallTimer(); abortController.signal.removeEventListener('abort', relayAbort); };
             try {
               const resStream = await new GoogleGenAI({ apiKey: gKey }).models.generateContentStream({
                 model: am,
                 contents,
                 config,
-                abortSignal: abortController.signal
+                abortSignal: attemptCtrl.signal
               });
 
               for await (const ck of resStream) {
+                if (!gotFirstChunk) { gotFirstChunk = true; stopStallTimer(); }
                 const reason = ck.candidates?.[0]?.finishReason;
                 if (reason && reason !== 'STOP') streamFinishReason = reason;
 
@@ -3881,8 +3895,25 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               }
 
               lastErr = null;
+              cleanupAttempt();
               break;
             } catch (e) {
+              cleanupAttempt();
+              // Ưu tiên xử lý treo stream trước khi xét lỗi thường
+              if (stalled && !abortController.signal.aborted) {
+                console.warn('[Watchdog] Google không nhả chunk đầu tiên sau 25s, tự phục hồi cấu hình...');
+                if (config.thinkingConfig && config.thinkingConfig.thinkingLevel) {
+                  config.thinkingConfig = { thinkingBudget: 2048, includeThoughts: true };
+                  continue;
+                }
+                if (config.thinkingConfig) {
+                  delete config.thinkingConfig;
+                  config.temperature = 0.5;
+                  continue;
+                }
+                lastErr = new Error('Google không phản hồi sau 25 giây (stream trò)');
+                break;
+              }
               if (e.name === 'AbortError' || abortController.signal.aborted) throw e;
               lastErr = e;
 
