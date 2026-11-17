@@ -167,6 +167,10 @@
   "recent_changes": [
     {
       "date": "2026-11-17",
+      "summary": "Chốt an toàn chống ghi đè trắng Cloud trong performSmartSync (js/sync.js): trước đây nếu có Gist ID mà GET Gist thất bại (PAT sai, mạng lỗi, 5xx) thì hasRemoteData = false -> isLocalAhead = true -> máy mới tinh (localSessions rỗng) sẽ PATCH đè backup rỗng lên Cloud. Thêm cờ cloudReadFailed (set trong catch) + biến wouldWipeCloud (Cloud có phiên nhưng bản đóng gói rỗng) để chặn hẳn bước push và báo toast cảnh báo. Luồng bình thường (đọc được Gist) không thay đổi: máy mới tinh chỉ kéo dữ liệu về, isLocalAhead = false nên không push gì. Đã mô phỏng bằng script Node 8 kịch bản (máy mới / đọc lỗi / có phiên mặc định / merge rỗng / chưa có Gist ID) — pass hết. Đã mirror sang android/app/src/main/assets/."
+    },
+    {
+      "date": "2026-11-17",
       "summary": "Thêm ERNIE-5.5-Flash (baidu/ernie-5.5-flash-preview:free) vào OpenRouter: option trong optgroup OpenRouter (index.html), slug trong COMPAT_PROVIDERS + nhãn 'ERNIE-5.5-Flash', thông số riêng trong COMPAT_MODEL_OPTS (contextWindow 1.024.000, maxOutputTokens 1.024.000 theo model card, apiMaxCompletionTokens 921.600 theo trần OpenRouter công bố, maxTokens thực gửi 32.768). Điểm quan trọng: ERNIE luôn bật reasoning, effort bị khoá ở high và KHÔNG chỉnh được (cả Qianfan lẫn OpenRouter) -> thêm cờ reasoningAlwaysOn: gateway chỉ gửi reasoning: { exclude: false } + include_reasoning để hiển thị khối suy luận, không gửi effort (Think Depth không tác dụng với model này), tránh 400 do tham số effort không hợp lệ. Đối chiếu /api/v1/models/.../endpoints: context_length 1024000, max_completion_tokens 921600, supported_parameters có reasoning, include_reasoning, reasoning_effort. Đã mirror sang android/app/src/main/assets/."
     },
     {

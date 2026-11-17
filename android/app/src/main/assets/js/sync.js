@@ -233,6 +233,7 @@
 
         let hasRemoteData = false;
         let hasChanges = false;
+        let cloudReadFailed = false; // Đọc Gist lỗi -> KHÔNG được đẩy bản cục bộ lên (tránh ghi đè trắng)
 
         // 2. Nếu đã có Gist ID, tải dữ liệu từ Cloud về để HỢP NHẤT (Merge)
         let cloudData = null;
@@ -470,6 +471,7 @@
             }
 
           } catch (fetchErr) {
+            cloudReadFailed = true;
             console.warn("[SmartSync] Không thể tải dữ liệu cũ từ Cloud để merge:", fetchErr);
           }
         }
@@ -598,8 +600,20 @@
           ls.setItem('huanmu_active_id', window.activeId);
         }
 
-        // Đóng gói và đẩy lên Gist nếu máy này có dữ liệu mới hơn (isLocalAhead) hoặc chưa có Gist ID
-        if (!gistId || isLocalAhead) {
+        // --- CHỐT AN TOÀN CHỐNG GHI ĐÈ TRẮNG CLOUD ---
+        // (1) Có Gist ID nhưng ĐỌC Gist thất bại: coi như "không biết Cloud có gì", tuyệt đối không PATCH lên,
+        //     vì máy mới tinh sẽ có localSessions rỗng và xóa sạch backup trên Cloud.
+        // (2) Bản Cloud đang có phiên mà bản đóng gói lại rỗng: cũng chặn luôn cho chắc.
+        const remoteSessionCount = (cloudData && Array.isArray(cloudData.sessions)) ? cloudData.sessions.length : 0;
+        const wouldWipeCloud = !!gistId && remoteSessionCount > 0 && finalSessions.length === 0;
+        if (gistId && cloudReadFailed) {
+          console.warn("[SmartSync] Bỏ qua bước đẩy lên: không đọc được Gist (tránh ghi đè trắng Cloud).");
+          if (!silent) showToast("Không đọc được Gist nên tạm hoãn đẩy lên Cloud để tránh ghi đè mất dữ liệu. Kiểm tra lại PAT/Gist ID rồi sync lại.", "warning");
+        } else if (wouldWipeCloud) {
+          console.warn(`[SmartSync] Chặn ghi đè: Cloud có ${remoteSessionCount} phiên nhưng bản đóng gói rỗng.`);
+          if (!silent) showToast("Đã chặn ghi đè: bản trên máy này đang rỗng nhưng Cloud có dữ liệu.", "warning");
+        } else if (!gistId || isLocalAhead) {
+          // Đóng gói và đẩy lên Gist khi máy này có dữ liệu mới hơn (isLocalAhead) hoặc chưa có Gist ID
           const backupData = {
             version: 2,
             app: "Jarvis AI",
