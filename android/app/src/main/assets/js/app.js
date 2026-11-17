@@ -3436,7 +3436,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
               // CHẨN ĐOÁN: events = tổng event SSE, thinkEvents = số event mang suy luận.
               // thinkEvents <= 2 nghĩa là server gửi suy luận 1 cục (không phải lỗi renderer).
-              console.warn('[ExLabs V68]', am, '| events =', expEvents, '| thinkEvents =', expThinkEvents, '| textEvents =', expTextEvents, '| firstThink =', firstThinkMs, 'ms | firstText =', firstTextMs, 'ms | thinking =', currentThinking.length, 'ký tự | content =', currentContent.length, 'ký tự');
+              console.warn('[ExLabs V69]', am, '| events =', expEvents, '| thinkEvents =', expThinkEvents, '| textEvents =', expTextEvents, '| firstThink =', firstThinkMs, 'ms | firstText =', firstTextMs, 'ms | thinking =', currentThinking.length, 'ký tự | content =', currentContent.length, 'ký tự');
               window.__jarvisTurnDebug = Object.assign(window.__jarvisTurnDebug || {}, {
                 branch: 'exp-stream', model: am, expEvents, expThinkEvents, expTextEvents,
                 firstThinkMs, firstTextMs, thinkingChars: currentThinking.length, contentChars: currentContent.length
@@ -3898,7 +3898,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           // Đếm chunk để biết Google có stream thật hay chỉ trả 1 cục
           let mainChunks = 0, mainTextChunks = 0;
           // Chẩn đoán: in ra đúng cấu hình gửi Google để đối chiếu khi request bị treo
-          console.warn('[Gemini V68] model =', am, '| thk =', thk, '| thinking =', JSON.stringify(config.thinkingConfig || null), '| maxOutputTokens =', config.maxOutputTokens);
+          console.warn('[Gemini V69] model =', am, '| thk =', thk, '| thinking =', JSON.stringify(config.thinkingConfig || null), '| maxOutputTokens =', config.maxOutputTokens);
           window.__jarvisTurnDebug = Object.assign(window.__jarvisTurnDebug || {}, { branch: 'google-stream', thinkingConfig: config.thinkingConfig || null, maxOutputTokens: config.maxOutputTokens });
 
           while (streamAttempts < maxStreamAttempts) {
@@ -3930,7 +3930,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                   gotFirstChunk = true;
                   stopStallTimer();
                   // Tách rõ 2 chặng: chờ headers (phía Google) vs chờ model nghĩ (sau headers)
-                  console.warn('[Gemini V68] headers =', headersMs, 'ms | chunk đầu sau headers =', Math.round(performance.now() - attemptStart) - headersMs, 'ms | attempt #' + streamAttempts);
+                  console.warn('[Gemini V69] headers =', headersMs, 'ms | chunk đầu sau headers =', Math.round(performance.now() - attemptStart) - headersMs, 'ms | attempt #' + streamAttempts);
                 }
                 const reason = ck.candidates?.[0]?.finishReason;
                 if (reason && reason !== 'STOP') streamFinishReason = reason;
@@ -4097,7 +4097,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
             showToast("Nội dung bị dừng do phát hiện trùng lặp bản quyền!", "warning");
           }
 
-          console.warn('[Gemini V68] stream chính: ' + mainChunks + ' chunk, trong đó ' + mainTextChunks + ' chunk có text | thinking=' + currentThinking.length + ' ký tự | content=' + currentContent.length + ' ký tự');
+          console.warn('[Gemini V69] stream chính: ' + mainChunks + ' chunk, trong đó ' + mainTextChunks + ' chunk có text | thinking=' + currentThinking.length + ' ký tự | content=' + currentContent.length + ' ký tự');
           window.__jarvisTurnDebug = Object.assign(window.__jarvisTurnDebug || {}, { mainChunks, mainTextChunks, thinkingChars: currentThinking.length, contentChars: currentContent.length });
 
           // FAIL-SAFE 2: Model chỉ trả về suy luận mà không có câu trả lời (Gemma 4 hay gặp khi bật
@@ -4134,7 +4134,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                   pS = true;
                 }
               }
-              console.warn('[Gemini V68] stream hỏi lại: ' + retryChunks + ' chunk, trong đó ' + retryTextChunks + ' chunk có text');
+              console.warn('[Gemini V69] stream hỏi lại: ' + retryChunks + ' chunk, trong đó ' + retryTextChunks + ' chunk có text');
               window.__jarvisTurnDebug = Object.assign(window.__jarvisTurnDebug || {}, { retryChunks, retryTextChunks });
             } catch (rErr) {
               console.warn('[Gemma] Lần hỏi lại không thinking lỗi:', rErr?.message || rErr);
@@ -4613,6 +4613,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     window.renderTabs = renderTabs;
     window.appendMsg = appendMsg;
     window.getGoogleKeyNamesList = getGoogleKeyNamesList;
+    window.setGoogleKeyNamesList = setGoogleKeyNamesList;
     window.getExternalConfigsObj = getExternalConfigsObj;
     window.setExternalConfigsObj = setExternalConfigsObj;
     window.setGoogleKeysList = setGoogleKeysList;

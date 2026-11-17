@@ -21,6 +21,7 @@
   const appendMsg = (r, t, i, u) => window.appendMsg && window.appendMsg(r, t, i, u);
   const getGoogleKeysList = all => (typeof window.getGoogleKeysList === 'function') ? window.getGoogleKeysList(all) : [];
   const getGoogleKeyNamesList = () => (typeof window.getGoogleKeyNamesList === 'function') ? window.getGoogleKeyNamesList() : [];
+  const setGoogleKeyNamesList = n => window.setGoogleKeyNamesList && window.setGoogleKeyNamesList(n);
   const setGoogleKeysList = k => window.setGoogleKeysList && window.setGoogleKeysList(k);
   const getExternalConfigsObj = obf => (typeof window.getExternalConfigsObj === 'function') ? window.getExternalConfigsObj(obf) : {};
   const setExternalConfigsObj = obj => window.setExternalConfigsObj && window.setExternalConfigsObj(obj);
