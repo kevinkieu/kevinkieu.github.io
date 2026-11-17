@@ -3850,6 +3850,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
             streamAttempts++;
             // WATCHDOG: Google có thể nhận request nhưng không nhả chunk nào (treo im lặng).
             // Nếu quá 25s không có chunk đầu tiên thì tự cắt và phục hồi thay vì để UI quay mãi.
+            const attemptStart = performance.now();
             const attemptCtrl = new AbortController();
             const relayAbort = () => attemptCtrl.abort();
             abortController.signal.addEventListener('abort', relayAbort, { once: true });
@@ -3865,9 +3866,17 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                 config,
                 abortSignal: attemptCtrl.signal
               });
+              // Mốc headers: nếu mốc này đã trễ ~10s thì độ trễ nằm ở phía Google (xếp hàng/cold start),
+              // không phải ở phần suy luận của model.
+              const headersMs = Math.round(performance.now() - attemptStart);
 
               for await (const ck of resStream) {
-                if (!gotFirstChunk) { gotFirstChunk = true; stopStallTimer(); }
+                if (!gotFirstChunk) {
+                  gotFirstChunk = true;
+                  stopStallTimer();
+                  // Tách rõ 2 chặng: chờ headers (phía Google) vs chờ model nghĩ (sau headers)
+                  console.info('[Gemini] headers =', headersMs, 'ms | chunk đầu sau headers =', Math.round(performance.now() - attemptStart) - headersMs, 'ms | attempt #' + streamAttempts);
+                }
                 const reason = ck.candidates?.[0]?.finishReason;
                 if (reason && reason !== 'STOP') streamFinishReason = reason;
 
