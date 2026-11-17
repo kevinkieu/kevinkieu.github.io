@@ -346,6 +346,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       ['explabs-key-input', 'explabs_api_key'],
       ['openrouter-key-input', 'openrouter_api_key'],
       ['nvidia-key-input', 'nvidia_api_key'],
+      ['nvidia-base-url-input', 'nvidia_base_url', 'https://integrate.api.nvidia.com/v1'],
       ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
       ['web-extract-engine-input', 'web_extract_engine', 'auto'],
       ['live-temperature', 'live_temperature', '0.7']
@@ -3504,7 +3505,12 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               if (prov.includeReasoning) compatBody.include_reasoning = true;
             }
 
-            const compatUrl = `${prov.baseUrl}/chat/completions`;
+            let customBaseUrl = (ls.getItem('nvidia_base_url') || '').trim().replace(/\/+$/, '');
+            if (customBaseUrl && !customBaseUrl.endsWith('/v1')) {
+              customBaseUrl += '/v1';
+            }
+            const activeBaseUrl = (prov.id === 'nvidia' && customBaseUrl) ? customBaseUrl : prov.baseUrl;
+            const compatUrl = `${activeBaseUrl}/chat/completions`;
             const sendCompat = () => fetch(compatUrl, {
               method: 'POST',
               headers: compatHeaders,
@@ -3589,7 +3595,11 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               await renderer.flush(finalResp);
             } else {
               bD.remove();
-              return showToast(`Lỗi ${prov.keyLabel}: ${compatErr.message}`, 'danger');
+              let errMsg = compatErr.message;
+              if (prov.id === 'nvidia' && (errMsg === 'Failed to fetch' || errMsg.includes('NetworkError') || errMsg.includes('Load failed'))) {
+                errMsg = 'Failed to fetch (NVIDIA chặn CORS trên trình duyệt web. Hãy cấu hình CORS Proxy hoặc bật tiện ích CORS trên trình duyệt!)';
+              }
+              return showToast(`Lỗi ${prov.keyLabel}: ${errMsg}`, 'danger');
             }
           }
 

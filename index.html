@@ -719,6 +719,13 @@
               <label class="field-label">🟢 NVIDIA API Key (deepseek-ai/deepseek-v4.1-flash, z-ai/glm-5.3-flash, google/gemma-4-31b-it):</label>
               <input type="password" id="nvidia-key-input" placeholder="nvapi-..." class="modern-input">
             </div>
+            <div>
+              <label class="field-label">🟢 NVIDIA Base URL / CORS Proxy (Tùy chọn):</label>
+              <input type="text" id="nvidia-base-url-input" placeholder="https://integrate.api.nvidia.com/v1" class="modern-input">
+              <div style="font-size:0.72rem;color:var(--text-muted);margin-top:3px;line-height:1.3;">
+                💡 NVIDIA chặn CORS trên trình duyệt web. Nếu gặp <code>Failed to fetch</code>, nhập link Cloudflare Worker Proxy hoặc bật extension CORS.
+              </div>
+            </div>
             <div style="margin-top:6px;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);">
               <label style="cursor:pointer;font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:8px;margin:0;">
                 <input type="checkbox" id="hide-deepseek-thinking-checkbox"> 🙈 Ẩn hoàn toàn khối suy luận (DeepSeek & Gemini - chỉ hiện kết quả)

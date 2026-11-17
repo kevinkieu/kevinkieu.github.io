@@ -181,7 +181,7 @@
     },
     {
       "date": "2026-11-17",
-      "summary": "Removed broken Orcarouter provider. Replaced with NVIDIA OpenAI-compatible gateway (baseUrl: https://integrate.api.nvidia.com/v1) supporting deepseek-ai/deepseek-v4.1-flash, z-ai/glm-5.3-flash, and google/gemma-4-31b-it. Updated UI selectors, settings key storage (nvidia_api_key), and synced assets to Android app."
+      "summary": "Removed broken Orcarouter provider. Replaced with NVIDIA OpenAI-compatible gateway (baseUrl: https://integrate.api.nvidia.com/v1) supporting deepseek-ai/deepseek-v4.1-flash, z-ai/glm-5.3-flash, and google/gemma-4-31b-it. Added custom Base URL / CORS Proxy setting (nvidia_base_url) and clear CORS error guidance to address browser-level fetch blocks."
     }
   ]
 }

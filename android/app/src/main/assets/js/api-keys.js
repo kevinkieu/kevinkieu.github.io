@@ -21,6 +21,7 @@
     ['explabs-key-input', 'explabs_api_key'],
     ['openrouter-key-input', 'openrouter_api_key'],
     ['nvidia-key-input', 'nvidia_api_key'],
+    ['nvidia-base-url-input', 'nvidia_base_url', 'https://integrate.api.nvidia.com/v1'],
     ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
     ['web-extract-engine-input', 'web_extract_engine', 'auto'],
     ['live-temperature', 'live_temperature', '0.7']
