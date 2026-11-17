@@ -345,15 +345,13 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       ['serper-key-input', 'serper_api_key'],
       ['explabs-key-input', 'explabs_api_key'],
       ['openrouter-key-input', 'openrouter_api_key'],
-      ['nvidia-key-input', 'nvidia_api_key'],
-      ['nvidia-base-url-input', 'nvidia_base_url', 'https://integrate.api.nvidia.com/v1'],
       ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
       ['web-extract-engine-input', 'web_extract_engine', 'auto'],
       ['live-temperature', 'live_temperature', '0.7']
     ];
     window.cfgMap = cfgMap;
 
-    // --- REGISTRY GATEWAY OpenAI-COMPATIBLE (OpenRouter / NVIDIA) ---
+    // --- REGISTRY GATEWAY OpenAI-COMPATIBLE (OpenRouter) ---
     // Các model dưới đây gọi chung endpoint /chat/completions (SSE) thay vì Google Gemini.
     const COMPAT_PROVIDERS = {
       openrouter: {
@@ -362,28 +360,20 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         baseUrl: 'https://openrouter.ai/api/v1',
         keyStorage: 'openrouter_api_key',
         keyLabel: 'OpenRouter',
-        models: ['nvidia/nemotron-3.5-lightning:free', 'particle-ai/particle-1:free'],
+        models: [
+          'nvidia/nemotron-3.5-lightning:free',
+          'particle-ai/particle-1:free',
+          'google/gemma-4-26b-a4b-it:free',
+          'google/gemma-4-31b-it:free'
+        ],
         extraHeaders: () => ({ 'HTTP-Referer': location.origin, 'X-Title': 'Jarvis AI' }),
         includeReasoning: true,
-        modelLabel: m => m.includes('nemotron') ? 'Nemotron 3.5 Lightning' : m.includes('particle') ? 'Particle-1' : m
-      },
-      nvidia: {
-        id: 'nvidia',
-        label: 'NVIDIA',
-        baseUrl: 'https://integrate.api.nvidia.com/v1',
-        keyStorage: 'nvidia_api_key',
-        keyLabel: 'NVIDIA',
-        models: [
-          'deepseek-ai/deepseek-v4.1-flash',
-          'z-ai/glm-5.3-flash',
-          'google/gemma-4-31b-it'
-        ],
-        extraHeaders: () => ({}),
-        includeReasoning: true,
         modelLabel: m => {
-          if (m.includes('deepseek')) return 'DeepSeek V4.1 Flash (NVIDIA)';
-          if (m.includes('glm')) return 'GLM 5.3 Flash (NVIDIA)';
-          if (m.includes('gemma')) return 'Gemma 4 31B IT (NVIDIA)';
+          if (m.includes('nemotron')) return 'Nemotron 3.5 Lightning';
+          if (m.includes('particle')) return 'Particle-1';
+          if (m.includes('gemma-4-26b')) return 'Gemma 4 26B A4B';
+          if (m.includes('gemma-4-31b')) return 'Gemma 4 31B';
+          if (m.includes('gemma')) return 'Gemma 4';
           return m;
         }
       }
@@ -2972,14 +2962,14 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         keyIndexNum = findSlotIndexForKey(gKey);
       }
 
-      // Model từ gateway OpenAI-compatible (OpenRouter / NVIDIA) không dùng Google API Key
+      // Model từ gateway OpenAI-compatible (OpenRouter) không dùng Google API Key
       const usesCompatGateway = !!resolveCompatProvider(am);
       if (!gKey && !usesCompatGateway) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
 
       ls.removeItem('jarvis_draft');
       isProcessing = true;
       abortController = new AbortController();
-      // Gateway OpenAI-compatible (OpenRouter / NVIDIA) không dùng Google Key nên không ghi quota Google
+      // Gateway OpenAI-compatible (OpenRouter) không dùng Google Key nên không ghi quota Google
       if (!usesCompatGateway) recordKeyRequest(keyIndexNum, am);
 
       DOM.sendBtn.innerHTML = `<span>Dừng</span> 🛑`;
@@ -3442,7 +3432,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           }
         }
 
-        // --- ENGINE 0B: GATEWAY OpenAI-COMPATIBLE (OpenRouter / NVIDIA) ---
+        // --- ENGINE 0B: GATEWAY OpenAI-COMPATIBLE (OpenRouter) ---
         const compatProv = resolveCompatProvider(am);
         if (compatProv) {
           const prov = compatProv.provider;
@@ -3505,12 +3495,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               if (prov.includeReasoning) compatBody.include_reasoning = true;
             }
 
-            let customBaseUrl = (ls.getItem('nvidia_base_url') || '').trim().replace(/\/+$/, '');
-            if (customBaseUrl && !customBaseUrl.endsWith('/v1')) {
-              customBaseUrl += '/v1';
-            }
-            const activeBaseUrl = (prov.id === 'nvidia' && customBaseUrl) ? customBaseUrl : prov.baseUrl;
-            const compatUrl = `${activeBaseUrl}/chat/completions`;
+            const compatUrl = `${prov.baseUrl}/chat/completions`;
             console.log(`[Gateway ${prov.keyLabel}] Endpoint:`, compatUrl);
             const sendCompat = () => fetch(compatUrl, {
               method: 'POST',
@@ -3596,11 +3581,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               await renderer.flush(finalResp);
             } else {
               bD.remove();
-              let errMsg = compatErr.message;
-              if (prov.id === 'nvidia' && (errMsg === 'Failed to fetch' || errMsg.includes('NetworkError') || errMsg.includes('Load failed'))) {
-                errMsg = 'Failed to fetch (NVIDIA chặn CORS trên trình duyệt web. Hãy cấu hình CORS Proxy hoặc bật tiện ích CORS trên trình duyệt!)';
-              }
-              return showToast(`Lỗi ${prov.keyLabel}: ${errMsg}`, 'danger');
+              return showToast(`Lỗi ${prov.keyLabel}: ${compatErr.message}`, 'danger');
             }
           }
 

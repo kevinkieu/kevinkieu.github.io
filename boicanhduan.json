@@ -17,7 +17,7 @@
     "pattern": "module-based vanilla JS, shared state exposed on window, IndexedDB for persistence, localStorage for settings/keys, native bridge in Android WebView",
     "external_apis": [
       "Google Gemini (chat + BidiGenerateContent live streaming + TTS + embeddings)",
-      "OpenRouter / NVIDIA / Experiential Labs (OpenAI-compatible chat completions + streaming)",
+      "OpenRouter / Experiential Labs (OpenAI-compatible chat completions + streaming)",
       "Tavily / Serper / Jina / Brave (web search and content extraction)",
       "GitHub Gist (encrypted cloud sync)"
     ],
@@ -51,9 +51,9 @@
       "id": "chat_and_core",
       "name": "Chat, sessions, models, core app logic",
       "files": {
-        "js/app.js": "Main controller: session management, chat history, rendering (markdown + thinking blocks), model/engine selection, API key wiring, OpenAI-compatible gateway (OpenRouter and NVIDIA NIM with streaming and reasoning), system instruction + global context, temperature/top-p/top-k/thinking level, file attachments, auto-naming, auto-summary, branch-forking, hands-free voice recorder + VAD, token/latency counters, DOM helpers, PWA SW registration, localStorage quota handling, native bridge sync hooks.",
+        "js/app.js": "Main controller: session management, chat history, rendering (markdown + thinking blocks), model/engine selection, API key wiring, OpenAI-compatible gateway (OpenRouter with streaming and reasoning), system instruction + global context, temperature/top-p/top-k/thinking level, file attachments, auto-naming, auto-summary, branch-forking, hands-free voice recorder + VAD, token/latency counters, DOM helpers, PWA SW registration, localStorage quota handling, native bridge sync hooks.",
         "js/database.js": "IndexedDB persistence for sessions and related stores, init + CRUD helpers.",
-        "js/api-keys.js": "API key pool UI + storage (Google key rotation and quota tracking) plus external API key storage (Tavily, Serper, Experiential Labs, OpenRouter, NVIDIA).",
+        "js/api-keys.js": "API key pool UI + storage (Google key rotation and quota tracking) plus external API key storage (Tavily, Serper, Experiential Labs, OpenRouter).",
         "js/commands.js": "Command palette / prompt library / slash-command routing helpers.",
         "js/tools.js": "Search cache, Tavily/Serper helpers, web page + YouTube content extraction, blob save/share, copy helpers, export helpers."
       }
@@ -167,6 +167,10 @@
   "recent_changes": [
     {
       "date": "2026-11-17",
+      "summary": "Loại bỏ hoàn toàn nền tảng NVIDIA: xóa optgroup model, ô NVIDIA API Key và NVIDIA Base URL trong Cài đặt hệ thống (index.html), nhà cung cấp nvidia trong COMPAT_PROVIDERS + logic nvidia_base_url và thông báo lỗi CORS trong js/app.js, entry nvidia_api_key/nvidia_base_url trong cfgMap (js/app.js, js/api-keys.js) và danh sách backup (js/export.js), cập nhật ghi chú sync. Thêm 2 model OpenRouter: google/gemma-4-26b-a4b-it:free (Gemma 4 26B A4B) và google/gemma-4-31b-it:free (Gemma 4 31B). Giữ nguyên mask nvapi- trong js/cipher.js để bảo vệ key lịch sử chat cũ. Đã mirror sang android/app/src/main/assets/."
+    },
+    {
+      "date": "2026-11-17",
       "summary": "Đồng bộ & mã hóa NVIDIA key (nvidia_api_key) ngang các nền tảng khác. js/sync.js: thêm bước so sánh settings.externalConfigs (giải mã JVENC_ trước khi so) để máy có key mới/đổi key được đẩy lên Gist ngay cả khi chưa có tin nhắn chat mới (trước đây key mới không bao giờ tới Cloud). js/export.js: thêm nvidia_api_key vào danh sách cấu hình được mã hóa trong bản sao lưu JSON. js/cipher.js: che mẫu nvapi- trong lịch sử chat. js/api-keys.js: hẹn auto-sync sau khi bấm Lưu Cấu Hình. Đã mirror sang android/app/src/main/assets/js/."
     },
     {
@@ -181,7 +185,7 @@
     },
     {
       "date": "2026-11-17",
-      "summary": "Removed broken Orcarouter provider. Replaced with NVIDIA OpenAI-compatible gateway (baseUrl: https://integrate.api.nvidia.com/v1) supporting deepseek-ai/deepseek-v4.1-flash, z-ai/glm-5.3-flash, and google/gemma-4-31b-it. Added custom Base URL / CORS Proxy setting (nvidia_base_url) and clear CORS error guidance to address browser-level fetch blocks."
+      "summary": "Removed broken Orcarouter provider (later replaced by an NVIDIA OpenAI-compatible gateway, which was itself removed on 2026-11-17 in favour of OpenRouter)."
     }
   ]
 }

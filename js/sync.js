@@ -345,7 +345,7 @@
             }
 
             // D2. HỢP NHẤT CẤU HÌNH NGOÀI & API KEY DỊCH VỤ ĐÃ MÃ HÓA
-            // (Tavily, Serper, Experiential Labs, OpenRouter, NVIDIA...).
+            // (Tavily, Serper, Experiential Labs, OpenRouter...).
             // Nguyên tắc: máy nào đã có key thì giữ nguyên, chỉ nhận từ Cloud khi ô đó đang trống.
             const remoteExtCfg = cloudData.settings?.externalConfigs;
             if (remoteExtCfg && typeof remoteExtCfg === 'object') {
@@ -496,9 +496,9 @@
             }
           }
 
-          // 5. Kiểm tra CẤU HÌNH NGOÀI (Tavily, Serper, Experiential Labs, OpenRouter, NVIDIA...)
+          // 5. Kiểm tra CẤU HÌNH NGOÀI (Tavily, Serper, Experiential Labs, OpenRouter...)
           // Máy này vừa nhập/đổi API key mà chưa chat thêm cũng phải được đẩy lên Cloud,
-          // nếu không key mới (ví dụ NVIDIA) sẽ không bao giờ tới Gist cho tới khi có tin nhắn mới.
+          // nếu không key mới sẽ không bao giờ tới Gist cho tới khi có tin nhắn mới.
           if (!isLocalAhead) {
             const remoteExtCfg = cloudData.settings?.externalConfigs;
             if (remoteExtCfg && typeof remoteExtCfg === 'object') {

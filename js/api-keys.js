@@ -20,8 +20,6 @@
     ['serper-key-input', 'serper_api_key'],
     ['explabs-key-input', 'explabs_api_key'],
     ['openrouter-key-input', 'openrouter_api_key'],
-    ['nvidia-key-input', 'nvidia_api_key'],
-    ['nvidia-base-url-input', 'nvidia_base_url', 'https://integrate.api.nvidia.com/v1'],
     ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
     ['web-extract-engine-input', 'web_extract_engine', 'auto'],
     ['live-temperature', 'live_temperature', '0.7']
@@ -125,18 +123,6 @@
       ls.setItem('huanmu_global_context', e.target.value);
     };
   }
-  const nvidiaKeyInput = $('nvidia-key-input');
-  if (nvidiaKeyInput) {
-    nvidiaKeyInput.oninput = e => {
-      ls.setItem('nvidia_api_key', e.target.value.trim());
-    };
-  }
-  const nvidiaUrlInput = $('nvidia-base-url-input');
-  if (nvidiaUrlInput) {
-    nvidiaUrlInput.oninput = e => {
-      ls.setItem('nvidia_base_url', e.target.value.trim());
-    };
-  }
 
   // --- SAVE KEYS BUTTON HANDLER ---
   function handleSaveKeys() {
@@ -154,7 +140,7 @@
     ls.setItem('jarvis_hide_deepseek_thinking', $('hide-deepseek-thinking-checkbox')?.checked ? 'true' : 'false');
     initAPIKeys();
     initExternalConfigs();
-    // Đẩy ngay API key ngoài (Tavily, Serper, Experiential Labs, OpenRouter, NVIDIA...)
+    // Đẩy ngay API key ngoài (Tavily, Serper, Experiential Labs, OpenRouter...)
     // lên Cloud Gist, không cần chờ có tin nhắn chat mới.
     if (window.JarvisSync && typeof window.JarvisSync.scheduleAutoSync === 'function') {
       window.JarvisSync.scheduleAutoSync(3000);
