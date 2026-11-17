@@ -460,8 +460,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     let openTabs = JSON.parse(ls.getItem('jarvis_tabs') || ls.getItem('huanmu_tabs') || '[]');
 
     // --- SỐ TIN NHẠN NGỮ CẢNH GỬI ĐI KÈM CHO generateContentStream (lưu vào localStorage) ---
-    let contextMsgCount = parseInt(ls.getItem('jarvis_context_messages') || '16', 10);
-    if (!contextMsgCount || contextMsgCount < 1) contextMsgCount = 16;
+    let contextMsgCount = parseInt(ls.getItem('jarvis_context_messages') || '10', 10);
+    if (!contextMsgCount || contextMsgCount < 1) contextMsgCount = 10;
     if (DOM.contextMsgCount) {
       DOM.contextMsgCount.value = contextMsgCount;
       DOM.contextMsgCount.addEventListener('change', () => {
@@ -3813,18 +3813,18 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           const isFlashLite = am.includes('flash-lite') || am.includes('lite');
           // Gemini 3.5 Flash Lite hỗ trợ thinking theo level và nhận tối đa 65.000 output token.
           const thinkingSupported = !isFlashLite || am === 'gemini-3.5-flash-lite';
+          // Gemini 3.x/4 điều khiển độ sâu bằng thinkingLevel; thinkingBudget là tham số cũ của dòng 2.5.
+          const usesThinkingLevel = /^gemini-(3|4)/.test(am);
           const budgetMap = { minimal: 1024, low: 2048, medium: 4096, high: 8192 };
           const config = {
             systemInstruction: getDynamicSI(ragSnippet),
             safetySettings: SAFETY,
-            maxOutputTokens: am === 'gemini-3.5-flash-lite' ? 65000 : (isFlashLite ? 8192 : 32768)
+            maxOutputTokens: am === 'gemini-3.5-flash-lite' ? 65000 : 8192
           };
           if (thinkingSupported && thk && thk !== 'none') {
-            const b = budgetMap[thk] || 4096;
-            config.thinkingConfig = {
-              thinkingBudget: b,
-              includeThoughts: true
-            };
+            config.thinkingConfig = usesThinkingLevel
+              ? { thinkingLevel: thk, includeThoughts: true }
+              : { thinkingBudget: budgetMap[thk] || 4096, includeThoughts: true };
           } else {
             config.temperature = DOM.temp?.value !== undefined ? +DOM.temp.value : 0.5;
             config.topP = DOM.topP?.value !== undefined ? +DOM.topP.value : 0.9;

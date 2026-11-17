@@ -167,6 +167,10 @@
   "recent_changes": [
     {
       "date": "2026-11-17",
+      "summary": "Tối ưu độ trễ nhánh Google (generateContentStream): gửi thinkingConfig.thinkingLevel (kèm includeThoughts) cho Gemini 3.x/4 thay vì thinkingBudget cũ, giảm round-trip retry do sai tham số; maxOutputTokens mặc định 32768 -> 8192 (giữ 65000 riêng cho gemini-3.5-flash-lite); số tin ngữ cảnh mặc định 16 -> 10 khi người dùng chưa tự nhập (js/app.js + index.html). Đã mirror sang android/app/src/main/assets/."
+    },
+    {
+      "date": "2026-11-17",
       "summary": "Loại bỏ hoàn toàn nền tảng NVIDIA: xóa optgroup model, ô NVIDIA API Key và NVIDIA Base URL trong Cài đặt hệ thống (index.html), nhà cung cấp nvidia trong COMPAT_PROVIDERS + logic nvidia_base_url và thông báo lỗi CORS trong js/app.js, entry nvidia_api_key/nvidia_base_url trong cfgMap (js/app.js, js/api-keys.js) và danh sách backup (js/export.js), cập nhật ghi chú sync. Thêm 2 model OpenRouter: google/gemma-4-26b-a4b-it:free (Gemma 4 26B A4B) và google/gemma-4-31b-it:free (Gemma 4 31B). Giữ nguyên mask nvapi- trong js/cipher.js để bảo vệ key lịch sử chat cũ. Đã mirror sang android/app/src/main/assets/."
     },
     {
