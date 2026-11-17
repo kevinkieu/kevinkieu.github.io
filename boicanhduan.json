@@ -37,7 +37,7 @@
       "id": "shell_and_pwa",
       "name": "App shell and PWA",
       "files": {
-        "index.html": "Main UI skeleton: sidebar, header, chat, modals, input panel, file upload, transcript, token/latency bar, search/memory toggles. Loads js/eventBus.js (v=55) before js/rag.js.",
+        "index.html": "Main UI skeleton: sidebar, header, chat, modals, input panel, file upload, transcript, token/latency bar, search/memory toggles. Loads js/eventBus.js before js/rag.js.",
         "manifest.json": "PWA manifest (icons, display, theme color, app name, start URL).",
         "sw.js": "Service Worker: static asset cache, network-first for HTML/JS/CSS, bypass for live/API/search endpoints, cache CDN libs.",
         "css/style.css": "Core UI styles, layout, sidebar, chat bubbles, modals, inputs, theme variables.",
@@ -51,9 +51,9 @@
       "id": "chat_and_core",
       "name": "Chat, sessions, models, core app logic",
       "files": {
-        "js/app.js": "Main controller: session management, chat history, rendering (markdown + thinking blocks), model/engine selection, API key wiring, system instruction + global context, temperature/top-p/top-k/thinking level, file attachments, auto-naming, auto-summary, branch-forking, hands-free voice recorder + VAD, token/latency counters, DOM helpers, PWA SW registration, localStorage quota handling, native bridge sync hooks.",
+        "js/app.js": "Main controller: session management, chat history, rendering (markdown + thinking blocks), model/engine selection, API key wiring, OpenAI-compatible gateway (OpenRouter and NVIDIA NIM with streaming and reasoning), system instruction + global context, temperature/top-p/top-k/thinking level, file attachments, auto-naming, auto-summary, branch-forking, hands-free voice recorder + VAD, token/latency counters, DOM helpers, PWA SW registration, localStorage quota handling, native bridge sync hooks.",
         "js/database.js": "IndexedDB persistence for sessions and related stores, init + CRUD helpers.",
-        "js/api-keys.js": "API key pool UI + storage, key rotation, quota/usage tracking wiring, external config storage.",
+        "js/api-keys.js": "API key pool UI + storage (Google key rotation and quota tracking) plus external API key storage (Tavily, Serper, Experiential Labs, OpenRouter, NVIDIA).",
         "js/commands.js": "Command palette / prompt library / slash-command routing helpers.",
         "js/tools.js": "Search cache, Tavily/Serper helpers, web page + YouTube content extraction, blob save/share, copy helpers, export helpers."
       }
@@ -135,12 +135,10 @@
         "_fix1dd.txt": "Auxiliary text file (likely notes/fixes).",
         "boicanhduan.json": "This project context file (reference snapshot for new sessions).",
         "scratch/test_browser.js": "Likely a quick browser/launch test helper.",
-        "check.js": "Temporary untracked Node script for JS parse checks; safe to delete.",
-        "instrument.js": "Temporary untracked helper used while verifying Event Bus/worker wiring; safe to delete.",
-        "instrument_check.js": "Temporary untracked check variant; safe to delete.",
         "icon.png": "App icon asset.",
         "icon-192.png": "PWA/Android icon 192.",
         "icon-512.png": "PWA/Android icon 512.",
+        "README.md": "Project readme and documentation.",
         ".gitattributes": "Git attribute rules.",
         ".gitignore": "Git ignore rules.",
         ".nojekyll": "GitHub Pages no-jekyll marker.",
