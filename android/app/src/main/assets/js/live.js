@@ -2,6 +2,10 @@
    Jarvis AI - Gemini Multimodal Live Voice Call & Video Streaming Module
    ========================================================================== */
 
+    // Tự túc khai báo helper: module này có thể chạy trước khi app.js gán window.$
+    const $ = id => document.getElementById(id);
+    const ls = window.ls || localStorage;
+
     // --- GEMINI MULTIMODAL LIVE CALL ---
     let liveWs = null, liveAudioCtx = null, liveMediaStream = null, livePlaybackState = { nextPlayTime: 0, activeSources: [] };
     let liveMicSource = null, liveScriptProcessor = null, liveSilentGain = null;

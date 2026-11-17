@@ -100,23 +100,21 @@
       try {
         return await fetchSerperSearch(q);
       } catch (serpErr) {
-        console.warn("Serper search lỗi, chạy fallback Tavily:", serpErr);
         try {
-          return await fetchTavilySearch(q);
-        } catch (fbErr) {
-          return `Không thể lấy dữ liệu tìm kiếm: ${serpErr.message}`;
-        }
+        return await fetchTavilySearch(q);
+      } catch (fbErr) {
+        return `Không thể lấy dữ liệu tìm kiếm`;
+      }
       }
     } else {
       try {
         return await fetchTavilySearch(q);
       } catch (tavErr) {
-        console.warn("Tavily search lỗi, chạy fallback Serper:", tavErr);
         try {
-          return await fetchSerperSearch(q);
-        } catch (fbErr) {
-          return `Không thể lấy dữ liệu tìm kiếm: ${tavErr.message}`;
-        }
+        return await fetchSerperSearch(q);
+      } catch (fbErr) {
+        return `Không thể lấy dữ liệu tìm kiếm`;
+      }
       }
     }
   }

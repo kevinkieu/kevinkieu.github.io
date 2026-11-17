@@ -17,6 +17,7 @@
     "pattern": "module-based vanilla JS, shared state exposed on window, IndexedDB for persistence, localStorage for settings/keys, native bridge in Android WebView",
     "external_apis": [
       "Google Gemini (chat + BidiGenerateContent live streaming + TTS + embeddings)",
+      "OpenRouter / NVIDIA / Experiential Labs (OpenAI-compatible chat completions + streaming)",
       "Tavily / Serper / Jina / Brave (web search and content extraction)",
       "GitHub Gist (encrypted cloud sync)"
     ],
@@ -175,6 +176,10 @@
       "date": "2026-11-15",
       "commit": "a7d55c4",
       "summary": "Hardened .github/workflows/build-apk.yml: deterministic version bump (no github.run_number), separated release/debug APK naming, GitHub Release only on successful release build, dynamic release notes with generate_release_notes, fetch-depth 0 checkout."
+    },
+    {
+      "date": "2026-11-17",
+      "summary": "Removed broken Orcarouter provider. Replaced with NVIDIA OpenAI-compatible gateway (baseUrl: https://integrate.api.nvidia.com/v1) supporting deepseek-ai/deepseek-v4.1-flash, z-ai/glm-5.3-flash, and google/gemma-4-31b-it. Updated UI selectors, settings key storage (nvidia_api_key), and synced assets to Android app."
     }
   ]
 }

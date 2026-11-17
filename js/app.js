@@ -345,14 +345,14 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       ['serper-key-input', 'serper_api_key'],
       ['explabs-key-input', 'explabs_api_key'],
       ['openrouter-key-input', 'openrouter_api_key'],
-      ['orcarouter-key-input', 'orcarouter_api_key'],
+      ['nvidia-key-input', 'nvidia_api_key'],
       ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
       ['web-extract-engine-input', 'web_extract_engine', 'auto'],
       ['live-temperature', 'live_temperature', '0.7']
     ];
     window.cfgMap = cfgMap;
 
-    // --- REGISTRY GATEWAY OpenAI-COMPATIBLE (OpenRouter / Orcarouter) ---
+    // --- REGISTRY GATEWAY OpenAI-COMPATIBLE (OpenRouter / NVIDIA) ---
     // Các model dưới đây gọi chung endpoint /chat/completions (SSE) thay vì Google Gemini.
     const COMPAT_PROVIDERS = {
       openrouter: {
@@ -366,15 +366,25 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         includeReasoning: true,
         modelLabel: m => m.includes('nemotron') ? 'Nemotron 3.5 Lightning' : m.includes('particle') ? 'Particle-1' : m
       },
-      orcarouter: {
-        id: 'orcarouter',
-        label: 'Orcarouter',
-        baseUrl: 'https://api.orcarouter.ai/v1',
-        keyStorage: 'orcarouter_api_key',
-        keyLabel: 'Orcarouter',
-        models: ['z-ai/glm-5.3-flash-free', 'deepseek/deepseek-v4.1-flash-free'],
+      nvidia: {
+        id: 'nvidia',
+        label: 'NVIDIA',
+        baseUrl: 'https://integrate.api.nvidia.com/v1',
+        keyStorage: 'nvidia_api_key',
+        keyLabel: 'NVIDIA',
+        models: [
+          'deepseek-ai/deepseek-v4.1-flash',
+          'z-ai/glm-5.3-flash',
+          'google/gemma-4-31b-it'
+        ],
         extraHeaders: () => ({}),
-        modelLabel: m => m.includes('glm') ? 'GLM 5.3 Flash' : m.includes('deepseek') ? 'DeepSeek V4.1 Flash' : m
+        includeReasoning: true,
+        modelLabel: m => {
+          if (m.includes('deepseek')) return 'DeepSeek V4.1 Flash (NVIDIA)';
+          if (m.includes('glm')) return 'GLM 5.3 Flash (NVIDIA)';
+          if (m.includes('gemma')) return 'Gemma 4 31B IT (NVIDIA)';
+          return m;
+        }
       }
     };
     function resolveCompatProvider(modelId) {
@@ -2961,14 +2971,14 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         keyIndexNum = findSlotIndexForKey(gKey);
       }
 
-      // Model từ gateway OpenAI-compatible (OpenRouter / Orcarouter) không dùng Google API Key
+      // Model từ gateway OpenAI-compatible (OpenRouter / NVIDIA) không dùng Google API Key
       const usesCompatGateway = !!resolveCompatProvider(am);
       if (!gKey && !usesCompatGateway) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
 
       ls.removeItem('jarvis_draft');
       isProcessing = true;
       abortController = new AbortController();
-      // Gateway OpenAI-compatible (OpenRouter / Orcarouter) không dùng Google Key nên không ghi quota Google
+      // Gateway OpenAI-compatible (OpenRouter / NVIDIA) không dùng Google Key nên không ghi quota Google
       if (!usesCompatGateway) recordKeyRequest(keyIndexNum, am);
 
       DOM.sendBtn.innerHTML = `<span>Dừng</span> 🛑`;
@@ -3431,7 +3441,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           }
         }
 
-        // --- ENGINE 0B: GATEWAY OpenAI-COMPATIBLE (OpenRouter / Orcarouter) ---
+        // --- ENGINE 0B: GATEWAY OpenAI-COMPATIBLE (OpenRouter / NVIDIA) ---
         const compatProv = resolveCompatProvider(am);
         if (compatProv) {
           const prov = compatProv.provider;

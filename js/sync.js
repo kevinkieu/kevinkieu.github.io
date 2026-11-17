@@ -345,7 +345,7 @@
             }
 
             // D2. HỢP NHẤT CẤU HÌNH NGOÀI & API KEY DỊCH VỤ ĐÃ MÃ HÓA
-            // (Tavily, Serper, Experiential Labs, OpenRouter, Orcarouter...).
+            // (Tavily, Serper, Experiential Labs, OpenRouter, NVIDIA...).
             // Nguyên tắc: máy nào đã có key thì giữ nguyên, chỉ nhận từ Cloud khi ô đó đang trống.
             const remoteExtCfg = cloudData.settings?.externalConfigs;
             if (remoteExtCfg && typeof remoteExtCfg === 'object') {

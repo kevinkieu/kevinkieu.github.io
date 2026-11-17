@@ -2,13 +2,27 @@
    Jarvis AI - Main Application Core (Chat, Sessions, Models & Controllers)
    ========================================================================== */
 
-import { GoogleGenAI } from "@google/genai";
-
-    const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStorage;
+const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStorage;
+    // Minimal window bindings - use module pattern instead of global pollution
     window.$ = $;
+    window.$$ = $;
     window.ls = ls;
     window.ss = ss;
-    window.GoogleGenAI = GoogleGenAI;
+    window.lsRef = ls;
+    window.ssRef = ss;
+    // GoogleGenAI được nạp từ CDN trong index.html (esm.run) và gán vào window.
+    // Cầu nối lazy: module này có thể chạy trước hoặc sau khi CDN tải xong.
+    const GoogleGenAI = new Proxy(function () {}, {
+      construct(_target, args) {
+        if (!window.GoogleGenAI) throw new Error('GoogleGenAI chưa được tải từ CDN.');
+        return new window.GoogleGenAI(...args);
+      },
+      get(_target, prop) {
+        if (!window.GoogleGenAI) throw new Error('GoogleGenAI chưa được tải từ CDN.');
+        return window.GoogleGenAI[prop];
+      }
+    });
+    // Export core refs via Object.defineProperty for controlled access
 
     // ==========================================================================
     // HOISTED MODULE BRIDGES & PROXIES
@@ -184,8 +198,10 @@ import { GoogleGenAI } from "@google/genai";
            : m ? `❌ Lỗi: ${m}` : "❌ Lỗi máy chủ Google.";
     };
 
-    const extractQuotedKeywords = t => {
-      const m = Array.from((t || '').matchAll(/["“«]([^"”»]+)["”»]/g)).map(x => x[1].trim()).filter(Boolean);
+    // Chỉ trích xuất từ khóa tìm kiếm web khi người dùng bọc trong cặp dấu #từ khóa#.
+    // Dấu ngoặc kép chỉ còn là nhấn mạnh; # không bị markdown gạch ngang và rất hiếm khi xuất hiện trong câu văn.
+    const extractHashKeywords = t => {
+      const m = Array.from((t || '').matchAll(/(?:^|[^\w#])#([^#\n]+)#(?!#)/g)).map(x => x[1].trim()).filter(Boolean);
       return m.length ? m.join(' ') : null;
     };
 
@@ -229,7 +245,7 @@ import { GoogleGenAI } from "@google/genai";
                     return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
                   });
                 }
-                targetEl.innerHTML = marked.parse(toRender);
+                targetEl.innerHTML = marked.parse(toRender, { sanitize: true });
               } catch (_) {}
               pending = false;
             });
@@ -328,11 +344,57 @@ import { GoogleGenAI } from "@google/genai";
       ['tavily-key-input', 'tavily_api_key'],
       ['serper-key-input', 'serper_api_key'],
       ['explabs-key-input', 'explabs_api_key'],
+      ['openrouter-key-input', 'openrouter_api_key'],
+      ['nvidia-key-input', 'nvidia_api_key'],
       ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
       ['web-extract-engine-input', 'web_extract_engine', 'auto'],
       ['live-temperature', 'live_temperature', '0.7']
     ];
     window.cfgMap = cfgMap;
+
+    // --- REGISTRY GATEWAY OpenAI-COMPATIBLE (OpenRouter / NVIDIA) ---
+    // Các model dưới đây gọi chung endpoint /chat/completions (SSE) thay vì Google Gemini.
+    const COMPAT_PROVIDERS = {
+      openrouter: {
+        id: 'openrouter',
+        label: 'OpenRouter',
+        baseUrl: 'https://openrouter.ai/api/v1',
+        keyStorage: 'openrouter_api_key',
+        keyLabel: 'OpenRouter',
+        models: ['nvidia/nemotron-3.5-lightning:free', 'particle-ai/particle-1:free'],
+        extraHeaders: () => ({ 'HTTP-Referer': location.origin, 'X-Title': 'Jarvis AI' }),
+        includeReasoning: true,
+        modelLabel: m => m.includes('nemotron') ? 'Nemotron 3.5 Lightning' : m.includes('particle') ? 'Particle-1' : m
+      },
+      nvidia: {
+        id: 'nvidia',
+        label: 'NVIDIA',
+        baseUrl: 'https://integrate.api.nvidia.com/v1',
+        keyStorage: 'nvidia_api_key',
+        keyLabel: 'NVIDIA',
+        models: [
+          'deepseek-ai/deepseek-v4.1-flash',
+          'z-ai/glm-5.3-flash',
+          'google/gemma-4-31b-it'
+        ],
+        extraHeaders: () => ({}),
+        includeReasoning: true,
+        modelLabel: m => {
+          if (m.includes('deepseek')) return 'DeepSeek V4.1 Flash (NVIDIA)';
+          if (m.includes('glm')) return 'GLM 5.3 Flash (NVIDIA)';
+          if (m.includes('gemma')) return 'Gemma 4 31B IT (NVIDIA)';
+          return m;
+        }
+      }
+    };
+    function resolveCompatProvider(modelId) {
+      const m = (modelId || '').trim();
+      for (const p of Object.values(COMPAT_PROVIDERS)) {
+        if (p.models.includes(m)) return { provider: p, model: m };
+      }
+      return null;
+    }
+    window.resolveCompatProvider = resolveCompatProvider;
 
     // [Đã tách sang js/api-keys.js: initAPIKeys / initExternalConfigs + 3 button handlers + auto-init]
     // [Đã tách sang js/database.js: IndexedDB engine (db, initDB, saveToDB, getAllFromDB, clearAllDB, file/TTS stores)]
@@ -378,6 +440,7 @@ import { GoogleGenAI } from "@google/genai";
       searchEngineBox: $('search-engine-box'),
       searchEngineSel: $('search-engine-select'),
       toggleMemory: $('toggle-memory'),
+      contextMsgCount: $('context-message-count'),
       toggleAutoSummary: $('toggle-auto-summary'),
       toggleRagEmbedding: $('toggle-rag-embedding'),
       btnToggleSessionMem: $('btn-toggle-session-memory'),
@@ -405,6 +468,22 @@ import { GoogleGenAI } from "@google/genai";
     let activeFolder = ls.getItem('jarvis_active_folder') || ls.getItem('huanmu_active_folder') || "All";
     let openTabs = JSON.parse(ls.getItem('jarvis_tabs') || ls.getItem('huanmu_tabs') || '[]');
 
+    // --- SỐ TIN NHẠN NGỮ CẢNH GỬI ĐI KÈM CHO generateContentStream (lưu vào localStorage) ---
+    let contextMsgCount = parseInt(ls.getItem('jarvis_context_messages') || '16', 10);
+    if (!contextMsgCount || contextMsgCount < 1) contextMsgCount = 16;
+    if (DOM.contextMsgCount) {
+      DOM.contextMsgCount.value = contextMsgCount;
+      DOM.contextMsgCount.addEventListener('change', () => {
+        const v = parseInt(DOM.contextMsgCount.value, 10);
+        if (Number.isFinite(v) && v >= 1 && v <= 200) {
+          contextMsgCount = v;
+          ls.setItem('jarvis_context_messages', String(contextMsgCount));
+        } else {
+          DOM.contextMsgCount.value = contextMsgCount;
+        }
+      });
+    }
+
     // Global bindings & live proxies for modular access across js/live.js, js/arena.js, js/tts.js, js/quota.js, js/medication.js
     window.DOM = DOM;
     try {
@@ -422,11 +501,7 @@ import { GoogleGenAI } from "@google/genai";
     window.showToast = (msg, type) => showToast(msg, type);
     window.getNowTime24h = () => getNowTime24h();
     window.formatGoogleApiError = err => formatGoogleApiError(err);
-    window.extractWebPageContent = url => extractWebPageContent(url);
-    window.extractYouTubeContent = url => extractYouTubeContent(url);
-    window.executeLiveSearch = (q, engine) => executeLiveSearch(q, engine);
-    window.fetchTavilySearch = q => fetchTavilySearch(q);
-    window.fetchSerperSearch = q => fetchSerperSearch(q);
+
     window.fallbackBrowserDownload = (blob, fn) => fallbackBrowserDownload(blob, fn);
     // [window.saveToDB / getAllFromDB / clearAllDB / initDB / getDB: do js/database.js expose]
     window.switchSess = id => switchSess(id);
@@ -1515,13 +1590,17 @@ import { GoogleGenAI } from "@google/genai";
         DOM.scrollTopBtn.classList.remove('visible');
       }
     });
-    DOM.scrollTopBtn.onclick = () => DOM.chat.scrollTo({ top: 0, behavior: 'smooth' });
+    if (DOM.scrollTopBtn) {
+      DOM.scrollTopBtn.onclick = () => DOM.chat.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
     function updateThinkingVisibility() {
       const m = DOM.model?.value || '', t = DOM.thinking;
       if (!t) return;
       const prev = t.value;
-      if (m.includes('lite')) {
+      // Gemini 3.5 Flash Lite vẫn hỗ trợ thinking level; các bản lite khác (3.1) thì vẫn tắt.
+      const isThinkingCapableLite = m === 'gemini-3.5-flash-lite';
+      if (m.includes('lite') && !isThinkingCapableLite) {
         t.innerHTML = '<option value="none">Tắt (Flash Lite)</option>';
         t.value = 'none';
         t.disabled = true;
@@ -1846,8 +1925,9 @@ import { GoogleGenAI } from "@google/genai";
       if (oLay) oLay.style.display = 'none';
       if (typeof window.closeTTSStudioModal === 'function') window.closeTTSStudioModal();
     };
-    document.querySelectorAll('.close-btn').forEach(b => b.onclick = closeModals);
-    oLay.onclick = closeModals;
+    const closeBtns = document.querySelectorAll('.close-btn');
+    closeBtns.forEach(b => b && (b.onclick = closeModals));
+    if (oLay) oLay.onclick = closeModals;
 
     // CLIPBOARD PASTE (SCREENSHOTS & IMAGES)
     window.addEventListener('paste', async e => {
@@ -1892,20 +1972,23 @@ import { GoogleGenAI } from "@google/genai";
       };
     }
 
-    $('btn-take-photo').onclick = () => {
-      const v = $('camera-preview');
-      if (!v.srcObject) return;
-      const c = document.createElement('canvas');
-      c.width = v.videoWidth;
-      c.height = v.videoHeight;
-      c.getContext('2d').drawImage(v, 0, 0);
-      c.toBlob(b => {
-        processUploadFiles([new File([b], `Cam_${Date.now()}.jpg`, { type: 'image/jpeg' })]);
-        v.srcObject?.getTracks().forEach(t => t.stop());
-        closeModals();
-        showToast("Đã chụp và đính kèm ảnh!");
-      }, 'image/jpeg', 0.85);
-    };
+    const btnTakePhoto = $('btn-take-photo');
+    if (btnTakePhoto) {
+      btnTakePhoto.onclick = () => {
+        const v = $('camera-preview');
+        if (!v || !v.srcObject) return;
+        const c = document.createElement('canvas');
+        c.width = v.videoWidth;
+        c.height = v.videoHeight;
+        c.getContext('2d').drawImage(v, 0, 0);
+        c.toBlob(b => {
+          processUploadFiles([new File([b], `Cam_${Date.now()}.jpg`, { type: 'image/jpeg' })]);
+          v.srcObject?.getTracks().forEach(t => t.stop());
+          closeModals();
+          showToast("Đã chụp và đính kèm ảnh!");
+        }, 'image/jpeg', 0.85);
+      };
+    }
 
     DOM.btnFileLibrary.onclick = () => {
       $('file-library-modal').style.display = 'flex';
@@ -1913,23 +1996,26 @@ import { GoogleGenAI } from "@google/genai";
       renderLibrary();
     };
 
-    $('library-upload-input').onchange = async e => {
-      for (const f of e.target.files) {
-        if (f.size <= 50 * 1024 * 1024) {
-          await saveFileToLib({
-            id: Date.now() + Math.random().toString().slice(2, 7),
-            name: f.name,
-            type: f.type,
-            size: f.size,
-            blob: f,
-            added: new Date().toISOString()
-          });
+    const libraryUploadInput = $('library-upload-input');
+    if (libraryUploadInput) {
+      libraryUploadInput.onchange = async e => {
+        for (const f of e.target.files) {
+          if (f.size <= 50 * 1024 * 1024) {
+            await saveFileToLib({
+              id: Date.now() + Math.random().toString().slice(2, 7),
+              name: f.name,
+              type: f.type,
+              size: f.size,
+              blob: f,
+              added: new Date().toISOString()
+            });
+          }
         }
-      }
-      showToast("Đã thêm tệp vào thư viện!");
-      renderLibrary();
-      e.target.value = '';
-    };
+        showToast("Đã thêm tệp vào thư viện!");
+        renderLibrary();
+        e.target.value = '';
+      };
+    }
 
     async function renderLibrary() {
       const c = $('library-files-container'), fs = await getAllFilesFromLib();
@@ -2078,6 +2164,8 @@ import { GoogleGenAI } from "@google/genai";
         DOM.topK.value = s.top || 40;
         updateThinkingVisibility();
         DOM.thinking.value = s.thk || 'minimal';
+        // Nếu phiên cũ lưu mức thinking không còn tồn tại (vd 'none' của Flash Lite), rơi về mức hợp lệ đầu tiên
+        if (!DOM.thinking.value) DOM.thinking.value = DOM.thinking.options[0]?.value || 'minimal';
         DOM.toggleGlob.checked = s.useGlob !== false;
         DOM.toggleSearch.checked = s.sch || false;
         DOM.searchEngineBox.style.display = s.sch ? 'block' : 'none';
@@ -2391,7 +2479,7 @@ import { GoogleGenAI } from "@google/genai";
       }
       if (idx !== undefined && idx !== null && chatHistory && chatHistory[idx]) {
         raw = chatHistory[idx].text || "";
-      }
+      const cleanRaw = stripThinkingForCopy(raw);}
       if (!raw && btnOrIdx instanceof Element) {
         const container = btnOrIdx.closest('.message-container');
         const msgEl = container?.querySelector('.bot-message, .msg-content');
@@ -2401,8 +2489,8 @@ import { GoogleGenAI } from "@google/genai";
         const lastBot = [...chatHistory].reverse().find(m => m.role === 'model');
         if (lastBot) raw = lastBot.text || "";
       }
-      const clean = sanitizeTranscript(raw);
-      const textToSend = clean || raw;
+      const clean = sanitizeTranscript(cleanRaw);
+      const textToSend = clean || cleanRaw;
       if (!textToSend.trim()) {
         showToast("Không tìm thấy nội dung tin nhắn để mở Studio!", "warning");
         return;
@@ -2673,7 +2761,8 @@ import { GoogleGenAI } from "@google/genai";
         return;
       }
       const raw = chatHistory[i]?.text || "";
-      playTextAudio(raw, { btn });
+      const cleanRaw = stripThinkingForCopy(raw);
+      playTextAudio(cleanRaw, { btn });
     };
 
     window.togglePinMsg = async i => {
@@ -2746,9 +2835,34 @@ import { GoogleGenAI } from "@google/genai";
     }
     window.reRenderHistory = reRenderHistory;
 
+    // Bo khoi suy nghi (thinking) khoi noi dung truoc khi sao chep
+    function stripThinkingForCopy(text) {
+      if (!text) return '';
+      return text
+        .replace(/<details\b[^>]*class="[^"]*thinking-block[^"]*"[^>]*>[\s\S]*?<\/details>\s*/gi, '')
+        .replace(/<details\b[^>]*>\s*<summary\b[^>]*class="[^"]*thinking-summary[^"]*"[^>]*>[\s\S]*?<\/details>\s*/gi, '')
+        .replace(/<div\b[^>]*class="[^"]*thinking-streaming[^"]*"[^>]*>[\s\S]*?<\/div>\s*/gi, '')
+        .replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>\s*/gi, '')
+        .replace(/<(?:think|thought)>[\s\S]*$/i, '')
+        .trim();
+    }
+
+    function getCopyText(el) {
+      if (!el) return '';
+      const raw = el.getAttribute('data-raw');
+      const isBot = el.classList.contains('bot-message');
+      if (!isBot) return raw || el.innerText || '';
+      if (raw && raw.trim()) return stripThinkingForCopy(raw);
+      const clone = el.cloneNode(true);
+      clone.querySelectorAll('.thinking-block, .thinking-streaming, .msg-actions, .code-copy-btn, .message-header').forEach(n => n.remove());
+      return (clone.innerText || '').trim();
+    }
+
     window.copy = b => {
       const c = b.closest('.message-container').querySelector('.user-message, .bot-message');
-      if (c) copyRawText(c.getAttribute('data-raw') || c.innerText || '');
+      const text = getCopyText(c);
+      if (!text) return showToast('Nội dung trống!', 'warning');
+      copyRawText(text);
     };
 
     window.deleteMsg = async i => {
@@ -2857,12 +2971,15 @@ import { GoogleGenAI } from "@google/genai";
         keyIndexNum = findSlotIndexForKey(gKey);
       }
 
-      if (!gKey) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
+      // Model từ gateway OpenAI-compatible (OpenRouter / NVIDIA) không dùng Google API Key
+      const usesCompatGateway = !!resolveCompatProvider(am);
+      if (!gKey && !usesCompatGateway) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
 
       ls.removeItem('jarvis_draft');
       isProcessing = true;
       abortController = new AbortController();
-      recordKeyRequest(keyIndexNum, am);
+      // Gateway OpenAI-compatible (OpenRouter / NVIDIA) không dùng Google Key nên không ghi quota Google
+      if (!usesCompatGateway) recordKeyRequest(keyIndexNum, am);
 
       DOM.sendBtn.innerHTML = `<span>Dừng</span> 🛑`;
       DOM.sendBtn.style.background = 'var(--danger)';
@@ -3026,7 +3143,7 @@ import { GoogleGenAI } from "@google/genai";
         if (abortController.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
         // WEB SEARCH (TAVILY / SERPER)
-        const quoted = extractQuotedKeywords(fnP);
+        const quoted = extractHashKeywords(fnP);
         if (quoted && DOM.toggleSearch.checked) {
           const tgt = DOM.searchEngineSel.value === 'serper' ? 'serper' : 'tavily';
 
@@ -3324,6 +3441,164 @@ import { GoogleGenAI } from "@google/genai";
           }
         }
 
+        // --- ENGINE 0B: GATEWAY OpenAI-COMPATIBLE (OpenRouter / NVIDIA) ---
+        const compatProv = resolveCompatProvider(am);
+        if (compatProv) {
+          const prov = compatProv.provider;
+          let compatKey = (ls.getItem(prov.keyStorage) || '').trim();
+          if (compatKey.startsWith('JVENC_') || compatKey.startsWith('ENC_')) compatKey = deobfuscateKey(compatKey);
+          if (!compatKey) {
+            bD.remove();
+            return showToast(`Vui lòng nhập ${prov.keyLabel} API Key trong Cài đặt (⚙️)!`, "danger");
+          }
+
+          bD.querySelector('.typing-bubble')?.remove();
+
+          // Dựng messages theo chuẩn OpenAI: system + 10 tin gần nhất + lượt hiện tại (kèm ảnh nếu có)
+          const compatMessages = [];
+          const compatSI = getDynamicSI(ragSnippet);
+          if (compatSI) compatMessages.push({ role: 'system', content: compatSI });
+          if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
+            chatHistory.slice(-10).forEach(m => {
+              compatMessages.push({ role: m.role === 'model' ? 'assistant' : 'user', content: m.text });
+            });
+          }
+          if (base64Files && base64Files.length > 0) {
+            const compatUserContent = [{ type: 'text', text: promptWithTime }];
+            for (const f of base64Files) {
+              if (f.mimeType && f.mimeType.startsWith('image/')) {
+                compatUserContent.push({
+                  type: 'image_url',
+                  image_url: { url: `data:${f.mimeType};base64,${f.data}` }
+                });
+              }
+            }
+            compatMessages.push({ role: 'user', content: compatUserContent });
+          } else {
+            compatMessages.push({ role: 'user', content: promptWithTime });
+          }
+
+          const compatLabel = prov.modelLabel(am);
+          let compatThinking = '';
+          let compatContent = '';
+
+          try {
+            const compatHeaders = {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + compatKey
+            };
+            if (typeof prov.extraHeaders === 'function' && /^https?:$/.test(location.protocol)) {
+              Object.assign(compatHeaders, prov.extraHeaders() || {});
+            }
+
+            // --- BẬT SUY LUẬN (REASONING) THEO MỨC "THINK DEPTH" ĐANG CHỌN ---
+            // OpenAI-compatible: reasoning.effort = minimal | low | medium | high (OpenRouter chuẩn hóa).
+            const compatBody = {
+              model: am,
+              messages: compatMessages,
+              stream: true,
+              max_tokens: 8192
+            };
+            if (thk && thk !== 'none') {
+              compatBody.reasoning = { effort: thk };
+              if (prov.includeReasoning) compatBody.include_reasoning = true;
+            }
+
+            const compatUrl = `${prov.baseUrl}/chat/completions`;
+            const sendCompat = () => fetch(compatUrl, {
+              method: 'POST',
+              headers: compatHeaders,
+              body: JSON.stringify(compatBody),
+              signal: abortController.signal
+            });
+
+            let compatRes = null;
+            let compatErrText = '';
+            for (let attempt = 0; attempt < 2; attempt++) {
+              compatRes = await sendCompat();
+              if (compatRes.ok) break;
+              compatErrText = await compatRes.text().catch(() => '');
+              // Gateway không hỗ trợ tham số reasoning (400/4xx + thông báo liên quan): gỡ ra và thử lại 1 lần
+              const rejectedReasoning = compatBody.reasoning
+                && compatRes.status >= 400 && compatRes.status < 500
+                && /reason|unknown|unsupported|unrecogni|invalid.?param|extra/i.test(compatErrText);
+              if (!rejectedReasoning) break;
+              delete compatBody.reasoning;
+              delete compatBody.include_reasoning;
+              compatErrText = '';
+            }
+
+            if (!compatRes || !compatRes.ok) {
+              let apiMsg = '';
+              try {
+                const parsedErr = JSON.parse(compatErrText);
+                apiMsg = parsedErr?.error?.message || parsedErr?.message || '';
+              } catch (_) {}
+              throw new Error(apiMsg || ('HTTP ' + (compatRes ? compatRes.status : '?')));
+            }
+
+            const compatReader = compatRes.body.getReader();
+            const compatDecoder = new TextDecoder();
+            let compatBuffer = '';
+            let compatDone = false;
+
+            while (!compatDone) {
+              const { value, done: chunkDone } = await compatReader.read();
+              if (chunkDone) break;
+              compatBuffer += compatDecoder.decode(value, { stream: true });
+
+              const lines = compatBuffer.split('\n');
+              compatBuffer = lines.pop() || '';
+
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                if (trimmed === 'data: [DONE]') { compatDone = true; break; }
+                if (!trimmed.startsWith('data:')) continue;
+                try {
+                  const parsed = JSON.parse(trimmed.slice(5).trim());
+                  const delta = parsed.choices?.[0]?.delta || {};
+                  const deltaThinking = delta.reasoning_content || delta.reasoning || delta.thought || '';
+                  const deltaText = delta.content || '';
+                  if (deltaThinking) compatThinking += deltaThinking;
+                  if (deltaText) compatContent += deltaText;
+                  if (deltaThinking || deltaText) {
+                    finalResp = formatThinkingResponse(compatThinking, compatContent, compatLabel);
+                    renderer.push(finalResp);
+                    if ($('latency-val') && !pS) $('latency-val').innerText = Math.round(performance.now() - startTime);
+                    pS = true;
+                  }
+                } catch (_) {}
+              }
+            }
+
+            finalResp = formatFinalThinkingResponse(compatThinking, compatContent, compatLabel);
+            if (!compatContent.trim() && compatThinking.trim()) {
+              compatContent = compatThinking.trim();
+              compatThinking = '';
+              finalResp = formatFinalThinkingResponse('', compatContent, compatLabel);
+            }
+            await renderer.flush(finalResp);
+            pS = true;
+          } catch (compatErr) {
+            if (compatErr.name === 'AbortError' || abortController.signal.aborted) throw compatErr;
+            lastErr = compatErr;
+            if (pS) {
+              finalResp = formatFinalThinkingResponse(compatThinking, compatContent, compatLabel)
+                + `\n\n*(⚠️ Quá trình stream bị ngắt: ${compatErr.message})*`;
+              await renderer.flush(finalResp);
+            } else {
+              bD.remove();
+              return showToast(`Lỗi ${prov.keyLabel}: ${compatErr.message}`, 'danger');
+            }
+          }
+
+          if (pS) {
+            await saveTurn();
+            return;
+          }
+        }
+
         // ENGINE 1: INTERACTIONS API
         if (currentEngine === 'interactions') {
           const interactionParams = {
@@ -3524,7 +3799,7 @@ import { GoogleGenAI } from "@google/genai";
         if (!pS) {
           const contents = [];
           if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
-            chatHistory.slice(-16).forEach(m => {
+            chatHistory.slice(-contextMsgCount).forEach(m => {
               let cleanText = (m.text || '');
               // Loại bỏ khối HTML details hoặc thẻ think khỏi ngữ cảnh gửi cho AI để tránh làm nhiễu mô hình
               cleanText = cleanText.replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '').trim();
@@ -3544,13 +3819,15 @@ import { GoogleGenAI } from "@google/genai";
           contents.push({ role: 'user', parts: currentParts });
 
           const isFlashLite = am.includes('flash-lite') || am.includes('lite');
+          // Gemini 3.5 Flash Lite hỗ trợ thinking theo level và nhận tối đa 65.000 output token.
+          const thinkingSupported = !isFlashLite || am === 'gemini-3.5-flash-lite';
           const budgetMap = { minimal: 1024, low: 2048, medium: 4096, high: 8192 };
           const config = {
             systemInstruction: getDynamicSI(ragSnippet),
             safetySettings: SAFETY,
-            maxOutputTokens: isFlashLite ? 8192 : 32768
+            maxOutputTokens: am === 'gemini-3.5-flash-lite' ? 65000 : (isFlashLite ? 8192 : 32768)
           };
-          if (!isFlashLite && thk && thk !== 'none') {
+          if (thinkingSupported && thk && thk !== 'none') {
             const b = budgetMap[thk] || 4096;
             config.thinkingConfig = {
               thinkingBudget: b,

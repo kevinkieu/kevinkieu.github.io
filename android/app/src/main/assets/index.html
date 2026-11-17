@@ -32,7 +32,7 @@
   </script>
 
   <!-- MODULAR STYLESHEETS -->
-  <link rel="stylesheet" href="./css/style.css?v=54">
+  <link rel="stylesheet" href="./css/style.css?v=57">
   <link rel="stylesheet" href="./css/live.css">
   <link rel="stylesheet" href="./css/tts.css">
   <link rel="stylesheet" href="./css/translate.css">
@@ -107,6 +107,11 @@
             <label style="cursor:pointer;font-size:.8rem;font-weight:600;color:var(--success);display:flex;align-items:center;gap:8px;">
               <input type="checkbox" id="toggle-memory" checked> 🧠 Bộ nhớ ngữ cảnh
             </label>
+            <div id="context-count-row" style="margin-left:22px;font-size:0.78rem;color:var(--text-muted);display:flex;align-items:center;gap:8px;">
+              <span>💬 Số tin nhắn ngữ cảnh:</span>
+              <input type="number" id="context-message-count" min="1" max="200" value="16" style="width:56px;padding:3px 6px;font-size:0.75rem;background:var(--input-bg);border:1px solid var(--border);color:var(--text-main);border-radius:4px;">
+              <span style="font-size:0.72rem;">tin nhắn gần nhất</span>
+            </div>
             <label style="cursor:pointer;font-size:.78rem;font-weight:600;color:#8b5cf6;display:flex;align-items:center;gap:8px;" title="Tự động nén các tin nhắn cũ để duy trì trí nhớ vĩnh viễn">
               <input type="checkbox" id="toggle-auto-summary" checked> 🧬 Nén trí nhớ dài hạn (Auto-Summary)
             </label>
@@ -131,6 +136,15 @@
                 <option value="gpt-6-luna">⚡ GPT-6 Luna (Experiential)</option>
                 <option value="deepseek-v4.1-flash">🧠 DeepSeek V4.1 Flash (Suy luận Free)</option>
                 <option value="clef">🎯 Clef (Decision Engine)</option>
+              </optgroup>
+              <optgroup label="🛰️ OpenRouter">
+                <option value="nvidia/nemotron-3.5-lightning:free">⚡ Nemotron 3.5 Lightning (Free)</option>
+                <option value="particle-ai/particle-1:free">🧠 Particle-1 (Free)</option>
+              </optgroup>
+              <optgroup label="🟢 NVIDIA">
+                <option value="deepseek-ai/deepseek-v4.1-flash">🧠 DeepSeek V4.1 Flash (NVIDIA)</option>
+                <option value="z-ai/glm-5.3-flash">⚡ GLM 5.3 Flash (NVIDIA)</option>
+                <option value="google/gemma-4-31b-it">💎 Gemma 4 31B IT (NVIDIA)</option>
               </optgroup>
             </select>
           </div>
@@ -341,7 +355,7 @@
         </div>
 
         <div class="input-container-box">
-          <textarea id="user-input" rows="1" placeholder="Nhập tin nhắn (Ctrl+Enter gửi, gõ &quot;từ khóa&quot; tìm web, Ctrl+K mở lệnh)..."></textarea>
+          <textarea id="user-input" rows="1" placeholder="Nhập tin nhắn (Ctrl+Enter gửi, gõ #từ khóa# để tìm web khi bật Tìm kiếm Web, Ctrl+K mở lệnh)..."></textarea>
           <button id="btn-hands-free-voice" class="icon-btn hands-free-mic-btn" type="button" title="Trò chuyện rảnh tay 2 chiều liên tục (Hands-Free Voice Flow)">
             🎙️
           </button>
@@ -696,6 +710,14 @@
             <div>
               <label class="field-label">⚡ Experiential Labs API Key (gpt-6-luna, deepseek-v4.1-flash, clef):</label>
               <input type="password" id="explabs-key-input" placeholder="xpl_..." class="modern-input">
+            </div>
+            <div>
+              <label class="field-label">🛰️ OpenRouter API Key (nvidia/nemotron-3.5-lightning:free, particle-ai/particle-1:free):</label>
+              <input type="password" id="openrouter-key-input" placeholder="sk-or-v1-..." class="modern-input">
+            </div>
+            <div>
+              <label class="field-label">🟢 NVIDIA API Key (deepseek-ai/deepseek-v4.1-flash, z-ai/glm-5.3-flash, google/gemma-4-31b-it):</label>
+              <input type="password" id="nvidia-key-input" placeholder="nvapi-..." class="modern-input">
             </div>
             <div style="margin-top:6px;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);">
               <label style="cursor:pointer;font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:8px;margin:0;">
@@ -1665,20 +1687,21 @@
   </div>
 
   <!-- JAVASCRIPT APPLICATION MODULES -->
-  <script type="module" src="./js/tools.js?v=54"></script>
-  <script type="module" src="./js/export.js?v=54"></script>
-  <script type="module" src="./js/quota.js?v=54"></script>
-  <script type="module" src="./js/medication.js?v=54"></script>
-  <script type="module" src="./js/commands.js?v=54"></script>
-    <script type="module" src="./js/briefing.js?v=54"></script>
-  <script type="module" src="./js/cipher.js?v=54"></script>
-  <script type="module" src="./js/database.js?v=54"></script>
-  <script type="module" src="./js/app.js?v=54"></script>
-    <script type="module" src="./js/api-keys.js?v=54"></script>
-  <script type="module" src="./js/sync.js?v=54"></script>
-  <script type="module" src="./js/live.js?v=54"></script>
-  <script type="module" src="./js/tts.js?v=54"></script>
-  <script type="module" src="./js/translate.js?v=54"></script>
-  <script type="module" src="./js/rag.js?v=54"></script>
+  <script type="module" src="./js/tools.js?v=57"></script>
+  <script type="module" src="./js/export.js?v=57"></script>
+  <script type="module" src="./js/quota.js?v=57"></script>
+  <script type="module" src="./js/medication.js?v=57"></script>
+  <script type="module" src="./js/commands.js?v=57"></script>
+    <script type="module" src="./js/briefing.js?v=57"></script>
+  <script type="module" src="./js/cipher.js?v=57"></script>
+  <script type="module" src="./js/database.js?v=57"></script>
+  <script type="module" src="./js/app.js?v=57"></script>
+    <script type="module" src="./js/api-keys.js?v=57"></script>
+  <script type="module" src="./js/sync.js?v=57"></script>
+  <script type="module" src="./js/live.js?v=57"></script>
+  <script type="module" src="./js/tts.js?v=57"></script>
+  <script type="module" src="./js/translate.js?v=57"></script>
+  <script type="module" src="./js/eventBus.js?v=57"></script>
+  <script type="module" src="./js/rag.js?v=57"></script>
 </body>
 </html>
