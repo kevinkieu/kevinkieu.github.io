@@ -363,6 +363,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         models: [
           'nvidia/nemotron-3.5-lightning:free',
           'particle-ai/particle-1:free',
+          'baidu/ernie-5.5-flash-preview:free',
           'google/gemma-4-26b-a4b-it:free',
           'google/gemma-4-31b-it:free'
         ],
@@ -371,6 +372,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         modelLabel: m => {
           if (m.includes('nemotron')) return 'Nemotron 3.5 Lightning';
           if (m.includes('particle')) return 'Particle-1';
+          if (m.includes('ernie')) return 'ERNIE-5.5-Flash';
           if (m.includes('gemma-4-26b')) return 'Gemma 4 26B A4B';
           if (m.includes('gemma-4-31b')) return 'Gemma 4 31B';
           if (m.includes('gemma')) return 'Gemma 4';
@@ -378,6 +380,36 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         }
       }
     };
+    // --- THÔNG SỐ RIÊNG TỪNG MODEL GATEWAY (context / trần output / cách tắt reasoning) ---
+    // Particle-1: context 1.048.576 token, completion tối đa 131.072 token.
+    // Particle mặc định reasoning = 'high' khi KHÔNG gửi tham số -> muốn tắt phải gửi 'none' tường minh.
+    // Các mức hợp lệ: none, minimal, low, medium, high, xhigh, max, ultra (app chỉ dùng 4 mức đầu).
+    const COMPAT_MODEL_OPTS = {
+      'particle-ai/particle-1:free': {
+        contextWindow: 1048576,
+        maxOutputTokens: 131072,
+        maxTokens: 32768, // mức thực gửi (bằng default output cap của Particle, không đẩy hết trần 131k)
+        offEffort: 'none',
+        efforts: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+        defaultEffort: 'high',
+        notes: 'Agentic coding, post-trained từ DeepSeek V4.1 Flash, nhận text + ảnh'
+      },
+      // ERNIE-5.5-Flash-Preview: reasoning LUÔN BẬT, effort không chỉnh được (fixed high),
+      // và reasoning token được tính vào max_completion_tokens.
+      'baidu/ernie-5.5-flash-preview:free': {
+        contextWindow: 1024000,
+        maxOutputTokens: 1024000,      // theo model card của Baidu
+        apiMaxCompletionTokens: 921600, // trần thực tế OpenRouter công bố cho endpoint này
+        maxTokens: 32768,
+        reasoningAlwaysOn: true,
+        canDisable: false,
+        efforts: ['high'],             // effort bị khoá ở high, không nhận mức khác
+        defaultEffort: 'high',
+        notes: '280B MoE (14B active), text→text, ~200 tok/s, free tier 20 req/phút'
+      }
+    };
+    window.COMPAT_MODEL_OPTS = COMPAT_MODEL_OPTS;
+
     function resolveCompatProvider(modelId) {
       const m = (modelId || '').trim();
       for (const p of Object.values(COMPAT_PROVIDERS)) {
@@ -2238,6 +2270,14 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       if (sessions.length <= 1) return showToast("Cần giữ lại ít nhất 1 phiên!", "warning");
       const s = sessions.find(x => x.id === activeId);
       if (confirm(`Bạn có chắc muốn xóa phiên "${s?.name || ''}"?`)) {
+        // Ghi tombstone phiên đã xóa để Cloud không tải lại phiên này
+        try {
+          const ids = JSON.parse(ls.getItem('jarvis_deleted_session_ids') || '[]');
+          if (!ids.includes(activeId)) ids.push(activeId);
+          const str = JSON.stringify(ids.slice(-500));
+          ls.setItem('jarvis_deleted_session_ids', str);
+          if (window.saveToNativeBridge) window.saveToNativeBridge('jarvis_deleted_session_ids', str);
+        } catch (_) {}
         await deleteFromDB(activeId);
         sessions = sessions.filter(x => x.id !== activeId);
         openTabs = openTabs.filter(x => x !== activeId);
@@ -2833,6 +2873,22 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       await renderMsgContent(m.querySelector('.msg-content'), sd === 'user' ? t.replace(/\n/g, '<br>') : t);
     }
 
+    // Giữ vị trí cuộn khi vẽ lại lịch sử (tránh nhảy lên top sau khi xóa tin nhắn)
+    function captureChatScroll() {
+      const el = DOM.chat;
+      if (!el) return null;
+      const atBottom = (el.scrollHeight - el.scrollTop - el.clientHeight) < 80;
+      return { top: el.scrollTop, atBottom };
+    }
+    function restoreChatScroll(state) {
+      const el = DOM.chat;
+      if (!el || !state) return;
+      const apply = () => { el.scrollTop = state.atBottom ? el.scrollHeight : state.top; };
+      apply();
+      requestAnimationFrame(apply);
+      setTimeout(apply, 60);
+    }
+
     async function reRenderHistory() {
       const s = sessions.find(x => x.id === activeId);
       if (s) { s.his = chatHistory; await saveToDB(s); renderSel(); }
@@ -2842,6 +2898,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       }
     }
     window.reRenderHistory = reRenderHistory;
+    window.captureChatScroll = captureChatScroll;
+    window.restoreChatScroll = restoreChatScroll;
 
     // Bo khoi suy nghi (thinking) khoi noi dung truoc khi sao chep
     function stripThinkingForCopy(text) {
@@ -2873,8 +2931,68 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       copyRawText(text);
     };
 
+    // --- TOMBSTONE: dấu vết tin nhắn đã xóa để Smart Sync không hồi sinh từ Cloud ---
+    const DELETED_MSGS_KEY = 'jarvis_deleted_msgs';
+    const TOMBSTONE_TTL = 90 * 24 * 3600 * 1000; // giữ 90 ngày
+    function msgSig(m) {
+      const t = String((m && m.text) || '');
+      return ((m && m.role) || '') + '|' + t.length + '|' + t.slice(0, 160) + '|' + t.slice(-60);
+    }
+    function readDeletedMsgs() {
+      try { const o = JSON.parse(ls.getItem(DELETED_MSGS_KEY) || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (_) { return {}; }
+    }
+    function writeDeletedMsgs(map) {
+      try {
+        const str = JSON.stringify(map);
+        ls.setItem(DELETED_MSGS_KEY, str);
+        if (window.saveToNativeBridge) window.saveToNativeBridge(DELETED_MSGS_KEY, str);
+      } catch (_) {}
+    }
+    function addDeletedMsgs(sessionId, msgs) {
+      if (!sessionId || !Array.isArray(msgs) || !msgs.length) return;
+      const map = readDeletedMsgs();
+      const now = Date.now();
+      const arr = Array.isArray(map[sessionId]) ? map[sessionId].filter(x => x && x.t > now - TOMBSTONE_TTL) : [];
+      msgs.forEach(m => { if (!m) return; const s = msgSig(m); if (s) arr.push({ s, t: now }); });
+      map[sessionId] = arr.slice(-800);
+      writeDeletedMsgs(map);
+    }
+    function filterDeletedMsgs(sessionId, his) {
+      const list = Array.isArray(his) ? his : [];
+      const arr = readDeletedMsgs()[sessionId];
+      if (!Array.isArray(arr) || !arr.length) return { his: list, removed: 0 };
+      const sigs = new Set(arr.map(x => x.s));
+      const out = list.filter(m => !sigs.has(msgSig(m)));
+      return { his: out, removed: list.length - out.length };
+    }
+    function readAllDeletedMsgs() { return readDeletedMsgs(); }
+    function mergeAllDeletedMsgs(remote) {
+      if (!remote || typeof remote !== 'object') return false;
+      const map = readDeletedMsgs();
+      const now = Date.now();
+      let changed = false;
+      Object.keys(remote).forEach(sid => {
+        const incoming = Array.isArray(remote[sid]) ? remote[sid] : [];
+        const arr = Array.isArray(map[sid]) ? map[sid].slice() : [];
+        const seen = new Set(arr.map(x => x && x.s));
+        incoming.forEach(x => {
+          if (!x || !x.s) return;
+          if ((x.t || 0) < now - TOMBSTONE_TTL) return;
+          if (!seen.has(x.s)) { arr.push({ s: x.s, t: x.t || now }); seen.add(x.s); changed = true; }
+        });
+        if (arr.length) map[sid] = arr.slice(-800);
+      });
+      if (changed) writeDeletedMsgs(map);
+      return changed;
+    }
+    // Gọi lại khi Restore từ Cloud (js/sync.js)
+    window.jarvisMsgTombstones = { add: addDeletedMsgs, filter: filterDeletedMsgs, readAll: readAllDeletedMsgs, mergeAll: mergeAllDeletedMsgs, sig: msgSig };
+
     window.deleteMsg = async i => {
       if (confirm("Xóa tin nhắn này?")) {
+        // Ghi tombstone để Smart Sync không hồi sinh tin vừa xóa từ Cloud
+        if (window.jarvisMsgTombstones && chatHistory[i]) window.jarvisMsgTombstones.add(activeId, [chatHistory[i]]);
+        const keepScroll = captureChatScroll();
         chatHistory.splice(i, 1);
         const s = sessions.find(x => x.id === activeId);
         if (s) {
@@ -2883,12 +3001,14 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           await saveToDB(s);
         }
         await reRenderHistory();
+        restoreChatScroll(keepScroll);
       }
     };
 
     window.retryMsg = async i => {
       if (isProcessing || i <= 0 || chatHistory[i - 1].role !== 'user') return;
       const up = chatHistory[i - 1].text;
+      if (window.jarvisMsgTombstones) window.jarvisMsgTombstones.add(activeId, chatHistory.slice(Math.max(0, i - 1), i + 1));
       chatHistory.splice(i - 1, 2);
       const s = sessions.find(x => x.id === activeId);
       if (s) {
@@ -2905,6 +3025,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     window.editMsg = async i => {
       DOM.input.value = chatHistory[i].text;
       DOM.input.dispatchEvent(new Event('input'));
+      if (window.jarvisMsgTombstones) window.jarvisMsgTombstones.add(activeId, chatHistory.slice(i));
       chatHistory = chatHistory.slice(0, i);
       const s = sessions.find(x => x.id === activeId);
       if (s) {
@@ -2917,6 +3038,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
     window.clearActiveSession = async () => {
       if (confirm("Bạn có chắc muốn xóa sạch toàn bộ tin nhắn trong phiên này?")) {
+        if (window.jarvisMsgTombstones) window.jarvisMsgTombstones.add(activeId, chatHistory.slice());
         chatHistory = [];
         const s = sessions.find(x => x.id === activeId);
         if (s) { s.lastInteractionId = null; s.summaryMemory = ''; await saveToDB(s); }
@@ -3436,7 +3558,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
               // CHẨN ĐOÁN: events = tổng event SSE, thinkEvents = số event mang suy luận.
               // thinkEvents <= 2 nghĩa là server gửi suy luận 1 cục (không phải lỗi renderer).
-              console.warn('[ExLabs V69]', am, '| events =', expEvents, '| thinkEvents =', expThinkEvents, '| textEvents =', expTextEvents, '| firstThink =', firstThinkMs, 'ms | firstText =', firstTextMs, 'ms | thinking =', currentThinking.length, 'ký tự | content =', currentContent.length, 'ký tự');
+              console.warn('[ExLabs V72]', am, '| events =', expEvents, '| thinkEvents =', expThinkEvents, '| textEvents =', expTextEvents, '| firstThink =', firstThinkMs, 'ms | firstText =', firstTextMs, 'ms | thinking =', currentThinking.length, 'ký tự | content =', currentContent.length, 'ký tự');
               window.__jarvisTurnDebug = Object.assign(window.__jarvisTurnDebug || {}, {
                 branch: 'exp-stream', model: am, expEvents, expThinkEvents, expTextEvents,
                 firstThinkMs, firstTextMs, thinkingChars: currentThinking.length, contentChars: currentContent.length
@@ -3526,15 +3648,23 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
             // --- BẬT SUY LUẬN (REASONING) THEO MỨC "THINK DEPTH" ĐANG CHỌN ---
             // OpenAI-compatible: reasoning.effort = minimal | low | medium | high (OpenRouter chuẩn hóa).
+            const mOpts = COMPAT_MODEL_OPTS[am] || null;
             const compatBody = {
               model: am,
               messages: compatMessages,
               stream: true,
-              max_tokens: 8192
+              max_tokens: (mOpts && mOpts.maxTokens) ? mOpts.maxTokens : 8192
             };
-            if (thk && thk !== 'none') {
+            if (mOpts && mOpts.reasoningAlwaysOn) {
+              // Model luôn suy luận (ERNIE): không gửi effort (sẽ bị bỏ qua/lỗi), chỉ xin hiển thị reasoning
+              compatBody.reasoning = { exclude: false };
+              if (prov.includeReasoning) compatBody.include_reasoning = true;
+            } else if (thk && thk !== 'none') {
               compatBody.reasoning = { effort: thk };
               if (prov.includeReasoning) compatBody.include_reasoning = true;
+            } else if (mOpts && mOpts.offEffort) {
+              // Model mặc định BẬT reasoning (Particle-1 = high): phải tắt tường minh
+              compatBody.reasoning = { effort: mOpts.offEffort };
             }
 
             const compatUrl = `${prov.baseUrl}/chat/completions`;
@@ -3898,7 +4028,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           // Đếm chunk để biết Google có stream thật hay chỉ trả 1 cục
           let mainChunks = 0, mainTextChunks = 0;
           // Chẩn đoán: in ra đúng cấu hình gửi Google để đối chiếu khi request bị treo
-          console.warn('[Gemini V69] model =', am, '| thk =', thk, '| thinking =', JSON.stringify(config.thinkingConfig || null), '| maxOutputTokens =', config.maxOutputTokens);
+          console.warn('[Gemini V72] model =', am, '| thk =', thk, '| thinking =', JSON.stringify(config.thinkingConfig || null), '| maxOutputTokens =', config.maxOutputTokens);
           window.__jarvisTurnDebug = Object.assign(window.__jarvisTurnDebug || {}, { branch: 'google-stream', thinkingConfig: config.thinkingConfig || null, maxOutputTokens: config.maxOutputTokens });
 
           while (streamAttempts < maxStreamAttempts) {
@@ -3930,7 +4060,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                   gotFirstChunk = true;
                   stopStallTimer();
                   // Tách rõ 2 chặng: chờ headers (phía Google) vs chờ model nghĩ (sau headers)
-                  console.warn('[Gemini V69] headers =', headersMs, 'ms | chunk đầu sau headers =', Math.round(performance.now() - attemptStart) - headersMs, 'ms | attempt #' + streamAttempts);
+                  console.warn('[Gemini V72] headers =', headersMs, 'ms | chunk đầu sau headers =', Math.round(performance.now() - attemptStart) - headersMs, 'ms | attempt #' + streamAttempts);
                 }
                 const reason = ck.candidates?.[0]?.finishReason;
                 if (reason && reason !== 'STOP') streamFinishReason = reason;
@@ -4097,7 +4227,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
             showToast("Nội dung bị dừng do phát hiện trùng lặp bản quyền!", "warning");
           }
 
-          console.warn('[Gemini V69] stream chính: ' + mainChunks + ' chunk, trong đó ' + mainTextChunks + ' chunk có text | thinking=' + currentThinking.length + ' ký tự | content=' + currentContent.length + ' ký tự');
+          console.warn('[Gemini V72] stream chính: ' + mainChunks + ' chunk, trong đó ' + mainTextChunks + ' chunk có text | thinking=' + currentThinking.length + ' ký tự | content=' + currentContent.length + ' ký tự');
           window.__jarvisTurnDebug = Object.assign(window.__jarvisTurnDebug || {}, { mainChunks, mainTextChunks, thinkingChars: currentThinking.length, contentChars: currentContent.length });
 
           // FAIL-SAFE 2: Model chỉ trả về suy luận mà không có câu trả lời (Gemma 4 hay gặp khi bật
@@ -4134,7 +4264,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                   pS = true;
                 }
               }
-              console.warn('[Gemini V69] stream hỏi lại: ' + retryChunks + ' chunk, trong đó ' + retryTextChunks + ' chunk có text');
+              console.warn('[Gemini V72] stream hỏi lại: ' + retryChunks + ' chunk, trong đó ' + retryTextChunks + ' chunk có text');
               window.__jarvisTurnDebug = Object.assign(window.__jarvisTurnDebug || {}, { retryChunks, retryTextChunks });
             } catch (rErr) {
               console.warn('[Gemma] Lần hỏi lại không thinking lỗi:', rErr?.message || rErr);

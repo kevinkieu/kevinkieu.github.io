@@ -228,6 +228,7 @@
         let finalPrompts = JSON.parse(ls.getItem('jarvis_custom_prompts') || '[]');
 
         const deletedSessionIds = new Set(JSON.parse(ls.getItem('jarvis_deleted_session_ids') || '[]'));
+        let prunedRemoteByTombstone = false;
         const deletedVectorIds = new Set(JSON.parse(ls.getItem('jarvis_deleted_vector_ids') || '[]'));
 
         let hasRemoteData = false;
@@ -241,6 +242,30 @@
             cloudData = await fetchGistData(pat, gistId);
             hasRemoteData = true;
 
+            // A0. ĐỒNG BỘ TOMBSTONE (tin nhắn / phiên đã xóa) TỪ CLOUD TRƯỚC KHI MERGE
+            // Nếu thiếu bước này, máy khác còn giữ tin đã xóa sẽ đấy nó trở lại Gist.
+            if (cloudData.deletedMsgs && window.jarvisMsgTombstones && typeof window.jarvisMsgTombstones.mergeAll === 'function') {
+              if (window.jarvisMsgTombstones.mergeAll(cloudData.deletedMsgs)) hasChanges = true;
+            }
+            if (Array.isArray(cloudData.deletedSessionIds) && cloudData.deletedSessionIds.length) {
+              cloudData.deletedSessionIds.forEach(id => { if (id) deletedSessionIds.add(id); });
+              try {
+                const cur = new Set(JSON.parse(ls.getItem('jarvis_deleted_session_ids') || '[]'));
+                cloudData.deletedSessionIds.forEach(id => { if (id) cur.add(id); });
+                ls.setItem('jarvis_deleted_session_ids', JSON.stringify(Array.from(cur).slice(-500)));
+              } catch (_) {}
+            }
+            // Bỏ khỏi bản cục bộ những tin đã nằm trong tombstone (kể cả tombstone vừa nhận)
+            let prunedLocal = false;
+            if (window.jarvisMsgTombstones && typeof window.jarvisMsgTombstones.filter === 'function') {
+              localSessions.forEach(lsess => {
+                if (!lsess || !Array.isArray(lsess.his)) return;
+                const pr = window.jarvisMsgTombstones.filter(lsess.id, lsess.his);
+                if (pr.removed > 0) { lsess.his = pr.his; prunedLocal = true; }
+              });
+              if (prunedLocal) hasChanges = true;
+            }
+
             // A. HỢP NHẤT LỊCH SỬ PHIÊN CHAT (SESSIONS)
             if (Array.isArray(cloudData.sessions)) {
               const sessionMap = new Map();
@@ -249,8 +274,19 @@
                   sessionMap.set(lsess.id, lsess);
                 }
               }
-              for (const csess of cloudData.sessions) {
+              for (let csess of cloudData.sessions) {
                 if (!csess || !csess.id || deletedSessionIds.has(csess.id)) continue;
+                // Bỏ các tin nhắn đã xóa trên máy này (tombstone) TRƯỚC khi so sánh độ dài,
+                // nếu không bản Cloud dài hơn sẽ thắng và tin vừa xóa bị hồi sinh.
+                if (window.jarvisMsgTombstones && typeof window.jarvisMsgTombstones.filter === 'function') {
+                  const pruned = window.jarvisMsgTombstones.filter(csess.id, csess.his || []);
+                  if (pruned.removed > 0) {
+                    csess = Object.assign({}, csess, { his: pruned.his });
+                    prunedRemoteByTombstone = true;
+                    hasChanges = true;
+                    console.log(`[SmartSync] Bỏ ${pruned.removed} tin nhắn đã xóa khỏi bản Cloud của phiên "${csess.name || csess.id}"`);
+                  }
+                }
                 if (!sessionMap.has(csess.id)) {
                   sessionMap.set(csess.id, csess);
                   hasChanges = true;
@@ -482,6 +518,10 @@
           }
 
           // 3. Kiểm tra xem có phiên hoặc vector nào đã xóa ở máy này mà Cloud vẫn còn lưu không
+          if (!isLocalAhead && prunedRemoteByTombstone) {
+            // Đã bỏ tin nhắn đã xóa khỏi bản Cloud -> phải đẩy bản đã lọc lên Gist
+            isLocalAhead = true;
+          }
           if (!isLocalAhead) {
             if (deletedSessionIds.size > 0 && remoteSessions.some(cs => deletedSessionIds.has(cs.id))) {
               isLocalAhead = true;
@@ -570,6 +610,8 @@
             activeId: window.activeId,
             customPrompts: finalPrompts,
             folders: finalFolders,
+            deletedMsgs: (window.jarvisMsgTombstones && typeof window.jarvisMsgTombstones.readAll === 'function') ? window.jarvisMsgTombstones.readAll() : {},
+            deletedSessionIds: Array.from(deletedSessionIds),
             knowledgeBase: finalKnowledge,
             medications: JSON.parse(ls.getItem('jarvis_medications') || '[]'),
             medHistory: JSON.parse(ls.getItem('jarvis_med_history') || '[]'),
@@ -648,6 +690,12 @@
                 }
                 if (getDOM().chat) getDOM().chat.scrollTop = getDOM().chat.scrollHeight;
               }
+            } else if (newCount < domCount && typeof window.reRenderHistory === 'function') {
+              // Có tin nhắn bị xóa ở máy khác -> vẽ lại cho khớp, vẫn giữ vị trí cuộn
+              const keepScroll = window.captureChatScroll ? window.captureChatScroll() : null;
+              window.chatHistory = currentVisible.his.slice();
+              await window.reRenderHistory();
+              if (keepScroll && window.restoreChatScroll) window.restoreChatScroll(keepScroll);
             }
           }
         }
