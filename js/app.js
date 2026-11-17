@@ -490,6 +490,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     // [window.DB_NAME / STORE_NAME / FILE_STORE / TTS_STORE: do js/database.js expose]
     window.getSessionApiKey = (cs, forceRotate) => getSessionApiKey(cs, forceRotate);
     window.showToast = (msg, type) => showToast(msg, type);
+    // DEBUG: gọi jarvisDebug() trong Console để lấy số liệu chẩn đoán.
+    // (Không dùng copy() vì app đã định nghĩa window.copy riêng cho nút Copy Code.)
+    window.jarvisDebug = () => console.log(JSON.stringify(window.__jarvisTurnDebug || null, null, 1));
     window.getNowTime24h = () => getNowTime24h();
     window.formatGoogleApiError = err => formatGoogleApiError(err);
 
@@ -2347,7 +2350,11 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       DOM.searchEngineBox.style.display = DOM.toggleSearch.checked ? 'block' : 'none';
     }
 
-    DOM.model.addEventListener('change', () => { updateThinkingVisibility(); updateConfig(); updateKeyQuotaUI(); });
+    DOM.model.addEventListener('change', () => {
+      // Qwen4 Max mặc định Think Depth = Low khi chọn model này
+      if (DOM.model.value === 'qwen4-max:free' && DOM.thinking) DOM.thinking.value = 'low';
+      updateThinkingVisibility(); updateConfig(); updateKeyQuotaUI();
+    });
     DOM.engineSel.addEventListener('change', updateConfig);
     [DOM.sysInst, DOM.apiKeySel, DOM.toggleGlob, DOM.toggleSearch, DOM.searchEngineSel, DOM.thinking].forEach(el => el?.addEventListener?.('change', updateConfig));
 
@@ -2384,6 +2391,10 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     // --- MARKDOWN & SYNTAX HIGHLIGHTING RENDERER ---
     async function renderMsgContent(el, t) {
       t = t || "";
+      // Khối suy luận được tách RIÊNG khỏi chuỗi Markdown.
+      // Lý do: marked cắt HTML block tại dòng trống, nếu để chung thì nó sinh ra
+      // "<p>...</div></details></p>" và trình duyệt có thể nuốt luôn phần câu trả lời vào <details> (đang thu gọn).
+      let thinkingHtml = '';
       const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true' || ls.getItem('jarvis_hide_thinking') === 'true';
       if (hideThinking) {
         t = t.replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>/gi, '')
@@ -2397,8 +2408,14 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           const tokens = Math.max(1, Math.round(chars / 4));
           return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
         });
+        // Rút các khối <details> ra khỏi chuỗi trước khi parse Markdown (tránh bị nuốt câu trả lời)
+        t = t.replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, (m) => {
+          thinkingHtml += m;
+          return '';
+        });
       }
       el.innerHTML = marked.parse(t.replace(/\[URL:\s*(https?:\/\/[^\s]+)\]/g, '<a href="$1" target="_blank" style="color:var(--primary);text-decoration:underline;">$1</a>'));
+      if (thinkingHtml) el.insertAdjacentHTML('afterbegin', thinkingHtml);
       
       // Math KaTeX
       window.renderMathInElement?.(el, {
@@ -2926,6 +2943,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
       const cs = sessions.find(x => x.id === activeId);
       const currentEngine = cs?.engine || DOM.engineSel?.value || 'stream';
+      // DEBUG: dấu vết lượt gửi (đọc bằng: copy(JSON.stringify(window.__jarvisTurnDebug)))
+      window.__jarvisTurnDebug = { model: am, engine: currentEngine, startedAt: new Date().toISOString() };
 
       let gKey = "";
       let keyIndexNum = 1;
@@ -3243,7 +3262,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         const thk = DOM.thinking.value;
 
         // --- ENGINE 0: EXPERIENTIAL LABS GATEWAY (gpt-6-luna, deepseek-v4.1-flash, clef) ---
-        const isExplabsModel = (am === 'gpt-6-luna' || am === 'deepseek-v4.1-flash' || am === 'clef');
+        const isExplabsModel = (am === 'gpt-6-luna' || am === 'deepseek-v4.1-flash' || am === 'qwen4-max:free' || am === 'clef');
         if (isExplabsModel) {
           let expKey = (ls.getItem('explabs_api_key') || '').trim();
           if (expKey.startsWith('JVENC_') || expKey.startsWith('ENC_')) expKey = deobfuscateKey(expKey);
@@ -3340,18 +3359,20 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                 expMessages.push({ role: 'user', content: promptWithTime });
               }
 
+              // Qwen4 Max: reasoning none/low/medium/high (Think Depth minimal -> none)
+              const qwenLevel = ({ minimal: 'none', low: 'low', medium: 'medium', high: 'high' })[DOM.thinking?.value] || 'low';
               const expRes = await fetch('https://api.experientiallabs.ai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization': 'Bearer ' + expKey
                 },
-                body: JSON.stringify({
+                body: JSON.stringify(Object.assign({
                   model: am,
                   messages: expMessages,
                   stream: true,
                   max_tokens: 4096
-                }),
+                }, am === 'qwen4-max:free' ? { reasoning_effort: qwenLevel } : {})),
                 signal: abortController.signal
               });
 
@@ -3366,7 +3387,11 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               let sseBuffer = '';
               let currentThinking = '';
               let currentContent = '';
-              const expModelName = (am === 'gpt-6-luna') ? 'GPT-6 Luna' : (am.includes('deepseek') ? 'DeepSeek' : 'AI');
+              // Đo cách server chia chunk (Qwen vs DeepSeek)
+              let expEvents = 0, expThinkEvents = 0, expTextEvents = 0, firstThinkMs = 0, firstTextMs = 0;
+              const expModelName = (am === 'gpt-6-luna') ? 'GPT-6 Luna'
+                : am.includes('qwen') ? 'Qwen4 Max'
+                : (am.includes('deepseek') ? 'DeepSeek' : 'AI');
 
               while (!sseDone) {
                 const { value, done: streamDone } = await reader.read();
@@ -3383,12 +3408,21 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                     const jsonStr = trimmed.slice(5).trim();
                     try {
                       const parsed = JSON.parse(jsonStr);
+                      expEvents++;
                       const deltaThinking = parsed.choices?.[0]?.delta?.reasoning_content 
                                          || parsed.choices?.[0]?.delta?.reasoning 
                                          || parsed.choices?.[0]?.delta?.thought || '';
                       const deltaText = parsed.choices?.[0]?.delta?.content || '';
-                      if (deltaThinking) currentThinking += deltaThinking;
-                      if (deltaText) currentContent += deltaText;
+                      if (deltaThinking) {
+                        currentThinking += deltaThinking;
+                        expThinkEvents++;
+                        if (!firstThinkMs) firstThinkMs = Math.round(performance.now() - startTime);
+                      }
+                      if (deltaText) {
+                        currentContent += deltaText;
+                        expTextEvents++;
+                        if (!firstTextMs) firstTextMs = Math.round(performance.now() - startTime);
+                      }
                       if (deltaThinking || deltaText) {
                         finalResp = formatThinkingResponse(currentThinking, currentContent, expModelName);
                         renderer.push(finalResp);
@@ -3399,6 +3433,14 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                   }
                 }
               }
+
+              // CHẨN ĐOÁN: events = tổng event SSE, thinkEvents = số event mang suy luận.
+              // thinkEvents <= 2 nghĩa là server gửi suy luận 1 cục (không phải lỗi renderer).
+              console.warn('[ExLabs V68]', am, '| events =', expEvents, '| thinkEvents =', expThinkEvents, '| textEvents =', expTextEvents, '| firstThink =', firstThinkMs, 'ms | firstText =', firstTextMs, 'ms | thinking =', currentThinking.length, 'ký tự | content =', currentContent.length, 'ký tự');
+              window.__jarvisTurnDebug = Object.assign(window.__jarvisTurnDebug || {}, {
+                branch: 'exp-stream', model: am, expEvents, expThinkEvents, expTextEvents,
+                firstThinkMs, firstTextMs, thinkingChars: currentThinking.length, contentChars: currentContent.length
+              });
 
               finalResp = formatFinalThinkingResponse(currentThinking, currentContent, expModelName);
               if (!currentContent.trim() && currentThinking.trim()) {
@@ -3811,10 +3853,12 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           contents.push({ role: 'user', parts: currentParts });
 
           const isFlashLite = am.includes('flash-lite') || am.includes('lite');
+          // Gemma 4 chạy trực tiếp trên Gemini API (không qua OpenRouter): chỉ bật/tắt thinking
+          const isGemma = /^gemma-/.test(am);
           // Gemini 3.5 Flash Lite hỗ trợ thinking theo level và nhận tối đa 65.000 output token.
           const thinkingSupported = !isFlashLite || am === 'gemini-3.5-flash-lite';
-          // Gemini 3.x/4 điều khiển độ sâu bằng thinkingLevel; thinkingBudget là tham số cũ của dòng 2.5.
-          const usesThinkingLevel = /^gemini-(3|4)/.test(am);
+          // Gemini 3.x/4 và Gemma 4 dùng thinkingLevel; thinkingBudget là tham số cũ của dòng 2.5.
+          const usesThinkingLevel = /^(gemini-(3|4)|gemma-)/.test(am);
           // 3.8 Flash và dòng Gemini 4 KHÔNG nhận mức 'minimal' -> hạ về 'low' để tránh request bị treo
           const noMinimalLevel = /^gemini-(3\.8|4)/.test(am);
           const thinkLevel = (thk === 'minimal' && noMinimalLevel) ? 'low' : thk;
@@ -3823,16 +3867,24 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           // maxOutputTokens của Gemini tính CHUNG thinking + output. Để 8192 khi bật thinking
           // thì thinking ăn hết hạn mức -> model không còn chỗ xuất chữ và stream bị treo.
           // Vì thế: 8192 khi KHÔNG thinking, 32768 khi CÓ thinking (3.5 Flash Lite giữ 65000).
-          const maxOutputTokens = am === 'gemini-3.5-flash-lite' ? 65000 : (wantsThinking ? 32768 : 8192);
+          const maxOutputTokens = isGemma ? 8192
+            : (am === 'gemini-3.5-flash-lite' ? 65000 : (wantsThinking ? 32768 : 8192));
           const config = {
             systemInstruction: getDynamicSI(ragSnippet),
-            safetySettings: SAFETY,
             maxOutputTokens
           };
+          // Gemma 4 không nhận safetySettings -> chỉ gửi với model Gemini
+          if (!isGemma) config.safetySettings = SAFETY;
           if (wantsThinking) {
-            config.thinkingConfig = usesThinkingLevel
-              ? { thinkingLevel: thinkLevel, includeThoughts: true }
-              : { thinkingBudget: budgetMap[thk] || 4096, includeThoughts: true };
+            if (isGemma) {
+              // Gemma 4 CHỈ có công tắc bật/tắt (không có mức trung gian):
+              // Min = minimal (tắt suy luận), Low/Med/High = high (bật suy luận).
+              config.thinkingConfig = { thinkingLevel: (thinkLevel === 'minimal' ? 'minimal' : 'high') };
+            } else {
+              config.thinkingConfig = usesThinkingLevel
+                ? { thinkingLevel: thinkLevel, includeThoughts: true }
+                : { thinkingBudget: budgetMap[thk] || 4096, includeThoughts: true };
+            }
           } else {
             config.temperature = DOM.temp?.value !== undefined ? +DOM.temp.value : 0.5;
             config.topP = DOM.topP?.value !== undefined ? +DOM.topP.value : 0.9;
@@ -3843,8 +3895,11 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           const maxStreamAttempts = Math.max(Math.min(apiKeys.length || 1, 3), 2);
           let currentThinking = "";
           let currentContent = "";
+          // Đếm chunk để biết Google có stream thật hay chỉ trả 1 cục
+          let mainChunks = 0, mainTextChunks = 0;
           // Chẩn đoán: in ra đúng cấu hình gửi Google để đối chiếu khi request bị treo
-          console.info('[Gemini] model =', am, '| thk =', thk, '| thinking =', JSON.stringify(config.thinkingConfig || null), '| maxOutputTokens =', config.maxOutputTokens);
+          console.warn('[Gemini V68] model =', am, '| thk =', thk, '| thinking =', JSON.stringify(config.thinkingConfig || null), '| maxOutputTokens =', config.maxOutputTokens);
+          window.__jarvisTurnDebug = Object.assign(window.__jarvisTurnDebug || {}, { branch: 'google-stream', thinkingConfig: config.thinkingConfig || null, maxOutputTokens: config.maxOutputTokens });
 
           while (streamAttempts < maxStreamAttempts) {
             streamAttempts++;
@@ -3875,7 +3930,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                   gotFirstChunk = true;
                   stopStallTimer();
                   // Tách rõ 2 chặng: chờ headers (phía Google) vs chờ model nghĩ (sau headers)
-                  console.info('[Gemini] headers =', headersMs, 'ms | chunk đầu sau headers =', Math.round(performance.now() - attemptStart) - headersMs, 'ms | attempt #' + streamAttempts);
+                  console.warn('[Gemini V68] headers =', headersMs, 'ms | chunk đầu sau headers =', Math.round(performance.now() - attemptStart) - headersMs, 'ms | attempt #' + streamAttempts);
                 }
                 const reason = ck.candidates?.[0]?.finishReason;
                 if (reason && reason !== 'STOP') streamFinishReason = reason;
@@ -3898,6 +3953,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                   } catch (_) {}
                 }
 
+                mainChunks++;
+                if (deltaText) mainTextChunks++;
                 if (deltaThought) currentThinking += deltaThought;
                 if (deltaText) currentContent += deltaText;
 
@@ -4038,6 +4095,50 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           } else if (streamFinishReason === 'RECITATION') {
             finalResp += '\n\n*(⚠️ Nội dung tiếp theo bị ngắt do phát hiện trùng lặp bản quyền - Recitation)*';
             showToast("Nội dung bị dừng do phát hiện trùng lặp bản quyền!", "warning");
+          }
+
+          console.warn('[Gemini V68] stream chính: ' + mainChunks + ' chunk, trong đó ' + mainTextChunks + ' chunk có text | thinking=' + currentThinking.length + ' ký tự | content=' + currentContent.length + ' ký tự');
+          window.__jarvisTurnDebug = Object.assign(window.__jarvisTurnDebug || {}, { mainChunks, mainTextChunks, thinkingChars: currentThinking.length, contentChars: currentContent.length });
+
+          // FAIL-SAFE 2: Model chỉ trả về suy luận mà không có câu trả lời (Gemma 4 hay gặp khi bật
+          // thinking) -> hỏi lại 1 lần với thinking TẮT để chắc chắn người dùng có câu trả lời.
+          if (!currentContent.trim() && currentThinking.trim() && !abortController.signal.aborted) {
+            try {
+              console.warn('[Gemma] Chỉ nhận được suy luận -> hỏi lại với thinking TẮT ở dạng STREAM để chữ chạy dần...');
+              const retryCfg = { ...config, maxOutputTokens: 8192 };
+              if (isGemma) retryCfg.thinkingConfig = { thinkingLevel: 'minimal' };
+              else delete retryCfg.thinkingConfig;
+              const retryStream = await new GoogleGenAI({ apiKey: gKey }).models.generateContentStream({
+                model: am,
+                contents,
+                config: retryCfg,
+                abortSignal: abortController.signal
+              });
+              let retryChunks = 0, retryTextChunks = 0;
+              for await (const rck of retryStream) {
+                retryChunks++;
+                let rText = '';
+                const rParts = rck.candidates?.[0]?.content?.parts;
+                if (rParts) {
+                  for (const p of rParts) {
+                    if (!p.thought && typeof p.text === 'string') rText += p.text;
+                  }
+                } else {
+                  try { rText = rck.text || ''; } catch (_) {}
+                }
+                if (rText) {
+                  retryTextChunks++;
+                  currentContent += rText;
+                  finalResp = formatThinkingResponse(currentThinking, currentContent, 'Gemini');
+                  renderer.push(finalResp);
+                  pS = true;
+                }
+              }
+              console.warn('[Gemini V68] stream hỏi lại: ' + retryChunks + ' chunk, trong đó ' + retryTextChunks + ' chunk có text');
+              window.__jarvisTurnDebug = Object.assign(window.__jarvisTurnDebug || {}, { retryChunks, retryTextChunks });
+            } catch (rErr) {
+              console.warn('[Gemma] Lần hỏi lại không thinking lỗi:', rErr?.message || rErr);
+            }
           }
 
           if (currentThinking || currentContent) {
