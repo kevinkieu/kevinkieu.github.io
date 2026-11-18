@@ -714,10 +714,6 @@
               <label class="field-label">⚡ Experiential Labs API Key (gpt-6-luna, deepseek-v4.1-flash, qwen4-max:free, clef):</label>
               <input type="password" id="explabs-key-input" placeholder="xpl_..." class="modern-input">
             </div>
-            <div>
-              <label class="field-label">🛰️ OpenRouter API Key (nvidia/nemotron-3.5-lightning:free, particle-ai/particle-1:free, baidu/ernie-5.5-flash-preview:free, google/gemma-4-26b-a4b-it:free, google/gemma-4-31b-it:free):</label>
-              <input type="password" id="openrouter-key-input" placeholder="sk-or-v1-..." class="modern-input">
-            </div>
             <div style="margin-top:6px;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);">
               <label style="cursor:pointer;font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:8px;margin:0;">
                 <input type="checkbox" id="hide-deepseek-thinking-checkbox"> 🙈 Ẩn hoàn toàn khối suy luận (DeepSeek & Gemini - chỉ hiện kết quả)
@@ -783,6 +779,23 @@
             <button id="btn-check-keys" class="btn">🔍 Kiểm tra Keys</button>
             <button id="btn-check-duplicates" class="btn">👯 Kiểm tra Trùng</button>
             <span id="key-status-msg" style="font-size:.78rem;font-weight:600;"></span>
+          </div>
+        </fieldset>
+
+        <!-- 5 OPENROUTER API KEYS -->
+        <fieldset class="settings-group" style="border-color:#f59e0b;background:rgba(245,158,11,0.04);">
+          <legend style="color:#f59e0b;font-weight:700;">🛰️ 5 OpenRouter API Keys</legend>
+          <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
+            <span class="field-label">🔑 OpenRouter API Key (xoay tua):</span>
+            <select id="openrouter-key-select" class="modern-select" style="flex:1;">
+              <option value="auto">🔄 Tự động xoay tua</option>
+            </select>
+          </div>
+          <div class="api-keys-grid" id="openrouter-keys-container" style="margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button id="btn-check-openrouter-keys" class="btn">🔍 Kiểm tra OpenRouter</button>
+            <button id="btn-check-openrouter-duplicates" class="btn">👯 Kiểm tra Trùng</button>
+            <span id="openrouter-key-status-msg" style="font-size:.78rem;font-weight:600;"></span>
           </div>
         </fieldset>
       </div>
@@ -1688,7 +1701,7 @@
   <!-- JAVASCRIPT APPLICATION MODULES -->
   <script type="module" src="./js/tools.js?v=73"></script>
   <script type="module" src="./js/export.js?v=73"></script>
-  <script type="module" src="./js/quota.js?v=73"></script>
+  <script type="module" src="./js/quota.js?v=74"></script>
   <script type="module" src="./js/medication.js?v=73"></script>
   <script type="module" src="./js/commands.js?v=73"></script>
     <script type="module" src="./js/briefing.js?v=73"></script>
@@ -1696,7 +1709,7 @@
   <script type="module" src="./js/database.js?v=73"></script>
   <script type="module" src="./js/app.js?v=73"></script>
     <script type="module" src="./js/api-keys.js?v=73"></script>
-  <script type="module" src="./js/sync.js?v=73"></script>
+  <script type="module" src="./js/sync.js?v=74"></script>
   <script type="module" src="./js/live.js?v=73"></script>
   <script type="module" src="./js/tts.js?v=73"></script>
   <script type="module" src="./js/translate.js?v=73"></script>

@@ -91,6 +91,14 @@
     } catch (_) {}
   }
 
+  function setKeyUsageData(data) {
+    if (!data || typeof data !== 'object' || !data.keys) return;
+    const curCycle = getCurrentQuotaCycle();
+    const value = data.cycle === curCycle ? data : { cycle: curCycle, keys: {} };
+    saveKeyUsageData(value);
+    updateKeyQuotaUI();
+  }
+
   function getKeyUsageCount(slotIndex, specificModelBucket = null) {
     const data = loadKeyUsageData();
     const rawSlot = data.keys[String(slotIndex)];
@@ -250,11 +258,19 @@
 
   function getKeyBadgeHtml(keyNum, modelName = null) {
     if (!keyNum) return '';
-    const n = (ls.getItem(`jarvis_api_name_${keyNum}`) || ls.getItem(`huanmu_api_name_${keyNum}`) || '').trim();
-    const label = n ? `Key #${keyNum} (${n})` : `Key #${keyNum}`;
+    // Kiểm tra nếu là OpenRouter key (model OpenRouter)
+    const isOR = (modelName && (modelName.includes('nvidia/') || modelName.includes('particle-ai/') || modelName.includes('baidu/') || modelName.includes('google/gemma-4-') || modelName.includes(':free')));
+    let n, label;
+    if (isOR) {
+      n = (ls.getItem(`jarvis_openrouter_api_name_${keyNum}`) || '').trim();
+      label = n ? `OR Key #${keyNum} (${n})` : `OR Key #${keyNum}`;
+    } else {
+      n = (ls.getItem(`jarvis_api_name_${keyNum}`) || ls.getItem(`huanmu_api_name_${keyNum}`) || '').trim();
+      label = n ? `Key #${keyNum} (${n})` : `Key #${keyNum}`;
+    }
     const bucket = modelName ? getFlashModelBucket(modelName) : getSelectedFlashModelBucket();
     const bucketTag = bucket ? (bucket === 'hydrogen' ? ' · H4' : ` · ${bucket}`) : '';
-    return `<span class="key-indicator-badge" title="Tin nhắn này được phản hồi bằng Google ${escapeHtml(label)}${bucketTag}" style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:rgba(59,130,246,0.12);color:#3b82f6;font-weight:600;margin-left:6px;border:1px solid rgba(59,130,246,0.3);display:inline-flex;align-items:center;gap:3px;vertical-align:middle;cursor:default;">🔑 ${escapeHtml(label)}${bucketTag}</span>`;
+    return `<span class="key-indicator-badge" title="Tin nhắn này được phản hồi bằng ${isOR ? 'OpenRouter' : 'Google'} ${escapeHtml(label)}${bucketTag}" style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:${isOR ? 'rgba(245,158,11,0.12)' : 'rgba(59,130,246,0.12)'};color:${isOR ? '#f59e0b' : '#3b82f6'};font-weight:600;margin-left:6px;border:1px solid ${isOR ? 'rgba(245,158,11,0.3)' : 'rgba(59,130,246,0.3)'};display:inline-flex;align-items:center;gap:3px;vertical-align:middle;cursor:default;">${isOR ? '🛰️' : '🔑'} ${escapeHtml(label)}${bucketTag}</span>`;
   }
 
   function renderKeyQuotaPopoverList() {
@@ -423,6 +439,7 @@
   // Xuất các hàm ra window để app.js, sync.js và inline HTML gọi
   window.loadKeyUsageData = loadKeyUsageData;
   window.saveKeyUsageData = saveKeyUsageData;
+  window.setKeyUsageData = setKeyUsageData;
   window.getKeyUsageCount = getKeyUsageCount;
   window.recordKeyRequest = recordKeyRequest;
   window.mergeRemoteKeyUsage = mergeRemoteKeyUsage;
@@ -437,5 +454,166 @@
   window.openKeyQuotaModal = openKeyQuotaModal;
   window.closeKeyQuotaModal = closeKeyQuotaModal;
   window.resetKeyUsageToday = resetKeyUsageToday;
+
+  // OpenRouter key rotation + usage counter (5 keys)
+  function normalizeOpenRouterUsageData(data) {
+    const normalized = { cycle: data?.cycle || getCurrentQuotaCycle(), keys: {} };
+    if (!data?.keys || typeof data.keys !== 'object') return normalized;
+    for (const [slotKey, slot] of Object.entries(data.keys)) {
+      if (!slot || typeof slot !== 'object') continue;
+      normalized.keys[slotKey] = {};
+      for (const [model, countOrDevices] of Object.entries(slot)) {
+        if (countOrDevices && typeof countOrDevices === 'object' && !Array.isArray(countOrDevices)) {
+          normalized.keys[slotKey][model] = {};
+          for (const [deviceId, count] of Object.entries(countOrDevices)) {
+            normalized.keys[slotKey][model][deviceId] = Number(count) || 0;
+          }
+        } else {
+          // Dữ liệu cũ không có device ID: giữ nguyên tổng cũ dưới khóa legacy.
+          normalized.keys[slotKey][model] = { legacy: Number(countOrDevices) || 0 };
+        }
+      }
+    }
+    return normalized;
+  }
+
+  let openRouterUsageData = { cycle: getCurrentQuotaCycle(), keys: {} };
+  try {
+    const raw = ls.getItem('jarvis_openrouter_usage');
+    if (raw) openRouterUsageData = normalizeOpenRouterUsageData(JSON.parse(raw));
+  } catch (_) {}
+  if (!openRouterUsageData.keys) openRouterUsageData.keys = {};
+  // Sang chu kỳ mới (14:00 giờ VN) thì bộ đếm OpenRouter tự về 0 như bên Google
+  if (openRouterUsageData.cycle !== getCurrentQuotaCycle()) {
+    openRouterUsageData = { cycle: getCurrentQuotaCycle(), keys: {} };
+    saveOpenRouterUsageData();
+  }
+
+  function saveOpenRouterUsageData() {
+    try { ls.setItem('jarvis_openrouter_usage', JSON.stringify(openRouterUsageData)); } catch (_) {}
+  }
+
+  function loadOpenRouterUsageData() {
+    const curCycle = getCurrentQuotaCycle();
+    if (openRouterUsageData.cycle !== curCycle) openRouterUsageData = { cycle: curCycle, keys: {} };
+    if (!openRouterUsageData.keys || typeof openRouterUsageData.keys !== 'object') openRouterUsageData.keys = {};
+    openRouterUsageData = normalizeOpenRouterUsageData(openRouterUsageData);
+    return JSON.parse(JSON.stringify(openRouterUsageData));
+  }
+
+  function setOpenRouterUsageData(data) {
+    if (!data || typeof data !== 'object' || !data.keys) return;
+    const curCycle = getCurrentQuotaCycle();
+    openRouterUsageData = data.cycle === curCycle ? normalizeOpenRouterUsageData(data) : { cycle: curCycle, keys: {} };
+    saveOpenRouterUsageData();
+    updateOpenRouterQuotaUI();
+  }
+
+  function mergeRemoteOpenRouterUsage(remoteUsage) {
+    if (!remoteUsage || remoteUsage.cycle !== getCurrentQuotaCycle() || !remoteUsage.keys) return false;
+    loadOpenRouterUsageData();
+    let changed = false;
+    for (const [slotKey, remoteSlot] of Object.entries(remoteUsage.keys)) {
+      if (!remoteSlot || typeof remoteSlot !== 'object') continue;
+      if (!openRouterUsageData.keys[slotKey]) openRouterUsageData.keys[slotKey] = {};
+      const normalizedRemoteSlot = normalizeOpenRouterUsageData({ keys: { [slotKey]: remoteSlot } }).keys[slotKey];
+      for (const [model, remoteDevices] of Object.entries(normalizedRemoteSlot)) {
+        if (!openRouterUsageData.keys[slotKey][model]) openRouterUsageData.keys[slotKey][model] = {};
+        for (const [deviceId, count] of Object.entries(remoteDevices)) {
+          const remoteCount = Number(count) || 0;
+          const localCount = Number(openRouterUsageData.keys[slotKey][model][deviceId]) || 0;
+          if (remoteCount > localCount) {
+            openRouterUsageData.keys[slotKey][model][deviceId] = remoteCount;
+            changed = true;
+          }
+        }
+      }
+    }
+    if (changed) {
+      saveOpenRouterUsageData();
+      updateOpenRouterQuotaUI();
+    }
+    return changed;
+  }
+
+  function isLocalOpenRouterUsageAhead(remoteUsage) {
+    if (!remoteUsage || remoteUsage.cycle !== getCurrentQuotaCycle() || !remoteUsage.keys) return false;
+    const local = loadOpenRouterUsageData();
+    for (const [slotKey, localSlot] of Object.entries(local.keys)) {
+      for (const [model, devices] of Object.entries(localSlot || {})) {
+        for (const [deviceId, count] of Object.entries(devices || {})) {
+          if ((Number(count) || 0) > (Number(remoteUsage.keys?.[slotKey]?.[model]?.[deviceId]) || 0)) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function getOpenRouterUsageCount(slotIndex) {
+    const slot = openRouterUsageData.keys[String(slotIndex)];
+    if (!slot) return 0;
+    return Object.values(slot).reduce((sum, devices) => sum + Object.values(devices || {}).reduce((modelSum, count) => modelSum + (Number(count) || 0), 0), 0);
+  }
+
+  function recordOpenRouterRequest(slotIndex, model) {
+    const curCycle = getCurrentQuotaCycle();
+    if (openRouterUsageData.cycle !== curCycle) {
+      openRouterUsageData = { cycle: curCycle, keys: {} };
+    }
+    const slotKey = String(slotIndex);
+    const modelKey = model || 'unknown';
+    if (!openRouterUsageData.keys[slotKey]) openRouterUsageData.keys[slotKey] = {};
+    if (!openRouterUsageData.keys[slotKey][modelKey]) openRouterUsageData.keys[slotKey][modelKey] = {};
+    const deviceId = getMyDeviceId();
+    openRouterUsageData.keys[slotKey][modelKey][deviceId] = (openRouterUsageData.keys[slotKey][modelKey][deviceId] || 0) + 1;
+    saveOpenRouterUsageData();
+    updateOpenRouterQuotaUI();
+    if (typeof window.JarvisSync?.scheduleAutoSync === 'function') {
+      window.JarvisSync.scheduleAutoSync(5000);
+    }
+  }
+
+  function updateOpenRouterQuotaUI() {
+    // Cập nhật badge trong ô nhập OpenRouter
+    for (let i = 1; i <= 5; i++) {
+      const badge = $(`openrouter-key-badge-${i}`);
+      if (badge) {
+        const u = getOpenRouterUsageCount(i);
+        badge.innerHTML = `OR: ${u} req`;
+      }
+    }
+    // Popover OpenRouter (nếu có)
+    const listEl = $('openrouter-key-quota-list');
+    if (listEl) {
+      let html = '';
+      let hasAnyKey = false;
+      for (let i = 1; i <= 5; i++) {
+        let k = (ls.getItem(`jarvis_openrouter_api_${i}`) || '').trim();
+        if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
+        const n = (ls.getItem(`jarvis_openrouter_api_name_${i}`) || `OR Key ${i}`).trim();
+        if (!k) continue;
+        hasAnyKey = true;
+        const u = getOpenRouterUsageCount(i);
+        html += `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-card);font-size:0.78rem;margin-bottom:4px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-weight:700;color:var(--text-muted);min-width:20px;">#${i}</span>
+              <div><strong>${escapeHtml(n)}</strong> <span style="font-size:0.7rem;color:var(--text-muted);">(${k.slice(0, 5)}...)</span></div>
+            </div>
+            <span style="font-size:0.68rem;padding:2px 5px;border-radius:4px;background:rgba(245,158,11,0.15);color:#f59e0b;font-weight:600;">${u} req</span>
+          </div>
+        `;
+      }
+      listEl.innerHTML = hasAnyKey ? html : '<div style="font-size:0.75rem;color:var(--text-muted);text-align:center;padding:12px;">Chưa có OpenRouter key nào.</div>';
+    }
+  }
+
+  window.getOpenRouterUsageCount = getOpenRouterUsageCount;
+  window.recordOpenRouterRequest = recordOpenRouterRequest;
+  window.updateOpenRouterQuotaUI = updateOpenRouterQuotaUI;
+  window.loadOpenRouterUsageData = loadOpenRouterUsageData;
+  window.setOpenRouterUsageData = setOpenRouterUsageData;
+  window.mergeRemoteOpenRouterUsage = mergeRemoteOpenRouterUsage;
+  window.isLocalOpenRouterUsageAhead = isLocalOpenRouterUsageAhead;
 
 })();

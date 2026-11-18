@@ -23,6 +23,31 @@
   const getGoogleKeyNamesList = () => (typeof window.getGoogleKeyNamesList === 'function') ? window.getGoogleKeyNamesList() : [];
   const setGoogleKeyNamesList = n => window.setGoogleKeyNamesList && window.setGoogleKeyNamesList(n);
   const setGoogleKeysList = k => window.setGoogleKeysList && window.setGoogleKeysList(k);
+  const getOpenRouterKeysList = obfuscate => Array.from({ length: 5 }, (_, i) => {
+    const raw = (ls.getItem(`jarvis_openrouter_api_${i + 1}`) || '').trim();
+    const key = raw.startsWith('JVENC_') || raw.startsWith('ENC_') ? deobfuscateKey(raw) : raw;
+    return obfuscate && key ? obfuscateKey(key) : key;
+  });
+  const getOpenRouterKeyNamesList = () => Array.from({ length: 5 }, (_, i) => (ls.getItem(`jarvis_openrouter_api_name_${i + 1}`) || '').trim());
+  const setOpenRouterKeysList = keys => {
+    if (!Array.isArray(keys)) return;
+    for (let i = 1; i <= 5; i++) {
+      let key = (keys[i - 1] || '').trim();
+      if (key.startsWith('JVENC_') || key.startsWith('ENC_')) key = deobfuscateKey(key);
+      ls.setItem(`jarvis_openrouter_api_${i}`, key);
+      if ($(`openrouter-key-${i}`)) $(`openrouter-key-${i}`).value = key;
+    }
+    window.initOpenRouterKeys?.();
+  };
+  const setOpenRouterKeyNamesList = names => {
+    if (!Array.isArray(names)) return;
+    for (let i = 1; i <= 5; i++) {
+      const name = (names[i - 1] || '').trim();
+      ls.setItem(`jarvis_openrouter_api_name_${i}`, name);
+      if ($(`openrouter-key-name-${i}`)) $(`openrouter-key-name-${i}`).value = name;
+    }
+    window.initOpenRouterKeys?.();
+  };
   const getExternalConfigsObj = obf => (typeof window.getExternalConfigsObj === 'function') ? window.getExternalConfigsObj(obf) : {};
   const setExternalConfigsObj = obj => window.setExternalConfigsObj && window.setExternalConfigsObj(obj);
   const deobfuscateKey = k => (typeof window.deobfuscateKey === 'function') ? window.deobfuscateKey(k) : k;
@@ -382,6 +407,37 @@
               }
             }
 
+            // D1. HỢP NHẤT TÊN GOOGLE KEY VÀ 5 KEY + TÊN OPENROUTER VÀO CÁC Ô TRỐNG
+            if (Array.isArray(cloudData.settings?.keyNames)) {
+              const localNames = getGoogleKeyNamesList();
+              const mergedNames = localNames.map((name, i) => name || (cloudData.settings.keyNames[i] || ''));
+              if (mergedNames.some((name, i) => name !== localNames[i])) {
+                setGoogleKeyNamesList(mergedNames);
+                hasChanges = true;
+              }
+            }
+            if (Array.isArray(cloudData.settings?.openRouterKeys)) {
+              const localKeys = getOpenRouterKeysList(false);
+              const remoteKeys = cloudData.settings.openRouterKeys;
+              const mergedKeys = localKeys.map((key, i) => {
+                let remoteKey = (remoteKeys[i] || '').trim();
+                if (remoteKey.startsWith('JVENC_') || remoteKey.startsWith('ENC_')) remoteKey = deobfuscateKey(remoteKey);
+                return key || remoteKey;
+              });
+              if (mergedKeys.some((key, i) => key !== localKeys[i])) {
+                setOpenRouterKeysList(mergedKeys);
+                hasChanges = true;
+              }
+            }
+            if (Array.isArray(cloudData.settings?.openRouterKeyNames)) {
+              const localNames = getOpenRouterKeyNamesList();
+              const mergedNames = localNames.map((name, i) => name || (cloudData.settings.openRouterKeyNames[i] || ''));
+              if (mergedNames.some((name, i) => name !== localNames[i])) {
+                setOpenRouterKeyNamesList(mergedNames);
+                hasChanges = true;
+              }
+            }
+
             // D2. HỢP NHẤT CẤU HÌNH NGOÀI & API KEY DỊCH VỤ ĐÃ MÃ HÓA
             // (Tavily, Serper, Experiential Labs, OpenRouter...).
             // Nguyên tắc: máy nào đã có key thì giữ nguyên, chỉ nhận từ Cloud khi ô đó đang trống.
@@ -408,6 +464,10 @@
             // E. HỢP NHẤT BỘ ĐẾM HẠN NGẠCH KEY FLASH (DISTRIBUTED G-COUNTER)
             if (cloudData.keyUsageFlash && typeof window.mergeRemoteKeyUsage === 'function') {
               const usageChanged = window.mergeRemoteKeyUsage(cloudData.keyUsageFlash);
+              if (usageChanged) hasChanges = true;
+            }
+            if (cloudData.keyUsageOpenRouter && typeof window.mergeRemoteOpenRouterUsage === 'function') {
+              const usageChanged = window.mergeRemoteOpenRouterUsage(cloudData.keyUsageOpenRouter);
               if (usageChanged) hasChanges = true;
             }
 
@@ -538,6 +598,34 @@
               isLocalAhead = true;
             }
           }
+          if (!isLocalAhead && cloudData?.keyUsageOpenRouter && typeof window.isLocalOpenRouterUsageAhead === 'function') {
+            if (window.isLocalOpenRouterUsageAhead(cloudData.keyUsageOpenRouter)) isLocalAhead = true;
+          }
+
+          // 5. Kiểm tra Google/OpenRouter keys và tên gợi nhớ có thay đổi cục bộ không
+          if (!isLocalAhead) {
+            const localGoogleKeys = getGoogleKeysList();
+            const localGoogleNames = getGoogleKeyNamesList();
+            const remoteGoogleKeys = cloudData.settings?.keys || [];
+            const remoteGoogleNames = cloudData.settings?.keyNames || [];
+            const localOrKeys = getOpenRouterKeysList(false);
+            const localOrNames = getOpenRouterKeyNamesList();
+            const remoteOrKeys = cloudData.settings?.openRouterKeys || [];
+            const remoteOrNames = cloudData.settings?.openRouterKeyNames || [];
+            const sameKey = (local, remote) => {
+              let value = (remote || '').trim();
+              if (value.startsWith('JVENC_') || value.startsWith('ENC_')) value = deobfuscateKey(value);
+              return (local || '').trim() === value;
+            };
+            for (let i = 0; i < 10 && !isLocalAhead; i++) {
+              if ((localGoogleKeys[i] && !sameKey(localGoogleKeys[i], remoteGoogleKeys[i])) ||
+                  (localGoogleNames[i] && localGoogleNames[i] !== (remoteGoogleNames[i] || ''))) isLocalAhead = true;
+            }
+            for (let i = 0; i < 5 && !isLocalAhead; i++) {
+              if ((localOrKeys[i] && !sameKey(localOrKeys[i], remoteOrKeys[i])) ||
+                  (localOrNames[i] && localOrNames[i] !== (remoteOrNames[i] || ''))) isLocalAhead = true;
+            }
+          }
 
           // 5. Kiểm tra CẤU HÌNH NGOÀI (Tavily, Serper, Experiential Labs, OpenRouter...)
           // Máy này vừa nhập/đổi API key mà chưa chat thêm cũng phải được đẩy lên Cloud,
@@ -630,9 +718,12 @@
             medications: JSON.parse(ls.getItem('jarvis_medications') || '[]'),
             medHistory: JSON.parse(ls.getItem('jarvis_med_history') || '[]'),
             keyUsageFlash: (typeof window.loadKeyUsageData === 'function') ? window.loadKeyUsageData() : null,
+            keyUsageOpenRouter: (typeof window.loadOpenRouterUsageData === 'function') ? window.loadOpenRouterUsageData() : null,
             settings: {
               keys: getGoogleKeysList(true),
               keyNames: getGoogleKeyNamesList(),
+              openRouterKeys: getOpenRouterKeysList(true),
+              openRouterKeyNames: getOpenRouterKeyNamesList(),
               externalConfigs: getExternalConfigsObj(true),
               model: getDOM().model?.value || 'gemini-3.6-flash',
               temperature: getDOM().temp?.value || 0.5,
@@ -869,9 +960,12 @@
           medications: JSON.parse(ls.getItem('jarvis_medications') || '[]'),
           medHistory: JSON.parse(ls.getItem('jarvis_med_history') || '[]'),
           keyUsageFlash: (typeof window.loadKeyUsageData === 'function') ? window.loadKeyUsageData() : null,
+          keyUsageOpenRouter: (typeof window.loadOpenRouterUsageData === 'function') ? window.loadOpenRouterUsageData() : null,
           settings: {
             keys: getGoogleKeysList(true),
             keyNames: getGoogleKeyNamesList(),
+            openRouterKeys: getOpenRouterKeysList(true),
+            openRouterKeyNames: getOpenRouterKeyNamesList(),
             externalConfigs: getExternalConfigsObj(true),
             model: getDOM().model?.value || 'gemini-3.6-flash',
             temperature: getDOM().temp?.value || 0.5,
@@ -964,6 +1058,8 @@
         if (parsed.settings) {
           if (parsed.settings.keys) setGoogleKeysList(parsed.settings.keys);
           if (parsed.settings.keyNames) setGoogleKeyNamesList(parsed.settings.keyNames);
+          if (parsed.settings.openRouterKeys) setOpenRouterKeysList(parsed.settings.openRouterKeys);
+          if (parsed.settings.openRouterKeyNames) setOpenRouterKeyNamesList(parsed.settings.openRouterKeyNames);
           if (parsed.settings.externalConfigs) setExternalConfigsObj(parsed.settings.externalConfigs);
           if (parsed.settings.model && getDOM().model) getDOM().model.value = parsed.settings.model;
           if (parsed.settings.temperature && getDOM().temp) {
@@ -980,6 +1076,15 @@
           if (parsed.settings.autoLearnMemory) ls.setItem('jarvis_auto_learn_memory', parsed.settings.autoLearnMemory);
           if (parsed.settings.ragEnabled) ls.setItem('jarvis_rag_enabled', parsed.settings.ragEnabled);
         }
+
+        if (parsed.keyUsageFlash && typeof window.setKeyUsageData === 'function') {
+          window.setKeyUsageData(parsed.keyUsageFlash);
+        }
+        if (parsed.keyUsageOpenRouter && typeof window.setOpenRouterUsageData === 'function') {
+          window.setOpenRouterUsageData(parsed.keyUsageOpenRouter);
+        }
+        window.updateKeyQuotaUI?.();
+        window.updateOpenRouterQuotaUI?.();
 
         let importedKCount = 0;
         if (parsed.knowledgeBase && Array.isArray(parsed.knowledgeBase) && window.JarvisRAG && typeof window.JarvisRAG.importKnowledge === 'function') {

@@ -19,11 +19,12 @@
     ['tavily-key-input', 'tavily_api_key'],
     ['serper-key-input', 'serper_api_key'],
     ['explabs-key-input', 'explabs_api_key'],
-    ['openrouter-key-input', 'openrouter_api_key'],
     ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
     ['web-extract-engine-input', 'web_extract_engine', 'auto'],
     ['live-temperature', 'live_temperature', '0.7']
   ];
+
+  const OR_KEY_COUNT = 5;
 
   // Render container 10 dòng API keys (giữ nguyên template từ app.js)
   const container = $('api-keys-container');
@@ -38,9 +39,36 @@
     `).join('');
   }
 
+  // Render container 5 dòng OpenRouter API keys (xoay tua)
+  const orContainer = $('openrouter-keys-container');
+  if (orContainer) {
+    orContainer.innerHTML = Array.from({ length: OR_KEY_COUNT }, (_, i) => `
+      <div class="api-key-row" style="display:flex;gap:6px;align-items:center;">
+        <span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);min-width:30px;text-align:center;background:rgba(255,255,255,0.05);padding:6px 0;border-radius:var(--radius-sm);border:1px solid var(--border);">#${i+1}</span>
+        <input type="text" id="openrouter-key-name-${i+1}" placeholder="Tên gợi nhớ ${i+1}" class="modern-input" style="width:115px;flex:0 0 115px;font-size:0.8rem;padding:7px 10px;" title="Tên gợi nhớ cho OpenRouter Key ${i+1}">
+        <input type="password" id="openrouter-key-${i+1}" placeholder="OpenRouter API Key ${i+1} (sk-or-v1-...)" class="modern-input" style="flex:1;min-width:110px;font-size:0.8rem;padding:7px 10px;" title="Dán OpenRouter API Key vào đây">
+        <span id="openrouter-key-badge-${i+1}" style="font-size:0.68rem;font-weight:700;padding:4px 6px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.05);white-space:nowrap;border:1px solid var(--border);flex-shrink:0;">OR: 0 req</span>
+      </div>
+    `).join('');
+  }
+
   // Đọc key + tên từ localStorage (hỗ trợ 3 bộ key cũ: jarvis_/huanmu_/javiss_)
   const readRawKey = i => (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
   const readRawName = i => (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || "").trim();
+  const readRawOrKey = i => (ls.getItem(`jarvis_openrouter_api_${i}`) || "").trim();
+  const readRawOrName = i => (ls.getItem(`jarvis_openrouter_api_name_${i}`) || "").trim();
+
+  // Tìm số thứ tự ô (1..5) của một OpenRouter key — giống findSlotIndexForKey của Google,
+  // để key thứ N sau khi lọc bỏ ô trống vẫn được đếm đúng vào ô ban đầu.
+  const findOpenRouterSlotIndexForKey = key => {
+    if (!key) return 1;
+    for (let i = 1; i <= OR_KEY_COUNT; i++) {
+      let k = readRawOrKey(i);
+      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
+      if (k === key) return i;
+    }
+    return 1;
+  };
 
   // --- INIT API KEYS FROM LOCALSTORAGE ---
   function initAPIKeys() {
@@ -86,6 +114,48 @@
       if ([...d.options].some(o => o.value === cur)) d.value = cur;
     });
     if (typeof window.updateKeyQuotaUI === 'function') window.updateKeyQuotaUI();
+  }
+
+  // --- INIT OPENROUTER KEYS FROM LOCALSTORAGE ---
+  function initOpenRouterKeys() {
+    const keys = [];
+    for (let i = 1; i <= OR_KEY_COUNT; i++) {
+      let k = readRawOrKey(i);
+      const n = readRawOrName(i);
+      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
+        k = deobfuscateKey(k);
+        ls.setItem(`jarvis_openrouter_api_${i}`, k);
+      }
+      const el = $(`openrouter-key-${i}`);
+      if (el) el.value = k;
+      const nameEl = $(`openrouter-key-name-${i}`);
+      if (nameEl) nameEl.value = n;
+      if (k) keys.push(k);
+    }
+    window.openRouterKeys = keys;
+    window.openRouterKeyIndex = 0;
+
+    const s = $('openrouter-key-status-msg');
+    if (s) {
+      s.innerText = keys.length ? `✅ Có ${keys.length} OpenRouter Key` : "⚠️ Chưa có Key";
+      s.style.color = keys.length ? "var(--success)" : "var(--danger)";
+    }
+    const sel = $('openrouter-key-select');
+    if (sel) {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="auto">🔄 Tự động xoay Key</option>';
+      for (let i = 1; i <= OR_KEY_COUNT; i++) {
+        let k = readRawOrKey(i);
+        const n = readRawOrName(i);
+        if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
+        if (k) {
+          const label = n ? `🔑 ${n} (${k.substring(0, 5)}...)` : `🔑 OR Key ${i} (${k.substring(0, 5)}...)`;
+          sel.innerHTML += `<option value="${i-1}">${label}</option>`;
+        }
+      }
+      if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+    }
+    if (typeof window.updateOpenRouterQuotaUI === 'function') window.updateOpenRouterQuotaUI();
   }
 
   // --- INIT EXTERNAL CONFIGURATIONS ---
@@ -138,8 +208,16 @@
     ls.setItem('live_search_enabled', $('live-toggle-search')?.checked ? 'true' : 'false');
     ls.setItem('live_context_enabled', $('live-toggle-context')?.checked ? 'true' : 'false');
     ls.setItem('jarvis_hide_deepseek_thinking', $('hide-deepseek-thinking-checkbox')?.checked ? 'true' : 'false');
+    // Lưu 5 OpenRouter keys
+    for (let i = 1; i <= OR_KEY_COUNT; i++) {
+      const orVal = $(`openrouter-key-${i}`)?.value.trim() || '';
+      const orName = $(`openrouter-key-name-${i}`)?.value.trim() || '';
+      ls.setItem(`jarvis_openrouter_api_${i}`, orVal);
+      ls.setItem(`jarvis_openrouter_api_name_${i}`, orName);
+    }
     initAPIKeys();
     initExternalConfigs();
+    initOpenRouterKeys();
     // Đẩy ngay API key ngoài (Tavily, Serper, Experiential Labs, OpenRouter...)
     // lên Cloud Gist, không cần chờ có tin nhắn chat mới.
     if (window.JarvisSync && typeof window.JarvisSync.scheduleAutoSync === 'function') {
@@ -201,6 +279,55 @@
     showToast(msg, ok > 0 ? (leaked > 0 ? "warning" : "success") : "danger");
   }
 
+  async function handleCheckOpenRouterKeys() {
+    const b = $('btn-check-openrouter-keys');
+    if (!b) return;
+    b.innerText = "⏳ Đang kiểm tra...";
+    b.disabled = true;
+    let ok = 0, invalid = 0, tot = 0;
+    for (let i = 1; i <= OR_KEY_COUNT; i++) {
+      const el = $(`openrouter-key-${i}`), k = el?.value.trim();
+      const nameEl = $(`openrouter-key-name-${i}`);
+      const kn = nameEl?.value.trim() || `OR Key ${i}`;
+      if (!k) continue;
+      tot++;
+      try {
+        const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
+          headers: { 'Authorization': 'Bearer ' + k }
+        });
+        if (res.ok) {
+          el.style.border = "2px solid var(--success)";
+          if (nameEl) nameEl.style.border = "2px solid var(--success)";
+          el.title = `${kn}: ✅ Hoạt động tốt`;
+          ok++;
+        } else {
+          el.style.border = "2px solid var(--danger)";
+          if (nameEl) nameEl.style.border = "2px solid var(--danger)";
+          el.title = `${kn}: ❌ Lỗi (HTTP ${res.status})`;
+          invalid++;
+        }
+      } catch (err) {
+        el.style.border = "2px solid var(--danger)";
+        if (nameEl) nameEl.style.border = "2px solid var(--danger)";
+        el.title = `${kn}: ❌ Lỗi (${err.message || 'Không hợp lệ'})`;
+        invalid++;
+      }
+    }
+    b.innerText = "🔍 Kiểm tra OpenRouter";
+    b.disabled = false;
+    showToast(`OpenRouter: Hoạt động ${ok}/${tot} Keys.${invalid ? ' ❌ ' + invalid + ' lỗi' : ''}`, ok > 0 ? "success" : "danger");
+  }
+
+  function handleCheckOpenRouterDuplicates() {
+    const m = {}, dups = [];
+    for (let i = 1; i <= OR_KEY_COUNT; i++) {
+      const v = $(`openrouter-key-${i}`)?.value.trim();
+      const kn = $(`openrouter-key-name-${i}`)?.value.trim() || `OR Key ${i}`;
+      if (v) m[v] ? dups.push(`${kn} trùng với ${m[v]}`) : m[v] = kn;
+    }
+    showToast(dups.length ? `⚠️ OpenRouter trùng: ${dups.join(', ')}!` : "✅ OpenRouter không có key trùng.");
+  }
+
   // --- CHECK DUPLICATES BUTTON HANDLER ---
   function handleCheckDuplicates() {
     const m = {}, dups = [];
@@ -219,16 +346,25 @@
   if (checkBtn) checkBtn.onclick = async () => { await handleCheckKeys(); };
   const dupBtn = $('btn-check-duplicates');
   if (dupBtn) dupBtn.onclick = () => { handleCheckDuplicates(); };
+  const checkOrBtn = $('btn-check-openrouter-keys');
+  if (checkOrBtn) checkOrBtn.onclick = async () => { await handleCheckOpenRouterKeys(); };
+  const dupOrBtn = $('btn-check-openrouter-duplicates');
+  if (dupOrBtn) dupOrBtn.onclick = () => { handleCheckOpenRouterDuplicates(); };
 
   // --- PUBLIC API ---
   window.initAPIKeys = initAPIKeys;
   window.initExternalConfigs = initExternalConfigs;
+  window.initOpenRouterKeys = initOpenRouterKeys;
+  window.findOpenRouterSlotIndexForKey = findOpenRouterSlotIndexForKey;
   window.handleSaveKeys = handleSaveKeys;
   window.handleCheckKeys = handleCheckKeys;
   window.handleCheckDuplicates = handleCheckDuplicates;
+  window.handleCheckOpenRouterKeys = handleCheckOpenRouterKeys;
+  window.handleCheckOpenRouterDuplicates = handleCheckOpenRouterDuplicates;
 
   // Tự khởi tạo khi module chạy (app.js load xong → proxy + window.* đã sẵn sàng)
   initAPIKeys();
   initExternalConfigs();
+  initOpenRouterKeys();
 
 })();

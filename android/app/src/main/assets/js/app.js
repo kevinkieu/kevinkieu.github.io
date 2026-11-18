@@ -344,7 +344,6 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       ['tavily-key-input', 'tavily_api_key'],
       ['serper-key-input', 'serper_api_key'],
       ['explabs-key-input', 'explabs_api_key'],
-      ['openrouter-key-input', 'openrouter_api_key'],
       ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
       ['web-extract-engine-input', 'web_extract_engine', 'auto'],
       ['live-temperature', 'live_temperature', '0.7']
@@ -359,6 +358,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         label: 'OpenRouter',
         baseUrl: 'https://openrouter.ai/api/v1',
         keyStorage: 'openrouter_api_key',
+        keyStorageMultiple: 'openrouter_keys',
+        keyCount: 5,
+        keyIndexVar: 'openRouterKeyIndex',
         keyLabel: 'OpenRouter',
         models: [
           'nvidia/nemotron-3.5-lightning:free',
@@ -633,6 +635,12 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     Object.defineProperty(window, 'globalKeyIndex', { get: () => globalKeyIndex, set: v => { globalKeyIndex = v; }, configurable: true });
     Object.defineProperty(window, 'liveKeyIndex', { get: () => liveKeyIndex, set: v => { liveKeyIndex = v; }, configurable: true });
     Object.defineProperty(window, 'liveRetryCount', { get: () => liveRetryCount, set: v => { liveRetryCount = v; }, configurable: true });
+    // OpenRouter 5-key state: js/api-keys.js gán qua setter, app.js đọc qua getter
+    // (không được tham chiếu window.* trong getter/setter của chính nó → đệ quy vô hạn).
+    let openRouterKeys = [];
+    let openRouterKeyIndex = 0;
+    Object.defineProperty(window, 'openRouterKeys', { get: () => openRouterKeys, set: v => { openRouterKeys = Array.isArray(v) ? v : []; }, configurable: true });
+    Object.defineProperty(window, 'openRouterKeyIndex', { get: () => openRouterKeyIndex, set: v => { openRouterKeyIndex = Number(v) || 0; }, configurable: true });
     // [window.db: do js/database.js gán trực tiếp khi initDB xong]
     Object.defineProperty(window, 'oLay', { get: () => oLay, set: v => { oLay = v; }, configurable: true });
     Object.defineProperty(window, 'filesData', { get: () => filesData, set: v => { filesData = v; }, configurable: true });
@@ -3105,12 +3113,55 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
       // Model từ gateway OpenAI-compatible (OpenRouter) không dùng Google API Key
       const usesCompatGateway = !!resolveCompatProvider(am);
-      if (!gKey && !usesCompatGateway) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
+      if (usesCompatGateway) {
+        // Xoay tua OpenRouter keys (5 key) - đọc theo SỐ Ô (slot) để khớp bộ đếm,
+        // vì window.openRouterKeys đã lọc bỏ các ô trống nên chỉ số mảng ≠ số ô.
+        const orKeyAtSlot = slot => {
+          let v = (ls.getItem(`jarvis_openrouter_api_${slot}`) || '').trim();
+          if (v.startsWith('JVENC_') || v.startsWith('ENC_')) v = deobfuscateKey(v);
+          return v;
+        };
+        const orSlotOfKey = key => (typeof window.findOpenRouterSlotIndexForKey === 'function')
+          ? window.findOpenRouterSlotIndexForKey(key)
+          : Math.max(1, ((window.openRouterKeys || []).indexOf(key)) + 1);
+        const orKeys = (typeof window.openRouterKeys !== 'undefined' && Array.isArray(window.openRouterKeys))
+          ? window.openRouterKeys.filter(Boolean) : [];
+        const orSelEl = $('openrouter-key-select');
+        const orSel = orSelEl ? orSelEl.value : 'auto';
+
+        if (orSel !== 'auto') {
+          // Chọn thủ công 1 ô: luôn lấy đúng key của ô đó
+          const picked = orKeyAtSlot(parseInt(orSel, 10) + 1) || orKeys[0] || '';
+          if (picked) {
+            gKey = picked;
+            keyIndexNum = orSlotOfKey(picked);
+          }
+        } else if (orKeys.length) {
+          // Tự động xoay tua vòng tròn qua các ô có key
+          const orIdx = (window.openRouterKeyIndex || 0) % orKeys.length;
+          gKey = orKeys[orIdx];
+          window.openRouterKeyIndex = (orIdx + 1) % orKeys.length;
+          keyIndexNum = orSlotOfKey(gKey);
+        } else {
+          // Fallback về key đơn cũ (nếu 5 ô mới đều trống)
+          gKey = (ls.getItem('openrouter_api_key') || '').trim();
+          if (gKey.startsWith('JVENC_') || gKey.startsWith('ENC_')) gKey = deobfuscateKey(gKey);
+          keyIndexNum = 1;
+        }
+        if (!gKey) {
+          bD?.remove();
+          return showToast("Vui lòng nhập OpenRouter API Key trong Cài đặt (⚙️)!", "danger");
+        }
+        if (typeof window.recordOpenRouterRequest === 'function') window.recordOpenRouterRequest(keyIndexNum, am);
+      } else {
+        if (!gKey) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
+      }
 
       ls.removeItem('jarvis_draft');
       isProcessing = true;
       abortController = new AbortController();
       // Gateway OpenAI-compatible (OpenRouter) không dùng Google Key nên không ghi quota Google
+      // OpenRouter có bộ đếm riêng (nếu cần) - ghi ở trên khi xoay key
       if (!usesCompatGateway) recordKeyRequest(keyIndexNum, am);
 
       DOM.sendBtn.innerHTML = `<span>Dừng</span> 🛑`;
@@ -3600,8 +3651,33 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         const compatProv = resolveCompatProvider(am);
         if (compatProv) {
           const prov = compatProv.provider;
-          let compatKey = (ls.getItem(prov.keyStorage) || '').trim();
-          if (compatKey.startsWith('JVENC_') || compatKey.startsWith('ENC_')) compatKey = deobfuscateKey(compatKey);
+          // Key đã được chọn + xoay tua ở đầu sendMessage; đây chỉ là lưới an toàn
+          let compatKey = gKey;
+          if (!compatKey) {
+            const orKeys = (typeof window.openRouterKeys !== 'undefined' && Array.isArray(window.openRouterKeys))
+              ? window.openRouterKeys.filter(Boolean) : [];
+            if (orKeys.length) {
+              const orSelEl = $('openrouter-key-select');
+              const orSel = orSelEl ? orSelEl.value : 'auto';
+              let orIdx = 0;
+              if (orSel !== 'auto') {
+                const slot = parseInt(orSel, 10) + 1;
+                let slotKey = (ls.getItem(`jarvis_openrouter_api_${slot}`) || '').trim();
+                if (slotKey.startsWith('JVENC_') || slotKey.startsWith('ENC_')) slotKey = deobfuscateKey(slotKey);
+                orIdx = Math.max(0, orKeys.indexOf(slotKey));
+              } else {
+                orIdx = (window.openRouterKeyIndex || 0) % orKeys.length;
+                window.openRouterKeyIndex = (orIdx + 1) % orKeys.length;
+              }
+              compatKey = orKeys[orIdx];
+              keyIndexNum = (typeof window.findOpenRouterSlotIndexForKey === 'function')
+                ? window.findOpenRouterSlotIndexForKey(compatKey)
+                : orIdx + 1;
+            } else {
+              compatKey = (ls.getItem(prov.keyStorage) || '').trim();
+              if (compatKey.startsWith('JVENC_') || compatKey.startsWith('ENC_')) compatKey = deobfuscateKey(compatKey);
+            }
+          }
           if (!compatKey) {
             bD.remove();
             return showToast(`Vui lòng nhập ${prov.keyLabel} API Key trong Cài đặt (⚙️)!`, "danger");
