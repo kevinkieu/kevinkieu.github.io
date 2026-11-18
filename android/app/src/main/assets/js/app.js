@@ -343,7 +343,6 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       ['global-context-input', 'jarvis_global_context'],
       ['tavily-key-input', 'tavily_api_key'],
       ['serper-key-input', 'serper_api_key'],
-      ['explabs-key-input', 'explabs_api_key'],
       ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
       ['web-extract-engine-input', 'web_extract_engine', 'auto'],
       ['live-temperature', 'live_temperature', '0.7']
@@ -420,6 +419,34 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       return null;
     }
     window.resolveCompatProvider = resolveCompatProvider;
+
+    // Rút gọn lỗi thô của provider: OpenRouter thường trả metadata.raw là 1 khối JSON
+    // (vd Google: {"error":{"code":503,"message":"...","status":"UNAVAILABLE"}}).
+    // Chỉ lấy message + mã lỗi để toast gọn, không dump cả JSON vào thông báo.
+    function formatUpstreamError(raw, httpStatus) {
+      const text = String(raw || '').trim();
+      if (!text) return httpStatus ? `HTTP ${httpStatus}` : '';
+      let msg = '';
+      let code = '';
+      try {
+        const j = JSON.parse(text);
+        msg = j?.error?.message || j?.message || j?.detail || '';
+        const c = j?.error?.code ?? j?.error?.status ?? j?.code ?? j?.status;
+        if (c !== undefined && c !== null && c !== '') code = String(c);
+      } catch (_) {
+        // Không phải JSON: bắt cặp "message"/"code" dạng text, còn lại coi là message
+        const mMsg = text.match(/"message"\s*:\s*"([^"]+)"/i);
+        const mCode = text.match(/"code"\s*:\s*"?([A-Za-z0-9_.-]+)"?/i);
+        msg = mMsg ? mMsg[1] : text;
+        if (mCode) code = mCode[1];
+      }
+      msg = String(msg).replace(/\s+/g, ' ').trim();
+      if (msg.length > 300) msg = msg.slice(0, 297) + '…';
+      if (!code && httpStatus) code = String(httpStatus);
+      if (!msg) return code ? `HTTP ${code}` : '';
+      return code ? `${msg} (${code})` : msg;
+    }
+    window.formatUpstreamError = formatUpstreamError;
 
     // [Đã tách sang js/api-keys.js: initAPIKeys / initExternalConfigs + 3 button handlers + auto-init]
     // [Đã tách sang js/database.js: IndexedDB engine (db, initDB, saveToDB, getAllFromDB, clearAllDB, file/TTS stores)]
@@ -3113,6 +3140,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
       // Model từ gateway OpenAI-compatible (OpenRouter) không dùng Google API Key
       const usesCompatGateway = !!resolveCompatProvider(am);
+      // Model Experiential Labs dùng bể 5 key riêng (xoay tua + đếm lượt)
+      const usesExplabs = (am === 'gpt-6-luna' || am === 'gpt-6.2-astra:free' || am === 'deepseek-v4.1-flash' || am === 'qwen4-max:free' || am === 'clef');
       if (usesCompatGateway) {
         // Xoay tua OpenRouter keys (5 key) - đọc theo SỐ Ô (slot) để khớp bộ đếm,
         // vì window.openRouterKeys đã lọc bỏ các ô trống nên chỉ số mảng ≠ số ô.
@@ -3153,6 +3182,45 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           return showToast("Vui lòng nhập OpenRouter API Key trong Cài đặt (⚙️)!", "danger");
         }
         if (typeof window.recordOpenRouterRequest === 'function') window.recordOpenRouterRequest(keyIndexNum, am);
+      } else if (usesExplabs) {
+        // Xoay tua 5 key Experiential Labs, đọc theo SỐ Ô (slot) để khớp bộ đếm
+        const elKeyAtSlot = slot => {
+          let v = (ls.getItem(`jarvis_explabs_api_${slot}`) || '').trim();
+          if (v.startsWith('JVENC_') || v.startsWith('ENC_')) v = deobfuscateKey(v);
+          return v;
+        };
+        const elSlotOfKey = key => (typeof window.findExplabsSlotIndexForKey === 'function')
+          ? window.findExplabsSlotIndexForKey(key)
+          : Math.max(1, ((window.explabsKeys || []).indexOf(key)) + 1);
+        const elKeys = (typeof window.explabsKeys !== 'undefined' && Array.isArray(window.explabsKeys))
+          ? window.explabsKeys.filter(Boolean) : [];
+        const elSelEl = $('explabs-key-select');
+        const elSel = elSelEl ? elSelEl.value : 'auto';
+
+        if (elSel !== 'auto') {
+          // Chọn thủ công 1 ô: luôn lấy đúng key của ô đó
+          const picked = elKeyAtSlot(parseInt(elSel, 10) + 1) || elKeys[0] || '';
+          if (picked) {
+            gKey = picked;
+            keyIndexNum = elSlotOfKey(picked);
+          }
+        } else if (elKeys.length) {
+          // Tự động xoay tua vòng tròn qua các ô có key
+          const elIdx = (window.explabsKeyIndex || 0) % elKeys.length;
+          gKey = elKeys[elIdx];
+          window.explabsKeyIndex = (elIdx + 1) % elKeys.length;
+          keyIndexNum = elSlotOfKey(gKey);
+        } else {
+          // Fallback về key đơn cũ (nếu 5 ô mới đều trống)
+          gKey = (ls.getItem('explabs_api_key') || '').trim();
+          if (gKey.startsWith('JVENC_') || gKey.startsWith('ENC_')) gKey = deobfuscateKey(gKey);
+          keyIndexNum = 1;
+        }
+        if (!gKey) {
+          bD?.remove();
+          return showToast("Vui lòng nhập Experiential Labs API Key trong Cài đặt (⚙️)!", "danger");
+        }
+        if (typeof window.recordExplabsRequest === 'function') window.recordExplabsRequest(keyIndexNum, am);
       } else {
         if (!gKey) return showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
       }
@@ -3160,9 +3228,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       ls.removeItem('jarvis_draft');
       isProcessing = true;
       abortController = new AbortController();
-      // Gateway OpenAI-compatible (OpenRouter) không dùng Google Key nên không ghi quota Google
-      // OpenRouter có bộ đếm riêng (nếu cần) - ghi ở trên khi xoay key
-      if (!usesCompatGateway) recordKeyRequest(keyIndexNum, am);
+      // Gateway OpenAI-compatible (OpenRouter) và Experiential Labs không dùng Google Key
+      // nên không ghi quota Google - hai bên có bộ đếm riêng, ghi ở trên khi xoay key
+      if (!usesCompatGateway && !usesExplabs) recordKeyRequest(keyIndexNum, am);
 
       DOM.sendBtn.innerHTML = `<span>Dừng</span> 🛑`;
       DOM.sendBtn.style.background = 'var(--danger)';
@@ -3435,10 +3503,13 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         const thk = DOM.thinking.value;
 
         // --- ENGINE 0: EXPERIENTIAL LABS GATEWAY (gpt-6-luna, deepseek-v4.1-flash, clef) ---
-        const isExplabsModel = (am === 'gpt-6-luna' || am === 'deepseek-v4.1-flash' || am === 'qwen4-max:free' || am === 'clef');
+        const isExplabsModel = (am === 'gpt-6-luna' || am === 'gpt-6.2-astra:free' || am === 'deepseek-v4.1-flash' || am === 'qwen4-max:free' || am === 'clef');
         if (isExplabsModel) {
-          let expKey = (ls.getItem('explabs_api_key') || '').trim();
-          if (expKey.startsWith('JVENC_') || expKey.startsWith('ENC_')) expKey = deobfuscateKey(expKey);
+          let expKey = gKey;
+          if (!expKey) {
+            expKey = (ls.getItem('explabs_api_key') || '').trim();
+            if (expKey.startsWith('JVENC_') || expKey.startsWith('ENC_')) expKey = deobfuscateKey(expKey);
+          }
           if (!expKey) {
             bD.remove();
             showToast("Vui lòng nhập Experiential Labs API Key trong Cài đặt (⚙️)!", "danger");
@@ -3563,6 +3634,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               // Đo cách server chia chunk (Qwen vs DeepSeek)
               let expEvents = 0, expThinkEvents = 0, expTextEvents = 0, firstThinkMs = 0, firstTextMs = 0;
               const expModelName = (am === 'gpt-6-luna') ? 'GPT-6 Luna'
+                : (am === 'gpt-6.2-astra:free') ? 'GPT-6.2 Astra'
                 : am.includes('qwen') ? 'Qwen4 Max'
                 : (am.includes('deepseek') ? 'DeepSeek' : 'AI');
 
@@ -3754,26 +3826,60 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
             let compatRes = null;
             let compatErrText = '';
-            for (let attempt = 0; attempt < 2; attempt++) {
+            // Provider tạm thời quá tải (Google AI Studio hay trả 503 rồi 200 ngay sau đó) → thử lại vài lần
+            const COMPAT_MAX_ATTEMPTS = 4;
+            const COMPAT_RETRY_DELAYS = [600, 1500, 2500];
+            const compatSleep = ms => new Promise((resolve, reject) => {
+              const t = setTimeout(resolve, ms);
+              abortController.signal.addEventListener('abort', () => {
+                clearTimeout(t);
+                const e = new Error('Aborted');
+                e.name = 'AbortError';
+                reject(e);
+              }, { once: true });
+            });
+            for (let attempt = 0; attempt < COMPAT_MAX_ATTEMPTS; attempt++) {
               compatRes = await sendCompat();
               if (compatRes.ok) break;
               compatErrText = await compatRes.text().catch(() => '');
-              // Gateway không hỗ trợ tham số reasoning (400/4xx + thông báo liên quan): gỡ ra và thử lại 1 lần
+              // Gateway không hỗ trợ tham số reasoning (400/4xx + thông báo liên quan): gỡ ra và thử lại
               const rejectedReasoning = compatBody.reasoning
                 && compatRes.status >= 400 && compatRes.status < 500
                 && /reason|unknown|unsupported|unrecogni|invalid.?param|extra/i.test(compatErrText);
-              if (!rejectedReasoning) break;
-              delete compatBody.reasoning;
-              delete compatBody.include_reasoning;
+              if (rejectedReasoning) {
+                delete compatBody.reasoning;
+                delete compatBody.include_reasoning;
+                compatErrText = '';
+                continue;
+              }
+              // 429/502/503/504 = lỗi tạm thời phía provider, chờ rồi thử lại thay vì báo lỗi ngay
+              const transient = [429, 502, 503, 504].includes(compatRes.status);
+              if (!transient || attempt >= COMPAT_MAX_ATTEMPTS - 1) break;
+              const wait = COMPAT_RETRY_DELAYS[Math.min(attempt, COMPAT_RETRY_DELAYS.length - 1)];
+              console.warn(`[Gateway ${prov.keyLabel}] HTTP ${compatRes.status} - thử lại lần ${attempt + 1}/${COMPAT_MAX_ATTEMPTS - 1} sau ${wait}ms`);
+              if ($('latency-val')) $('latency-val').innerText = `↻ thử lại (${attempt + 1}/${COMPAT_MAX_ATTEMPTS - 1})`;
               compatErrText = '';
+              await compatSleep(wait);
             }
 
             if (!compatRes || !compatRes.ok) {
               let apiMsg = '';
+              let rawMsg = '';
+              let provName = '';
               try {
                 const parsedErr = JSON.parse(compatErrText);
                 apiMsg = parsedErr?.detail || parsedErr?.error?.message || parsedErr?.message || parsedErr?.title || '';
+                // OpenRouter: lý do thật nằm trong error.metadata (raw / provider_name), message chỉ là "Provider returned error"
+                rawMsg = parsedErr?.error?.metadata?.raw || parsedErr?.metadata?.raw || '';
+                provName = parsedErr?.error?.metadata?.provider_name || parsedErr?.metadata?.provider_name || '';
               } catch (_) {}
+              if (rawMsg) {
+                // Toast chỉ hiện message + mã lỗi của provider, không dump JSON thô
+                const via = provName ? `[${provName}] ` : '';
+                apiMsg = `${via}${formatUpstreamError(rawMsg, compatRes.status)}`;
+              } else if (apiMsg && compatRes.status) {
+                apiMsg = `${apiMsg} (HTTP ${compatRes.status})`;
+              }
               throw new Error(apiMsg || ('HTTP ' + (compatRes ? compatRes.status : '?')));
             }
 
@@ -4110,14 +4216,16 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           while (streamAttempts < maxStreamAttempts) {
             streamAttempts++;
             // WATCHDOG: Google có thể nhận request nhưng không nhả chunk nào (treo im lặng).
-            // Nếu quá 25s không có chunk đầu tiên thì tự cắt và phục hồi thay vì để UI quay mãi.
+            // Đo thực tế: header có thể mất 9-19s (có lúc >25s) khi Google xếp hàng, nên ngưỡng phải rộng
+            // hơn 20s cũ — nếu cắt sớm, request đang xếp hàng bị bỏ và phải chờ lại từ đầu (UI đứng lâu hơn).
             const attemptStart = performance.now();
             const attemptCtrl = new AbortController();
             const relayAbort = () => attemptCtrl.abort();
             abortController.signal.addEventListener('abort', relayAbort, { once: true });
             let stalled = false;
             let gotFirstChunk = false;
-            let stallTimer = setTimeout(() => { stalled = true; attemptCtrl.abort(); }, 20000);
+            const STALL_TIMEOUT_MS = 45000;
+            let stallTimer = setTimeout(() => { stalled = true; attemptCtrl.abort(); }, STALL_TIMEOUT_MS);
             const stopStallTimer = () => { if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } };
             const cleanupAttempt = () => { stopStallTimer(); abortController.signal.removeEventListener('abort', relayAbort); };
             try {
@@ -4180,7 +4288,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               cleanupAttempt();
               // Ưu tiên xử lý treo stream trước khi xét lỗi thường
               if (stalled && !abortController.signal.aborted) {
-                console.warn('[Watchdog] Google không nhả chunk đầu tiên sau 20s, tự phục hồi cấu hình...');
+                console.warn('[Watchdog] Google không nhả chunk đầu tiên sau ' + Math.round(STALL_TIMEOUT_MS / 1000) + 's, tự phục hồi cấu hình...');
                 // Nới hạn mức output để thinking không ăn hết chỗ của phần trả lời
                 config.maxOutputTokens = Math.max(Number(config.maxOutputTokens) || 0, 32768);
                 if (config.thinkingConfig && config.thinkingConfig.thinkingLevel) {
@@ -4192,7 +4300,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                   config.temperature = 0.5;
                   continue;
                 }
-                lastErr = new Error('Google không phản hồi sau 20 giây (stream trò)');
+                lastErr = new Error('Google không phản hồi sau ' + Math.round(STALL_TIMEOUT_MS / 1000) + ' giây (stream trò)');
                 break;
               }
               if (e.name === 'AbortError' || abortController.signal.aborted) throw e;
@@ -4248,7 +4356,10 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                 e.message.includes('fetch') ||
                 e.message.includes('Failed to fetch') ||
                 e.message.includes('429') ||
-                e.message.includes('quota')
+                e.message.includes('quota') ||
+                // Google cắt stream giữa chừng khi quá tải: nối tiếp thay vì dừng với ghi chú
+                e.message.includes('503') ||
+                e.message.includes('UNAVAILABLE')
               );
 
               if (pS && isStreamCutoff && streamAttempts < maxStreamAttempts && !abortController.signal.aborted) {
@@ -4311,6 +4422,12 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           if (!currentContent.trim() && currentThinking.trim() && !abortController.signal.aborted) {
             try {
               console.warn('[Gemma] Chỉ nhận được suy luận -> hỏi lại với thinking TẮT ở dạng STREAM để chữ chạy dần...');
+              // Báo trạng thái để UI không "đứng hình" trong lúc chờ request thứ hai (Google có thể xếp hàng ~10s)
+              showToast('✍️ Đang lấy câu trả lời (Google chậm phản hồi)…', 'info');
+              const retryStatusEl = bD?.querySelector('.thinking-streaming');
+              if (retryStatusEl) {
+                retryStatusEl.innerHTML = '<span class="thinking-spinner">⏳</span> <em>Đang lấy câu trả lời từ Google…</em>';
+              }
               const retryCfg = { ...config, maxOutputTokens: 8192 };
               if (isGemma) retryCfg.thinkingConfig = { thinkingLevel: 'minimal' };
               else delete retryCfg.thinkingConfig;

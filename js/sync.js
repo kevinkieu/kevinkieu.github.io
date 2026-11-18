@@ -23,31 +23,74 @@
   const getGoogleKeyNamesList = () => (typeof window.getGoogleKeyNamesList === 'function') ? window.getGoogleKeyNamesList() : [];
   const setGoogleKeyNamesList = n => window.setGoogleKeyNamesList && window.setGoogleKeyNamesList(n);
   const setGoogleKeysList = k => window.setGoogleKeysList && window.setGoogleKeysList(k);
-  const getOpenRouterKeysList = obfuscate => Array.from({ length: 5 }, (_, i) => {
-    const raw = (ls.getItem(`jarvis_openrouter_api_${i + 1}`) || '').trim();
+  // Bể key đa ô (OpenRouter & Experiential Labs) dùng chung 1 bộ helper để cơ chế giống hệt nhau.
+  const getSlotKeysList = (prefix, count, obfuscate) => Array.from({ length: count }, (_, i) => {
+    const raw = (ls.getItem(`${prefix}_${i + 1}`) || '').trim();
     const key = raw.startsWith('JVENC_') || raw.startsWith('ENC_') ? deobfuscateKey(raw) : raw;
     return obfuscate && key ? obfuscateKey(key) : key;
   });
-  const getOpenRouterKeyNamesList = () => Array.from({ length: 5 }, (_, i) => (ls.getItem(`jarvis_openrouter_api_name_${i + 1}`) || '').trim());
-  const setOpenRouterKeysList = keys => {
+  const getSlotKeyNamesList = (prefix, count) => Array.from({ length: count }, (_, i) => (ls.getItem(`${prefix}_name_${i + 1}`) || '').trim());
+  const setSlotKeysList = (prefix, count, inputPrefix, keys, after) => {
     if (!Array.isArray(keys)) return;
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= count; i++) {
       let key = (keys[i - 1] || '').trim();
       if (key.startsWith('JVENC_') || key.startsWith('ENC_')) key = deobfuscateKey(key);
-      ls.setItem(`jarvis_openrouter_api_${i}`, key);
-      if ($(`openrouter-key-${i}`)) $(`openrouter-key-${i}`).value = key;
+      ls.setItem(`${prefix}_${i}`, key);
+      if ($(`${inputPrefix}-${i}`)) $(`${inputPrefix}-${i}`).value = key;
     }
-    window.initOpenRouterKeys?.();
+    if (typeof after === 'function') after();
   };
-  const setOpenRouterKeyNamesList = names => {
+  const setSlotKeyNamesList = (prefix, count, inputPrefix, names, after) => {
     if (!Array.isArray(names)) return;
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= count; i++) {
       const name = (names[i - 1] || '').trim();
-      ls.setItem(`jarvis_openrouter_api_name_${i}`, name);
-      if ($(`openrouter-key-name-${i}`)) $(`openrouter-key-name-${i}`).value = name;
+      ls.setItem(`${prefix}_name_${i}`, name);
+      if ($(`${inputPrefix}-name-${i}`)) $(`${inputPrefix}-name-${i}`).value = name;
     }
-    window.initOpenRouterKeys?.();
+    if (typeof after === 'function') after();
   };
+  // Chỉ nhận key/tên từ Cloud vào các ô đang trống của máy này.
+  const mergeRemoteSlotKeys = (remoteKeys, localKeys, apply) => {
+    if (!Array.isArray(remoteKeys)) return false;
+    const merged = localKeys.map((key, i) => {
+      let remoteKey = (remoteKeys[i] || '').trim();
+      if (remoteKey.startsWith('JVENC_') || remoteKey.startsWith('ENC_')) remoteKey = deobfuscateKey(remoteKey);
+      return key || remoteKey;
+    });
+    if (!merged.some((key, i) => key !== localKeys[i])) return false;
+    apply(merged);
+    return true;
+  };
+  const mergeRemoteSlotNames = (remoteNames, localNames, apply) => {
+    if (!Array.isArray(remoteNames)) return false;
+    const merged = localNames.map((name, i) => name || (remoteNames[i] || ''));
+    if (!merged.some((name, i) => name !== localNames[i])) return false;
+    apply(merged);
+    return true;
+  };
+  // Máy này có key/tên khác Cloud (cần đẩy lên) hay không.
+  const slotSettingsChanged = (localKeys, localNames, remoteKeys, remoteNames) => {
+    const sameKey = (local, remote) => {
+      let value = (remote || '').trim();
+      if (value.startsWith('JVENC_') || value.startsWith('ENC_')) value = deobfuscateKey(value);
+      return (local || '').trim() === value;
+    };
+    for (let i = 0; i < localKeys.length; i++) {
+      if ((localKeys[i] && !sameKey(localKeys[i], remoteKeys[i])) ||
+          (localNames[i] && localNames[i] !== (remoteNames[i] || ''))) return true;
+    }
+    return false;
+  };
+
+  const getOpenRouterKeysList = obf => getSlotKeysList('jarvis_openrouter_api', 5, obf);
+  const getOpenRouterKeyNamesList = () => getSlotKeyNamesList('jarvis_openrouter_api', 5);
+  const setOpenRouterKeysList = keys => setSlotKeysList('jarvis_openrouter_api', 5, 'openrouter-key', keys, () => window.initOpenRouterKeys?.());
+  const setOpenRouterKeyNamesList = names => setSlotKeyNamesList('jarvis_openrouter_api', 5, 'openrouter-key', names, () => window.initOpenRouterKeys?.());
+
+  const getExplabsKeysList = obf => getSlotKeysList('jarvis_explabs_api', 5, obf);
+  const getExplabsKeyNamesList = () => getSlotKeyNamesList('jarvis_explabs_api', 5);
+  const setExplabsKeysList = keys => setSlotKeysList('jarvis_explabs_api', 5, 'explabs-key', keys, () => window.initExplabsKeys?.());
+  const setExplabsKeyNamesList = names => setSlotKeyNamesList('jarvis_explabs_api', 5, 'explabs-key', names, () => window.initExplabsKeys?.());
   const getExternalConfigsObj = obf => (typeof window.getExternalConfigsObj === 'function') ? window.getExternalConfigsObj(obf) : {};
   const setExternalConfigsObj = obj => window.setExternalConfigsObj && window.setExternalConfigsObj(obj);
   const deobfuscateKey = k => (typeof window.deobfuscateKey === 'function') ? window.deobfuscateKey(k) : k;
@@ -407,35 +450,21 @@
               }
             }
 
-            // D1. HỢP NHẤT TÊN GOOGLE KEY VÀ 5 KEY + TÊN OPENROUTER VÀO CÁC Ô TRỐNG
-            if (Array.isArray(cloudData.settings?.keyNames)) {
-              const localNames = getGoogleKeyNamesList();
-              const mergedNames = localNames.map((name, i) => name || (cloudData.settings.keyNames[i] || ''));
-              if (mergedNames.some((name, i) => name !== localNames[i])) {
-                setGoogleKeyNamesList(mergedNames);
-                hasChanges = true;
-              }
+            // D1. HỢP NHẤT TÊN GOOGLE KEY, 5 KEY + TÊN OPENROUTER VÀ 5 KEY + TÊN EXPERIENTIAL LABS
+            if (mergeRemoteSlotNames(cloudData.settings?.keyNames, getGoogleKeyNamesList(), setGoogleKeyNamesList)) {
+              hasChanges = true;
             }
-            if (Array.isArray(cloudData.settings?.openRouterKeys)) {
-              const localKeys = getOpenRouterKeysList(false);
-              const remoteKeys = cloudData.settings.openRouterKeys;
-              const mergedKeys = localKeys.map((key, i) => {
-                let remoteKey = (remoteKeys[i] || '').trim();
-                if (remoteKey.startsWith('JVENC_') || remoteKey.startsWith('ENC_')) remoteKey = deobfuscateKey(remoteKey);
-                return key || remoteKey;
-              });
-              if (mergedKeys.some((key, i) => key !== localKeys[i])) {
-                setOpenRouterKeysList(mergedKeys);
-                hasChanges = true;
-              }
+            if (mergeRemoteSlotKeys(cloudData.settings?.openRouterKeys, getOpenRouterKeysList(false), setOpenRouterKeysList)) {
+              hasChanges = true;
             }
-            if (Array.isArray(cloudData.settings?.openRouterKeyNames)) {
-              const localNames = getOpenRouterKeyNamesList();
-              const mergedNames = localNames.map((name, i) => name || (cloudData.settings.openRouterKeyNames[i] || ''));
-              if (mergedNames.some((name, i) => name !== localNames[i])) {
-                setOpenRouterKeyNamesList(mergedNames);
-                hasChanges = true;
-              }
+            if (mergeRemoteSlotNames(cloudData.settings?.openRouterKeyNames, getOpenRouterKeyNamesList(), setOpenRouterKeyNamesList)) {
+              hasChanges = true;
+            }
+            if (mergeRemoteSlotKeys(cloudData.settings?.explabsKeys, getExplabsKeysList(false), setExplabsKeysList)) {
+              hasChanges = true;
+            }
+            if (mergeRemoteSlotNames(cloudData.settings?.explabsKeyNames, getExplabsKeyNamesList(), setExplabsKeyNamesList)) {
+              hasChanges = true;
             }
 
             // D2. HỢP NHẤT CẤU HÌNH NGOÀI & API KEY DỊCH VỤ ĐÃ MÃ HÓA
@@ -468,6 +497,10 @@
             }
             if (cloudData.keyUsageOpenRouter && typeof window.mergeRemoteOpenRouterUsage === 'function') {
               const usageChanged = window.mergeRemoteOpenRouterUsage(cloudData.keyUsageOpenRouter);
+              if (usageChanged) hasChanges = true;
+            }
+            if (cloudData.keyUsageExplabs && typeof window.mergeRemoteExplabsUsage === 'function') {
+              const usageChanged = window.mergeRemoteExplabsUsage(cloudData.keyUsageExplabs);
               if (usageChanged) hasChanges = true;
             }
 
@@ -601,29 +634,17 @@
           if (!isLocalAhead && cloudData?.keyUsageOpenRouter && typeof window.isLocalOpenRouterUsageAhead === 'function') {
             if (window.isLocalOpenRouterUsageAhead(cloudData.keyUsageOpenRouter)) isLocalAhead = true;
           }
+          if (!isLocalAhead && cloudData?.keyUsageExplabs && typeof window.isLocalExplabsUsageAhead === 'function') {
+            if (window.isLocalExplabsUsageAhead(cloudData.keyUsageExplabs)) isLocalAhead = true;
+          }
 
-          // 5. Kiểm tra Google/OpenRouter keys và tên gợi nhớ có thay đổi cục bộ không
+          // 5. Kiểm tra Google/OpenRouter/Experiential Labs keys và tên gợi nhớ có thay đổi cục bộ không
           if (!isLocalAhead) {
-            const localGoogleKeys = getGoogleKeysList();
-            const localGoogleNames = getGoogleKeyNamesList();
-            const remoteGoogleKeys = cloudData.settings?.keys || [];
-            const remoteGoogleNames = cloudData.settings?.keyNames || [];
-            const localOrKeys = getOpenRouterKeysList(false);
-            const localOrNames = getOpenRouterKeyNamesList();
-            const remoteOrKeys = cloudData.settings?.openRouterKeys || [];
-            const remoteOrNames = cloudData.settings?.openRouterKeyNames || [];
-            const sameKey = (local, remote) => {
-              let value = (remote || '').trim();
-              if (value.startsWith('JVENC_') || value.startsWith('ENC_')) value = deobfuscateKey(value);
-              return (local || '').trim() === value;
-            };
-            for (let i = 0; i < 10 && !isLocalAhead; i++) {
-              if ((localGoogleKeys[i] && !sameKey(localGoogleKeys[i], remoteGoogleKeys[i])) ||
-                  (localGoogleNames[i] && localGoogleNames[i] !== (remoteGoogleNames[i] || ''))) isLocalAhead = true;
-            }
-            for (let i = 0; i < 5 && !isLocalAhead; i++) {
-              if ((localOrKeys[i] && !sameKey(localOrKeys[i], remoteOrKeys[i])) ||
-                  (localOrNames[i] && localOrNames[i] !== (remoteOrNames[i] || ''))) isLocalAhead = true;
+            const settings = cloudData.settings || {};
+            if (slotSettingsChanged(getGoogleKeysList(), getGoogleKeyNamesList(), settings.keys || [], settings.keyNames || []) ||
+                slotSettingsChanged(getOpenRouterKeysList(false), getOpenRouterKeyNamesList(), settings.openRouterKeys || [], settings.openRouterKeyNames || []) ||
+                slotSettingsChanged(getExplabsKeysList(false), getExplabsKeyNamesList(), settings.explabsKeys || [], settings.explabsKeyNames || [])) {
+              isLocalAhead = true;
             }
           }
 
@@ -719,11 +740,14 @@
             medHistory: JSON.parse(ls.getItem('jarvis_med_history') || '[]'),
             keyUsageFlash: (typeof window.loadKeyUsageData === 'function') ? window.loadKeyUsageData() : null,
             keyUsageOpenRouter: (typeof window.loadOpenRouterUsageData === 'function') ? window.loadOpenRouterUsageData() : null,
+            keyUsageExplabs: (typeof window.loadExplabsUsageData === 'function') ? window.loadExplabsUsageData() : null,
             settings: {
               keys: getGoogleKeysList(true),
               keyNames: getGoogleKeyNamesList(),
               openRouterKeys: getOpenRouterKeysList(true),
               openRouterKeyNames: getOpenRouterKeyNamesList(),
+              explabsKeys: getExplabsKeysList(true),
+              explabsKeyNames: getExplabsKeyNamesList(),
               externalConfigs: getExternalConfigsObj(true),
               model: getDOM().model?.value || 'gemini-3.6-flash',
               temperature: getDOM().temp?.value || 0.5,
@@ -961,11 +985,14 @@
           medHistory: JSON.parse(ls.getItem('jarvis_med_history') || '[]'),
           keyUsageFlash: (typeof window.loadKeyUsageData === 'function') ? window.loadKeyUsageData() : null,
           keyUsageOpenRouter: (typeof window.loadOpenRouterUsageData === 'function') ? window.loadOpenRouterUsageData() : null,
+          keyUsageExplabs: (typeof window.loadExplabsUsageData === 'function') ? window.loadExplabsUsageData() : null,
           settings: {
             keys: getGoogleKeysList(true),
             keyNames: getGoogleKeyNamesList(),
             openRouterKeys: getOpenRouterKeysList(true),
             openRouterKeyNames: getOpenRouterKeyNamesList(),
+            explabsKeys: getExplabsKeysList(true),
+            explabsKeyNames: getExplabsKeyNamesList(),
             externalConfigs: getExternalConfigsObj(true),
             model: getDOM().model?.value || 'gemini-3.6-flash',
             temperature: getDOM().temp?.value || 0.5,
@@ -1060,6 +1087,8 @@
           if (parsed.settings.keyNames) setGoogleKeyNamesList(parsed.settings.keyNames);
           if (parsed.settings.openRouterKeys) setOpenRouterKeysList(parsed.settings.openRouterKeys);
           if (parsed.settings.openRouterKeyNames) setOpenRouterKeyNamesList(parsed.settings.openRouterKeyNames);
+          if (parsed.settings.explabsKeys) setExplabsKeysList(parsed.settings.explabsKeys);
+          if (parsed.settings.explabsKeyNames) setExplabsKeyNamesList(parsed.settings.explabsKeyNames);
           if (parsed.settings.externalConfigs) setExternalConfigsObj(parsed.settings.externalConfigs);
           if (parsed.settings.model && getDOM().model) getDOM().model.value = parsed.settings.model;
           if (parsed.settings.temperature && getDOM().temp) {
@@ -1083,8 +1112,12 @@
         if (parsed.keyUsageOpenRouter && typeof window.setOpenRouterUsageData === 'function') {
           window.setOpenRouterUsageData(parsed.keyUsageOpenRouter);
         }
+        if (parsed.keyUsageExplabs && typeof window.setExplabsUsageData === 'function') {
+          window.setExplabsUsageData(parsed.keyUsageExplabs);
+        }
         window.updateKeyQuotaUI?.();
         window.updateOpenRouterQuotaUI?.();
+        window.updateExplabsQuotaUI?.();
 
         let importedKCount = 0;
         if (parsed.knowledgeBase && Array.isArray(parsed.knowledgeBase) && window.JarvisRAG && typeof window.JarvisRAG.importKnowledge === 'function') {

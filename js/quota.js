@@ -256,12 +256,24 @@
     renderKeyQuotaPopoverList();
   }
 
+  // Model của Experiential Labs (dùng bộ đếm + key pool 5 ô riêng, không phải Google/OpenRouter)
+  const EXPLABS_MODELS = ['gpt-6-luna', 'gpt-6.2-astra:free', 'deepseek-v4.1-flash', 'qwen4-max:free', 'clef'];
+  const isExplabsModelName = m => EXPLABS_MODELS.includes((m || '').trim());
+
   function getKeyBadgeHtml(keyNum, modelName = null) {
     if (!keyNum) return '';
+    const isEL = isExplabsModelName(modelName);
     // Kiểm tra nếu là OpenRouter key (model OpenRouter)
-    const isOR = (modelName && (modelName.includes('nvidia/') || modelName.includes('particle-ai/') || modelName.includes('baidu/') || modelName.includes('google/gemma-4-') || modelName.includes(':free')));
+    const isOR = !isEL && !!(modelName && (modelName.includes('nvidia/') || modelName.includes('particle-ai/') || modelName.includes('baidu/') || modelName.includes('google/gemma-4-') || modelName.includes(':free')));
+    const provLabel = isEL ? 'Experiential Labs' : (isOR ? 'OpenRouter' : 'Google');
+    const icon = isEL ? '⚡' : (isOR ? '🛰️' : '🔑');
+    const color = isEL ? '#0ea5e9' : (isOR ? '#f59e0b' : '#3b82f6');
+    const rgb = isEL ? '14,165,233' : (isOR ? '245,158,11' : '59,130,246');
     let n, label;
-    if (isOR) {
+    if (isEL) {
+      n = (ls.getItem(`jarvis_explabs_api_name_${keyNum}`) || '').trim();
+      label = n ? `EL Key #${keyNum} (${n})` : `EL Key #${keyNum}`;
+    } else if (isOR) {
       n = (ls.getItem(`jarvis_openrouter_api_name_${keyNum}`) || '').trim();
       label = n ? `OR Key #${keyNum} (${n})` : `OR Key #${keyNum}`;
     } else {
@@ -270,7 +282,7 @@
     }
     const bucket = modelName ? getFlashModelBucket(modelName) : getSelectedFlashModelBucket();
     const bucketTag = bucket ? (bucket === 'hydrogen' ? ' · H4' : ` · ${bucket}`) : '';
-    return `<span class="key-indicator-badge" title="Tin nhắn này được phản hồi bằng ${isOR ? 'OpenRouter' : 'Google'} ${escapeHtml(label)}${bucketTag}" style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:${isOR ? 'rgba(245,158,11,0.12)' : 'rgba(59,130,246,0.12)'};color:${isOR ? '#f59e0b' : '#3b82f6'};font-weight:600;margin-left:6px;border:1px solid ${isOR ? 'rgba(245,158,11,0.3)' : 'rgba(59,130,246,0.3)'};display:inline-flex;align-items:center;gap:3px;vertical-align:middle;cursor:default;">${isOR ? '🛰️' : '🔑'} ${escapeHtml(label)}${bucketTag}</span>`;
+    return `<span class="key-indicator-badge" title="Tin nhắn này được phản hồi bằng ${provLabel} ${escapeHtml(label)}${bucketTag}" style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:rgba(${rgb},0.12);color:${color};font-weight:600;margin-left:6px;border:1px solid rgba(${rgb},0.3);display:inline-flex;align-items:center;gap:3px;vertical-align:middle;cursor:default;">${icon} ${escapeHtml(label)}${bucketTag}</span>`;
   }
 
   function renderKeyQuotaPopoverList() {
@@ -455,8 +467,9 @@
   window.closeKeyQuotaModal = closeKeyQuotaModal;
   window.resetKeyUsageToday = resetKeyUsageToday;
 
-  // OpenRouter key rotation + usage counter (5 keys)
-  function normalizeOpenRouterUsageData(data) {
+  // Bộ đếm lượt gọi theo từng ô key, dùng chung cho OpenRouter & Experiential Labs (5 ô mỗi bên).
+  // Cấu trúc: { cycle, keys: { "<slot>": { "<model>": { "<deviceId>": count } } } }
+  function normalizeSlotUsageData(data) {
     const normalized = { cycle: data?.cycle || getCurrentQuotaCycle(), keys: {} };
     if (!data?.keys || typeof data.keys !== 'object') return normalized;
     for (const [slotKey, slot] of Object.entries(data.keys)) {
@@ -477,101 +490,123 @@
     return normalized;
   }
 
-  let openRouterUsageData = { cycle: getCurrentQuotaCycle(), keys: {} };
-  try {
-    const raw = ls.getItem('jarvis_openrouter_usage');
-    if (raw) openRouterUsageData = normalizeOpenRouterUsageData(JSON.parse(raw));
-  } catch (_) {}
-  if (!openRouterUsageData.keys) openRouterUsageData.keys = {};
-  // Sang chu kỳ mới (14:00 giờ VN) thì bộ đếm OpenRouter tự về 0 như bên Google
-  if (openRouterUsageData.cycle !== getCurrentQuotaCycle()) {
-    openRouterUsageData = { cycle: getCurrentQuotaCycle(), keys: {} };
-    saveOpenRouterUsageData();
-  }
+  function createSlotUsageTracker(storageKey, onChanged) {
+    let data = { cycle: getCurrentQuotaCycle(), keys: {} };
 
-  function saveOpenRouterUsageData() {
-    try { ls.setItem('jarvis_openrouter_usage', JSON.stringify(openRouterUsageData)); } catch (_) {}
-  }
+    const save = () => {
+      try { ls.setItem(storageKey, JSON.stringify(data)); } catch (_) {}
+    };
 
-  function loadOpenRouterUsageData() {
-    const curCycle = getCurrentQuotaCycle();
-    if (openRouterUsageData.cycle !== curCycle) openRouterUsageData = { cycle: curCycle, keys: {} };
-    if (!openRouterUsageData.keys || typeof openRouterUsageData.keys !== 'object') openRouterUsageData.keys = {};
-    openRouterUsageData = normalizeOpenRouterUsageData(openRouterUsageData);
-    return JSON.parse(JSON.stringify(openRouterUsageData));
-  }
+    const ensureCycle = () => {
+      const curCycle = getCurrentQuotaCycle();
+      // Sang chu kỳ mới (14:00 giờ VN) thì bộ đếm tự về 0 như bên Google
+      if (data.cycle !== curCycle) { data = { cycle: curCycle, keys: {} }; save(); }
+      if (!data.keys || typeof data.keys !== 'object') data.keys = {};
+    };
 
-  function setOpenRouterUsageData(data) {
-    if (!data || typeof data !== 'object' || !data.keys) return;
-    const curCycle = getCurrentQuotaCycle();
-    openRouterUsageData = data.cycle === curCycle ? normalizeOpenRouterUsageData(data) : { cycle: curCycle, keys: {} };
-    saveOpenRouterUsageData();
-    updateOpenRouterQuotaUI();
-  }
+    try {
+      const raw = ls.getItem(storageKey);
+      if (raw) data = normalizeSlotUsageData(JSON.parse(raw));
+    } catch (_) {}
+    ensureCycle();
 
-  function mergeRemoteOpenRouterUsage(remoteUsage) {
-    if (!remoteUsage || remoteUsage.cycle !== getCurrentQuotaCycle() || !remoteUsage.keys) return false;
-    loadOpenRouterUsageData();
-    let changed = false;
-    for (const [slotKey, remoteSlot] of Object.entries(remoteUsage.keys)) {
-      if (!remoteSlot || typeof remoteSlot !== 'object') continue;
-      if (!openRouterUsageData.keys[slotKey]) openRouterUsageData.keys[slotKey] = {};
-      const normalizedRemoteSlot = normalizeOpenRouterUsageData({ keys: { [slotKey]: remoteSlot } }).keys[slotKey];
-      for (const [model, remoteDevices] of Object.entries(normalizedRemoteSlot)) {
-        if (!openRouterUsageData.keys[slotKey][model]) openRouterUsageData.keys[slotKey][model] = {};
-        for (const [deviceId, count] of Object.entries(remoteDevices)) {
-          const remoteCount = Number(count) || 0;
-          const localCount = Number(openRouterUsageData.keys[slotKey][model][deviceId]) || 0;
-          if (remoteCount > localCount) {
-            openRouterUsageData.keys[slotKey][model][deviceId] = remoteCount;
-            changed = true;
+    const load = () => {
+      ensureCycle();
+      data = normalizeSlotUsageData(data);
+      return JSON.parse(JSON.stringify(data));
+    };
+
+    const set = incoming => {
+      if (!incoming || typeof incoming !== 'object' || !incoming.keys) return;
+      const curCycle = getCurrentQuotaCycle();
+      data = incoming.cycle === curCycle ? normalizeSlotUsageData(incoming) : { cycle: curCycle, keys: {} };
+      save();
+      onChanged();
+    };
+
+    const merge = remoteUsage => {
+      if (!remoteUsage || remoteUsage.cycle !== getCurrentQuotaCycle() || !remoteUsage.keys) return false;
+      ensureCycle();
+      let changed = false;
+      for (const [slotKey, remoteSlot] of Object.entries(remoteUsage.keys)) {
+        if (!remoteSlot || typeof remoteSlot !== 'object') continue;
+        if (!data.keys[slotKey]) data.keys[slotKey] = {};
+        const normalizedRemoteSlot = normalizeSlotUsageData({ keys: { [slotKey]: remoteSlot } }).keys[slotKey];
+        for (const [model, remoteDevices] of Object.entries(normalizedRemoteSlot)) {
+          if (!data.keys[slotKey][model]) data.keys[slotKey][model] = {};
+          for (const [deviceId, count] of Object.entries(remoteDevices)) {
+            const remoteCount = Number(count) || 0;
+            const localCount = Number(data.keys[slotKey][model][deviceId]) || 0;
+            if (remoteCount > localCount) {
+              data.keys[slotKey][model][deviceId] = remoteCount;
+              changed = true;
+            }
           }
         }
       }
-    }
-    if (changed) {
-      saveOpenRouterUsageData();
-      updateOpenRouterQuotaUI();
-    }
-    return changed;
-  }
+      if (changed) { save(); onChanged(); }
+      return changed;
+    };
 
-  function isLocalOpenRouterUsageAhead(remoteUsage) {
-    if (!remoteUsage || remoteUsage.cycle !== getCurrentQuotaCycle() || !remoteUsage.keys) return false;
-    const local = loadOpenRouterUsageData();
-    for (const [slotKey, localSlot] of Object.entries(local.keys)) {
-      for (const [model, devices] of Object.entries(localSlot || {})) {
-        for (const [deviceId, count] of Object.entries(devices || {})) {
-          if ((Number(count) || 0) > (Number(remoteUsage.keys?.[slotKey]?.[model]?.[deviceId]) || 0)) return true;
+    const isAhead = remoteUsage => {
+      if (!remoteUsage || remoteUsage.cycle !== getCurrentQuotaCycle() || !remoteUsage.keys) return false;
+      const local = load();
+      for (const [slotKey, localSlot] of Object.entries(local.keys)) {
+        for (const [model, devices] of Object.entries(localSlot || {})) {
+          for (const [deviceId, count] of Object.entries(devices || {})) {
+            if ((Number(count) || 0) > (Number(remoteUsage.keys?.[slotKey]?.[model]?.[deviceId]) || 0)) return true;
+          }
         }
       }
-    }
-    return false;
+      return false;
+    };
+
+    const count = slotIndex => {
+      const slot = data.keys[String(slotIndex)];
+      if (!slot) return 0;
+      return Object.values(slot).reduce((sum, devices) => sum + Object.values(devices || {}).reduce((modelSum, c) => modelSum + (Number(c) || 0), 0), 0);
+    };
+
+    const record = (slotIndex, model) => {
+      ensureCycle();
+      const slotKey = String(slotIndex);
+      const modelKey = model || 'unknown';
+      if (!data.keys[slotKey]) data.keys[slotKey] = {};
+      if (!data.keys[slotKey][modelKey]) data.keys[slotKey][modelKey] = {};
+      const deviceId = getMyDeviceId();
+      data.keys[slotKey][modelKey][deviceId] = (data.keys[slotKey][modelKey][deviceId] || 0) + 1;
+      save();
+      onChanged();
+      if (typeof window.JarvisSync?.scheduleAutoSync === 'function') {
+        window.JarvisSync.scheduleAutoSync(5000);
+      }
+    };
+
+    const reset = () => {
+      data = { cycle: getCurrentQuotaCycle(), keys: {} };
+      save();
+      onChanged();
+    };
+
+    return { load, set, merge, isAhead, count, record, reset };
   }
 
-  function getOpenRouterUsageCount(slotIndex) {
-    const slot = openRouterUsageData.keys[String(slotIndex)];
-    if (!slot) return 0;
-    return Object.values(slot).reduce((sum, devices) => sum + Object.values(devices || {}).reduce((modelSum, count) => modelSum + (Number(count) || 0), 0), 0);
-  }
+  const openRouterUsage = createSlotUsageTracker('jarvis_openrouter_usage', () => updateOpenRouterQuotaUI());
+  const explabsUsage = createSlotUsageTracker('jarvis_explabs_usage', () => updateExplabsQuotaUI());
 
-  function recordOpenRouterRequest(slotIndex, model) {
-    const curCycle = getCurrentQuotaCycle();
-    if (openRouterUsageData.cycle !== curCycle) {
-      openRouterUsageData = { cycle: curCycle, keys: {} };
-    }
-    const slotKey = String(slotIndex);
-    const modelKey = model || 'unknown';
-    if (!openRouterUsageData.keys[slotKey]) openRouterUsageData.keys[slotKey] = {};
-    if (!openRouterUsageData.keys[slotKey][modelKey]) openRouterUsageData.keys[slotKey][modelKey] = {};
-    const deviceId = getMyDeviceId();
-    openRouterUsageData.keys[slotKey][modelKey][deviceId] = (openRouterUsageData.keys[slotKey][modelKey][deviceId] || 0) + 1;
-    saveOpenRouterUsageData();
-    updateOpenRouterQuotaUI();
-    if (typeof window.JarvisSync?.scheduleAutoSync === 'function') {
-      window.JarvisSync.scheduleAutoSync(5000);
-    }
-  }
+  const loadOpenRouterUsageData = () => openRouterUsage.load();
+  const setOpenRouterUsageData = d => openRouterUsage.set(d);
+  const mergeRemoteOpenRouterUsage = u => openRouterUsage.merge(u);
+  const isLocalOpenRouterUsageAhead = u => openRouterUsage.isAhead(u);
+  const getOpenRouterUsageCount = i => openRouterUsage.count(i);
+  const recordOpenRouterRequest = (i, m) => openRouterUsage.record(i, m);
+
+  const loadExplabsUsageData = () => explabsUsage.load();
+  const setExplabsUsageData = d => explabsUsage.set(d);
+  const mergeRemoteExplabsUsage = u => explabsUsage.merge(u);
+  const isLocalExplabsUsageAhead = u => explabsUsage.isAhead(u);
+  const getExplabsUsageCount = i => explabsUsage.count(i);
+  const recordExplabsRequest = (i, m) => explabsUsage.record(i, m);
 
   function updateOpenRouterQuotaUI() {
     // Cập nhật badge trong ô nhập OpenRouter
@@ -606,6 +641,17 @@
       }
       listEl.innerHTML = hasAnyKey ? html : '<div style="font-size:0.75rem;color:var(--text-muted);text-align:center;padding:12px;">Chưa có OpenRouter key nào.</div>';
     }
+    // Cập nhật nhãn + bộ đếm trong dropdown chọn key (sidebar & Cài đặt)
+    if (typeof window.refreshSlotKeySelects === 'function') window.refreshSlotKeySelects('openrouter');
+  }
+
+  function updateExplabsQuotaUI() {
+    for (let i = 1; i <= 5; i++) {
+      const badge = $(`explabs-key-badge-${i}`);
+      if (badge) badge.innerHTML = `EL: ${getExplabsUsageCount(i)} req`;
+    }
+    // Cập nhật nhãn + bộ đếm trong dropdown chọn key (sidebar & Cài đặt)
+    if (typeof window.refreshSlotKeySelects === 'function') window.refreshSlotKeySelects('explabs');
   }
 
   window.getOpenRouterUsageCount = getOpenRouterUsageCount;
@@ -615,5 +661,13 @@
   window.setOpenRouterUsageData = setOpenRouterUsageData;
   window.mergeRemoteOpenRouterUsage = mergeRemoteOpenRouterUsage;
   window.isLocalOpenRouterUsageAhead = isLocalOpenRouterUsageAhead;
+
+  window.getExplabsUsageCount = getExplabsUsageCount;
+  window.recordExplabsRequest = recordExplabsRequest;
+  window.updateExplabsQuotaUI = updateExplabsQuotaUI;
+  window.loadExplabsUsageData = loadExplabsUsageData;
+  window.setExplabsUsageData = setExplabsUsageData;
+  window.mergeRemoteExplabsUsage = mergeRemoteExplabsUsage;
+  window.isLocalExplabsUsageAhead = isLocalExplabsUsageAhead;
 
 })();

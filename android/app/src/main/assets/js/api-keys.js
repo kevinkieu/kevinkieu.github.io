@@ -18,13 +18,13 @@
     ['global-context-input', 'jarvis_global_context'],
     ['tavily-key-input', 'tavily_api_key'],
     ['serper-key-input', 'serper_api_key'],
-    ['explabs-key-input', 'explabs_api_key'],
     ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
     ['web-extract-engine-input', 'web_extract_engine', 'auto'],
     ['live-temperature', 'live_temperature', '0.7']
   ];
 
   const OR_KEY_COUNT = 5;
+  const EL_KEY_COUNT = 5;
 
   // Render container 10 dòng API keys (giữ nguyên template từ app.js)
   const container = $('api-keys-container');
@@ -52,11 +52,37 @@
     `).join('');
   }
 
+  // Render container 5 dòng Experiential Labs API keys (xoay tua)
+  const elContainer = $('explabs-keys-container');
+  if (elContainer) {
+    elContainer.innerHTML = Array.from({ length: EL_KEY_COUNT }, (_, i) => `
+      <div class="api-key-row" style="display:flex;gap:6px;align-items:center;">
+        <span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);min-width:30px;text-align:center;background:rgba(255,255,255,0.05);padding:6px 0;border-radius:var(--radius-sm);border:1px solid var(--border);">#${i+1}</span>
+        <input type="text" id="explabs-key-name-${i+1}" placeholder="Tên gợi nhớ ${i+1}" class="modern-input" style="width:115px;flex:0 0 115px;font-size:0.8rem;padding:7px 10px;" title="Tên gợi nhớ cho Experiential Labs Key ${i+1}">
+        <input type="password" id="explabs-key-${i+1}" placeholder="Experiential Labs API Key ${i+1} (xpl_...)" class="modern-input" style="flex:1;min-width:110px;font-size:0.8rem;padding:7px 10px;" title="Dán Experiential Labs API Key vào đây">
+        <span id="explabs-key-badge-${i+1}" style="font-size:0.68rem;font-weight:700;padding:4px 6px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.05);white-space:nowrap;border:1px solid var(--border);flex-shrink:0;">EL: 0 req</span>
+      </div>
+    `).join('');
+  }
+
   // Đọc key + tên từ localStorage (hỗ trợ 3 bộ key cũ: jarvis_/huanmu_/javiss_)
   const readRawKey = i => (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
   const readRawName = i => (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || "").trim();
   const readRawOrKey = i => (ls.getItem(`jarvis_openrouter_api_${i}`) || "").trim();
   const readRawOrName = i => (ls.getItem(`jarvis_openrouter_api_name_${i}`) || "").trim();
+  const readRawElKey = i => (ls.getItem(`jarvis_explabs_api_${i}`) || "").trim();
+  const readRawElName = i => (ls.getItem(`jarvis_explabs_api_name_${i}`) || "").trim();
+
+  // Tìm số thứ tự ô (1..5) của một Experiential Labs key (giống OpenRouter/Google)
+  const findExplabsSlotIndexForKey = key => {
+    if (!key) return 1;
+    for (let i = 1; i <= EL_KEY_COUNT; i++) {
+      let k = readRawElKey(i);
+      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
+      if (k === key) return i;
+    }
+    return 1;
+  };
 
   // Tìm số thứ tự ô (1..5) của một OpenRouter key — giống findSlotIndexForKey của Google,
   // để key thứ N sau khi lọc bỏ ô trống vẫn được đếm đúng vào ô ban đầu.
@@ -69,6 +95,88 @@
     }
     return 1;
   };
+
+  // --- KEY POOL SELECTS (sidebar + Cài đặt) ---
+  // Hai bộ chọn cùng đọc/ghi 1 giá trị trong localStorage nên luôn đồng bộ.
+  const SLOT_SELECT_GROUPS = [
+    {
+      kind: 'openrouter', storage: 'jarvis_selected_openrouter_slot',
+      count: OR_KEY_COUNT, readKey: readRawOrKey, readName: readRawOrName,
+      ids: ['openrouter-key-select', 'openrouter-key-select-settings'],
+      hintId: 'openrouter-next-key', icon: '🛰️', short: 'OR',
+      usageFn: 'getOpenRouterUsageCount', indexVar: 'openRouterKeyIndex'
+    },
+    {
+      kind: 'explabs', storage: 'jarvis_selected_explabs_slot',
+      count: EL_KEY_COUNT, readKey: readRawElKey, readName: readRawElName,
+      ids: ['explabs-key-select', 'explabs-key-select-settings'],
+      hintId: 'explabs-next-key', icon: '⚡', short: 'EL',
+      usageFn: 'getExplabsUsageCount', indexVar: 'explabsKeyIndex'
+    }
+  ];
+
+  function getSlotUsage(group, slot) {
+    const fn = window[group.usageFn];
+    return typeof fn === 'function' ? (Number(fn(slot)) || 0) : 0;
+  }
+
+  function collectSlotKeys(group) {
+    const list = [];
+    for (let i = 1; i <= group.count; i++) {
+      let k = group.readKey(i);
+      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
+      if (k) list.push({ slot: i, key: k, name: group.readName(i) });
+    }
+    return list;
+  }
+
+  // Vẽ lại dropdown: mỗi ô hiển thị tên gợi nhớ + số lượt đã gọi, kèm gợi ý key kế tiếp khi xoay tua.
+  function renderSlotSelects(group) {
+    const keys = collectSlotKeys(group);
+    const stored = ls.getItem(group.storage) || 'auto';
+    const value = (stored === 'auto' || keys.some(x => String(x.slot - 1) === stored)) ? stored : 'auto';
+    if (value !== stored) ls.setItem(group.storage, value);
+
+    const options = keys.map(x => {
+      const label = x.name ? `${x.name} (${x.key.substring(0, 5)}...)` : `${group.short} Key ${x.slot} (${x.key.substring(0, 5)}...)`;
+      return `<option value="${x.slot - 1}">${group.icon} ${label} · ${getSlotUsage(group, x.slot)} req</option>`;
+    }).join('');
+
+    group.ids.forEach(id => {
+      const sel = $(id);
+      if (!sel) return;
+      sel.innerHTML = '<option value="auto">🔄 Tự động xoay tua</option>' + options;
+      sel.value = value;
+      if (!sel.dataset.slotWired) {
+        sel.dataset.slotWired = '1';
+        sel.onchange = () => {
+          ls.setItem(group.storage, sel.value);
+          group.ids.forEach(otherId => {
+            const other = $(otherId);
+            if (other && other !== sel) other.value = sel.value;
+          });
+          renderSlotSelects(group);
+        };
+      }
+    });
+
+    const hint = $(group.hintId);
+    if (hint) {
+      if (!keys.length) {
+        hint.innerText = 'Chưa có key nào';
+      } else if (value === 'auto') {
+        const idx = (Number(window[group.indexVar]) || 0) % keys.length;
+        hint.innerText = `🔄 Kế tiếp: Key #${keys[idx].slot} · ${getSlotUsage(group, keys[idx].slot)} req (${keys.length} key xoay)`;
+      } else {
+        const slot = parseInt(value, 10) + 1;
+        hint.innerText = `📌 Đang khóa vào Key #${slot} · ${getSlotUsage(group, slot)} req`;
+      }
+    }
+  }
+
+  function refreshSlotKeySelects(kind) {
+    SLOT_SELECT_GROUPS.forEach(g => { if (!kind || g.kind === kind) renderSlotSelects(g); });
+  }
 
   // --- INIT API KEYS FROM LOCALSTORAGE ---
   function initAPIKeys() {
@@ -140,22 +248,48 @@
       s.innerText = keys.length ? `✅ Có ${keys.length} OpenRouter Key` : "⚠️ Chưa có Key";
       s.style.color = keys.length ? "var(--success)" : "var(--danger)";
     }
-    const sel = $('openrouter-key-select');
-    if (sel) {
-      const cur = sel.value;
-      sel.innerHTML = '<option value="auto">🔄 Tự động xoay Key</option>';
-      for (let i = 1; i <= OR_KEY_COUNT; i++) {
-        let k = readRawOrKey(i);
-        const n = readRawOrName(i);
-        if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
-        if (k) {
-          const label = n ? `🔑 ${n} (${k.substring(0, 5)}...)` : `🔑 OR Key ${i} (${k.substring(0, 5)}...)`;
-          sel.innerHTML += `<option value="${i-1}">${label}</option>`;
-        }
-      }
-      if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
-    }
+    renderSlotSelects(SLOT_SELECT_GROUPS[0]);
     if (typeof window.updateOpenRouterQuotaUI === 'function') window.updateOpenRouterQuotaUI();
+  }
+
+  // --- INIT EXPERIENTIAL LABS KEYS FROM LOCALSTORAGE ---
+  function initExplabsKeys() {
+    // Di trú key đơn cũ (explabs_api_key) sang ô #1 nếu 5 ô còn trống
+    let hasAnySlot = false;
+    for (let i = 1; i <= EL_KEY_COUNT; i++) if (readRawElKey(i)) hasAnySlot = true;
+    if (!hasAnySlot) {
+      let legacy = (ls.getItem('explabs_api_key') || '').trim();
+      if (legacy.startsWith('JVENC_') || legacy.startsWith('ENC_')) legacy = deobfuscateKey(legacy);
+      if (legacy) {
+        ls.setItem('jarvis_explabs_api_1', legacy);
+        ls.removeItem('explabs_api_key');
+      }
+    }
+
+    const keys = [];
+    for (let i = 1; i <= EL_KEY_COUNT; i++) {
+      let k = readRawElKey(i);
+      const n = readRawElName(i);
+      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
+        k = deobfuscateKey(k);
+        ls.setItem(`jarvis_explabs_api_${i}`, k);
+      }
+      const el = $(`explabs-key-${i}`);
+      if (el) el.value = k;
+      const nameEl = $(`explabs-key-name-${i}`);
+      if (nameEl) nameEl.value = n;
+      if (k) keys.push(k);
+    }
+    window.explabsKeys = keys;
+    window.explabsKeyIndex = 0;
+
+    const s = $('explabs-key-status-msg');
+    if (s) {
+      s.innerText = keys.length ? `✅ Có ${keys.length} Experiential Labs Key` : "⚠️ Chưa có Key";
+      s.style.color = keys.length ? "var(--success)" : "var(--danger)";
+    }
+    renderSlotSelects(SLOT_SELECT_GROUPS[1]);
+    if (typeof window.updateExplabsQuotaUI === 'function') window.updateExplabsQuotaUI();
   }
 
   // --- INIT EXTERNAL CONFIGURATIONS ---
@@ -215,9 +349,17 @@
       ls.setItem(`jarvis_openrouter_api_${i}`, orVal);
       ls.setItem(`jarvis_openrouter_api_name_${i}`, orName);
     }
+    // Lưu 5 Experiential Labs keys
+    for (let i = 1; i <= EL_KEY_COUNT; i++) {
+      const elVal = $(`explabs-key-${i}`)?.value.trim() || '';
+      const elName = $(`explabs-key-name-${i}`)?.value.trim() || '';
+      ls.setItem(`jarvis_explabs_api_${i}`, elVal);
+      ls.setItem(`jarvis_explabs_api_name_${i}`, elName);
+    }
     initAPIKeys();
     initExternalConfigs();
     initOpenRouterKeys();
+    initExplabsKeys();
     // Đẩy ngay API key ngoài (Tavily, Serper, Experiential Labs, OpenRouter...)
     // lên Cloud Gist, không cần chờ có tin nhắn chat mới.
     if (window.JarvisSync && typeof window.JarvisSync.scheduleAutoSync === 'function') {
@@ -328,6 +470,16 @@
     showToast(dups.length ? `⚠️ OpenRouter trùng: ${dups.join(', ')}!` : "✅ OpenRouter không có key trùng.");
   }
 
+  function handleCheckExplabsDuplicates() {
+    const m = {}, dups = [];
+    for (let i = 1; i <= EL_KEY_COUNT; i++) {
+      const v = $(`explabs-key-${i}`)?.value.trim();
+      const kn = $(`explabs-key-name-${i}`)?.value.trim() || `EL Key ${i}`;
+      if (v) m[v] ? dups.push(`${kn} trùng với ${m[v]}`) : m[v] = kn;
+    }
+    showToast(dups.length ? `⚠️ Experiential Labs trùng: ${dups.join(', ')}!` : "✅ Experiential Labs không có key trùng.");
+  }
+
   // --- CHECK DUPLICATES BUTTON HANDLER ---
   function handleCheckDuplicates() {
     const m = {}, dups = [];
@@ -350,12 +502,18 @@
   if (checkOrBtn) checkOrBtn.onclick = async () => { await handleCheckOpenRouterKeys(); };
   const dupOrBtn = $('btn-check-openrouter-duplicates');
   if (dupOrBtn) dupOrBtn.onclick = () => { handleCheckOpenRouterDuplicates(); };
+  const dupElBtn = $('btn-check-explabs-duplicates');
+  if (dupElBtn) dupElBtn.onclick = () => { handleCheckExplabsDuplicates(); };
 
   // --- PUBLIC API ---
   window.initAPIKeys = initAPIKeys;
   window.initExternalConfigs = initExternalConfigs;
   window.initOpenRouterKeys = initOpenRouterKeys;
   window.findOpenRouterSlotIndexForKey = findOpenRouterSlotIndexForKey;
+  window.initExplabsKeys = initExplabsKeys;
+  window.findExplabsSlotIndexForKey = findExplabsSlotIndexForKey;
+  window.refreshSlotKeySelects = refreshSlotKeySelects;
+  window.handleCheckExplabsDuplicates = handleCheckExplabsDuplicates;
   window.handleSaveKeys = handleSaveKeys;
   window.handleCheckKeys = handleCheckKeys;
   window.handleCheckDuplicates = handleCheckDuplicates;
@@ -366,5 +524,6 @@
   initAPIKeys();
   initExternalConfigs();
   initOpenRouterKeys();
+  initExplabsKeys();
 
 })();

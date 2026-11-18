@@ -1,15 +1,31 @@
 {
   "project": {
     "name": "Jarvis AI",
-    "type": ["PWA", "Vanilla JS app", "Android WebView app"],
+    "type": [
+      "PWA",
+      "Vanilla JS app",
+      "Android WebView app"
+    ],
     "language": "JavaScript (ES modules)",
     "purpose": "Multimodal AI assistant with chat, live voice/video call, dual-screen live translation, TTS studio, personal knowledge base + RAG, semantic search, and GitHub Gist 2-way sync.",
-    "platforms": ["Web", "PWA", "Android (WebView + native medication alarms)"]
+    "platforms": [
+      "Web",
+      "PWA",
+      "Android (WebView + native medication alarms)"
+    ]
   },
   "runtime_entry": {
     "web": "index.html",
-    "pwa": ["manifest.json", "sw.js"],
-    "build": ["package.json", "package-lock.json", "build.js", "build-apk.bat"],
+    "pwa": [
+      "manifest.json",
+      "sw.js"
+    ],
+    "build": [
+      "package.json",
+      "package-lock.json",
+      "build.js",
+      "build-apk.bat"
+    ],
     "ci": ".github/workflows/build-apk.yml",
     "versioning": "bump-version.js"
   },
@@ -214,6 +230,18 @@
     {
       "date": "2026-11-17",
       "summary": "Removed broken Orcarouter provider (later replaced by an NVIDIA OpenAI-compatible gateway, which was itself removed on 2026-11-17 in favour of OpenRouter)."
+    },
+    {
+      "date": "2026-11-18",
+      "summary": "Toast lỗi gateway OpenRouter gọn hơn: helper formatUpstreamError() trong js/app.js rút message + mã lỗi từ error.metadata.raw khi provider trả JSON (vd Google 503 UNAVAILABLE, 429 rate-limit), kèm tên provider, thay vì dump cả khối JSON; nếu không có raw thì thêm (HTTP xxx). Không thêm option model trả phí google/gemma-4-26b-a4b-it vì id đó không nhận BYOK Google AI Studio (chỉ provider bên thứ ba → 402 khi 0 credit); BYOK chỉ áp cho bản :free (usage.is_byok = true). Bump versionCode 60 / ?v=60 / sw cache v60, mirror sang android/app/src/main/assets/."
+    },
+    {
+      "date": "2026-11-18",
+      "summary": "js/app.js nhánh gateway OpenAI-compatible: tự thử lại tối đa 4 lần khi provider trả lỗi tạm thời 429/502/503/504 (chờ 600ms/1500ms/2500ms, huỷ được theo AbortController, hiện ↻ thử lại ở latency, log console.warn) — Google AI Studio qua BYOK hay trả 503 UNAVAILABLE cách quãng rồi 200 ngay sau đó. Bump versionCode 61 / ?v=61 / sw cache v61, mirror sang android/app/src/main/assets/."
+    },
+    {
+      "date": "2026-11-18",
+      "summary": "Nhánh streaming Google trong js/app.js: watchdog \"chưa có chunk đầu\" 20s -> 45s (đo thực tế header Google có thể mất 9-19s, có lúc >25s khi xếp hàng, cắt sớm thì phải xếp hàng lại); thêm 503/UNAVAILABLE vào isStreamCutoff để nối tiếp luồng khi Google cắt stream giữa chừng; khi FAIL-SAFE 2 phải hỏi lại với thinking TẮT (Gemma 4 stream suy luận rồi không xuất chữ) thì hiện toast + dòng trạng thái \"Đang lấy câu trả lời từ Google…\" để UI không đứng hình. Bump versionCode 62 / ?v=62 / sw cache v62, mirror sang android/app/src/main/assets/."
     }
   ]
 }

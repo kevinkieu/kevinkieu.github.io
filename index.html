@@ -32,7 +32,7 @@
   </script>
 
   <!-- MODULAR STYLESHEETS -->
-  <link rel="stylesheet" href="./css/style.css?v=73">
+  <link rel="stylesheet" href="./css/style.css?v=62">
   <link rel="stylesheet" href="./css/live.css">
   <link rel="stylesheet" href="./css/tts.css">
   <link rel="stylesheet" href="./css/translate.css">
@@ -138,6 +138,7 @@
               </optgroup>
               <optgroup label="🌐 Experiential Labs">
                 <option value="gpt-6-luna">⚡ GPT-6 Luna (Experiential)</option>
+                <option value="gpt-6.2-astra:free">✨ GPT-6.2 Astra (Experiential)</option>
                 <option value="deepseek-v4.1-flash">🧠 DeepSeek V4.1 Flash (Suy luận Free)</option>
                 <option value="qwen4-max:free">🧠 Qwen4 Max (Suy luận)</option>
                 <option value="clef">🎯 Clef (Decision Engine)</option>
@@ -176,6 +177,24 @@
             <select id="api-key-select" class="modern-select">
               <option value="auto">🔄 Tự động xoay tua</option>
             </select>
+          </div>
+
+          <!-- KEY POOL: OPENROUTER (5 ô, xoay tua + đếm riêng) -->
+          <div style="margin-top:6px;">
+            <span class="field-label">🛰️ OpenRouter API Key:</span>
+            <select id="openrouter-key-select" class="modern-select">
+              <option value="auto">🔄 Tự động xoay tua</option>
+            </select>
+            <div id="openrouter-next-key" style="font-size:0.7rem;color:var(--text-muted);margin-top:3px;">Chưa có key</div>
+          </div>
+
+          <!-- KEY POOL: EXPERIENTIAL LABS (5 ô, xoay tua + đếm riêng) -->
+          <div style="margin-top:6px;">
+            <span class="field-label">⚡ Experiential Labs Key:</span>
+            <select id="explabs-key-select" class="modern-select">
+              <option value="auto">🔄 Tự động xoay tua</option>
+            </select>
+            <div id="explabs-next-key" style="font-size:0.7rem;color:var(--text-muted);margin-top:3px;">Chưa có key</div>
           </div>
 
           <!-- SESSION ACTIONS (GRID & ROWS) -->
@@ -710,10 +729,6 @@
               <label class="field-label">Serper API Key (Dùng cho Google Search):</label>
               <input type="password" id="serper-key-input" placeholder="Nhập Serper key..." class="modern-input">
             </div>
-            <div>
-              <label class="field-label">⚡ Experiential Labs API Key (gpt-6-luna, deepseek-v4.1-flash, qwen4-max:free, clef):</label>
-              <input type="password" id="explabs-key-input" placeholder="xpl_..." class="modern-input">
-            </div>
             <div style="margin-top:6px;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);">
               <label style="cursor:pointer;font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:8px;margin:0;">
                 <input type="checkbox" id="hide-deepseek-thinking-checkbox"> 🙈 Ẩn hoàn toàn khối suy luận (DeepSeek & Gemini - chỉ hiện kết quả)
@@ -787,7 +802,7 @@
           <legend style="color:#f59e0b;font-weight:700;">🛰️ 5 OpenRouter API Keys</legend>
           <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
             <span class="field-label">🔑 OpenRouter API Key (xoay tua):</span>
-            <select id="openrouter-key-select" class="modern-select" style="flex:1;">
+            <select id="openrouter-key-select-settings" class="modern-select" style="flex:1;">
               <option value="auto">🔄 Tự động xoay tua</option>
             </select>
           </div>
@@ -796,6 +811,25 @@
             <button id="btn-check-openrouter-keys" class="btn">🔍 Kiểm tra OpenRouter</button>
             <button id="btn-check-openrouter-duplicates" class="btn">👯 Kiểm tra Trùng</button>
             <span id="openrouter-key-status-msg" style="font-size:.78rem;font-weight:600;"></span>
+          </div>
+        </fieldset>
+
+        <!-- 5 EXPERIENTIAL LABS API KEYS -->
+        <fieldset class="settings-group" style="border-color:#0ea5e9;background:rgba(14,165,233,0.04);">
+          <legend style="color:#0ea5e9;font-weight:700;">⚡ 5 Experiential Labs API Keys</legend>
+          <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
+            <span class="field-label">⚡ Experiential Labs Key (xoay tua):</span>
+            <select id="explabs-key-select-settings" class="modern-select" style="flex:1;">
+              <option value="auto">🔄 Tự động xoay tua</option>
+            </select>
+          </div>
+          <div class="api-keys-grid" id="explabs-keys-container" style="margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button id="btn-check-explabs-duplicates" class="btn">👯 Kiểm tra Trùng</button>
+            <span id="explabs-key-status-msg" style="font-size:.78rem;font-weight:600;"></span>
+          </div>
+          <div style="font-size:0.73rem;color:var(--text-muted);margin-top:6px;line-height:1.4;">
+            Dùng chung cho gpt-6-luna, gpt-6.2-astra:free, deepseek-v4.1-flash, qwen4-max:free và clef. Mỗi request tự chuyển sang key kế tiếp và ghi bộ đếm riêng cho từng ô.
           </div>
         </fieldset>
       </div>
@@ -1699,21 +1733,21 @@
   </div>
 
   <!-- JAVASCRIPT APPLICATION MODULES -->
-  <script type="module" src="./js/tools.js?v=73"></script>
-  <script type="module" src="./js/export.js?v=73"></script>
-  <script type="module" src="./js/quota.js?v=74"></script>
-  <script type="module" src="./js/medication.js?v=73"></script>
-  <script type="module" src="./js/commands.js?v=73"></script>
-    <script type="module" src="./js/briefing.js?v=73"></script>
-  <script type="module" src="./js/cipher.js?v=73"></script>
-  <script type="module" src="./js/database.js?v=73"></script>
-  <script type="module" src="./js/app.js?v=73"></script>
-    <script type="module" src="./js/api-keys.js?v=73"></script>
-  <script type="module" src="./js/sync.js?v=74"></script>
-  <script type="module" src="./js/live.js?v=73"></script>
-  <script type="module" src="./js/tts.js?v=73"></script>
-  <script type="module" src="./js/translate.js?v=73"></script>
-  <script type="module" src="./js/eventBus.js?v=73"></script>
-  <script type="module" src="./js/rag.js?v=73"></script>
+  <script type="module" src="./js/tools.js?v=62"></script>
+  <script type="module" src="./js/export.js?v=62"></script>
+  <script type="module" src="./js/quota.js?v=62"></script>
+  <script type="module" src="./js/medication.js?v=62"></script>
+  <script type="module" src="./js/commands.js?v=62"></script>
+    <script type="module" src="./js/briefing.js?v=62"></script>
+  <script type="module" src="./js/cipher.js?v=62"></script>
+  <script type="module" src="./js/database.js?v=62"></script>
+  <script type="module" src="./js/app.js?v=62"></script>
+    <script type="module" src="./js/api-keys.js?v=62"></script>
+  <script type="module" src="./js/sync.js?v=62"></script>
+  <script type="module" src="./js/live.js?v=62"></script>
+  <script type="module" src="./js/tts.js?v=62"></script>
+  <script type="module" src="./js/translate.js?v=62"></script>
+  <script type="module" src="./js/eventBus.js?v=62"></script>
+  <script type="module" src="./js/rag.js?v=62"></script>
 </body>
 </html>
