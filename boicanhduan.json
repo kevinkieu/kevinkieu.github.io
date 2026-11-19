@@ -187,6 +187,18 @@
   },
   "recent_changes": [
     {
+      "date": "2026-11-20",
+      "summary": "Tăng maxTokens (trần output tokens) cho TẤT CẢ model NVIDIA/OpenRouter/Experiential Labs/Particle/ERNIE lên giới hạn tối đa của từng model (maxOutputTokens/apiMaxCompletionTokens) để tránh cắt断 câu trả lời giữa chừng. Cập nhật trong js/app.js, android/app/src/main/assets/js/app.js, android/app/src/main/assets/app.js COMPAT_MODEL_OPTS: GLM-5.3-Flash 32768→65536, Nemotron 3.5 Lightning/Bolt 32768→65536, Super VL 120B 32768→1048576 (gateway max 1M), Nemotron 3 Ultra giữ 32768 (maxOutputTokens=32768), Nano Omni (integrate) 32768→131072, Particle-1 32768→131072, ERNIE 5.5-Flash 32768→921600 (apiMaxCompletionTokens), Nemotron 3.5 Lightning (OR) 32768→65536, Super VL (OR) 32768→131072, Nano Omni (OR) 32768→65536. Kiểm chứng syntax node --check PASS 3 file. Mirror sang android/app/src/main/assets/."
+    },
+    {
+      "date": "2026-11-20",
+      "summary": "Thêm tham số sinh văn bản (temperature, top_p, top_k) cho 13 model NVIDIA/OpenRouter trong COMPAT_MODEL_OPTS với mặc định theo model: reasoning-heavy (Nemotron 3 Ultra, Nemotron 4 340B, Nemotron 3 8B) temp=0.6 topP=0.95 topK=20; general chat/vision temp=0.7 topP=0.9 topK=40. Cập nhật sendCompat() gửi temperature/top_p/top_k trong body OpenAI-compatible. Thêm UI Settings nhóm \"Tham số Sinh văn bản (NVIDIA / OpenRouter)\" với 3 slider Temperature (0-2), Top-p (0-1), Top-k (1-100) + hiển thị giá trị realtime, lưu localStorage (tmp/tpp/top). Priority: model defaults > user UI > fallback (0.7/0.9/40). Chỉ áp dụng nhóm NVIDIA. Mirror js/app.js + index.html sang android/app/src/main/assets/. Commit d07e820, 55c8a36 push main."
+    },
+    {
+      "date": "2026-11-20",
+      "summary": "Xóa model GPT-6.2 Astra và Clef khỏi nhóm Experiential Labs (key không dùng được). Xóa toàn bộ model Gemma (Gemma 4 26B A4B, Gemma 4 31B) khỏi mọi nhóm: Google AI Studio, NVIDIA, OpenRouter do server Google liên tục chập chờn. Cập nhật index.html (optgroup), js/app.js (COMPAT_PROVIDERS models + modelLabel, COMPAT_MODEL_OPTS, EXPLABS_MODELS, isExplabsModel), js/quota.js (EXPLABS_MODELS), android/app/src/main/assets/ mirror. npm run check-models PASS: NVIDIA 7 model, OpenRouter 5 model, COMPAT_MODEL_OPTS 12 entry."
+    },
+    {
       "date": "2026-11-19",
       "summary": "Gộp 4 menu chọn key ở sidebar thành 1 menu dùng chung + kiểm chứng xoay tua key: (1) index.html thay 4 khối chọn key (Google/OpenRouter/Experiential Labs/NVIDIA) bằng 1 khối #key-pool-select với nhãn #key-pool-label và gợi ý #key-pool-hint; 4 <select> gốc (api-key-select, openrouter-key-select, explabs-key-select, nvidia-key-select) giữ nguyên id trong div ẩn #key-pool-sources để app.js/quota.js đọc trực tiếp như cũ; (2) js/api-keys.js thêm renderKeyPoolMenu() dò nền tảng theo model đang chọn (window.resolveCompatProvider cho nvidia/openrouter, window.EXPLABS_MODELS cho explabs, còn lại Google), clone option + hint của select gốc, ghi lựa chọn ngược vào select gốc rồi dispatch change nên lưu keySel của phiên/localStorage vẫn chạy; render lại khi đổi model (listener + switchSess gọi window.renderKeyPoolMenu) và mỗi lần renderSlotSelects/quota cập nhật; (3) nhãn '🤖 Mô hình Google Gemini:' đổi thành '🤖 Model chat chính:'; (4) js/app.js thêm EXPLABS_MODELS dùng chung (window.EXPLABS_MODELS) thay chuỗi điều kiện usesExplabs; (5) sửa xoay tua: trước đây khi key lỗi 401/402/403/429 gateway chỉ thử lại CÙNG key 4 lần rồi báo lỗi cả lượt — nay tự xoay sang key kế tiếp trong bể (chỉ khi đang 'Tự động xoay tua', tôn trọng khóa thủ công), cập nhật Authorization + badge key + con trỏ xoay tua, toast 'Key #X lỗi (HTTP 429), đang xoay sang Key #Y'. Kiểm chứng thực tế ở http://127.0.0.1:8137 (tab ẩn danh, key giả + fetch giả): xoay tua tuần tự NVIDIA TEST1→2→3, OpenRouter 1→2→3, EL 1→2→3, Google cân bằng theo lượt dùng (2→3→1→3); khóa thủ công 1 key giữ nguyên key qua các lượt; 429 ở key #2 → nhảy sang key #3, lượt sau đi tiếp #4/#5. Bump versionCode 70 / ?v=70 / sw cache v70, mirror index.html + sw.js + js/app.js + js/api-keys.js sang android/app/src/main/assets/."
     },
@@ -295,10 +307,6 @@
     {
       "date": "2026-11-19",
       "summary": "Review lại bộ lọc khối 💭 trong lịch sử gửi API: bỏ wrapper historyTextForApi() vừa thêm (thừa) — fallback của nó bóc mọi thẻ HTML nên kéo cả dòng UI \"Quá trình suy luận (… từ • … tokens - bấm để xem)\" vào prompt, trong khi 4 call site đều đã tự bỏ qua text rỗng; nay dùng thẳng stripThinkingForCopy() (compatMessages, expMessages, contents generateContentStream + nhánh nối tiếp stream). Bump versionCode 69 / versionName 1.1.69 / ?v=69 (17 link) / sw cache v69, mirror index.html + sw.js + js/app.js sang android/app/src/main/assets/."
-    },
-    {
-      "date": "2026-11-20",
-      "summary": "Xóa model GPT-6.2 Astra và Clef khỏi nhóm Experiential Labs (key không dùng được). Xóa toàn bộ model Gemma (Gemma 4 26B A4B, Gemma 4 31B) khỏi mọi nhóm: Google AI Studio, NVIDIA, OpenRouter do server Google liên tục chập chờn. Cập nhật index.html (optgroup), js/app.js (COMPAT_PROVIDERS models + modelLabel, COMPAT_MODEL_OPTS, EXPLABS_MODELS, isExplabsModel), js/quota.js (EXPLABS_MODELS), android/app/src/main/assets/ mirror. npm run check-models PASS: NVIDIA 7 model, OpenRouter 5 model, COMPAT_MODEL_OPTS 12 entry.
     }
   ]
 }

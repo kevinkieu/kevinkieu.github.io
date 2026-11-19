@@ -444,7 +444,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     const COMPAT_MODEL_OPTS = {
       // NVIDIA integrate API: gateway chỉ gửi nội dung chat, không gửi thinking/reasoning
       'z-ai/glm-5.3-flash': {
-        maxTokens: 32768,
+        maxTokens: 65536,
         noReasoning: true,
         levels: [['none', 'Tắt (NVIDIA)']],
         defaultEffort: 'none',
@@ -455,7 +455,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         notes: 'NVIDIA integrate.api.nvidia.com - model chat chính'
       },
       'nvidia/nemotron-3.5-lightning-30b-a3b': {
-        maxTokens: 32768,
+        maxTokens: 65536,
         noReasoning: true,
         levels: [['none', 'Tắt (NVIDIA)']],
         defaultEffort: 'none',
@@ -466,7 +466,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         notes: 'NVIDIA integrate.api.nvidia.com - 30B A3B'
       },
       'nvidia/nemotron-3.5-bolt-e4b': {
-        maxTokens: 32768,
+        maxTokens: 65536,
         noReasoning: true,
         levels: [['none', 'Tắt (NVIDIA)']],
         defaultEffort: 'none',
@@ -481,7 +481,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       'nvidia/nemotron-3.5-super-vl-120b-a12b': {
         contextWindow: 1048576,
         maxOutputTokens: 1048576,
-        maxTokens: 32768,
+        maxTokens: 1048576,
         nvThinking: { effort: true },
         levels: [['high', 'High (Sâu)'], ['medium', 'Med (Chuẩn)'], ['low', 'Low (Thấp)'], ['none', 'Tắt']],
         defaultEffort: 'high',
@@ -511,7 +511,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning': {
         contextWindow: 262144,
         maxOutputTokens: 131072,
-        maxTokens: 32768,
+        maxTokens: 131072,
         nvThinking: { budget: { minimal: 1024, low: 4096, medium: 8192, high: 16384 } },
         levels: [['high', 'High (trần 16K)'], ['medium', 'Med (trần 8K)'], ['low', 'Low (trần 4K)'], ['minimal', 'Min (trần 1K)'], ['none', 'Tắt']],
         defaultEffort: 'high',
@@ -524,7 +524,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       'particle-ai/particle-1:free': {
         contextWindow: 1048576,
         maxOutputTokens: 131072,
-        maxTokens: 32768, // mức thực gửi (bằng default output cap của Particle, không đẩy hết trần 131k)
+        maxTokens: 131072,
         offEffort: 'none',
         efforts: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
         defaultEffort: 'high',
@@ -540,7 +540,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         contextWindow: 1024000,
         maxOutputTokens: 1024000,      // theo model card của Baidu
         apiMaxCompletionTokens: 921600, // trần thực tế OpenRouter công bố cho endpoint này
-        maxTokens: 32768,
+        maxTokens: 921600,
         reasoningAlwaysOn: true,
         canDisable: false,
         efforts: ['high'],             // effort bị khoá ở high, không nhận mức khác
@@ -556,7 +556,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       'nvidia/nemotron-3.5-lightning:free': {
         contextWindow: 1000000,
         maxOutputTokens: 65536,
-        maxTokens: 32768,
+        maxTokens: 65536,
         reasoningToggle: true,
         levels: [['high', 'Bật (mặc định)'], ['none', 'Tắt']],
         defaultEffort: 'high',
@@ -570,7 +570,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       'nvidia/nemotron-3.5-super-vl:free': {
         contextWindow: 1000000,
         maxOutputTokens: 131072,
-        maxTokens: 32768,
+        maxTokens: 131072,
         reasoningToggle: true,
         levels: [['high', 'Bật (mặc định)'], ['none', 'Tắt']],
         defaultEffort: 'high',
@@ -585,7 +585,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free': {
         contextWindow: 256000,
         maxOutputTokens: 65536,
-        maxTokens: 32768,
+        maxTokens: 65536,
         reasoningBudgets: { minimal: 1024, low: 4096, medium: 8192, high: 16384 },
         levels: [['high', 'High (~16K)'], ['medium', 'Med (~8K)'], ['low', 'Low (~4K)'], ['minimal', 'Min (~1K)'], ['none', 'Tắt']],
         defaultEffort: 'high',
