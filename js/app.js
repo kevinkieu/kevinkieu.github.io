@@ -750,6 +750,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       topP: $('top-p') || { value: 0.9, addEventListener: () => {} },
       toppVal: $('topp-val') || { innerText: '' },
       topK: $('top-k') || { value: 40, addEventListener: () => {} },
+      topkVal: $('topk-val') || { innerText: '' },
       thinking: $('thinking-level'),
       searchInput: $('search-chat-input'),
       scrollTopBtn: $('scroll-to-top'),
@@ -2487,6 +2488,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         DOM.topP.value = s.tpp || 0.9;
         DOM.toppVal.innerText = DOM.topP.value;
         DOM.topK.value = s.top || 40;
+        if (DOM.topkVal) DOM.topkVal.innerText = DOM.topK.value;
         updateThinkingVisibility();
         // s.thk luôn tương ứng với s.mod; thkMap chỉ dùng khi chuyển model trong cùng phiên
         DOM.thinking.value = s.thk || (s.thkMap && s.mod ? s.thkMap[s.mod] : '') || 'minimal';
@@ -2740,6 +2742,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     });
     DOM.temp?.addEventListener?.('input', () => { if (DOM.tempVal) DOM.tempVal.innerText = DOM.temp.value; updateConfig(); });
     DOM.topP?.addEventListener?.('input', () => { if (DOM.toppVal) DOM.toppVal.innerText = DOM.topP.value; updateConfig(); });
+    DOM.topK?.addEventListener?.('input', () => { if (DOM.topkVal) DOM.topkVal.innerText = DOM.topK.value; updateConfig(); });
 
     // --- MARKDOWN & SYNTAX HIGHLIGHTING RENDERER ---
     async function renderMsgContent(el, t) {

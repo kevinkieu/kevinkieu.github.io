@@ -855,6 +855,32 @@
             Base URL: https://integrate.api.nvidia.com/v1 — dùng cho z-ai/glm-5.3-flash, nvidia/nemotron-3.5-lightning-30b-a3b, nvidia/nemotron-3.5-bolt-e4b, nvidia/nemotron-3.5-super-vl-120b-a12b, nvidia/nemotron-3-ultra-550b-a55b và nvidia/nemotron-3-nano-omni-30b-a3b-reasoning. NVIDIA không trả header CORS cho trình duyệt nên app đi qua proxy chuyển tiếp; để trống ô Proxy URL sẽ tự dùng proxy mặc định https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/v1, nhập URL khác để ghi đè. Mỗi request tự chuyển sang key kế tiếp và ghi bộ đếm riêng cho từng ô.
           </div>
         </fieldset>
+
+        <!-- GENERATION PARAMETERS (Temperature, Top-p, Top-k) cho NVIDIA models -->
+        <fieldset class="settings-group" style="border-color:#76b900;background:rgba(118,185,0,0.04);">
+          <legend style="color:#76b900;font-weight:700;">🎛️ Tham số Sinh văn bản (NVIDIA / OpenRouter)</legend>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:10px;line-height:1.4;">
+            Điều chỉnh độ ngẫu nhiên và đa dạng đầu ra cho các model NVIDIA (integrate.api.nvidia.com) và OpenRouter. Mỗi model có mặc định riêng (xem ghi chú model), thay đổi ở đây sẽ ghi đè mặc định.
+          </div>
+          <div class="slider-row">
+            <label>Temperature (độ ngẫu nhiên: <strong id="temp-val">0.7</strong>):</label>
+            <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7">
+          </div>
+          <div class="slider-row" style="margin-top:8px;">
+            <label>Top-p (nucleus sampling: <strong id="topp-val">0.9</strong>):</label>
+            <input type="range" id="top-p" min="0" max="1" step="0.05" value="0.9">
+          </div>
+          <div class="slider-row" style="margin-top:8px;">
+            <label>Top-k (top-k sampling: <strong id="topk-val">40</strong>):</label>
+            <input type="range" id="top-k" min="1" max="100" step="1" value="40">
+          </div>
+          <div style="font-size:0.73rem;color:var(--text-muted);margin-top:8px;line-height:1.4;">
+            <b>Mặc định theo model NVIDIA:</b><br>
+            • Nemotron 3 Ultra / 4 340B / 3 8B (reasoning): temp 0.6, top-p 0.95, top-k 20<br>
+            • Nemotron Chat / Mini 4B / Vision: temp 0.7, top-p 0.9, top-k 40<br>
+            Tham số này chỉ áp dụng cho nhóm NVIDIA/OpenRouter; Google Gemini dùng cấu hình riêng.
+          </div>
+        </fieldset>
       </div>
     </div>
 
