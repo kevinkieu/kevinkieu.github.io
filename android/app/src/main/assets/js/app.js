@@ -3166,7 +3166,12 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       DOM.chat.appendChild(c);
 
       if (!iHL && sd === 'user') DOM.chat.scrollTop = DOM.chat.scrollHeight;
-      await renderMsgContent(m.querySelector('.msg-content'), sd === 'user' ? t.replace(/\n/g, '<br>') : t);
+      const contentEl = m.querySelector('.msg-content');
+      if (sd === 'user') {
+        contentEl.innerHTML = escapeHtml(t).replace(/\n/g, '<br>');
+      } else {
+        await renderMsgContent(contentEl, t);
+      }
     }
 
     // Giữ vị trí cuộn khi vẽ lại lịch sử (tránh nhảy lên top sau khi xóa tin nhắn)
