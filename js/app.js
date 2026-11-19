@@ -437,7 +437,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         }
       }
     };
-    // --- THÔNG SỐ RIÊNG TỪNG MODEL GATEWAY (context / trần output / cách tắt reasoning) ---
+    // --- THÔNG SỐ RIÊNG TỪNG MODEL GATEWAY (context / trần output / cách tắt reasoning / generation params) ---
     // Particle-1: context 1.048.576 token, completion tối đa 131.072 token.
     // Particle mặc định reasoning = 'high' khi KHÔNG gửi tham số -> muốn tắt phải gửi 'none' tường minh.
     // Các mức hợp lệ: none, minimal, low, medium, high, xhigh, max, ultra (app chỉ dùng 4 mức đầu).
@@ -449,6 +449,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         levels: [['none', 'Tắt (NVIDIA)']],
         defaultEffort: 'none',
         inputModalities: ['text'],
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
         notes: 'NVIDIA integrate.api.nvidia.com - model chat chính'
       },
       'nvidia/nemotron-3.5-lightning-30b-a3b': {
@@ -457,6 +460,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         levels: [['none', 'Tắt (NVIDIA)']],
         defaultEffort: 'none',
         inputModalities: ['text'],
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
         notes: 'NVIDIA integrate.api.nvidia.com - 30B A3B'
       },
       'nvidia/nemotron-3.5-bolt-e4b': {
@@ -465,6 +471,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         levels: [['none', 'Tắt (NVIDIA)']],
         defaultEffort: 'none',
         inputModalities: ['text'],
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
         notes: 'NVIDIA integrate.api.nvidia.com - E4B'
       },
       // --- 3 model NVIDIA mới: đều nhận thinking qua chat_template_kwargs.enable_thinking ---
@@ -477,6 +486,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         levels: [['high', 'High (Sâu)'], ['medium', 'Med (Chuẩn)'], ['low', 'Low (Thấp)'], ['none', 'Tắt']],
         defaultEffort: 'high',
         inputModalities: ['text', 'image', 'video'],
+        temperature: 0.6,
+        topP: 0.9,
+        topK: 40,
         notes: '120B MoE (12B active), 1M context, text + ảnh + video, reasoning ON mặc định'
       },
       // Nemotron 3 Ultra 550B A55B: context 1M, reasoning ON mặc định.
@@ -490,6 +502,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         levels: [['high', 'Bật (mặc định)'], ['none', 'Tắt']],
         defaultEffort: 'high',
         inputModalities: ['text'],
+        temperature: 0.6,
+        topP: 0.9,
+        topK: 40,
         notes: '550B (55B active), 1M context, text→text, reasoning ON mặc định'
       },
       // Nemotron 3 Nano Omni 30B A3B: context 256K, omni (text/ảnh/audio/video), reasoning theo ngân sách token.
@@ -501,6 +516,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         levels: [['high', 'High (trần 16K)'], ['medium', 'Med (trần 8K)'], ['low', 'Low (trần 4K)'], ['minimal', 'Min (trần 1K)'], ['none', 'Tắt']],
         defaultEffort: 'high',
         inputModalities: ['text', 'image', 'audio', 'video'],
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
         notes: '30B A3B omni: text + ảnh + audio + video, ngân sách suy luận 1K-16K'
       },
       'particle-ai/particle-1:free': {
@@ -511,6 +529,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         efforts: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
         defaultEffort: 'high',
         inputModalities: ['text', 'image'],
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
         notes: 'Agentic coding, post-trained từ DeepSeek V4.1 Flash, nhận text + ảnh'
       },
       // ERNIE-5.5-Flash-Preview: reasoning LUÔN BẬT, effort không chỉnh được (fixed high),
@@ -525,6 +546,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         efforts: ['high'],             // effort bị khoá ở high, không nhận mức khác
         defaultEffort: 'high',
         inputModalities: ['text'],
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
         notes: '280B MoE (14B active), text→text, ~200 tok/s, free tier 20 req/phút'
       },
       // Nemotron 3.5 Lightning: endpoint free chỉ nhận `reasoning` bật/tắt,
@@ -537,6 +561,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         levels: [['high', 'Bật (mặc định)'], ['none', 'Tắt']],
         defaultEffort: 'high',
         inputModalities: ['text'],
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
         notes: '30B MoE (3B active), text→text, tối ưu throughput agentic'
       },
       // Nemotron 3.5 Super VL: vision-language, cũng chỉ bật/tắt reasoning (không có effort).
@@ -548,6 +575,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         levels: [['high', 'Bật (mặc định)'], ['none', 'Tắt']],
         defaultEffort: 'high',
         inputModalities: ['text', 'image', 'video'],
+        temperature: 0.6,
+        topP: 0.9,
+        topK: 40,
         notes: '120B MoE (12B active), nhận text + ảnh + video, đọc cả tài liệu/screenshot'
       },
       // Nemotron 3 Nano Omni: chỉ hỗ trợ reasoning.max_tokens (supports_max_tokens = true,
@@ -560,6 +590,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         levels: [['high', 'High (~16K)'], ['medium', 'Med (~8K)'], ['low', 'Low (~4K)'], ['minimal', 'Min (~1K)'], ['none', 'Tắt']],
         defaultEffort: 'high',
         inputModalities: ['text', 'image', 'audio', 'video'],
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
         notes: '30B-A3B omni: text + ảnh + audio + video → text, reasoning bật mặc định'
       },
       // GPT-OSS-20B (OpenAI open model hosted on NVIDIA): 3 reasoning levels (low/medium/high) on Playground,
@@ -572,6 +605,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         levels: [['high', 'High (Sâu)'], ['medium', 'Med (Chuẩn)'], ['low', 'Low (Thấp)'], ['none', 'Tắt']],
         defaultEffort: 'high',
         inputModalities: ['text'],
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
         notes: '20B open model, 128K context, text→text, reasoning_effort low/medium/high + off'
       }
     };
@@ -4109,11 +4145,23 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
             }
 
             // --- BẬT SUY LUẬN (REASONING) THEO MỨC "THINK DEPTH" ĐANG CHỌN ---
+            // Tham số generation (temperature, top_p, top_k) cho NVIDIA/OpenRouter models
+            // Ưu tiên: model-specific defaults (COMPAT_MODEL_OPTS) > UI settings (DOM) > fallback defaults
+            const compatTemperature = (mOpts && typeof mOpts.temperature === 'number') ? mOpts.temperature
+              : (DOM.temp?.value !== undefined ? +DOM.temp.value : 0.7);
+            const compatTopP = (mOpts && typeof mOpts.topP === 'number') ? mOpts.topP
+              : (DOM.topP?.value !== undefined ? +DOM.topP.value : 0.9);
+            const compatTopK = (mOpts && typeof mOpts.topK === 'number') ? mOpts.topK
+              : (DOM.topK?.value !== undefined ? +DOM.topK.value : 40);
+
             const compatBody = {
               model: am,
               messages: compatMessages,
               stream: true,
-              max_tokens: (mOpts && mOpts.maxTokens) ? mOpts.maxTokens : 8192
+              max_tokens: (mOpts && mOpts.maxTokens) ? mOpts.maxTokens : 8192,
+              temperature: compatTemperature,
+              top_p: compatTopP,
+              top_k: compatTopK
             };
             const compatReasoning = buildReasoningPayload(mOpts, thk);
             if (compatReasoning) {
