@@ -263,16 +263,28 @@
   function getKeyBadgeHtml(keyNum, modelName = null) {
     if (!keyNum) return '';
     const isEL = isExplabsModelName(modelName);
-    // Kiểm tra nếu là OpenRouter key (model OpenRouter)
-    const isOR = !isEL && !!(modelName && (modelName.includes('nvidia/') || modelName.includes('particle-ai/') || modelName.includes('baidu/') || modelName.includes('google/gemma-4-') || modelName.includes(':free')));
-    const provLabel = isEL ? 'Experiential Labs' : (isOR ? 'OpenRouter' : 'Google');
-    const icon = isEL ? '⚡' : (isOR ? '🛰️' : '🔑');
-    const color = isEL ? '#0ea5e9' : (isOR ? '#f59e0b' : '#3b82f6');
-    const rgb = isEL ? '14,165,233' : (isOR ? '245,158,11' : '59,130,246');
+    // Kiểm tra nếu là OpenRouter key: lấy danh sách model từ registry của app.js
+    // (tránh hard-code prefix mỗi lần thêm model mới), fallback cho model :free chưa khai báo.
+    const registryModels = (window.COMPAT_PROVIDERS && typeof window.COMPAT_PROVIDERS === 'object')
+      ? Object.values(window.COMPAT_PROVIDERS).flatMap(p => p.models || [])
+      : [];
+    const compatProv = (!isEL && modelName && window.COMPAT_PROVIDERS && typeof window.COMPAT_PROVIDERS === 'object')
+      ? Object.values(window.COMPAT_PROVIDERS).find(p => Array.isArray(p.models) && p.models.includes(modelName))
+      : null;
+    const isNV = !!compatProv && compatProv.id === 'nvidia';
+    const isOR = !isEL && !isNV && !!modelName
+      && (registryModels.includes(modelName) || modelName.includes(':free'));
+    const provLabel = isEL ? 'Experiential Labs' : (isNV ? 'NVIDIA' : (isOR ? 'OpenRouter' : 'Google'));
+    const icon = isEL ? '⚡' : (isNV ? '🟢' : (isOR ? '🛰️' : '🔑'));
+    const color = isEL ? '#0ea5e9' : (isNV ? '#76b900' : (isOR ? '#f59e0b' : '#3b82f6'));
+    const rgb = isEL ? '14,165,233' : (isNV ? '118,185,0' : (isOR ? '245,158,11' : '59,130,246'));
     let n, label;
     if (isEL) {
       n = (ls.getItem(`jarvis_explabs_api_name_${keyNum}`) || '').trim();
       label = n ? `EL Key #${keyNum} (${n})` : `EL Key #${keyNum}`;
+    } else if (isNV) {
+      n = (ls.getItem(`jarvis_nvidia_api_name_${keyNum}`) || '').trim();
+      label = n ? `NV Key #${keyNum} (${n})` : `NV Key #${keyNum}`;
     } else if (isOR) {
       n = (ls.getItem(`jarvis_openrouter_api_name_${keyNum}`) || '').trim();
       label = n ? `OR Key #${keyNum} (${n})` : `OR Key #${keyNum}`;
@@ -593,6 +605,7 @@
 
   const openRouterUsage = createSlotUsageTracker('jarvis_openrouter_usage', () => updateOpenRouterQuotaUI());
   const explabsUsage = createSlotUsageTracker('jarvis_explabs_usage', () => updateExplabsQuotaUI());
+  const nvidiaUsage = createSlotUsageTracker('jarvis_nvidia_usage', () => updateNvidiaQuotaUI());
 
   const loadOpenRouterUsageData = () => openRouterUsage.load();
   const setOpenRouterUsageData = d => openRouterUsage.set(d);
@@ -607,6 +620,13 @@
   const isLocalExplabsUsageAhead = u => explabsUsage.isAhead(u);
   const getExplabsUsageCount = i => explabsUsage.count(i);
   const recordExplabsRequest = (i, m) => explabsUsage.record(i, m);
+
+  const loadNvidiaUsageData = () => nvidiaUsage.load();
+  const setNvidiaUsageData = d => nvidiaUsage.set(d);
+  const mergeRemoteNvidiaUsage = u => nvidiaUsage.merge(u);
+  const isLocalNvidiaUsageAhead = u => nvidiaUsage.isAhead(u);
+  const getNvidiaUsageCount = i => nvidiaUsage.count(i);
+  const recordNvidiaRequest = (i, m) => nvidiaUsage.record(i, m);
 
   function updateOpenRouterQuotaUI() {
     // Cập nhật badge trong ô nhập OpenRouter
@@ -653,6 +673,23 @@
     // Cập nhật nhãn + bộ đếm trong dropdown chọn key (sidebar & Cài đặt)
     if (typeof window.refreshSlotKeySelects === 'function') window.refreshSlotKeySelects('explabs');
   }
+
+  function updateNvidiaQuotaUI() {
+    for (let i = 1; i <= 3; i++) {
+      const badge = $(`nvidia-key-badge-${i}`);
+      if (badge) badge.innerHTML = `NV: ${getNvidiaUsageCount(i)} req`;
+    }
+    // Cập nhật nhãn + bộ đếm trong dropdown chọn key (sidebar & Cài đặt)
+    if (typeof window.refreshSlotKeySelects === 'function') window.refreshSlotKeySelects('nvidia');
+  }
+
+  window.getNvidiaUsageCount = getNvidiaUsageCount;
+  window.recordNvidiaRequest = recordNvidiaRequest;
+  window.updateNvidiaQuotaUI = updateNvidiaQuotaUI;
+  window.loadNvidiaUsageData = loadNvidiaUsageData;
+  window.setNvidiaUsageData = setNvidiaUsageData;
+  window.mergeRemoteNvidiaUsage = mergeRemoteNvidiaUsage;
+  window.isLocalNvidiaUsageAhead = isLocalNvidiaUsageAhead;
 
   window.getOpenRouterUsageCount = getOpenRouterUsageCount;
   window.recordOpenRouterRequest = recordOpenRouterRequest;

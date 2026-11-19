@@ -1,0 +1,7 @@
+{
+  "entrypoint": "nvidia-proxy.js",
+  "compatibilityDate": "2026-11-19",
+  "modules": [
+    { "name": "nvidia-proxy.js", "type": "esm", "path": "./nvidia-proxy.js" }
+  ]
+}

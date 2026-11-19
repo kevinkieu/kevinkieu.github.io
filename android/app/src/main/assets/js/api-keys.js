@@ -20,11 +20,13 @@
     ['serper-key-input', 'serper_api_key'],
     ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
     ['web-extract-engine-input', 'web_extract_engine', 'auto'],
+    ['nvidia-proxy-url', 'nvidia_proxy_url'],
     ['live-temperature', 'live_temperature', '0.7']
   ];
 
   const OR_KEY_COUNT = 5;
   const EL_KEY_COUNT = 5;
+  const NV_KEY_COUNT = 3;
 
   // Render container 10 dòng API keys (giữ nguyên template từ app.js)
   const container = $('api-keys-container');
@@ -65,6 +67,19 @@
     `).join('');
   }
 
+  // Render container 3 dòng NVIDIA API keys (xoay tua)
+  const nvContainer = $('nvidia-keys-container');
+  if (nvContainer) {
+    nvContainer.innerHTML = Array.from({ length: NV_KEY_COUNT }, (_, i) => `
+      <div class="api-key-row" style="display:flex;gap:6px;align-items:center;">
+        <span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);min-width:30px;text-align:center;background:rgba(255,255,255,0.05);padding:6px 0;border-radius:var(--radius-sm);border:1px solid var(--border);">#${i+1}</span>
+        <input type="text" id="nvidia-key-name-${i+1}" placeholder="Tên gợi nhớ ${i+1}" class="modern-input" style="width:115px;flex:0 0 115px;font-size:0.8rem;padding:7px 10px;" title="Tên gợi nhớ cho NVIDIA Key ${i+1}">
+        <input type="password" id="nvidia-key-${i+1}" placeholder="NVIDIA API Key ${i+1} (nvapi-...)" class="modern-input" style="flex:1;min-width:110px;font-size:0.8rem;padding:7px 10px;" title="Dán NVIDIA API Key vào đây">
+        <span id="nvidia-key-badge-${i+1}" style="font-size:0.68rem;font-weight:700;padding:4px 6px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.05);white-space:nowrap;border:1px solid var(--border);flex-shrink:0;">NV: 0 req</span>
+      </div>
+    `).join('');
+  }
+
   // Đọc key + tên từ localStorage (hỗ trợ 3 bộ key cũ: jarvis_/huanmu_/javiss_)
   const readRawKey = i => (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
   const readRawName = i => (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || "").trim();
@@ -72,12 +87,25 @@
   const readRawOrName = i => (ls.getItem(`jarvis_openrouter_api_name_${i}`) || "").trim();
   const readRawElKey = i => (ls.getItem(`jarvis_explabs_api_${i}`) || "").trim();
   const readRawElName = i => (ls.getItem(`jarvis_explabs_api_name_${i}`) || "").trim();
+  const readRawNvKey = i => (ls.getItem(`jarvis_nvidia_api_${i}`) || "").trim();
+  const readRawNvName = i => (ls.getItem(`jarvis_nvidia_api_name_${i}`) || "").trim();
 
   // Tìm số thứ tự ô (1..5) của một Experiential Labs key (giống OpenRouter/Google)
   const findExplabsSlotIndexForKey = key => {
     if (!key) return 1;
     for (let i = 1; i <= EL_KEY_COUNT; i++) {
       let k = readRawElKey(i);
+      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
+      if (k === key) return i;
+    }
+    return 1;
+  };
+
+  // Tìm số thứ tự ô (1..3) của một NVIDIA key (giống OpenRouter/Experiential Labs)
+  const findNvidiaSlotIndexForKey = key => {
+    if (!key) return 1;
+    for (let i = 1; i <= NV_KEY_COUNT; i++) {
+      let k = readRawNvKey(i);
       if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
       if (k === key) return i;
     }
@@ -112,6 +140,13 @@
       ids: ['explabs-key-select', 'explabs-key-select-settings'],
       hintId: 'explabs-next-key', icon: '⚡', short: 'EL',
       usageFn: 'getExplabsUsageCount', indexVar: 'explabsKeyIndex'
+    },
+    {
+      kind: 'nvidia', storage: 'jarvis_selected_nvidia_slot',
+      count: NV_KEY_COUNT, readKey: readRawNvKey, readName: readRawNvName,
+      ids: ['nvidia-key-select', 'nvidia-key-select-settings'],
+      hintId: 'nvidia-next-key', icon: '🟢', short: 'NV',
+      usageFn: 'getNvidiaUsageCount', indexVar: 'nvidiaKeyIndex'
     }
   ];
 
@@ -292,6 +327,46 @@
     if (typeof window.updateExplabsQuotaUI === 'function') window.updateExplabsQuotaUI();
   }
 
+  // --- INIT NVIDIA KEYS FROM LOCALSTORAGE ---
+  function initNvidiaKeys() {
+    // Di trú key đơn cũ (nvidia_api_key) sang ô #1 nếu 3 ô còn trống
+    let hasAnySlot = false;
+    for (let i = 1; i <= NV_KEY_COUNT; i++) if (readRawNvKey(i)) hasAnySlot = true;
+    if (!hasAnySlot) {
+      let legacy = (ls.getItem('nvidia_api_key') || '').trim();
+      if (legacy.startsWith('JVENC_') || legacy.startsWith('ENC_')) legacy = deobfuscateKey(legacy);
+      if (legacy) {
+        ls.setItem('jarvis_nvidia_api_1', legacy);
+        ls.removeItem('nvidia_api_key');
+      }
+    }
+
+    const keys = [];
+    for (let i = 1; i <= NV_KEY_COUNT; i++) {
+      let k = readRawNvKey(i);
+      const n = readRawNvName(i);
+      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
+        k = deobfuscateKey(k);
+        ls.setItem(`jarvis_nvidia_api_${i}`, k);
+      }
+      const el = $(`nvidia-key-${i}`);
+      if (el) el.value = k;
+      const nameEl = $(`nvidia-key-name-${i}`);
+      if (nameEl) nameEl.value = n;
+      if (k) keys.push(k);
+    }
+    window.nvidiaKeys = keys;
+    window.nvidiaKeyIndex = 0;
+
+    const s = $('nvidia-key-status-msg');
+    if (s) {
+      s.innerText = keys.length ? `✅ Có ${keys.length} NVIDIA Key` : "⚠️ Chưa có Key";
+      s.style.color = keys.length ? "var(--success)" : "var(--danger)";
+    }
+    renderSlotSelects(SLOT_SELECT_GROUPS.find(g => g.kind === 'nvidia'));
+    if (typeof window.updateNvidiaQuotaUI === 'function') window.updateNvidiaQuotaUI();
+  }
+
   // --- INIT EXTERNAL CONFIGURATIONS ---
   function initExternalConfigs() {
     cfgMap.forEach(([id, k, def = '']) => {
@@ -356,11 +431,19 @@
       ls.setItem(`jarvis_explabs_api_${i}`, elVal);
       ls.setItem(`jarvis_explabs_api_name_${i}`, elName);
     }
+    // Lưu 3 NVIDIA keys
+    for (let i = 1; i <= NV_KEY_COUNT; i++) {
+      const nvVal = $(`nvidia-key-${i}`)?.value.trim() || '';
+      const nvName = $(`nvidia-key-name-${i}`)?.value.trim() || '';
+      ls.setItem(`jarvis_nvidia_api_${i}`, nvVal);
+      ls.setItem(`jarvis_nvidia_api_name_${i}`, nvName);
+    }
     initAPIKeys();
     initExternalConfigs();
     initOpenRouterKeys();
     initExplabsKeys();
-    // Đẩy ngay API key ngoài (Tavily, Serper, Experiential Labs, OpenRouter...)
+    initNvidiaKeys();
+    // Đẩy ngay API key ngoài (Tavily, Serper, Experiential Labs, OpenRouter, NVIDIA...)
     // lên Cloud Gist, không cần chờ có tin nhắn chat mới.
     if (window.JarvisSync && typeof window.JarvisSync.scheduleAutoSync === 'function') {
       window.JarvisSync.scheduleAutoSync(3000);
@@ -470,6 +553,16 @@
     showToast(dups.length ? `⚠️ OpenRouter trùng: ${dups.join(', ')}!` : "✅ OpenRouter không có key trùng.");
   }
 
+  function handleCheckNvidiaDuplicates() {
+    const m = {}, dups = [];
+    for (let i = 1; i <= NV_KEY_COUNT; i++) {
+      const v = $(`nvidia-key-${i}`)?.value.trim();
+      const kn = $(`nvidia-key-name-${i}`)?.value.trim() || `NV Key ${i}`;
+      if (v) m[v] ? dups.push(`${kn} trùng với ${m[v]}`) : m[v] = kn;
+    }
+    showToast(dups.length ? `⚠️ NVIDIA trùng: ${dups.join(', ')}!` : "✅ NVIDIA không có key trùng.");
+  }
+
   function handleCheckExplabsDuplicates() {
     const m = {}, dups = [];
     for (let i = 1; i <= EL_KEY_COUNT; i++) {
@@ -504,6 +597,8 @@
   if (dupOrBtn) dupOrBtn.onclick = () => { handleCheckOpenRouterDuplicates(); };
   const dupElBtn = $('btn-check-explabs-duplicates');
   if (dupElBtn) dupElBtn.onclick = () => { handleCheckExplabsDuplicates(); };
+  const dupNvBtn = $('btn-check-nvidia-duplicates');
+  if (dupNvBtn) dupNvBtn.onclick = () => { handleCheckNvidiaDuplicates(); };
 
   // --- PUBLIC API ---
   window.initAPIKeys = initAPIKeys;
@@ -512,8 +607,11 @@
   window.findOpenRouterSlotIndexForKey = findOpenRouterSlotIndexForKey;
   window.initExplabsKeys = initExplabsKeys;
   window.findExplabsSlotIndexForKey = findExplabsSlotIndexForKey;
+  window.initNvidiaKeys = initNvidiaKeys;
+  window.findNvidiaSlotIndexForKey = findNvidiaSlotIndexForKey;
   window.refreshSlotKeySelects = refreshSlotKeySelects;
   window.handleCheckExplabsDuplicates = handleCheckExplabsDuplicates;
+  window.handleCheckNvidiaDuplicates = handleCheckNvidiaDuplicates;
   window.handleSaveKeys = handleSaveKeys;
   window.handleCheckKeys = handleCheckKeys;
   window.handleCheckDuplicates = handleCheckDuplicates;
@@ -525,5 +623,6 @@
   initExternalConfigs();
   initOpenRouterKeys();
   initExplabsKeys();
+  initNvidiaKeys();
 
 })();

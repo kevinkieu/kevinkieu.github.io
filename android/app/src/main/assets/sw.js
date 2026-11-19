@@ -1,5 +1,5 @@
 // Jarvis AI Service Worker for PWA
-const CACHE_NAME = 'jarvis-ai-pwa-v62';
+const CACHE_NAME = 'jarvis-ai-pwa-v67';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -45,7 +45,9 @@ self.addEventListener('fetch', event => {
     url.includes('serper.dev') ||
     url.includes('brave.com') ||
     url.includes('api.github.com') ||
-    url.includes('gist.githubusercontent.com')
+    url.includes('gist.githubusercontent.com') ||
+    url.includes('integrate.api.nvidia.com') ||
+    url.includes('freebuff.site')
   ) {
     return;
   }

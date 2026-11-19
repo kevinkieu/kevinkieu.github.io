@@ -345,6 +345,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       ['serper-key-input', 'serper_api_key'],
       ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
       ['web-extract-engine-input', 'web_extract_engine', 'auto'],
+      ['nvidia-proxy-url', 'nvidia_proxy_url'],
       ['live-temperature', 'live_temperature', '0.7']
     ];
     window.cfgMap = cfgMap;
@@ -352,6 +353,32 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     // --- REGISTRY GATEWAY OpenAI-COMPATIBLE (OpenRouter) ---
     // Các model dưới đây gọi chung endpoint /chat/completions (SSE) thay vì Google Gemini.
     const COMPAT_PROVIDERS = {
+      nvidia: {
+        id: 'nvidia',
+        label: 'NVIDIA',
+        baseUrl: 'https://integrate.api.nvidia.com/v1',
+        keyStorage: 'nvidia_api_key',
+        keyStorageMultiple: 'nvidia_keys',
+        keyCount: 3,
+        keyIndexVar: 'nvidiaKeyIndex',
+        keyLabel: 'NVIDIA',
+        // NVIDIA chặn CORS cho mọi origin lạ -> cho phép dùng proxy chuyển tiếp
+        getBaseUrl: () => {
+          const proxy = (ls.getItem('nvidia_proxy_url') || '').trim().replace(/\/+$/, '');
+          return proxy || 'https://integrate.api.nvidia.com/v1';
+        },
+        models: [
+          'z-ai/glm-5.3-flash',
+          'nvidia/nemotron-3.5-lightning-30b-a3b',
+          'nvidia/nemotron-3.5-bolt-e4b'
+        ],
+        modelLabel: m => {
+          if (m.includes('glm-5.3-flash')) return 'GLM 5.3 Flash';
+          if (m.includes('nemotron-3.5-bolt')) return 'Nemotron 3.5 Bolt E4B';
+          if (m.includes('nemotron-3.5-lightning')) return 'Nemotron 3.5 Lightning 30B A3B';
+          return m;
+        }
+      },
       openrouter: {
         id: 'openrouter',
         label: 'OpenRouter',
@@ -363,6 +390,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         keyLabel: 'OpenRouter',
         models: [
           'nvidia/nemotron-3.5-lightning:free',
+          'nvidia/nemotron-3.5-super-vl:free',
+          'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
           'particle-ai/particle-1:free',
           'baidu/ernie-5.5-flash-preview:free',
           'google/gemma-4-26b-a4b-it:free',
@@ -371,6 +400,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         extraHeaders: () => ({ 'HTTP-Referer': location.origin, 'X-Title': 'Jarvis AI' }),
         includeReasoning: true,
         modelLabel: m => {
+          if (m.includes('nemotron-3.5-super-vl')) return 'Nemotron 3.5 Super VL';
+          if (m.includes('nemotron-3-nano-omni')) return 'Nemotron 3 Nano Omni';
           if (m.includes('nemotron')) return 'Nemotron 3.5 Lightning';
           if (m.includes('particle')) return 'Particle-1';
           if (m.includes('ernie')) return 'ERNIE-5.5-Flash';
@@ -386,6 +417,31 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     // Particle mặc định reasoning = 'high' khi KHÔNG gửi tham số -> muốn tắt phải gửi 'none' tường minh.
     // Các mức hợp lệ: none, minimal, low, medium, high, xhigh, max, ultra (app chỉ dùng 4 mức đầu).
     const COMPAT_MODEL_OPTS = {
+      // NVIDIA integrate API: gateway chỉ gửi nội dung chat, không gửi thinking/reasoning
+      'z-ai/glm-5.3-flash': {
+        maxTokens: 32768,
+        noReasoning: true,
+        levels: [['none', 'Tắt (NVIDIA)']],
+        defaultEffort: 'none',
+        inputModalities: ['text'],
+        notes: 'NVIDIA integrate.api.nvidia.com - model chat chính'
+      },
+      'nvidia/nemotron-3.5-lightning-30b-a3b': {
+        maxTokens: 32768,
+        noReasoning: true,
+        levels: [['none', 'Tắt (NVIDIA)']],
+        defaultEffort: 'none',
+        inputModalities: ['text'],
+        notes: 'NVIDIA integrate.api.nvidia.com - 30B A3B'
+      },
+      'nvidia/nemotron-3.5-bolt-e4b': {
+        maxTokens: 32768,
+        noReasoning: true,
+        levels: [['none', 'Tắt (NVIDIA)']],
+        defaultEffort: 'none',
+        inputModalities: ['text'],
+        notes: 'NVIDIA integrate.api.nvidia.com - E4B'
+      },
       'particle-ai/particle-1:free': {
         contextWindow: 1048576,
         maxOutputTokens: 131072,
@@ -393,6 +449,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         offEffort: 'none',
         efforts: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
         defaultEffort: 'high',
+        inputModalities: ['text', 'image'],
         notes: 'Agentic coding, post-trained từ DeepSeek V4.1 Flash, nhận text + ảnh'
       },
       // ERNIE-5.5-Flash-Preview: reasoning LUÔN BẬT, effort không chỉnh được (fixed high),
@@ -406,10 +463,68 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         canDisable: false,
         efforts: ['high'],             // effort bị khoá ở high, không nhận mức khác
         defaultEffort: 'high',
+        inputModalities: ['text'],
         notes: '280B MoE (14B active), text→text, ~200 tok/s, free tier 20 req/phút'
+      },
+      // Nemotron 3.5 Lightning: endpoint free chỉ nhận `reasoning` bật/tắt,
+      // KHÔNG công bố reasoning_effort -> Think Depth chỉ có Bật / Tắt.
+      'nvidia/nemotron-3.5-lightning:free': {
+        contextWindow: 1000000,
+        maxOutputTokens: 65536,
+        maxTokens: 32768,
+        reasoningToggle: true,
+        levels: [['high', 'Bật (mặc định)'], ['none', 'Tắt']],
+        defaultEffort: 'high',
+        inputModalities: ['text'],
+        notes: '30B MoE (3B active), text→text, tối ưu throughput agentic'
+      },
+      // Nemotron 3.5 Super VL: vision-language, cũng chỉ bật/tắt reasoning (không có effort).
+      'nvidia/nemotron-3.5-super-vl:free': {
+        contextWindow: 1000000,
+        maxOutputTokens: 131072,
+        maxTokens: 32768,
+        reasoningToggle: true,
+        levels: [['high', 'Bật (mặc định)'], ['none', 'Tắt']],
+        defaultEffort: 'high',
+        inputModalities: ['text', 'image', 'video'],
+        notes: '120B MoE (12B active), nhận text + ảnh + video, đọc cả tài liệu/screenshot'
+      },
+      // Nemotron 3 Nano Omni: chỉ hỗ trợ reasoning.max_tokens (supports_max_tokens = true,
+      // không có reasoning_effort) -> Think Depth ánh xạ sang ngân sách token suy luận.
+      'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free': {
+        contextWindow: 256000,
+        maxOutputTokens: 65536,
+        maxTokens: 32768,
+        reasoningBudgets: { minimal: 1024, low: 4096, medium: 8192, high: 16384 },
+        levels: [['high', 'High (~16K)'], ['medium', 'Med (~8K)'], ['low', 'Low (~4K)'], ['minimal', 'Min (~1K)'], ['none', 'Tắt']],
+        defaultEffort: 'high',
+        inputModalities: ['text', 'image', 'audio', 'video'],
+        notes: '30B-A3B omni: text + ảnh + audio + video → text, reasoning bật mặc định'
       }
     };
+    window.COMPAT_PROVIDERS = COMPAT_PROVIDERS;
     window.COMPAT_MODEL_OPTS = COMPAT_MODEL_OPTS;
+
+    // Dựng object `reasoning` gửi OpenRouter theo Think Depth đang chọn.
+    // null = không gửi tham số reasoning, để model tự quyết định.
+    function buildReasoningPayload(mOpts, thk) {
+      // Model NVIDIA (integrate.api.nvidia.com) không nhận tham số reasoning qua gateway
+      if (mOpts && mOpts.noReasoning) return null;
+      // ERNIE: reasoning luôn bật, effort cố định (high) -> chỉ xin trả về reasoning
+      if (mOpts && mOpts.reasoningAlwaysOn) return { exclude: false };
+      // Nemotron 3.5 Lightning / Super VL (free): endpoint không có reasoning_effort -> chỉ bật/tắt
+      if (mOpts && mOpts.reasoningToggle) return { enabled: thk !== 'none' };
+      // Nemotron 3 Nano Omni: không có effort, điều khiển bằng ngân sách token suy luận
+      if (mOpts && mOpts.reasoningBudgets) {
+        const budget = mOpts.reasoningBudgets[thk];
+        return budget ? { max_tokens: budget } : { enabled: false };
+      }
+      if (thk && thk !== 'none') return { effort: thk };
+      // Model mặc định BẬT reasoning (Particle-1 = high): muốn tắt phải gửi tường minh
+      if (mOpts && mOpts.offEffort) return { effort: mOpts.offEffort };
+      return null;
+    }
+    window.buildReasoningPayload = buildReasoningPayload;
 
     function resolveCompatProvider(modelId) {
       const m = (modelId || '').trim();
@@ -1667,6 +1782,14 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         t.disabled = true;
         return;
       }
+      // Model gateway có bộ mức Think Depth riêng (vd Nemotron free: chỉ Bật/Tắt hoặc ngân sách token)
+      const mOpts = (window.COMPAT_MODEL_OPTS || {})[m];
+      if (mOpts && Array.isArray(mOpts.levels) && mOpts.levels.length) {
+        t.innerHTML = mOpts.levels.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+        t.value = mOpts.levels.some(([v]) => v === prev) ? prev : mOpts.levels[0][0];
+        t.disabled = mOpts.levels.length === 1;
+        return;
+      }
       t.disabled = false;
       const opts = (m === 'gemini-3.8-flash') 
         ? [['low', 'Low (Thấp)'], ['medium', 'Med (Chuẩn)'], ['high', 'High (Sâu)']] 
@@ -1893,7 +2016,14 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         if (f.type.startsWith('image/')) {
           f = await compressImageIfNeeded(f);
           if (filesData.length < 20) filesData.push(f);
-        } else if (f.type === 'video/mp4') {
+        } else if (f.type.startsWith('video/')) {
+          if (filesData.length < 20) filesData.push(f);
+        } else if (f.type.startsWith('audio/')) {
+          // Audio gửi base64 nguyên tệp -> chặn tệp quá lớn để không nổ payload
+          if (f.size > 25 * 1024 * 1024) {
+            showToast(`Tệp audio quá lớn (tối đa 25MB): ${f.name}`, 'danger');
+            continue;
+          }
           if (filesData.length < 20) filesData.push(f);
         } else if (f.type === 'application/pdf') {
           txtContent += `\n[PDF: ${f.name}]:\n${(await readPDF(f)).substring(0, 50000)}\n`;
@@ -2187,6 +2317,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         tpp: 0.9,
         top: 40,
         thk: 'minimal',
+        thkMap: {},
         sch: false,
         schEngine: 'tavily',
         mem: true,
@@ -2224,7 +2355,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         DOM.toppVal.innerText = DOM.topP.value;
         DOM.topK.value = s.top || 40;
         updateThinkingVisibility();
-        DOM.thinking.value = s.thk || 'minimal';
+        // s.thk luôn tương ứng với s.mod; thkMap chỉ dùng khi chuyển model trong cùng phiên
+        DOM.thinking.value = s.thk || (s.thkMap && s.mod ? s.thkMap[s.mod] : '') || 'minimal';
         // Nếu phiên cũ lưu mức thinking không còn tồn tại (vd 'none' của Flash Lite), rơi về mức hợp lệ đầu tiên
         if (!DOM.thinking.value) DOM.thinking.value = DOM.thinking.options[0]?.value || 'minimal';
         DOM.toggleGlob.checked = s.useGlob !== false;
@@ -2426,9 +2558,22 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     }
 
     DOM.model.addEventListener('change', () => {
+      const s = sessions.find(x => x.id === activeId);
+      const nextMod = DOM.model.value;
+      // Mỗi model có bộ mức Think Depth khác nhau (effort / bật-tắt / ngân sách token)
+      // -> nhớ mức của model vừa rời đi để quay lại không bị mất cấu hình.
+      if (s && s.mod && s.mod !== nextMod) {
+        s.thkMap = Object.assign({}, s.thkMap || {}, { [s.mod]: s.thk || DOM.thinking.value });
+      }
+      updateThinkingVisibility();
       // Qwen4 Max mặc định Think Depth = Low khi chọn model này
-      if (DOM.model.value === 'qwen4-max:free' && DOM.thinking) DOM.thinking.value = 'low';
-      updateThinkingVisibility(); updateConfig(); updateKeyQuotaUI();
+      if (nextMod === 'qwen4-max:free' && DOM.thinking) DOM.thinking.value = 'low';
+      // Khôi phục mức đã lưu cho model này nếu model đó có lưu và mức còn hợp lệ
+      const savedThk = s && s.thkMap ? s.thkMap[nextMod] : null;
+      if (savedThk && Array.from(DOM.thinking.options).some(o => o.value === savedThk)) {
+        DOM.thinking.value = savedThk;
+      }
+      updateConfig(); updateKeyQuotaUI();
     });
     DOM.engineSel.addEventListener('change', updateConfig);
     [DOM.sysInst, DOM.apiKeySel, DOM.toggleGlob, DOM.toggleSearch, DOM.searchEngineSel, DOM.thinking].forEach(el => el?.addEventListener?.('change', updateConfig));
@@ -3143,6 +3288,47 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       // Model Experiential Labs dùng bể 5 key riêng (xoay tua + đếm lượt)
       const usesExplabs = (am === 'gpt-6-luna' || am === 'gpt-6.2-astra:free' || am === 'deepseek-v4.1-flash' || am === 'qwen4-max:free' || am === 'clef');
       if (usesCompatGateway) {
+        const compatNow = resolveCompatProvider(am).provider;
+        if (compatNow.id === 'nvidia') {
+          // Xoay tua 3 key NVIDIA, đọc theo SỐ Ô (slot) để khớp bộ đếm
+          const nvKeyAtSlot = slot => {
+            let v = (ls.getItem(`jarvis_nvidia_api_${slot}`) || '').trim();
+            if (v.startsWith('JVENC_') || v.startsWith('ENC_')) v = deobfuscateKey(v);
+            return v;
+          };
+          const nvSlotOfKey = key => (typeof window.findNvidiaSlotIndexForKey === 'function')
+            ? window.findNvidiaSlotIndexForKey(key)
+            : Math.max(1, ((window.nvidiaKeys || []).indexOf(key)) + 1);
+          const nvKeys = (typeof window.nvidiaKeys !== 'undefined' && Array.isArray(window.nvidiaKeys))
+            ? window.nvidiaKeys.filter(Boolean) : [];
+          const nvSelEl = $('nvidia-key-select');
+          const nvSel = nvSelEl ? nvSelEl.value : 'auto';
+
+          if (nvSel !== 'auto') {
+            // Chọn thủ công 1 ô: luôn lấy đúng key của ô đó
+            const picked = nvKeyAtSlot(parseInt(nvSel, 10) + 1) || nvKeys[0] || '';
+            if (picked) {
+              gKey = picked;
+              keyIndexNum = nvSlotOfKey(picked);
+            }
+          } else if (nvKeys.length) {
+            // Tự động xoay tua vòng tròn qua các ô có key
+            const nvIdx = (window.nvidiaKeyIndex || 0) % nvKeys.length;
+            gKey = nvKeys[nvIdx];
+            window.nvidiaKeyIndex = (nvIdx + 1) % nvKeys.length;
+            keyIndexNum = nvSlotOfKey(gKey);
+          } else {
+            // Fallback về key đơn cũ (nếu 3 ô mới đều trống)
+            gKey = (ls.getItem('nvidia_api_key') || '').trim();
+            if (gKey.startsWith('JVENC_') || gKey.startsWith('ENC_')) gKey = deobfuscateKey(gKey);
+            keyIndexNum = 1;
+          }
+          if (!gKey) {
+            bD?.remove();
+            return showToast("Vui lòng nhập NVIDIA API Key trong Cài đặt (⚙️)!", "danger");
+          }
+          if (typeof window.recordNvidiaRequest === 'function') window.recordNvidiaRequest(keyIndexNum, am);
+        } else {
         // Xoay tua OpenRouter keys (5 key) - đọc theo SỐ Ô (slot) để khớp bộ đếm,
         // vì window.openRouterKeys đã lọc bỏ các ô trống nên chỉ số mảng ≠ số ô.
         const orKeyAtSlot = slot => {
@@ -3182,6 +3368,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           return showToast("Vui lòng nhập OpenRouter API Key trong Cài đặt (⚙️)!", "danger");
         }
         if (typeof window.recordOpenRouterRequest === 'function') window.recordOpenRouterRequest(keyIndexNum, am);
+        }
       } else if (usesExplabs) {
         // Xoay tua 5 key Experiential Labs, đọc theo SỐ Ô (slot) để khớp bộ đếm
         const elKeyAtSlot = slot => {
@@ -3726,7 +3913,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           // Key đã được chọn + xoay tua ở đầu sendMessage; đây chỉ là lưới an toàn
           let compatKey = gKey;
           if (!compatKey) {
-            const orKeys = (typeof window.openRouterKeys !== 'undefined' && Array.isArray(window.openRouterKeys))
+            const orKeys = (prov.id === 'openrouter' && typeof window.openRouterKeys !== 'undefined' && Array.isArray(window.openRouterKeys))
               ? window.openRouterKeys.filter(Boolean) : [];
             if (orKeys.length) {
               const orSelEl = $('openrouter-key-select');
@@ -3748,6 +3935,13 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
             } else {
               compatKey = (ls.getItem(prov.keyStorage) || '').trim();
               if (compatKey.startsWith('JVENC_') || compatKey.startsWith('ENC_')) compatKey = deobfuscateKey(compatKey);
+              if (!compatKey && prov.keyCount > 1) {
+                for (let i = 1; i <= prov.keyCount; i++) {
+                  let slotKey = (ls.getItem(`jarvis_${prov.id}_api_${i}`) || '').trim();
+                  if (slotKey.startsWith('JVENC_') || slotKey.startsWith('ENC_')) slotKey = deobfuscateKey(slotKey);
+                  if (slotKey) { compatKey = slotKey; keyIndexNum = i; break; }
+                }
+              }
             }
           }
           if (!compatKey) {
@@ -3757,7 +3951,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
           bD.querySelector('.typing-bubble')?.remove();
 
-          // Dựng messages theo chuẩn OpenAI: system + 10 tin gần nhất + lượt hiện tại (kèm ảnh nếu có)
+          // Dựng messages theo chuẩn OpenAI: system + 10 tin gần nhất + lượt hiện tại (kèm tệp nếu model nhận)
+          const mOpts = COMPAT_MODEL_OPTS[am] || null;
           const compatMessages = [];
           const compatSI = getDynamicSI(ragSnippet);
           if (compatSI) compatMessages.push({ role: 'system', content: compatSI });
@@ -3768,13 +3963,36 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           }
           if (base64Files && base64Files.length > 0) {
             const compatUserContent = [{ type: 'text', text: promptWithTime }];
+            // Model chưa khai báo inputModalities thì giữ mặc định cũ: text + ảnh
+            const accepts = (mOpts && Array.isArray(mOpts.inputModalities)) ? mOpts.inputModalities : ['text', 'image'];
+            const skippedKinds = [];
             for (const f of base64Files) {
-              if (f.mimeType && f.mimeType.startsWith('image/')) {
+              const mt = f.mimeType || '';
+              if (mt.startsWith('image/')) {
+                if (!accepts.includes('image')) { skippedKinds.push('ảnh'); continue; }
                 compatUserContent.push({
                   type: 'image_url',
-                  image_url: { url: `data:${f.mimeType};base64,${f.data}` }
+                  image_url: { url: `data:${mt};base64,${f.data}` }
+                });
+              } else if (mt.startsWith('video/')) {
+                if (!accepts.includes('video')) { skippedKinds.push('video'); continue; }
+                compatUserContent.push({
+                  type: 'video_url',
+                  video_url: { url: `data:${mt};base64,${f.data}` }
+                });
+              } else if (mt.startsWith('audio/')) {
+                if (!accepts.includes('audio')) { skippedKinds.push('audio'); continue; }
+                // audio/mpeg -> mp3, audio/mp4 + audio/x-m4a -> m4a, audio/x-wav -> wav
+                const fmt = (mt.split('/')[1] || 'wav')
+                  .replace('mpeg', 'mp3').replace('x-m4a', 'm4a').replace('mp4', 'm4a').replace('x-wav', 'wav');
+                compatUserContent.push({
+                  type: 'input_audio',
+                  input_audio: { data: f.data, format: fmt }
                 });
               }
+            }
+            if (skippedKinds.length) {
+              showToast(`${prov.modelLabel(am)} không nhận ${[...new Set(skippedKinds)].join(', ')} — đã bỏ qua tệp đó.`, 'danger');
             }
             compatMessages.push({ role: 'user', content: compatUserContent });
           } else {
@@ -3795,27 +4013,23 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
             }
 
             // --- BẬT SUY LUẬN (REASONING) THEO MỨC "THINK DEPTH" ĐANG CHỌN ---
-            // OpenAI-compatible: reasoning.effort = minimal | low | medium | high (OpenRouter chuẩn hóa).
-            const mOpts = COMPAT_MODEL_OPTS[am] || null;
             const compatBody = {
               model: am,
               messages: compatMessages,
               stream: true,
               max_tokens: (mOpts && mOpts.maxTokens) ? mOpts.maxTokens : 8192
             };
-            if (mOpts && mOpts.reasoningAlwaysOn) {
-              // Model luôn suy luận (ERNIE): không gửi effort (sẽ bị bỏ qua/lỗi), chỉ xin hiển thị reasoning
-              compatBody.reasoning = { exclude: false };
-              if (prov.includeReasoning) compatBody.include_reasoning = true;
-            } else if (thk && thk !== 'none') {
-              compatBody.reasoning = { effort: thk };
-              if (prov.includeReasoning) compatBody.include_reasoning = true;
-            } else if (mOpts && mOpts.offEffort) {
-              // Model mặc định BẬT reasoning (Particle-1 = high): phải tắt tường minh
-              compatBody.reasoning = { effort: mOpts.offEffort };
+            const compatReasoning = buildReasoningPayload(mOpts, thk);
+            if (compatReasoning) {
+              compatBody.reasoning = compatReasoning;
+              // enabled: false = đã tắt hẳn -> không cần xin trả reasoning
+              if (prov.includeReasoning && compatReasoning.enabled !== false) {
+                compatBody.include_reasoning = true;
+              }
             }
 
-            const compatUrl = `${prov.baseUrl}/chat/completions`;
+            const compatBase = (typeof prov.getBaseUrl === 'function') ? prov.getBaseUrl() : prov.baseUrl;
+            const compatUrl = `${compatBase}/chat/completions`;
             console.log(`[Gateway ${prov.keyLabel}] Endpoint:`, compatUrl);
             const sendCompat = () => fetch(compatUrl, {
               method: 'POST',
@@ -3935,6 +4149,13 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               await renderer.flush(finalResp);
             } else {
               bD.remove();
+              const networkLike = /failed to fetch|networkerror|load failed/i.test(compatErr.message || '');
+              if (prov.id === 'nvidia' && networkLike) {
+                const hasProxy = !!(ls.getItem('nvidia_proxy_url') || '').trim();
+                return showToast(hasProxy
+                  ? `Lỗi NVIDIA: không kết nối được proxy (${compatErr.message}). Kiểm tra NVIDIA Proxy URL trong Cài đặt.`
+                  : 'NVIDIA chặn CORS khi gọi trực tiếp từ trình duyệt (Failed to fetch). Hãy nhập NVIDIA Proxy URL trong Cài đặt (⚙️).', 'danger');
+              }
               return showToast(`Lỗi ${prov.keyLabel}: ${compatErr.message}`, 'danger');
             }
           }
@@ -4590,7 +4811,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       DOM.fileCount.innerText = filesData.length + (txtContent ? 1 : 0);
       DOM.previewGrid.innerHTML = filesData.map((f, i) => `
         <div style="position:relative;width:50px;height:50px;background:#1e293b;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;overflow:hidden;border:1px solid var(--border);">
-          ${f.type.startsWith('image') ? `<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover;">` : '📄 FILE'}
+          ${f.type.startsWith('image') ? `<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover;">` : (f.type.startsWith('video') ? '🎬 VIDEO' : (f.type.startsWith('audio') ? '🎵 AUDIO' : '📄 FILE'))}
           <button onclick="rmImg(${i})" style="position:absolute;top:2px;right:2px;background:rgba(239,68,68,0.9);color:white;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;">×</button>
         </div>
       `).join('');

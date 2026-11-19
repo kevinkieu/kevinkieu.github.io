@@ -89,7 +89,10 @@
       'deepseek_api_key', 'jina_api_key', 'brave_worker_url',
       'jarvis_openrouter_api_1', 'jarvis_openrouter_api_2', 'jarvis_openrouter_api_3', 'jarvis_openrouter_api_4', 'jarvis_openrouter_api_5',
       'jarvis_openrouter_api_name_1', 'jarvis_openrouter_api_name_2', 'jarvis_openrouter_api_name_3', 'jarvis_openrouter_api_name_4', 'jarvis_openrouter_api_name_5',
-      'jarvis_openrouter_usage'
+      'jarvis_openrouter_usage',
+      'jarvis_nvidia_api_1', 'jarvis_nvidia_api_2', 'jarvis_nvidia_api_3',
+      'jarvis_nvidia_api_name_1', 'jarvis_nvidia_api_name_2', 'jarvis_nvidia_api_name_3',
+      'jarvis_nvidia_usage', 'nvidia_proxy_url'
     ];
     cfgKeys.forEach(k => {
       const val = ls.getItem(k) || "";

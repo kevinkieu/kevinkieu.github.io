@@ -32,7 +32,7 @@
   </script>
 
   <!-- MODULAR STYLESHEETS -->
-  <link rel="stylesheet" href="./css/style.css?v=62">
+  <link rel="stylesheet" href="./css/style.css?v=67">
   <link rel="stylesheet" href="./css/live.css">
   <link rel="stylesheet" href="./css/tts.css">
   <link rel="stylesheet" href="./css/translate.css">
@@ -143,8 +143,15 @@
                 <option value="qwen4-max:free">🧠 Qwen4 Max (Suy luận)</option>
                 <option value="clef">🎯 Clef (Decision Engine)</option>
               </optgroup>
+              <optgroup label="🟢 NVIDIA">
+                <option value="z-ai/glm-5.3-flash">🧠 GLM 5.3 Flash (NVIDIA)</option>
+                <option value="nvidia/nemotron-3.5-lightning-30b-a3b">⚡ Nemotron 3.5 Lightning 30B A3B</option>
+                <option value="nvidia/nemotron-3.5-bolt-e4b">⛅ Nemotron 3.5 Bolt E4B</option>
+              </optgroup>
               <optgroup label="🛰️ OpenRouter">
                 <option value="nvidia/nemotron-3.5-lightning:free">⚡ Nemotron 3.5 Lightning (Free)</option>
+                <option value="nvidia/nemotron-3.5-super-vl:free">👁️ Nemotron 3.5 Super VL (Free)</option>
+                <option value="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free">🎧 Nemotron 3 Nano Omni (Free)</option>
                 <option value="particle-ai/particle-1:free">🧠 Particle-1 (Free)</option>
                 <option value="baidu/ernie-5.5-flash-preview:free">🧠 ERNIE-5.5-Flash (Free)</option>
                 <option value="google/gemma-4-26b-a4b-it:free">💎 Gemma 4 26B A4B (Free)</option>
@@ -195,6 +202,15 @@
               <option value="auto">🔄 Tự động xoay tua</option>
             </select>
             <div id="explabs-next-key" style="font-size:0.7rem;color:var(--text-muted);margin-top:3px;">Chưa có key</div>
+          </div>
+
+          <!-- KEY POOL: NVIDIA (3 ô, xoay tua + đếm riêng) -->
+          <div style="margin-top:6px;">
+            <span class="field-label">🟢 NVIDIA API Key:</span>
+            <select id="nvidia-key-select" class="modern-select">
+              <option value="auto">🔄 Tự động xoay tua</option>
+            </select>
+            <div id="nvidia-next-key" style="font-size:0.7rem;color:var(--text-muted);margin-top:3px;">Chưa có key</div>
           </div>
 
           <!-- SESSION ACTIONS (GRID & ROWS) -->
@@ -344,7 +360,7 @@
             <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
             Đính kèm (<span id="file-count">0</span>)
           </label>
-          <input type="file" id="file-upload" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4" multiple style="display:none;">
+          <input type="file" id="file-upload" accept="image/*,.txt,.md,.csv,.json,.pdf,video/mp4,audio/*" multiple style="display:none;">
 
           <button id="btn-toggle-session-memory" class="tool-chip" title="Bật/Tắt Bộ nhớ ngữ cảnh (lịch sử trò chuyện của phiên này)" style="border-color:#3b82f6;color:#3b82f6;font-weight:600;">
             💬 Ngữ cảnh: <strong id="session-memory-state" style="color:var(--success);">BẬT</strong>
@@ -830,6 +846,29 @@
           </div>
           <div style="font-size:0.73rem;color:var(--text-muted);margin-top:6px;line-height:1.4;">
             Dùng chung cho gpt-6-luna, gpt-6.2-astra:free, deepseek-v4.1-flash, qwen4-max:free và clef. Mỗi request tự chuyển sang key kế tiếp và ghi bộ đếm riêng cho từng ô.
+          </div>
+        </fieldset>
+
+        <!-- 3 NVIDIA API KEYS -->
+        <fieldset class="settings-group" style="border-color:#76b900;background:rgba(118,185,0,0.04);">
+          <legend style="color:#76b900;font-weight:700;">🟢 3 NVIDIA API Keys</legend>
+          <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
+            <span class="field-label">🟢 NVIDIA API Key (xoay tua):</span>
+            <select id="nvidia-key-select-settings" class="modern-select" style="flex:1;">
+              <option value="auto">🔄 Tự động xoay tua</option>
+            </select>
+          </div>
+          <div class="api-keys-grid" id="nvidia-keys-container" style="margin-bottom:10px;"></div>
+          <div style="margin-bottom:8px;">
+            <span class="field-label">🔀 NVIDIA Proxy URL (bắt buộc khi chạy trên trình duyệt):</span>
+            <input type="text" id="nvidia-proxy-url" class="modern-input" placeholder="https://your-proxy.workers.dev/v1" title="NVIDIA chặn CORS nên cần proxy chuyển tiếp tới integrate.api.nvidia.com/v1">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button id="btn-check-nvidia-duplicates" class="btn">👯 Kiểm tra Trùng</button>
+            <span id="nvidia-key-status-msg" style="font-size:.78rem;font-weight:600;"></span>
+          </div>
+          <div style="font-size:0.73rem;color:var(--text-muted);margin-top:6px;line-height:1.4;">
+            Base URL: https://integrate.api.nvidia.com/v1 — dùng cho z-ai/glm-5.3-flash, nvidia/nemotron-3.5-lightning-30b-a3b và nvidia/nemotron-3.5-bolt-e4b. NVIDIA không trả header CORS cho trình duyệt nên gọi trực tiếp sẽ báo "Failed to fetch"; nhập NVIDIA Proxy URL (để trống nếu chạy trong môi trường không kiểm tra CORS). Mỗi request tự chuyển sang key kế tiếp và ghi bộ đếm riêng cho từng ô.
           </div>
         </fieldset>
       </div>
@@ -1733,21 +1772,21 @@
   </div>
 
   <!-- JAVASCRIPT APPLICATION MODULES -->
-  <script type="module" src="./js/tools.js?v=62"></script>
-  <script type="module" src="./js/export.js?v=62"></script>
-  <script type="module" src="./js/quota.js?v=62"></script>
-  <script type="module" src="./js/medication.js?v=62"></script>
-  <script type="module" src="./js/commands.js?v=62"></script>
-    <script type="module" src="./js/briefing.js?v=62"></script>
-  <script type="module" src="./js/cipher.js?v=62"></script>
-  <script type="module" src="./js/database.js?v=62"></script>
-  <script type="module" src="./js/app.js?v=62"></script>
-    <script type="module" src="./js/api-keys.js?v=62"></script>
-  <script type="module" src="./js/sync.js?v=62"></script>
-  <script type="module" src="./js/live.js?v=62"></script>
-  <script type="module" src="./js/tts.js?v=62"></script>
-  <script type="module" src="./js/translate.js?v=62"></script>
-  <script type="module" src="./js/eventBus.js?v=62"></script>
-  <script type="module" src="./js/rag.js?v=62"></script>
+  <script type="module" src="./js/tools.js?v=67"></script>
+  <script type="module" src="./js/export.js?v=67"></script>
+  <script type="module" src="./js/quota.js?v=67"></script>
+  <script type="module" src="./js/medication.js?v=67"></script>
+  <script type="module" src="./js/commands.js?v=67"></script>
+    <script type="module" src="./js/briefing.js?v=67"></script>
+  <script type="module" src="./js/cipher.js?v=67"></script>
+  <script type="module" src="./js/database.js?v=67"></script>
+  <script type="module" src="./js/app.js?v=67"></script>
+    <script type="module" src="./js/api-keys.js?v=67"></script>
+  <script type="module" src="./js/sync.js?v=67"></script>
+  <script type="module" src="./js/live.js?v=67"></script>
+  <script type="module" src="./js/tts.js?v=67"></script>
+  <script type="module" src="./js/translate.js?v=67"></script>
+  <script type="module" src="./js/eventBus.js?v=67"></script>
+  <script type="module" src="./js/rag.js?v=67"></script>
 </body>
 </html>
