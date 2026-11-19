@@ -207,10 +207,72 @@
         hint.innerText = `📌 Đang khóa vào Key #${slot} · ${getSlotUsage(group, slot)} req`;
       }
     }
+    renderKeyPoolMenu();
   }
 
   function refreshSlotKeySelects(kind) {
     SLOT_SELECT_GROUPS.forEach(g => { if (!kind || g.kind === kind) renderSlotSelects(g); });
+  }
+
+  // --- MENU KEY DÙNG CHUNG (sidebar) ---
+  // 4 bể key vốn có 4 menu riêng; nay gộp thành 1 menu tự đổi danh sách key theo nền tảng
+  // của model đang chọn. Các <select> gốc vẫn tồn tại (ẩn) vì app.js/quota.js đọc trực tiếp id.
+  const KEY_POOL_MENUS = {
+    google: { label: '🔑 Google API Key:', selectId: 'api-key-select' },
+    openrouter: { label: '🛰️ OpenRouter API Key:', selectId: 'openrouter-key-select', hintId: 'openrouter-next-key' },
+    explabs: { label: '⚡ Experiential Labs Key:', selectId: 'explabs-key-select', hintId: 'explabs-next-key' },
+    nvidia: { label: '🟢 NVIDIA API Key:', selectId: 'nvidia-key-select', hintId: 'nvidia-next-key' }
+  };
+
+  // Nền tảng của model đang chọn: nvidia/openrouter (registry gateway), explabs, còn lại là Google
+  function activeKeyPoolKind() {
+    const model = ($('model-select')?.value || '').trim();
+    const compat = (typeof window.resolveCompatProvider === 'function') ? window.resolveCompatProvider(model) : null;
+    if (compat && compat.provider) return compat.provider.id;
+    const expModels = Array.isArray(window.EXPLABS_MODELS) ? window.EXPLABS_MODELS : [];
+    return expModels.includes(model) ? 'explabs' : 'google';
+  }
+
+  function googleKeyPoolHint(value) {
+    const slots = [];
+    for (let i = 1; i <= 10; i++) if (readRawKey(i)) slots.push(i);
+    if (!slots.length) return 'Chưa có key nào';
+    if (value === 'auto') return `🔄 Tự động xoay tua · ${slots.length} Google Key`;
+    const slot = parseInt(value, 10) + 1;
+    const name = readRawName(slot);
+    return `📌 Đang khóa vào Key #${slot}${name ? ' · ' + name : ''}`;
+  }
+
+  function renderKeyPoolMenu() {
+    const sel = $('key-pool-select');
+    if (!sel) return;
+    const pool = KEY_POOL_MENUS[activeKeyPoolKind()] || KEY_POOL_MENUS.google;
+    const src = $(pool.selectId);
+    const label = $('key-pool-label');
+    if (label) label.innerText = pool.label;
+    if (!sel.dataset.wired) {
+      sel.dataset.wired = '1';
+      sel.onchange = () => {
+        // Ghi lựa chọn vào đúng select gốc của nền tảng để logic xoay tua/lưu phiên chạy như cũ
+        const target = $(KEY_POOL_MENUS[activeKeyPoolKind()]?.selectId || KEY_POOL_MENUS.google.selectId);
+        if (!target) return;
+        target.value = sel.value;
+        target.dispatchEvent(new Event('change'));
+        renderKeyPoolMenu();
+      };
+    }
+    const hint = $('key-pool-hint');
+    if (!src) {
+      sel.innerHTML = '';
+      if (hint) hint.innerText = 'Chưa có key nào';
+      return;
+    }
+    if (sel.innerHTML !== src.innerHTML) sel.innerHTML = src.innerHTML;
+    if ([...sel.options].some(o => o.value === src.value)) sel.value = src.value;
+    if (hint) {
+      const hintEl = pool.hintId ? $(pool.hintId) : null;
+      hint.innerText = hintEl ? hintEl.innerText : googleKeyPoolHint(sel.value);
+    }
   }
 
   // --- INIT API KEYS FROM LOCALSTORAGE ---
@@ -256,6 +318,7 @@
       }
       if ([...d.options].some(o => o.value === cur)) d.value = cur;
     });
+    renderKeyPoolMenu();
     if (typeof window.updateKeyQuotaUI === 'function') window.updateKeyQuotaUI();
   }
 
@@ -585,6 +648,10 @@
   }
 
   // Wiring buttons (guarded - chỉ chạy khi DOM đã có)
+  // Đổi model chính -> menu key dùng chung đổi sang danh sách key của nền tảng mới
+  const modelSelEl = $('model-select');
+  if (modelSelEl) modelSelEl.addEventListener('change', () => renderKeyPoolMenu());
+
   const saveBtn = $('btn-save-keys');
   if (saveBtn) saveBtn.onclick = () => { handleSaveKeys(); };
   const checkBtn = $('btn-check-keys');
@@ -643,6 +710,7 @@
   window.initNvidiaKeys = initNvidiaKeys;
   window.findNvidiaSlotIndexForKey = findNvidiaSlotIndexForKey;
   window.refreshSlotKeySelects = refreshSlotKeySelects;
+  window.renderKeyPoolMenu = renderKeyPoolMenu;
   window.handleCheckExplabsDuplicates = handleCheckExplabsDuplicates;
   window.handleCheckNvidiaDuplicates = handleCheckNvidiaDuplicates;
   window.handleSaveKeys = handleSaveKeys;

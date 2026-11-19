@@ -578,8 +578,11 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         notes: '30B-A3B omni: text + ảnh + audio + video → text, reasoning bật mặc định'
       }
     };
+    // Model dùng bể 5 key Experiential Labs (quota.js & menu key dùng chung đọc qua window)
+    const EXPLABS_MODELS = ['gpt-6-luna', 'gpt-6.2-astra:free', 'deepseek-v4.1-flash', 'qwen4-max:free', 'clef'];
     window.COMPAT_PROVIDERS = COMPAT_PROVIDERS;
     window.COMPAT_MODEL_OPTS = COMPAT_MODEL_OPTS;
+    window.EXPLABS_MODELS = EXPLABS_MODELS;
 
     // Dựng object `reasoning` gửi OpenRouter theo Think Depth đang chọn.
     // null = không gửi tham số reasoning, để model tự quyết định.
@@ -2444,6 +2447,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         DOM.model.value = s.mod || 'gemini-4-hydrogen';
         DOM.engineSel.value = s.engine || 'stream';
         DOM.apiKeySel.value = s.keySel || 'auto';
+        // Menu key dùng chung phải theo model của phiên vừa mở (không có sự kiện change)
+        if (typeof window.renderKeyPoolMenu === 'function') window.renderKeyPoolMenu();
         DOM.temp.value = s.tmp || 0.5;
         DOM.tempVal.innerText = DOM.temp.value;
         DOM.topP.value = s.tpp || 0.9;
@@ -3376,7 +3381,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       // Model từ gateway OpenAI-compatible (OpenRouter) không dùng Google API Key
       const usesCompatGateway = !!resolveCompatProvider(am);
       // Model Experiential Labs dùng bể 5 key riêng (xoay tua + đếm lượt)
-      const usesExplabs = (am === 'gpt-6-luna' || am === 'gpt-6.2-astra:free' || am === 'deepseek-v4.1-flash' || am === 'qwen4-max:free' || am === 'clef');
+      const usesExplabs = EXPLABS_MODELS.includes(am);
       if (usesCompatGateway) {
         const compatNow = resolveCompatProvider(am).provider;
         if (compatNow.id === 'nvidia') {
@@ -4137,6 +4142,17 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
             let compatRes = null;
             let compatErrText = '';
+            // Bể key của provider: chỉ xoay sang key khác khi đang để "Tự động xoay tua"
+            // (khóa thủ công 1 key thì giữ đúng key đó, giống nhánh Google).
+            const compatPool = prov.id === 'nvidia'
+              ? (Array.isArray(window.nvidiaKeys) ? window.nvidiaKeys.filter(Boolean) : [])
+              : (Array.isArray(window.openRouterKeys) ? window.openRouterKeys.filter(Boolean) : []);
+            const compatSelEl = $(prov.id === 'nvidia' ? 'nvidia-key-select' : 'openrouter-key-select');
+            const compatAuto = !compatSelEl || compatSelEl.value === 'auto';
+            const compatSlotOf = key => prov.id === 'nvidia'
+              ? ((typeof window.findNvidiaSlotIndexForKey === 'function') ? window.findNvidiaSlotIndexForKey(key) : keyIndexNum)
+              : ((typeof window.findOpenRouterSlotIndexForKey === 'function') ? window.findOpenRouterSlotIndexForKey(key) : keyIndexNum);
+            let compatKeySwitches = 0;
             // Provider tạm thời quá tải (Google AI Studio hay trả 503 rồi 200 ngay sau đó) → thử lại vài lần
             const COMPAT_MAX_ATTEMPTS = 4;
             const COMPAT_RETRY_DELAYS = [600, 1500, 2500];
@@ -4162,6 +4178,25 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                 delete compatBody.include_reasoning;
                 compatErrText = '';
                 continue;
+              }
+              // Key bị từ chối / hết hạn ngạch: xoay sang key kế tiếp trong bể thay vì
+              // thử lại cùng một key rồi báo lỗi cả lượt.
+              const keyRejected = [401, 402, 403, 429].includes(compatRes.status);
+              if (keyRejected && compatAuto && compatPool.length > 1 && compatKeySwitches < compatPool.length - 1) {
+                const curIdx = compatPool.indexOf(compatKey);
+                const nextKey = compatPool[(curIdx + 1) % compatPool.length];
+                compatKeySwitches++;
+                if (nextKey && nextKey !== compatKey) {
+                  const failedSlot = keyIndexNum;
+                  compatKey = nextKey;
+                  compatHeaders.Authorization = 'Bearer ' + compatKey;
+                  keyIndexNum = compatSlotOf(compatKey);
+                  // Đẩy con trỏ xoay tua qua key vừa dùng để lượt sau không lặp lại key này
+                  if (prov.keyIndexVar) window[prov.keyIndexVar] = (compatPool.indexOf(compatKey) + 1) % compatPool.length;
+                  showToast(`⚠️ ${prov.keyLabel} Key #${failedSlot} lỗi (HTTP ${compatRes.status}), đang xoay sang Key #${keyIndexNum}...`, 'warning');
+                  compatErrText = '';
+                  continue;
+                }
               }
               // 429/502/503/504 = lỗi tạm thời phía provider, chờ rồi thử lại thay vì báo lỗi ngay
               const transient = [429, 502, 503, 504].includes(compatRes.status);
