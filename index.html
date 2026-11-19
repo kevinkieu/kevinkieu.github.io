@@ -32,7 +32,7 @@
   </script>
 
   <!-- MODULAR STYLESHEETS -->
-  <link rel="stylesheet" href="./css/style.css?v=67">
+  <link rel="stylesheet" href="./css/style.css?v=69">
   <link rel="stylesheet" href="./css/live.css">
   <link rel="stylesheet" href="./css/tts.css">
   <link rel="stylesheet" href="./css/translate.css">
@@ -147,6 +147,10 @@
                 <option value="z-ai/glm-5.3-flash">🧠 GLM 5.3 Flash (NVIDIA)</option>
                 <option value="nvidia/nemotron-3.5-lightning-30b-a3b">⚡ Nemotron 3.5 Lightning 30B A3B</option>
                 <option value="nvidia/nemotron-3.5-bolt-e4b">⛅ Nemotron 3.5 Bolt E4B</option>
+                <option value="google/gemma-4-31b-it">💎 Gemma 4 31B (NVIDIA)</option>
+                <option value="nvidia/nemotron-3.5-super-vl-120b-a12b">👁️ Nemotron 3.5 Super VL 120B A12B</option>
+                <option value="nvidia/nemotron-3-ultra-550b-a55b">🧠 Nemotron 3 Ultra 550B A55B</option>
+                <option value="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning">🎧 Nemotron 3 Nano Omni 30B A3B</option>
               </optgroup>
               <optgroup label="🛰️ OpenRouter">
                 <option value="nvidia/nemotron-3.5-lightning:free">⚡ Nemotron 3.5 Lightning (Free)</option>
@@ -861,14 +865,15 @@
           <div class="api-keys-grid" id="nvidia-keys-container" style="margin-bottom:10px;"></div>
           <div style="margin-bottom:8px;">
             <span class="field-label">🔀 NVIDIA Proxy URL (bắt buộc khi chạy trên trình duyệt):</span>
-            <input type="text" id="nvidia-proxy-url" class="modern-input" placeholder="https://your-proxy.workers.dev/v1" title="NVIDIA chặn CORS nên cần proxy chuyển tiếp tới integrate.api.nvidia.com/v1">
+            <input type="text" id="nvidia-proxy-url" class="modern-input" placeholder="Để trống = dùng proxy mặc định" title="Để trống sẽ dùng proxy mặc định https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/v1; nhập URL khác để ghi đè">
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <button id="btn-check-nvidia-duplicates" class="btn">👯 Kiểm tra Trùng</button>
+            <button id="btn-test-nvidia" class="btn">🔌 Kiểm tra kết nối</button>
             <span id="nvidia-key-status-msg" style="font-size:.78rem;font-weight:600;"></span>
           </div>
           <div style="font-size:0.73rem;color:var(--text-muted);margin-top:6px;line-height:1.4;">
-            Base URL: https://integrate.api.nvidia.com/v1 — dùng cho z-ai/glm-5.3-flash, nvidia/nemotron-3.5-lightning-30b-a3b và nvidia/nemotron-3.5-bolt-e4b. NVIDIA không trả header CORS cho trình duyệt nên gọi trực tiếp sẽ báo "Failed to fetch"; nhập NVIDIA Proxy URL (để trống nếu chạy trong môi trường không kiểm tra CORS). Mỗi request tự chuyển sang key kế tiếp và ghi bộ đếm riêng cho từng ô.
+            Base URL: https://integrate.api.nvidia.com/v1 — dùng cho z-ai/glm-5.3-flash, nvidia/nemotron-3.5-lightning-30b-a3b, nvidia/nemotron-3.5-bolt-e4b, google/gemma-4-31b-it, nvidia/nemotron-3.5-super-vl-120b-a12b, nvidia/nemotron-3-ultra-550b-a55b và nvidia/nemotron-3-nano-omni-30b-a3b-reasoning. NVIDIA không trả header CORS cho trình duyệt nên app đi qua proxy chuyển tiếp; để trống ô Proxy URL sẽ tự dùng proxy mặc định https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/v1, nhập URL khác để ghi đè. Mỗi request tự chuyển sang key kế tiếp và ghi bộ đếm riêng cho từng ô.
           </div>
         </fieldset>
       </div>
@@ -1772,21 +1777,21 @@
   </div>
 
   <!-- JAVASCRIPT APPLICATION MODULES -->
-  <script type="module" src="./js/tools.js?v=67"></script>
-  <script type="module" src="./js/export.js?v=67"></script>
-  <script type="module" src="./js/quota.js?v=67"></script>
-  <script type="module" src="./js/medication.js?v=67"></script>
-  <script type="module" src="./js/commands.js?v=67"></script>
-    <script type="module" src="./js/briefing.js?v=67"></script>
-  <script type="module" src="./js/cipher.js?v=67"></script>
-  <script type="module" src="./js/database.js?v=67"></script>
-  <script type="module" src="./js/app.js?v=67"></script>
-    <script type="module" src="./js/api-keys.js?v=67"></script>
-  <script type="module" src="./js/sync.js?v=67"></script>
-  <script type="module" src="./js/live.js?v=67"></script>
-  <script type="module" src="./js/tts.js?v=67"></script>
-  <script type="module" src="./js/translate.js?v=67"></script>
-  <script type="module" src="./js/eventBus.js?v=67"></script>
-  <script type="module" src="./js/rag.js?v=67"></script>
+  <script type="module" src="./js/tools.js?v=69"></script>
+  <script type="module" src="./js/export.js?v=69"></script>
+  <script type="module" src="./js/quota.js?v=69"></script>
+  <script type="module" src="./js/medication.js?v=69"></script>
+  <script type="module" src="./js/commands.js?v=69"></script>
+    <script type="module" src="./js/briefing.js?v=69"></script>
+  <script type="module" src="./js/cipher.js?v=69"></script>
+  <script type="module" src="./js/database.js?v=69"></script>
+  <script type="module" src="./js/app.js?v=69"></script>
+    <script type="module" src="./js/api-keys.js?v=69"></script>
+  <script type="module" src="./js/sync.js?v=69"></script>
+  <script type="module" src="./js/live.js?v=69"></script>
+  <script type="module" src="./js/tts.js?v=69"></script>
+  <script type="module" src="./js/translate.js?v=69"></script>
+  <script type="module" src="./js/eventBus.js?v=69"></script>
+  <script type="module" src="./js/rag.js?v=69"></script>
 </body>
 </html>

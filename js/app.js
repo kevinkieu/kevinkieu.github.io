@@ -236,14 +236,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                   toRender = toRender.replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>/gi, '')
                                      .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');
                 } else {
-                  toRender = toRender.replace(/<(?:think|thought)>([\s\S]*?)<\/(?:think|thought)>/gi, (m, p1) => {
-                    const clean = p1.trim();
-                    if (!clean) return '';
-                    const words = clean.split(/\s+/).filter(Boolean).length;
-                    const chars = clean.length;
-                    const tokens = Math.max(1, Math.round(chars / 4));
-                    return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
-                  });
+                  toRender = toRender.replace(/<(?:think|thought)>([\s\S]*?)<\/(?:think|thought)>/gi, (m, p1) => buildThinkingDetailsHtml(p1));
+                  toRender = mergeAdjacentThinkingBlocks(toRender);
                 }
                 targetEl.innerHTML = marked.parse(toRender, { sanitize: true });
               } catch (_) {}
@@ -259,20 +253,60 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       };
     }
 
+    // --- GỘP CÁC ĐOẠN SUY LUẬN LIỀN NHAU THÀNH MỘT KHỐI 💭 DUY NHẤT ---
+    // Provider có thể trả suy luận thành nhiều đoạn liền nhau trong cùng một stream
+    // (nhiều cục reasoning_content, hoặc  thinking/<thought> nằm ngay trong content).
+    // Mọi đoạn liền nhau được gộp lại để mỗi lượt trả lời chỉ hiện đúng MỘT khối 💭.
+    const thinkingStats = clean => {
+      const words = clean ? clean.split(/\s+/).filter(Boolean).length : 0;
+      return { words, tokens: Math.max(1, Math.round(clean.length / 4)) };
+    };
+
+    const buildThinkingDetailsHtml = raw => {
+      const clean = (raw || '').trim();
+      if (!clean) return '';
+      const { words, tokens } = thinkingStats(clean);
+      return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
+    };
+
+    // Gộp reasoning_content với các đoạn  thinking/<thought> còn sót trong content.
+    function mergeThinkingSegments(thinking, content) {
+      let merged = (thinking || '').trim();
+      const rest = String(content || '').replace(/<(?:think|thought)>([\s\S]*?)(?:<\/(?:think|thought)>|$)/gi, (m, seg) => {
+        const clean = (seg || '').trim();
+        if (clean) merged = merged ? `${merged}\n\n${clean}` : clean;
+        return '';
+      }).trim();
+      return { thinking: merged, content: rest };
+    }
+
+    // Lưới an toàn cho nội dung đã render (kể cả tin nhắn cũ trong lịch sử):
+    // nhiều <details class="thinking-block"> đứng liền nhau -> gộp thành một khối duy nhất.
+    const mergeAdjacentThinkingBlocks = html => {
+      if (!html || html.indexOf('class="thinking-block"') < 0) return html;
+      const unescapeOnce = s => String(s)
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+      return html.replace(/(?:<details class="thinking-block">[\s\S]*?<\/details>(?:[ \t]*\r?\n)*[ \t]*){2,}/gi, run => {
+        const parts = [];
+        run.replace(/<div class="thinking-content">([\s\S]*?)<\/div>/gi, (m, inner) => {
+          const seg = unescapeOnce(inner).trim();
+          if (seg) parts.push(seg);
+          return m;
+        });
+        const mergedBlock = buildThinkingDetailsHtml(parts.join('\n\n'));
+        return mergedBlock ? mergedBlock + '\n\n' : '';
+      });
+    };
+
     // --- REASONING ACCORDION & THINKING FORMATTER (GEMINI & DEEPSEEK) ---
     function formatThinkingResponse(currentThinking, currentContent, modelDisplayName = 'AI') {
       const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true' || ls.getItem('jarvis_hide_thinking') === 'true';
 
-      let displayThinking = currentThinking || '';
-      let displayContent = currentContent || '';
-
-      if (!displayThinking && (displayContent.includes('<think>') || displayContent.includes('<thought>'))) {
-        const match = displayContent.match(/<(?:think|thought)>([\s\S]*?)(?:<\/(?:think|thought)>|$)/i);
-        if (match) {
-          displayThinking = match[1];
-          displayContent = displayContent.replace(/<(?:think|thought)>[\s\S]*?(?:<\/(?:think|thought)>|$)/i, '').trim();
-        }
-      }
+      // Gộp mọi đoạn suy luận (reasoning_content + thinking/thought trong content) về một chuỗi duy nhất
+      const mergedSegments = mergeThinkingSegments(currentThinking, currentContent);
+      let displayThinking = mergedSegments.thinking;
+      let displayContent = mergedSegments.content;
 
       if (hideThinking) {
         if (displayContent) {
@@ -282,15 +316,11 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         }
       } else {
         const clean = displayThinking.trim();
-        const words = clean ? clean.split(/\s+/).filter(Boolean).length : 0;
-        const chars = clean.length;
-        const tokens = Math.max(1, Math.round(chars / 4));
+        const { words, tokens } = thinkingStats(clean);
 
         if (displayContent) {
-          const thinkingBlock = clean
-            ? `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>\n\n`
-            : '';
-          return thinkingBlock + displayContent;
+          const thinkingBlock = buildThinkingDetailsHtml(clean);
+          return mergeAdjacentThinkingBlocks(thinkingBlock ? thinkingBlock + '\n\n' + displayContent : displayContent);
         } else if (clean) {
           return `<div class="thinking-streaming"><span class="thinking-spinner">⏳</span> <em>${modelDisplayName} đang suy luận (${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens)...</em></div>`;
         }
@@ -301,16 +331,10 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     function formatFinalThinkingResponse(currentThinking, currentContent, modelDisplayName = 'AI') {
       const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true' || ls.getItem('jarvis_hide_thinking') === 'true';
 
-      let displayThinking = currentThinking || '';
-      let displayContent = currentContent || '';
-
-      if (!displayThinking && (displayContent.includes('<think>') || displayContent.includes('<thought>'))) {
-        const match = displayContent.match(/<(?:think|thought)>([\s\S]*?)(?:<\/(?:think|thought)>|$)/i);
-        if (match) {
-          displayThinking = match[1];
-          displayContent = displayContent.replace(/<(?:think|thought)>[\s\S]*?(?:<\/(?:think|thought)>|$)/i, '').trim();
-        }
-      }
+      // Gộp mọi đoạn suy luận (reasoning_content + thinking/thought trong content) về một chuỗi duy nhất
+      const mergedSegments = mergeThinkingSegments(currentThinking, currentContent);
+      let displayThinking = mergedSegments.thinking;
+      let displayContent = mergedSegments.content;
 
       // FAIL-SAFE CHỐNG LỖI CHỈ CÓ SUY LUẬN MÀ KHÔNG CÓ CÂU TRẢ LỜI:
       // Nếu mô hình chỉ xuất phần suy luận mà quên xuất câu trả lời người dùng,
@@ -323,15 +347,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       if (hideThinking) {
         return displayContent;
       } else {
-        const clean = displayThinking.trim();
-        const words = clean ? clean.split(/\s+/).filter(Boolean).length : 0;
-        const chars = clean.length;
-        const tokens = Math.max(1, Math.round(chars / 4));
-
-        const thinkingBlock = clean
-          ? `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>\n\n`
-          : '';
-        return thinkingBlock + displayContent;
+        const thinkingBlock = buildThinkingDetailsHtml(displayThinking);
+        return mergeAdjacentThinkingBlocks(thinkingBlock ? thinkingBlock + '\n\n' + displayContent : displayContent);
       }
     }
 
@@ -350,6 +367,10 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     ];
     window.cfgMap = cfgMap;
 
+    // Proxy NVIDIA mặc định: máy mới không cần nhập gì vẫn chat được; nhập URL khác trong
+    // Cấu hình (localStorage nvidia_proxy_url) để ghi đè.
+    const NVIDIA_DEFAULT_PROXY = 'https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/v1';
+
     // --- REGISTRY GATEWAY OpenAI-COMPATIBLE (OpenRouter) ---
     // Các model dưới đây gọi chung endpoint /chat/completions (SSE) thay vì Google Gemini.
     const COMPAT_PROVIDERS = {
@@ -365,17 +386,25 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         // NVIDIA chặn CORS cho mọi origin lạ -> cho phép dùng proxy chuyển tiếp
         getBaseUrl: () => {
           const proxy = (ls.getItem('nvidia_proxy_url') || '').trim().replace(/\/+$/, '');
-          return proxy || 'https://integrate.api.nvidia.com/v1';
+          return proxy || NVIDIA_DEFAULT_PROXY;
         },
         models: [
           'z-ai/glm-5.3-flash',
           'nvidia/nemotron-3.5-lightning-30b-a3b',
-          'nvidia/nemotron-3.5-bolt-e4b'
+          'nvidia/nemotron-3.5-bolt-e4b',
+          'google/gemma-4-31b-it',
+          'nvidia/nemotron-3.5-super-vl-120b-a12b',
+          'nvidia/nemotron-3-ultra-550b-a55b',
+          'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'
         ],
         modelLabel: m => {
           if (m.includes('glm-5.3-flash')) return 'GLM 5.3 Flash';
           if (m.includes('nemotron-3.5-bolt')) return 'Nemotron 3.5 Bolt E4B';
           if (m.includes('nemotron-3.5-lightning')) return 'Nemotron 3.5 Lightning 30B A3B';
+          if (m.includes('nemotron-3.5-super-vl')) return 'Nemotron 3.5 Super VL 120B A12B';
+          if (m.includes('nemotron-3-ultra')) return 'Nemotron 3 Ultra 550B A55B';
+          if (m.includes('nemotron-3-nano-omni')) return 'Nemotron 3 Nano Omni 30B A3B';
+          if (m.includes('gemma-4-31b')) return 'Gemma 4 31B';
           return m;
         }
       },
@@ -441,6 +470,53 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         defaultEffort: 'none',
         inputModalities: ['text'],
         notes: 'NVIDIA integrate.api.nvidia.com - E4B'
+      },
+      // --- 4 model NVIDIA mới: đều nhận thinking qua chat_template_kwargs.enable_thinking ---
+      // Gemma 4 31B: context 256K, nhận text + ảnh + video, điều khiển suy luận bằng reasoning_effort.
+      'google/gemma-4-31b-it': {
+        contextWindow: 262144,
+        maxOutputTokens: 32768,
+        maxTokens: 32768,
+        nvThinking: { effort: true },
+        levels: [['high', 'High (Sâu)'], ['medium', 'Med (Chuẩn)'], ['low', 'Low (Thấp)'], ['none', 'Tắt']],
+        defaultEffort: 'high',
+        inputModalities: ['text', 'image', 'video'],
+        notes: '30.7B, 256K context, text + ảnh + video, thinking bật/tắt + reasoning_effort'
+      },
+      // Nemotron 3.5 Super VL 120B A12B: context 1M, reasoning ON mặc định, effort low/medium/high.
+      'nvidia/nemotron-3.5-super-vl-120b-a12b': {
+        contextWindow: 1048576,
+        maxOutputTokens: 1048576,
+        maxTokens: 32768,
+        nvThinking: { effort: true },
+        levels: [['high', 'High (Sâu)'], ['medium', 'Med (Chuẩn)'], ['low', 'Low (Thấp)'], ['none', 'Tắt']],
+        defaultEffort: 'high',
+        inputModalities: ['text', 'image', 'video'],
+        notes: '120B MoE (12B active), 1M context, text + ảnh + video, reasoning ON mặc định'
+      },
+      // Nemotron 3 Ultra 550B A55B: context 1M, reasoning ON mặc định.
+      // Đo thực tế: chat_template_kwargs.medium_effort gần như không đổi số token suy luận
+      // (plain 56/56 vs medium 38/50) -> chỉ giữ bật/tắt thay vì mời mức không tác dụng.
+      'nvidia/nemotron-3-ultra-550b-a55b': {
+        contextWindow: 1048576,
+        maxOutputTokens: 32768,
+        maxTokens: 32768,
+        nvThinking: {},
+        levels: [['high', 'Bật (mặc định)'], ['none', 'Tắt']],
+        defaultEffort: 'high',
+        inputModalities: ['text'],
+        notes: '550B (55B active), 1M context, text→text, reasoning ON mặc định'
+      },
+      // Nemotron 3 Nano Omni 30B A3B: context 256K, omni (text/ảnh/audio/video), reasoning theo ngân sách token.
+      'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning': {
+        contextWindow: 262144,
+        maxOutputTokens: 131072,
+        maxTokens: 32768,
+        nvThinking: { budget: { minimal: 1024, low: 4096, medium: 8192, high: 16384 } },
+        levels: [['high', 'High (trần 16K)'], ['medium', 'Med (trần 8K)'], ['low', 'Low (trần 4K)'], ['minimal', 'Min (trần 1K)'], ['none', 'Tắt']],
+        defaultEffort: 'high',
+        inputModalities: ['text', 'image', 'audio', 'video'],
+        notes: '30B A3B omni: text + ảnh + audio + video, ngân sách suy luận 1K-16K'
       },
       'particle-ai/particle-1:free': {
         contextWindow: 1048576,
@@ -508,8 +584,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     // Dựng object `reasoning` gửi OpenRouter theo Think Depth đang chọn.
     // null = không gửi tham số reasoning, để model tự quyết định.
     function buildReasoningPayload(mOpts, thk) {
-      // Model NVIDIA (integrate.api.nvidia.com) không nhận tham số reasoning qua gateway
-      if (mOpts && mOpts.noReasoning) return null;
+      // Model NVIDIA (integrate.api.nvidia.com) không nhận tham số reasoning kiểu OpenRouter
+      // (dùng buildNvidiaThinking -> chat_template_kwargs)
+      if (mOpts && (mOpts.noReasoning || mOpts.nvThinking)) return null;
       // ERNIE: reasoning luôn bật, effort cố định (high) -> chỉ xin trả về reasoning
       if (mOpts && mOpts.reasoningAlwaysOn) return { exclude: false };
       // Nemotron 3.5 Lightning / Super VL (free): endpoint không có reasoning_effort -> chỉ bật/tắt
@@ -525,6 +602,24 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       return null;
     }
     window.buildReasoningPayload = buildReasoningPayload;
+
+    // Dựng tham số suy luận cho NVIDIA integrate.api.nvidia.com: thinking bật/tắt qua
+    // chat_template_kwargs.enable_thinking, mức sâu qua reasoning_effort (Gemma 4, Super VL)
+    // hoặc reasoning_budget (Nano Omni - ngân sách trần cho phần suy luận).
+    // null = model không có bộ điều khiển riêng (giữ nguyên hành vi cũ).
+    function buildNvidiaThinking(mOpts, thk) {
+      const nv = mOpts && mOpts.nvThinking;
+      if (!nv) return null;
+      const on = !!thk && thk !== 'none';
+      const ctk = { enable_thinking: on };
+      const body = { chat_template_kwargs: ctk };
+      if (!on) return body;
+      // reasoning_effort chỉ nhận low/medium/high
+      if (nv.effort) body.reasoning_effort = thk === 'minimal' ? 'low' : thk;
+      if (nv.budget && nv.budget[thk]) body.reasoning_budget = nv.budget[thk];
+      return body;
+    }
+    window.buildNvidiaThinking = buildNvidiaThinking;
 
     function resolveCompatProvider(modelId) {
       const m = (modelId || '').trim();
@@ -917,7 +1012,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       if (!k) return;
 
       try {
-        const toSummarize = chatHistory.slice(0, chatHistory.length - 10).map(m => `${m.role === 'model' ? 'AI' : 'User'}: ${m.text.slice(0, 300)}`).join('\n');
+        const toSummarize = chatHistory.slice(0, chatHistory.length - 10).map(m => `${m.role === 'model' ? 'AI' : 'User'}: ${stripThinkingForCopy(m.text).slice(0, 300)}`).join('\n');
         const prevSummary = sessionObj.summaryMemory ? `[Bối cảnh cốt lõi trước đó]:\n${sessionObj.summaryMemory}\n\n[Diễn biến mới cần cập nhật]:\n` : '';
         const promptText = `Hãy cập nhật và cô đọng các thông tin quan trọng, ngữ cảnh và các quyết định cốt lõi trong đoạn hội thoại sau thành 1 đoạn ngắn gọn (khoảng 3-5 gạch đầu dòng):\n\n${prevSummary}${toSummarize}`;
 
@@ -1931,7 +2026,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       const pinnedMsgs = chatHistory.filter(x => x.pinned);
       const pinnedSnippet = pinnedMsgs.length 
         ? `\n\n[CÁC CHỈ THỊ VÀ DỮ LIỆU CỐT LÕI ĐÃ ĐƯỢC NGƯỜI DÙNG GHIM - BẮT BUỘC LUÔN GHI NHỚ VÀ TUÂN THỦ]:\n` +
-          pinnedMsgs.map((m, idx) => `--- [Mục ghim #${idx + 1} (${m.role === 'user' ? 'Người dùng' : 'Jarvis AI'})]:\n${m.text}`).join('\n\n') + '\n'
+          pinnedMsgs.map((m, idx) => `--- [Mục ghim #${idx + 1} (${m.role === 'user' ? 'Người dùng' : 'Jarvis AI'})]:\n${stripThinkingForCopy(m.text)}`).join('\n\n') + '\n'
         : '';
 
       const ragBlock = ragSnippet ? `\n\n${ragSnippet}\n` : '';
@@ -2620,19 +2715,14 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         t = t.replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>/gi, '')
              .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');
       } else {
-        t = t.replace(/<(?:think|thought)>([\s\S]*?)<\/(?:think|thought)>/gi, (m, p1) => {
-          const clean = p1.trim();
-          if (!clean) return '';
-          const words = clean.split(/\s+/).filter(Boolean).length;
-          const chars = clean.length;
-          const tokens = Math.max(1, Math.round(chars / 4));
-          return `<details class="thinking-block"><summary class="thinking-summary"><span class="thinking-icon">💭</span> Quá trình suy luận <span class="thinking-count">(${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens - bấm để xem)</span></summary><div class="thinking-content">${escapeHtml(clean)}</div></details>`;
-        });
+        t = t.replace(/<(?:think|thought)>([\s\S]*?)<\/(?:think|thought)>/gi, (m, p1) => buildThinkingDetailsHtml(p1));
         // Rút các khối <details> ra khỏi chuỗi trước khi parse Markdown (tránh bị nuốt câu trả lời)
         t = t.replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, (m) => {
           thinkingHtml += m;
           return '';
         });
+        // Các khối 💭 liền nhau (vd: reasoning_content +  thinking trong content) -> một khối duy nhất
+        thinkingHtml = mergeAdjacentThinkingBlocks(thinkingHtml);
       }
       el.innerHTML = marked.parse(t.replace(/\[URL:\s*(https?:\/\/[^\s]+)\]/g, '<a href="$1" target="_blank" style="color:var(--primary);text-decoration:underline;">$1</a>'));
       if (thinkingHtml) el.insertAdjacentHTML('afterbegin', thinkingHtml);
@@ -3767,9 +3857,11 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               }
               if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
                 chatHistory.slice(-10).forEach(m => {
-                  expMessages.push({
+                  // Chỉ gửi phần trả lời, bỏ khối 💭 đã render (dữ liệu lưu vẫn nguyên)
+                  const txt = stripThinkingForCopy(m.text);
+                  if (txt) expMessages.push({
                     role: m.role === 'model' ? 'assistant' : 'user',
-                    content: m.text
+                    content: txt
                   });
                 });
               }
@@ -3958,7 +4050,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           if (compatSI) compatMessages.push({ role: 'system', content: compatSI });
           if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
             chatHistory.slice(-10).forEach(m => {
-              compatMessages.push({ role: m.role === 'model' ? 'assistant' : 'user', content: m.text });
+              // Chỉ gửi phần trả lời, bỏ khối 💭 đã render (dữ liệu lưu vẫn nguyên)
+              const txt = stripThinkingForCopy(m.text);
+              if (txt) compatMessages.push({ role: m.role === 'model' ? 'assistant' : 'user', content: txt });
             });
           }
           if (base64Files && base64Files.length > 0) {
@@ -4027,6 +4121,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                 compatBody.include_reasoning = true;
               }
             }
+            // NVIDIA integrate: reasoning đi qua chat_template_kwargs (+ effort / budget)
+            const nvThinking = buildNvidiaThinking(mOpts, thk);
+            if (nvThinking) Object.assign(compatBody, nvThinking);
 
             const compatBase = (typeof prov.getBaseUrl === 'function') ? prov.getBaseUrl() : prov.baseUrl;
             const compatUrl = `${compatBase}/chat/completions`;
@@ -4094,6 +4191,10 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               } else if (apiMsg && compatRes.status) {
                 apiMsg = `${apiMsg} (HTTP ${compatRes.status})`;
               }
+              // 401/403 từ NVIDIA = key bị từ chối, không phải lỗi model/mạng -> nói rõ việc cần làm
+              if (prov.id === 'nvidia' && compatRes && [401, 403].includes(compatRes.status)) {
+                apiMsg = `Key NVIDIA bị từ chối (HTTP ${compatRes.status}): key sai/hết hạn hoặc không có quyền với model này. Kiểm tra lại key đang chọn (bấm "🔌 Kiểm tra kết nối" trong Cài đặt).`;
+              }
               throw new Error(apiMsg || ('HTTP ' + (compatRes ? compatRes.status : '?')));
             }
 
@@ -4151,10 +4252,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               bD.remove();
               const networkLike = /failed to fetch|networkerror|load failed/i.test(compatErr.message || '');
               if (prov.id === 'nvidia' && networkLike) {
-                const hasProxy = !!(ls.getItem('nvidia_proxy_url') || '').trim();
-                return showToast(hasProxy
-                  ? `Lỗi NVIDIA: không kết nối được proxy (${compatErr.message}). Kiểm tra NVIDIA Proxy URL trong Cài đặt.`
-                  : 'NVIDIA chặn CORS khi gọi trực tiếp từ trình duyệt (Failed to fetch). Hãy nhập NVIDIA Proxy URL trong Cài đặt (⚙️).', 'danger');
+                return showToast(`Lỗi NVIDIA: không kết nối được proxy (${compatErr.message}). Kiểm tra mạng hoặc NVIDIA Proxy URL trong Cài đặt.`, 'danger');
               }
               return showToast(`Lỗi ${prov.keyLabel}: ${compatErr.message}`, 'danger');
             }
@@ -4196,7 +4294,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               interactionParams.previous_interaction_id = cs.lastInteractionId;
             } else if (chatHistory.length > 0) {
               // Tiếp tế bối cảnh 1 lần duy nhất cho lượt khởi động nếu chưa có ID trên server Google
-              const histSummary = chatHistory.slice(-10).map(m => `${m.role === 'model' ? 'AI' : 'Người dùng'}: ${m.text}`).join('\n\n');
+              const histSummary = chatHistory.slice(-10).map(m => `${m.role === 'model' ? 'AI' : 'Người dùng'}: ${stripThinkingForCopy(m.text)}`).join('\n\n');
               const seededPrompt = `[BỐI CẢNH CÁC LƯỢT TRÒ CHUYỆN TRƯỚC ĐÓ]:\n${histSummary}\n\n[CÂU HỎI TIẾP THEO CỦA NGƯỜI DÙNG]:\n${fnP}`;
               if (imgs.length) {
                 interactionParams.input = [
@@ -4235,7 +4333,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                     await saveToDB(cs);
                   }
                   if (chatHistory.length > 0) {
-                    const histSummary = chatHistory.slice(-10).map(m => `${m.role === 'model' ? 'AI' : 'Người dùng'}: ${m.text}`).join('\n\n');
+                    const histSummary = chatHistory.slice(-10).map(m => `${m.role === 'model' ? 'AI' : 'Người dùng'}: ${stripThinkingForCopy(m.text)}`).join('\n\n');
                     const seededPrompt = `[BỐI CẢNH CÁC LƯỢT TRÒ CHUYỆN TRƯỚC ĐÓ]:\n${histSummary}\n\n[CÂU HỎI TIẾP THEO CỦA NGƯỜI DÙNG]:\n${fnP}`;
                     if (imgs.length) {
                       interactionParams.input = [
@@ -4367,14 +4465,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           const contents = [];
           if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
             chatHistory.slice(-contextMsgCount).forEach(m => {
-              let cleanText = (m.text || '');
-              // Loại bỏ khối HTML details hoặc thẻ think khỏi ngữ cảnh gửi cho AI để tránh làm nhiễu mô hình
-              cleanText = cleanText.replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '').trim();
-              cleanText = cleanText.replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>/gi, '').trim();
-              if (!cleanText && m.role === 'model') {
-                // Nếu tin nhắn cũ từng chỉ có suy luận, lọc thẻ HTML lấy văn bản thuần
-                cleanText = (m.text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-              }
+              // Lọc bỏ khối 💭 đã render khỏi ngữ cảnh gửi AI (chỉ ảnh hưởng payload, không đổi dữ liệu đã lưu)
+              const cleanText = stripThinkingForCopy(m.text);
               if (cleanText) {
                 contents.push({
                   role: m.role === 'model' ? 'model' : 'user',
@@ -4602,10 +4694,10 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                 const lastTail = finalResp.trim().slice(-150);
                 contents.length = 0;
                 if (DOM.toggleMemory?.checked && chatHistory.length > 0) {
-                  chatHistory.slice(-6).forEach(m => contents.push({
-                    role: m.role === 'model' ? 'model' : 'user',
-                    parts: [{ text: m.text }]
-                  }));
+                  chatHistory.slice(-6).forEach(m => {
+                    const cleanText = stripThinkingForCopy(m.text);
+                    if (cleanText) contents.push({ role: m.role === 'model' ? 'model' : 'user', parts: [{ text: cleanText }] });
+                  });
                 }
                 contents.push({
                   role: 'user',

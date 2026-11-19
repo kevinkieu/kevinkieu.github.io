@@ -600,6 +600,39 @@
   const dupNvBtn = $('btn-check-nvidia-duplicates');
   if (dupNvBtn) dupNvBtn.onclick = () => { handleCheckNvidiaDuplicates(); };
 
+  // Kiểm tra proxy + key NVIDIA ngay trên thiết bị đang chạy (điện thoại/browser).
+  // Dùng giá trị đang gõ trong ô proxy (chưa cần bấm Lưu) để phát hiện URL sai trước khi chat.
+  // Phải gửi 1 chat completion tối thiểu: /v1/models của NVIDIA không kiểm tra key (key sai vẫn 200).
+  async function testNvidiaConnection() {
+    const s = $('nvidia-key-status-msg');
+    const setMsg = (t, color) => { if (s) { s.innerText = t; s.style.color = color; } };
+    // Ô đang gõ > giá trị đã lưu > proxy mặc định (getBaseUrl xử lý 2 trường hợp sau)
+    const typedProxy = (($('nvidia-proxy-url') && $('nvidia-proxy-url').value) || '').trim().replace(/\/+$/, '');
+    const base = typedProxy || window.COMPAT_PROVIDERS.nvidia.getBaseUrl();
+    let key = (ls.getItem('jarvis_nvidia_api_1') || '').trim();
+    if (key.startsWith('JVENC_') || key.startsWith('ENC_')) key = deobfuscateKey(key);
+    if (!key) return setMsg('❌ Chưa có NVIDIA Key ở ô #1', 'var(--danger)');
+    setMsg('⏳ Đang kiểm tra proxy + key...', 'var(--text-muted)');
+    const started = performance.now();
+    try {
+      const r = await fetch(base + '/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'nvidia/nemotron-3.5-bolt-e4b', messages: [{ role: 'user', content: 'ping' }], max_tokens: 8, stream: false })
+      });
+      const ms = Math.round(performance.now() - started);
+      if ([401, 403].includes(r.status)) {
+        return setMsg(`❌ Proxy OK nhưng NVIDIA từ chối key (HTTP ${r.status}): key sai/hết hạn hoặc không có quyền. (${ms}ms)`, 'var(--danger)');
+      }
+      if (!r.ok) return setMsg(`❌ Kết nối được nhưng NVIDIA trả HTTP ${r.status} (${ms}ms)`, 'var(--danger)');
+      return setMsg(`✅ Kết nối OK: proxy + key hợp lệ (${ms}ms)`, 'var(--success)');
+    } catch (e) {
+      return setMsg(`❌ Không kết nối được proxy: ${e.message}. Kiểm tra URL/mạng.`, 'var(--danger)');
+    }
+  }
+  const testNvBtn = $('btn-test-nvidia');
+  if (testNvBtn) testNvBtn.onclick = async () => { await testNvidiaConnection(); };
+
   // --- PUBLIC API ---
   window.initAPIKeys = initAPIKeys;
   window.initExternalConfigs = initExternalConfigs;
