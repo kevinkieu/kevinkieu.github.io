@@ -132,25 +132,19 @@
               <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
               <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Siêu nhanh & Tiết kiệm)</option>
               <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
-              <optgroup label="💎 Gemma 4 (Google AI Studio)">
-                <option value="gemma-4-26b-a4b-it">💎 Gemma 4 26B A4B (Google)</option>
-                <option value="gemma-4-31b-it">💎 Gemma 4 31B (Google)</option>
-              </optgroup>
               <optgroup label="🌐 Experiential Labs">
                 <option value="gpt-6-luna">⚡ GPT-6 Luna (Experiential)</option>
-                <option value="gpt-6.2-astra:free">✨ GPT-6.2 Astra (Experiential)</option>
                 <option value="deepseek-v4.1-flash">🧠 DeepSeek V4.1 Flash (Suy luận Free)</option>
                 <option value="qwen4-max:free">🧠 Qwen4 Max (Suy luận)</option>
-                <option value="clef">🎯 Clef (Decision Engine)</option>
               </optgroup>
               <optgroup label="🟢 NVIDIA">
                 <option value="z-ai/glm-5.3-flash">🧠 GLM 5.3 Flash (NVIDIA)</option>
                 <option value="nvidia/nemotron-3.5-lightning-30b-a3b">⚡ Nemotron 3.5 Lightning 30B A3B</option>
                 <option value="nvidia/nemotron-3.5-bolt-e4b">⛅ Nemotron 3.5 Bolt E4B</option>
-                <option value="google/gemma-4-31b-it">💎 Gemma 4 31B (NVIDIA)</option>
                 <option value="nvidia/nemotron-3.5-super-vl-120b-a12b">👁️ Nemotron 3.5 Super VL 120B A12B</option>
                 <option value="nvidia/nemotron-3-ultra-550b-a55b">🧠 Nemotron 3 Ultra 550B A55B</option>
                 <option value="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning">🎧 Nemotron 3 Nano Omni 30B A3B</option>
+                <option value="openai/gpt-oss-20b">🧠 GPT-OSS-20B (NVIDIA)</option>
               </optgroup>
               <optgroup label="🛰️ OpenRouter">
                 <option value="nvidia/nemotron-3.5-lightning:free">⚡ Nemotron 3.5 Lightning (Free)</option>
@@ -158,8 +152,6 @@
                 <option value="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free">🎧 Nemotron 3 Nano Omni (Free)</option>
                 <option value="particle-ai/particle-1:free">🧠 Particle-1 (Free)</option>
                 <option value="baidu/ernie-5.5-flash-preview:free">🧠 ERNIE-5.5-Flash (Free)</option>
-                <option value="google/gemma-4-26b-a4b-it:free">💎 Gemma 4 26B A4B (Free)</option>
-                <option value="google/gemma-4-31b-it:free">💎 Gemma 4 31B (Free)</option>
               </optgroup>
             </select>
           </div>
@@ -859,8 +851,8 @@
             <button id="btn-test-nvidia" class="btn">🔌 Kiểm tra kết nối</button>
             <span id="nvidia-key-status-msg" style="font-size:.78rem;font-weight:600;"></span>
           </div>
-          <div style="font-size:0.73rem;color:var(--text-muted);margin-top:6px;line-height:1.4;">
-            Base URL: https://integrate.api.nvidia.com/v1 — dùng cho z-ai/glm-5.3-flash, nvidia/nemotron-3.5-lightning-30b-a3b, nvidia/nemotron-3.5-bolt-e4b, google/gemma-4-31b-it, nvidia/nemotron-3.5-super-vl-120b-a12b, nvidia/nemotron-3-ultra-550b-a55b và nvidia/nemotron-3-nano-omni-30b-a3b-reasoning. NVIDIA không trả header CORS cho trình duyệt nên app đi qua proxy chuyển tiếp; để trống ô Proxy URL sẽ tự dùng proxy mặc định https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/v1, nhập URL khác để ghi đè. Mỗi request tự chuyển sang key kế tiếp và ghi bộ đếm riêng cho từng ô.
+                      <div style="font-size:0.73rem;color:var(--text-muted);margin-top:6px;line-height:1.4;">
+            Base URL: https://integrate.api.nvidia.com/v1 — dùng cho z-ai/glm-5.3-flash, nvidia/nemotron-3.5-lightning-30b-a3b, nvidia/nemotron-3.5-bolt-e4b, nvidia/nemotron-3.5-super-vl-120b-a12b, nvidia/nemotron-3-ultra-550b-a55b và nvidia/nemotron-3-nano-omni-30b-a3b-reasoning. NVIDIA không trả header CORS cho trình duyệt nên app đi qua proxy chuyển tiếp; để trống ô Proxy URL sẽ tự dùng proxy mặc định https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/v1, nhập URL khác để ghi đè. Mỗi request tự chuyển sang key kế tiếp và ghi bộ đếm riêng cho từng ô.
           </div>
         </fieldset>
       </div>

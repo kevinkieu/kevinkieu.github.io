@@ -295,6 +295,10 @@
     {
       "date": "2026-11-19",
       "summary": "Review lại bộ lọc khối 💭 trong lịch sử gửi API: bỏ wrapper historyTextForApi() vừa thêm (thừa) — fallback của nó bóc mọi thẻ HTML nên kéo cả dòng UI \"Quá trình suy luận (… từ • … tokens - bấm để xem)\" vào prompt, trong khi 4 call site đều đã tự bỏ qua text rỗng; nay dùng thẳng stripThinkingForCopy() (compatMessages, expMessages, contents generateContentStream + nhánh nối tiếp stream). Bump versionCode 69 / versionName 1.1.69 / ?v=69 (17 link) / sw cache v69, mirror index.html + sw.js + js/app.js sang android/app/src/main/assets/."
+    },
+    {
+      "date": "2026-11-20",
+      "summary": "Xóa model GPT-6.2 Astra và Clef khỏi nhóm Experiential Labs (key không dùng được). Xóa toàn bộ model Gemma (Gemma 4 26B A4B, Gemma 4 31B) khỏi mọi nhóm: Google AI Studio, NVIDIA, OpenRouter do server Google liên tục chập chờn. Cập nhật index.html (optgroup), js/app.js (COMPAT_PROVIDERS models + modelLabel, COMPAT_MODEL_OPTS, EXPLABS_MODELS, isExplabsModel), js/quota.js (EXPLABS_MODELS), android/app/src/main/assets/ mirror. npm run check-models PASS: NVIDIA 7 model, OpenRouter 5 model, COMPAT_MODEL_OPTS 12 entry.
     }
   ]
 }

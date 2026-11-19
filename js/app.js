@@ -392,10 +392,10 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           'z-ai/glm-5.3-flash',
           'nvidia/nemotron-3.5-lightning-30b-a3b',
           'nvidia/nemotron-3.5-bolt-e4b',
-          'google/gemma-4-31b-it',
           'nvidia/nemotron-3.5-super-vl-120b-a12b',
           'nvidia/nemotron-3-ultra-550b-a55b',
-          'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'
+          'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning',
+          'openai/gpt-oss-20b'
         ],
         modelLabel: m => {
           if (m.includes('glm-5.3-flash')) return 'GLM 5.3 Flash';
@@ -404,7 +404,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           if (m.includes('nemotron-3.5-super-vl')) return 'Nemotron 3.5 Super VL 120B A12B';
           if (m.includes('nemotron-3-ultra')) return 'Nemotron 3 Ultra 550B A55B';
           if (m.includes('nemotron-3-nano-omni')) return 'Nemotron 3 Nano Omni 30B A3B';
-          if (m.includes('gemma-4-31b')) return 'Gemma 4 31B';
+          if (m.includes('gpt-oss-20b')) return 'GPT-OSS-20B';
           return m;
         }
       },
@@ -422,9 +422,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           'nvidia/nemotron-3.5-super-vl:free',
           'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
           'particle-ai/particle-1:free',
-          'baidu/ernie-5.5-flash-preview:free',
-          'google/gemma-4-26b-a4b-it:free',
-          'google/gemma-4-31b-it:free'
+          'baidu/ernie-5.5-flash-preview:free'
         ],
         extraHeaders: () => ({ 'HTTP-Referer': location.origin, 'X-Title': 'Jarvis AI' }),
         includeReasoning: true,
@@ -434,9 +432,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           if (m.includes('nemotron')) return 'Nemotron 3.5 Lightning';
           if (m.includes('particle')) return 'Particle-1';
           if (m.includes('ernie')) return 'ERNIE-5.5-Flash';
-          if (m.includes('gemma-4-26b')) return 'Gemma 4 26B A4B';
-          if (m.includes('gemma-4-31b')) return 'Gemma 4 31B';
-          if (m.includes('gemma')) return 'Gemma 4';
+          if (m.includes('gpt-oss-20b')) return 'GPT-OSS-20B';
           return m;
         }
       }
@@ -471,18 +467,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         inputModalities: ['text'],
         notes: 'NVIDIA integrate.api.nvidia.com - E4B'
       },
-      // --- 4 model NVIDIA mới: đều nhận thinking qua chat_template_kwargs.enable_thinking ---
-      // Gemma 4 31B: context 256K, nhận text + ảnh + video, điều khiển suy luận bằng reasoning_effort.
-      'google/gemma-4-31b-it': {
-        contextWindow: 262144,
-        maxOutputTokens: 32768,
-        maxTokens: 32768,
-        nvThinking: { effort: true },
-        levels: [['high', 'High (Sâu)'], ['medium', 'Med (Chuẩn)'], ['low', 'Low (Thấp)'], ['none', 'Tắt']],
-        defaultEffort: 'high',
-        inputModalities: ['text', 'image', 'video'],
-        notes: '30.7B, 256K context, text + ảnh + video, thinking bật/tắt + reasoning_effort'
-      },
+      // --- 3 model NVIDIA mới: đều nhận thinking qua chat_template_kwargs.enable_thinking ---
       // Nemotron 3.5 Super VL 120B A12B: context 1M, reasoning ON mặc định, effort low/medium/high.
       'nvidia/nemotron-3.5-super-vl-120b-a12b': {
         contextWindow: 1048576,
@@ -576,10 +561,22 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         defaultEffort: 'high',
         inputModalities: ['text', 'image', 'audio', 'video'],
         notes: '30B-A3B omni: text + ảnh + audio + video → text, reasoning bật mặc định'
+      },
+      // GPT-OSS-20B (OpenAI open model hosted on NVIDIA): 3 reasoning levels (low/medium/high) on Playground,
+      // assumes can be turned off via enable_thinking=false like other NVIDIA models with effort control.
+      'openai/gpt-oss-20b': {
+        contextWindow: 131072,
+        maxOutputTokens: 32768,
+        maxTokens: 32768,
+        nvThinking: { effort: true },
+        levels: [['high', 'High (Sâu)'], ['medium', 'Med (Chuẩn)'], ['low', 'Low (Thấp)'], ['none', 'Tắt']],
+        defaultEffort: 'high',
+        inputModalities: ['text'],
+        notes: '20B open model, 128K context, text→text, reasoning_effort low/medium/high + off'
       }
     };
     // Model dùng bể 5 key Experiential Labs (quota.js & menu key dùng chung đọc qua window)
-    const EXPLABS_MODELS = ['gpt-6-luna', 'gpt-6.2-astra:free', 'deepseek-v4.1-flash', 'qwen4-max:free', 'clef'];
+    const EXPLABS_MODELS = ['gpt-6-luna', 'deepseek-v4.1-flash', 'qwen4-max:free'];
     window.COMPAT_PROVIDERS = COMPAT_PROVIDERS;
     window.COMPAT_MODEL_OPTS = COMPAT_MODEL_OPTS;
     window.EXPLABS_MODELS = EXPLABS_MODELS;
@@ -3785,7 +3782,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         const thk = DOM.thinking.value;
 
         // --- ENGINE 0: EXPERIENTIAL LABS GATEWAY (gpt-6-luna, deepseek-v4.1-flash, clef) ---
-        const isExplabsModel = (am === 'gpt-6-luna' || am === 'gpt-6.2-astra:free' || am === 'deepseek-v4.1-flash' || am === 'qwen4-max:free' || am === 'clef');
+        const isExplabsModel = (am === 'gpt-6-luna' || am === 'deepseek-v4.1-flash' || am === 'qwen4-max:free');
         if (isExplabsModel) {
           let expKey = gKey;
           if (!expKey) {

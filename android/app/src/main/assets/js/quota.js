@@ -257,7 +257,7 @@
   }
 
   // Model của Experiential Labs (dùng bộ đếm + key pool 5 ô riêng, không phải Google/OpenRouter)
-  const EXPLABS_MODELS = ['gpt-6-luna', 'gpt-6.2-astra:free', 'deepseek-v4.1-flash', 'qwen4-max:free', 'clef'];
+  const EXPLABS_MODELS = ['gpt-6-luna', 'deepseek-v4.1-flash', 'qwen4-max:free'];
   const isExplabsModelName = m => EXPLABS_MODELS.includes((m || '').trim());
 
   function getKeyBadgeHtml(keyNum, modelName = null) {
