@@ -488,6 +488,13 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         ],
         extraHeaders: () => ({ 'HTTP-Referer': location.origin, 'X-Title': 'Jarvis AI' }),
         includeReasoning: true,
+        // Compatibility API chỉ nhận whitelist tham số của OpenAI (model, messages, stream,
+        // temperature, top_p, max_tokens, stop, seed, reasoning_effort, tools, response_format,
+        // frequency_penalty, presence_penalty). Các tham số khác bị trả HTTP 422
+        // "unprocessable entity: <param> is not supported" (vd top_k).
+        unsupportedParams: ['top_k', 'stream_options'],
+        // Reasoning đi qua reasoning_effort ('none' | 'high'), KHÔNG nhận object reasoning kiểu OpenRouter
+        reasoningEffortParam: 'reasoning_effort',
         modelLabel: m => {
           if (m.includes('command-a-reasoning')) return 'Command A Reasoning';
           if (m.includes('command-a-plus')) return 'Command A+';
@@ -4283,8 +4290,15 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               top_p: compatTopP,
               top_k: compatTopK
             };
+            // Gateway giới hạn whitelist tham số (Cohere Compatibility: top_k -> HTTP 422)
+            if (Array.isArray(prov.unsupportedParams)) {
+              for (const p of prov.unsupportedParams) delete compatBody[p];
+            }
             const compatReasoning = buildReasoningPayload(mOpts, thk);
-            if (compatReasoning) {
+            if (prov.reasoningEffortParam) {
+              // Cohere: chỉ có 'none' (tắt thinking) và 'high' (bật), không nhận object `reasoning`
+              compatBody[prov.reasoningEffortParam] = (thk && thk !== 'none') ? 'high' : 'none';
+            } else if (compatReasoning) {
               compatBody.reasoning = compatReasoning;
               // enabled: false = đã tắt hẳn -> không cần xin trả reasoning
               if (prov.includeReasoning && compatReasoning.enabled !== false) {
@@ -4325,6 +4339,11 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
             // Provider tạm thời quá tải (Google AI Studio hay trả 503 rồi 200 ngay sau đó) → thử lại vài lần
             const COMPAT_MAX_ATTEMPTS = 4;
             const COMPAT_RETRY_DELAYS = [600, 1500, 2500];
+            // Tham số optional có thể bị gateway từ chối (422 "x is not supported") -> được phép gỡ rồi thử lại.
+            // Không bao giờ gỡ model/messages/stream vì thiếu là hỏng request.
+            const COMPAT_STRIPPABLE_PARAMS = ['top_k', 'top_p', 'temperature', 'max_tokens', 'seed', 'stop',
+              'frequency_penalty', 'presence_penalty', 'reasoning_effort', 'reasoning', 'include_reasoning', 'stream_options'];
+            let compatParamStrips = 0;
             const compatSleep = ms => new Promise((resolve, reject) => {
               const t = setTimeout(resolve, ms);
               abortController.signal.addEventListener('abort', () => {
@@ -4338,6 +4357,23 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               compatRes = await sendCompat();
               if (compatRes.ok) break;
               compatErrText = await compatRes.text().catch(() => '');
+              // Gateway từ chối ĐÚNG một tham số (vd Cohere: "top_k is not supported" - HTTP 422):
+              // gỡ tham số đó rồi thử lại thay vì báo lỗi cả lượt.
+              const rejectedParam = (() => {
+                if (!(compatRes.status >= 400 && compatRes.status < 500)) return '';
+                const m = compatErrText.match(/['"`]?([a-z][a-z_]{1,40})['"`]?\s+is not supported/i)
+                  || compatErrText.match(/unsupported\s+(?:parameter|field)?\s*:?\s*['"`]?([a-z][a-z_]{1,40})/i)
+                  || compatErrText.match(/unrecognized\s+(?:request\s+)?(?:argument|parameter|field)\s*:?\s*['"`]?([a-z][a-z_]{1,40})/i);
+                const p = m && m[1];
+                return (p && COMPAT_STRIPPABLE_PARAMS.includes(p)) ? p : '';
+              })();
+              if (rejectedParam && compatParamStrips < 3) {
+                delete compatBody[rejectedParam];
+                compatParamStrips++;
+                console.warn(`[Gateway ${prov.keyLabel}] HTTP ${compatRes.status}: gỡ tham số "${rejectedParam}" rồi thử lại.`);
+                compatErrText = '';
+                continue;
+              }
               // Gateway không hỗ trợ tham số reasoning (400/4xx + thông báo liên quan): gỡ ra và thử lại
               const rejectedReasoning = compatBody.reasoning
                 && compatRes.status >= 400 && compatRes.status < 500
