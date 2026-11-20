@@ -389,7 +389,6 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           return proxy || NVIDIA_DEFAULT_PROXY;
         },
         models: [
-          'z-ai/glm-5.3-flash',
           'nvidia/nemotron-3.5-lightning-30b-a3b',
           'nvidia/nemotron-3.5-bolt-e4b',
           'google/gemma-4-31b-it',
@@ -398,7 +397,6 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'
         ],
         modelLabel: m => {
-          if (m.includes('glm-5.3-flash')) return 'GLM 5.3 Flash';
           if (m.includes('nemotron-3.5-bolt')) return 'Nemotron 3.5 Bolt E4B';
           if (m.includes('nemotron-3.5-lightning')) return 'Nemotron 3.5 Lightning 30B A3B';
           if (m.includes('nemotron-3.5-super-vl')) return 'Nemotron 3.5 Super VL 120B A12B';
@@ -446,15 +444,6 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     // Particle mặc định reasoning = 'high' khi KHÔNG gửi tham số -> muốn tắt phải gửi 'none' tường minh.
     // Các mức hợp lệ: none, minimal, low, medium, high, xhigh, max, ultra (app chỉ dùng 4 mức đầu).
     const COMPAT_MODEL_OPTS = {
-      // NVIDIA integrate API: gateway chỉ gửi nội dung chat, không gửi thinking/reasoning
-      'z-ai/glm-5.3-flash': {
-        maxTokens: 65536,
-        noReasoning: true,
-        levels: [['none', 'Tắt (NVIDIA)']],
-        defaultEffort: 'none',
-        inputModalities: ['text'],
-        notes: 'NVIDIA integrate.api.nvidia.com - model chat chính'
-      },
       'nvidia/nemotron-3.5-lightning-30b-a3b': {
         maxTokens: 65536,
         noReasoning: true,

@@ -431,22 +431,18 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           return proxy || NVIDIA_DEFAULT_PROXY;
         },
         models: [
-          'z-ai/glm-5.3-flash',
           'nvidia/nemotron-3.5-lightning-30b-a3b',
           'nvidia/nemotron-3.5-bolt-e4b',
           'nvidia/nemotron-3.5-super-vl-120b-a12b',
           'nvidia/nemotron-3-ultra-550b-a55b',
-          'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning',
-          'openai/gpt-oss-20b'
+          'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'
         ],
         modelLabel: m => {
-          if (m.includes('glm-5.3-flash')) return 'GLM 5.3 Flash';
           if (m.includes('nemotron-3.5-bolt')) return 'Nemotron 3.5 Bolt E4B';
           if (m.includes('nemotron-3.5-lightning')) return 'Nemotron 3.5 Lightning 30B A3B';
           if (m.includes('nemotron-3.5-super-vl')) return 'Nemotron 3.5 Super VL 120B A12B';
           if (m.includes('nemotron-3-ultra')) return 'Nemotron 3 Ultra 550B A55B';
           if (m.includes('nemotron-3-nano-omni')) return 'Nemotron 3 Nano Omni 30B A3B';
-          if (m.includes('gpt-oss-20b')) return 'GPT-OSS-20B';
           return m;
         }
       },
@@ -474,7 +470,6 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           if (m.includes('nemotron')) return 'Nemotron 3.5 Lightning';
           if (m.includes('particle')) return 'Particle-1';
           if (m.includes('ernie')) return 'ERNIE-5.5-Flash';
-          if (m.includes('gpt-oss-20b')) return 'GPT-OSS-20B';
           return m;
         }
       }
@@ -484,18 +479,6 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     // Particle mặc định reasoning = 'high' khi KHÔNG gửi tham số -> muốn tắt phải gửi 'none' tường minh.
     // Các mức hợp lệ: none, minimal, low, medium, high, xhigh, max, ultra (app chỉ dùng 4 mức đầu).
     const COMPAT_MODEL_OPTS = {
-      // NVIDIA integrate API: gateway chỉ gửi nội dung chat, không gửi thinking/reasoning
-      'z-ai/glm-5.3-flash': {
-        maxTokens: 65536,
-        noReasoning: true,
-        levels: [['none', 'Tắt (NVIDIA)']],
-        defaultEffort: 'none',
-        inputModalities: ['text'],
-        temperature: 0.7,
-        topP: 0.9,
-        topK: 40,
-        notes: 'NVIDIA integrate.api.nvidia.com - model chat chính'
-      },
       'nvidia/nemotron-3.5-lightning-30b-a3b': {
         maxTokens: 65536,
         noReasoning: true,
@@ -637,21 +620,6 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         topK: 40,
         notes: '30B-A3B omni: text + ảnh + audio + video → text, reasoning bật mặc định'
       },
-      // GPT-OSS-20B (OpenAI open model hosted on NVIDIA): 3 reasoning levels (low/medium/high) on Playground,
-      // assumes can be turned off via enable_thinking=false like other NVIDIA models with effort control.
-      'openai/gpt-oss-20b': {
-        contextWindow: 131072,
-        maxOutputTokens: 32768,
-        maxTokens: 32768,
-        nvThinking: { effort: true },
-        levels: [['high', 'High (Sâu)'], ['medium', 'Med (Chuẩn)'], ['low', 'Low (Thấp)'], ['none', 'Tắt']],
-        defaultEffort: 'high',
-        inputModalities: ['text'],
-        temperature: 0.7,
-        topP: 0.9,
-        topK: 40,
-        notes: '20B open model, 128K context, text→text, reasoning_effort low/medium/high + off'
-      }
     };
     // Model dùng bể 5 key Experiential Labs (quota.js & menu key dùng chung đọc qua window)
     const EXPLABS_MODELS = ['gpt-6-luna', 'deepseek-v4.1-flash', 'qwen4-max:free'];
