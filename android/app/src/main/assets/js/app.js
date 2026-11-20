@@ -148,6 +148,48 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     const FLASH_LITE_MODEL = 'gemini-3.5-flash-lite';
     const AUX_FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
 
+    // --- MỨC SUY LUẬN (thinkingLevel) HỢP LỆ CỦA TỪNG MODEL ---
+    // Nguồn: ai.google.dev/gemini-api/docs/generate-content/thinking (bảng thinkingLevel)
+    // + ai.google.dev/gemini-api/docs/thinking (mức mặc định từng model).
+    //   Gemini 4 Hydrogen      : low, medium, high (xhigh) - KHÔNG nhận 'minimal', mặc định high
+    //   Gemini 3.8 / 3.7 Flash : low, medium, high - KHÔNG nhận 'minimal' (gửi vào là lỗi 400), mặc định medium
+    //   Gemini 3.6 Flash       : minimal, low, medium, high - mặc định medium
+    //   Gemini 3.5/3.1 Flash-Lite: minimal, low, medium, high - mặc định minimal
+    // Chỉ được gửi đúng mức model hỗ trợ; mức không hỗ trợ phải hạ về mức thấp nhất model nhận.
+    const THINKING_LEVELS_BY_MODEL = [
+      [/^gemini-4-hydrogen/, ['low', 'medium', 'high']],
+      [/^gemini-4-/, ['low', 'medium', 'high']],
+      [/^gemini-3\.[78]-flash/, ['low', 'medium', 'high']],
+      [/^gemini-3\.6-flash/, ['minimal', 'low', 'medium', 'high']],
+      [/^gemini-3\.5-flash-lite/, ['minimal', 'low', 'medium', 'high']],
+      [/^gemini-3\.1-flash-lite/, ['minimal', 'low', 'medium', 'high']],
+      [/^gemini-(3|4)/, ['minimal', 'low', 'medium', 'high']]
+    ];
+    const THINKING_LEVEL_LABELS = {
+      minimal: 'Min (Tối thiểu)', low: 'Low (Thấp)', medium: 'Med (Chuẩn)', high: 'High (Sâu)', xhigh: 'XHigh (Tối đa)'
+    };
+    const DEFAULT_THINKING_LEVELS = ['minimal', 'low', 'medium', 'high'];
+
+    // Danh sách mức Think Depth của 1 model Gemini (rỗng = model không dùng thinkingLevel).
+    function getModelThinkingLevels(model) {
+      const m = String(model || '').trim();
+      for (const [re, levels] of THINKING_LEVELS_BY_MODEL) {
+        if (re.test(m)) return levels.slice();
+      }
+      return [];
+    }
+
+    // Ép mức người dùng chọn về mức model thật sự nhận: không hỗ trợ thì lấy mức thấp nhất
+    // (vd 'minimal' với 3.8 Flash / 4 Hydrogen -> 'low'). Trả null khi model không dùng thinkingLevel.
+    function resolveThinkingLevel(model, level) {
+      const levels = getModelThinkingLevels(model);
+      if (!levels.length) return null;
+      if (level && levels.includes(level)) return level;
+      return levels[0];
+    }
+    window.getModelThinkingLevels = getModelThinkingLevels;
+    window.resolveThinkingLevel = resolveThinkingLevel;
+
     // Init libraries
     marked.use({ breaks: true });
     mermaid.initialize({ startOnLoad: false, theme: 'default' });
@@ -594,6 +636,21 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         topP: 0.9,
         topK: 40,
         notes: '30B-A3B omni: text + ảnh + audio + video → text, reasoning bật mặc định'
+      },
+      // GPT-OSS-20B (OpenAI open model hosted on NVIDIA): 3 reasoning levels (low/medium/high) on Playground,
+      // assumes can be turned off via enable_thinking=false like other NVIDIA models with effort control.
+      'openai/gpt-oss-20b': {
+        contextWindow: 131072,
+        maxOutputTokens: 32768,
+        maxTokens: 32768,
+        nvThinking: { effort: true },
+        levels: [['high', 'High (Sâu)'], ['medium', 'Med (Chuẩn)'], ['low', 'Low (Thấp)'], ['none', 'Tắt']],
+        defaultEffort: 'high',
+        inputModalities: ['text'],
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
+        notes: '20B open model, 128K context, text→text, reasoning_effort low/medium/high + off'
       }
     };
     // Model dùng bể 5 key Experiential Labs (quota.js & menu key dùng chung đọc qua window)
@@ -1891,14 +1948,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       const m = DOM.model?.value || '', t = DOM.thinking;
       if (!t) return;
       const prev = t.value;
-      // Gemini 3.5 Flash Lite vẫn hỗ trợ thinking level; các bản lite khác (3.1) thì vẫn tắt.
-      const isThinkingCapableLite = m === 'gemini-3.5-flash-lite';
-      if (m.includes('lite') && !isThinkingCapableLite) {
-        t.innerHTML = '<option value="none">Tắt (Flash Lite)</option>';
-        t.value = 'none';
-        t.disabled = true;
-        return;
-      }
+      // Mọi model Gemini 3.x/4 (kể cả 3.5 và 3.1 Flash Lite) đều nhận thinkingLevel và không tắt
+      // hoàn toàn được -> danh sách mức lấy theo bảng tài liệu, không có mục "Tắt".
       // Model gateway có bộ mức Think Depth riêng (vd Nemotron free: chỉ Bật/Tắt hoặc ngân sách token)
       const mOpts = (window.COMPAT_MODEL_OPTS || {})[m];
       if (mOpts && Array.isArray(mOpts.levels) && mOpts.levels.length) {
@@ -1908,9 +1959,10 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         return;
       }
       t.disabled = false;
-      const opts = (m === 'gemini-3.8-flash') 
-        ? [['low', 'Low (Thấp)'], ['medium', 'Med (Chuẩn)'], ['high', 'High (Sâu)']] 
-        : [['minimal', 'Min (Tối thiểu)'], ['low', 'Low (Thấp)'], ['medium', 'Med (Chuẩn)'], ['high', 'High (Sâu)']];
+      // Gemini 3.x/4: chỉ hiện đúng các mức model hỗ trợ (3.8 Flash & 4 Hydrogen không có 'minimal')
+      const modelLevels = getModelThinkingLevels(m);
+      const opts = (modelLevels.length ? modelLevels : DEFAULT_THINKING_LEVELS)
+        .map(v => [v, THINKING_LEVEL_LABELS[v] || v]);
       t.innerHTML = opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
       t.value = opts.some(([v]) => v === prev) ? prev : opts[0][0];
     }
@@ -4352,8 +4404,10 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
           // Cấu hình GenerationConfig cho Interactions API (không nhận temperature/topP/topK)
           const genConfig = {};
-          if (thk && thk !== 'none') {
-            genConfig.thinking_level = thk;
+          // Cùng bảng mức như nhánh stream: 3.8 Flash / 4 Hydrogen KHÔNG nhận 'minimal'
+          const ixThinkLevel = resolveThinkingLevel(am, thk) || thk;
+          if (thk && thk !== 'none' && ixThinkLevel) {
+            genConfig.thinking_level = ixThinkLevel;
           }
           if (Object.keys(genConfig).length > 0) {
             interactionParams.generation_config = genConfig;
@@ -4550,18 +4604,17 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           }
           contents.push({ role: 'user', parts: currentParts });
 
-          const isFlashLite = am.includes('flash-lite') || am.includes('lite');
-          // Gemma 4 chạy trực tiếp trên Gemini API (không qua OpenRouter): chỉ bật/tắt thinking
           const isGemma = /^gemma-/.test(am);
-          // Gemini 3.5 Flash Lite hỗ trợ thinking theo level và nhận tối đa 65.000 output token.
-          const thinkingSupported = !isFlashLite || am === 'gemini-3.5-flash-lite';
-          // Gemini 3.x/4 và Gemma 4 dùng thinkingLevel; thinkingBudget là tham số cũ của dòng 2.5.
+          // Model Gemini 3.x/4 dùng thinkingLevel; thinkingBudget là tham số cũ của dòng 2.5.
           const usesThinkingLevel = /^(gemini-(3|4)|gemma-)/.test(am);
-          // 3.8 Flash và dòng Gemini 4 KHÔNG nhận mức 'minimal' -> hạ về 'low' để tránh request bị treo
-          const noMinimalLevel = /^gemini-(3\.8|4)/.test(am);
-          const thinkLevel = (thk === 'minimal' && noMinimalLevel) ? 'low' : thk;
+          // Mức gửi đi LUÔN phải nằm trong bảng mức model hỗ trợ: gửi 'minimal' cho 3.8 Flash /
+          // 4 Hydrogen sẽ bị Google trả lỗi 400, nên hạ về 'low' (mức thấp nhất của các model đó).
+          const modelLevels = getModelThinkingLevels(am);
+          const thinkingSupported = modelLevels.length > 0 || isGemma;
+          // Gemma 4 không nằm trong bảng -> giữ nguyên mức người dùng chọn (chỉ bật/tắt)
+          const thinkLevel = resolveThinkingLevel(am, thk) || thk;
           const budgetMap = { minimal: 1024, low: 2048, medium: 4096, high: 8192 };
-          const wantsThinking = thinkingSupported && thk && thk !== 'none';
+          const wantsThinking = thinkingSupported && !!thk && thk !== 'none';
           // maxOutputTokens của Gemini tính CHUNG thinking + output. Để 8192 khi bật thinking
           // thì thinking ăn hết hạn mức -> model không còn chỗ xuất chữ và stream bị treo.
           // Vì thế: 8192 khi KHÔNG thinking, 32768 khi CÓ thinking (3.5 Flash Lite giữ 65000).
@@ -4583,7 +4636,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                 ? { thinkingLevel: thinkLevel, includeThoughts: true }
                 : { thinkingBudget: budgetMap[thk] || 4096, includeThoughts: true };
             }
-          } else {
+          } else if (!usesThinkingLevel) {
+            // Gemini 3/4 đã bỏ temperature/topP/topK -> chỉ gửi sampling params cho dòng 2.5 trở xuống,
+            // nếu không request có thể bị 400 rồi rơi vào vòng xoay key vô ích.
             config.temperature = DOM.temp?.value !== undefined ? +DOM.temp.value : 0.5;
             config.topP = DOM.topP?.value !== undefined ? +DOM.topP.value : 0.9;
             config.topK = DOM.topK?.value !== undefined ? +DOM.topK.value : 40;
@@ -4678,12 +4733,13 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                 // Nới hạn mức output để thinking không ăn hết chỗ của phần trả lời
                 config.maxOutputTokens = Math.max(Number(config.maxOutputTokens) || 0, 32768);
                 if (config.thinkingConfig && config.thinkingConfig.thinkingLevel) {
-                  config.thinkingConfig = { thinkingBudget: 2048, includeThoughts: true };
+                  // Hạ về mức thấp nhất mà Gemini 3/4 đều nhận (thay cho thinkingBudget đã deprecated)
+                  config.thinkingConfig = { thinkingLevel: 'low', includeThoughts: true };
                   continue;
                 }
                 if (config.thinkingConfig) {
                   delete config.thinkingConfig;
-                  config.temperature = 0.5;
+                  if (!usesThinkingLevel) config.temperature = 0.5;
                   continue;
                 }
                 lastErr = new Error('Google không phản hồi sau ' + Math.round(STALL_TIMEOUT_MS / 1000) + ' giây (stream trò)');
@@ -4696,17 +4752,19 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               if (!pS) {
                 console.warn(`generateContentStream lần ${streamAttempts} lỗi:`, e.message);
 
-                // A. Nếu lỗi do thinkingConfig (400 Bad Request): Thử chuyển sang thinkingBudget hoặc gỡ bỏ
+                // A. Nếu lỗi do thinkingConfig (400 Bad Request): thử lại với mức thấp nhất hoặc gỡ bỏ
                 if (config.thinkingConfig && (e.message?.includes('thinking') || e.message?.includes('400') || e.message?.includes('INVALID_ARGUMENT'))) {
                   if (config.thinkingConfig.thinkingLevel) {
-                    const budgetMap = { minimal: 1024, low: 2048, medium: 4096, high: 8192 };
-                    const b = budgetMap[config.thinkingConfig.thinkingLevel] || -1;
-                    config.thinkingConfig = { thinkingBudget: b, includeThoughts: true };
-                    console.info(`[Fallback] Thử lại thinkingConfig với thinkingBudget: ${b}...`);
+                    // Gemini 3/4 KHÔNG chuyển sang thinkingBudget nữa: gửi kèm thinkingLevel sẽ 400,
+                    // gửi một mình thì bị deprecated (Google tự map về level gần nhất).
+                    // Hạ về 'low' - mức thấp nhất mà mọi model Gemini 3/4 đều nhận - rồi thử lại.
+                    config.thinkingConfig = { thinkingLevel: 'low', includeThoughts: true };
+                    console.info('[Fallback] Thử lại thinkingConfig với mức thấp nhất ("low")...');
                     continue;
                   }
                   delete config.thinkingConfig;
-                  config.temperature = 0.5;
+                  // Gemini 3/4 không nhận temperature nữa -> chỉ đặt lại cho dòng 2.5 trở xuống
+                  if (!usesThinkingLevel) config.temperature = 0.5;
                   console.info("[Fallback] Gỡ thinkingConfig, thử lại với cấu hình chuẩn...");
                   continue;
                 }

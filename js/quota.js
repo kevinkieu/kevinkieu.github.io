@@ -172,9 +172,10 @@
 
     saveKeyUsageData(data);
     updateKeyQuotaUI();
-    if (typeof window.JarvisSync?.scheduleAutoSync === 'function') {
-      window.JarvisSync.scheduleAutoSync(5000);
-    }
+    // KHÔNG đồng bộ Gist ở đây: recordKeyRequest chạy ngay lúc bấm Gửi, nên auto-sync 5s sau đó
+    // sẽ kéo việc nén toàn bộ phiên + PUT Gist vào đúng lúc model đang suy luận (nghẽn main thread,
+    // UI đứng >10s trước chunk đầu). Bộ đếm quota đã lưu local + đẩy lên Cloud ở cuối lượt
+    // (saveTurn -> scheduleAutoSync) và khi đóng app, nên không cần sync riêng ở đây.
   }
 
   function resetKeyUsageToday() {
