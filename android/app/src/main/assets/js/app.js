@@ -57,7 +57,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     const restoreChatScroll = window.restoreChatScroll;
     const reRenderHistory = window.reRenderHistory;
     const stripThinkingForCopy = window.stripThinkingForCopy;
-    const getCopyText = window.getCopyText;
+    const isThinkingHidden = window.isThinkingHidden;
 
     // Export core refs via Object.defineProperty for controlled access
 
@@ -264,7 +264,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
             rafId = requestAnimationFrame(() => {
               try {
                 let toRender = latest;
-                const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true' || ls.getItem('jarvis_hide_thinking') === 'true';
+                const hideThinking = isThinkingHidden();
                 if (hideThinking) {
                   toRender = toRender.replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>/gi, '')
                                      .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');
@@ -288,7 +288,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
     // --- REASONING ACCORDION & THINKING FORMATTER (GEMINI & DEEPSEEK) ---
     function formatThinkingResponse(currentThinking, currentContent, modelDisplayName = 'AI') {
-      const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true' || ls.getItem('jarvis_hide_thinking') === 'true';
+      const hideThinking = isThinkingHidden();
 
       // Gộp mọi đoạn suy luận (reasoning_content + thinking/thought trong content) về một chuỗi duy nhất
       const mergedSegments = mergeThinkingSegments(currentThinking, currentContent);
@@ -316,7 +316,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     }
 
     function formatFinalThinkingResponse(currentThinking, currentContent, modelDisplayName = 'AI') {
-      const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true' || ls.getItem('jarvis_hide_thinking') === 'true';
+      const hideThinking = isThinkingHidden();
 
       // Gộp mọi đoạn suy luận (reasoning_content + thinking/thought trong content) về một chuỗi duy nhất
       const mergedSegments = mergeThinkingSegments(currentThinking, currentContent);
@@ -2450,7 +2450,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       }
       if (idx !== undefined && idx !== null && chatHistory && chatHistory[idx]) {
         raw = chatHistory[idx].text || "";
-      const cleanRaw = stripThinkingForCopy(raw);}
+      }
       if (!raw && btnOrIdx instanceof Element) {
         const container = btnOrIdx.closest('.message-container');
         const msgEl = container?.querySelector('.bot-message, .msg-content');
@@ -2460,6 +2460,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         const lastBot = [...chatHistory].reverse().find(m => m.role === 'model');
         if (lastBot) raw = lastBot.text || "";
       }
+      const cleanRaw = stripThinkingForCopy(raw);
       const clean = sanitizeTranscript(cleanRaw);
       const textToSend = clean || cleanRaw;
       if (!textToSend.trim()) {

@@ -16,8 +16,9 @@
   // DOM của app.js chỉ có sau khi app.js nạp -> đọc động từng lần truy cập.
   const DOM = new Proxy({}, { get: (_t, k) => (window.DOM ? window.DOM[k] : undefined) });
   const chatHistory = () => window.chatHistory || [];
-  const sessions = () => window.sessions || [];
-  const activeId = () => window.activeId;
+
+  // Cờ "ẩn khối suy luận" dùng chung với js/app.js qua window.isThinkingHidden
+  const isThinkingHidden = () => ls.getItem('jarvis_hide_deepseek_thinking') === 'true' || ls.getItem('jarvis_hide_thinking') === 'true';
 
   // Cầu nối sang các hàm của app.js / module khác (nạp sau hoặc trước file này).
   const escapeHtml = str => (typeof window.escapeHtml === 'function' ? window.escapeHtml(str) : String(str == null ? '' : str));
@@ -26,7 +27,6 @@
   const showToast = (msg, type) => (typeof window.showToast === 'function' ? window.showToast(msg, type) : undefined);
   const copyRawText = (text, msg) => (typeof window.copyRawText === 'function' ? window.copyRawText(text, msg) : undefined);
   const saveToDB = s => (typeof window.saveToDB === 'function' ? window.saveToDB(s) : Promise.resolve());
-  const renderSel = () => (typeof window.renderSel === 'function' ? window.renderSel() : undefined);
 
 // --- GỘP CÁC ĐOẠN SUY LUẬN LIỀN NHAU THÀNH MỘT KHỐI 💭 DUY NHẤT ---
     // Provider có thể trả suy luận thành nhiều đoạn liền nhau trong cùng một stream
@@ -81,7 +81,7 @@
       // Lý do: marked cắt HTML block tại dòng trống, nếu để chung thì nó sinh ra
       // "<p>...</div></details></p>" và trình duyệt có thể nuốt luôn phần câu trả lời vào <details> (đang thu gọn).
       let thinkingHtml = '';
-      const hideThinking = ls.getItem('jarvis_hide_deepseek_thinking') === 'true' || ls.getItem('jarvis_hide_thinking') === 'true';
+      const hideThinking = isThinkingHidden();
       if (hideThinking) {
         t = t.replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>/gi, '')
              .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');
@@ -217,8 +217,8 @@
     }
 
     async function reRenderHistory() {
-      const s = sessions().find(x => x.id === activeId());
-      if (s) { s.his = chatHistory(); await saveToDB(s); renderSel(); }
+      const s = (window.sessions || []).find(x => x.id === window.activeId);
+      if (s) { s.his = chatHistory(); await saveToDB(s); window.renderSel?.(); }
       DOM.chat.innerHTML = '';
       for (let j = 0; j < chatHistory().length; j++) {
         await appendMsg(chatHistory()[j].role === 'model' ? 'bot' : 'user', chatHistory()[j].text, j, true);
@@ -267,6 +267,6 @@
   window.restoreChatScroll = restoreChatScroll;
   window.reRenderHistory = reRenderHistory;
   window.stripThinkingForCopy = stripThinkingForCopy;
-  window.getCopyText = getCopyText;
   window.copy = copy;
+  window.isThinkingHidden = isThinkingHidden;
 })();
