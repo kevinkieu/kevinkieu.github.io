@@ -4047,8 +4047,11 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                 expMessages.push({ role: 'user', content: promptWithTime });
               }
 
-              // Qwen4 Max: reasoning none/low/medium/high (Think Depth minimal -> none)
-              const qwenLevel = ({ minimal: 'none', low: 'low', medium: 'medium', high: 'high' })[DOM.thinking?.value] || 'low';
+              // reasoning_effort cho các model Experiential Labs hỗ trợ (Qwen4 Max, GPT-6 Luna, DeepSeek V4.1 Flash)
+              // Think Depth minimal -> none (tắt), low/medium/high giữ nguyên
+              const expReasoningMap = { minimal: 'none', low: 'low', medium: 'medium', high: 'high' };
+              const expLevel = expReasoningMap[DOM.thinking?.value] || 'low';
+              const supportsReasoningEffort = am === 'qwen4-max:free' || am === 'gpt-6-luna' || am === 'deepseek-v4.1-flash';
               const expRes = await fetch('https://api.experientiallabs.ai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -4060,7 +4063,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
                   messages: expMessages,
                   stream: true,
                   max_tokens: 4096
-                }, am === 'qwen4-max:free' ? { reasoning_effort: qwenLevel } : {})),
+                }, supportsReasoningEffort ? { reasoning_effort: expLevel } : {})),
                 signal: abortController.signal
               });
 
@@ -4296,8 +4299,11 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
             }
             const compatReasoning = buildReasoningPayload(mOpts, thk);
             if (prov.reasoningEffortParam) {
-              // Cohere: chỉ có 'none' (tắt thinking) và 'high' (bật), không nhận object `reasoning`
-              compatBody[prov.reasoningEffortParam] = (thk && thk !== 'none') ? 'high' : 'none';
+              // Cohere: chỉ nhận reasoning_effort 'high' (bật) hoặc không gửi tham số (tắt).
+              // Gửi 'none' có thể vẫn khiến Command A+ trả reasoning -> chỉ gửi khi thk !== 'none'.
+              if (thk && thk !== 'none') {
+                compatBody[prov.reasoningEffortParam] = 'high';
+              }
             } else if (compatReasoning) {
               compatBody.reasoning = compatReasoning;
               // enabled: false = đã tắt hẳn -> không cần xin trả reasoning
