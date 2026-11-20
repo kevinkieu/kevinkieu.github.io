@@ -311,6 +311,10 @@
     {
       "date": "2026-11-19",
       "summary": "Review lại bộ lọc khối 💭 trong lịch sử gửi API: bỏ wrapper historyTextForApi() vừa thêm (thừa) — fallback của nó bóc mọi thẻ HTML nên kéo cả dòng UI \"Quá trình suy luận (… từ • … tokens - bấm để xem)\" vào prompt, trong khi 4 call site đều đã tự bỏ qua text rỗng; nay dùng thẳng stripThinkingForCopy() (compatMessages, expMessages, contents generateContentStream + nhánh nối tiếp stream). Bump versionCode 69 / versionName 1.1.69 / ?v=69 (17 link) / sw cache v69, mirror index.html + sw.js + js/app.js sang android/app/src/main/assets/."
+    },
+    {
+      "date": "2026-11-20",
+      "summary": "Xóa 2 model GLM 5.3 Flash (z-ai/glm-5.3-flash) và GPT-OSS-20B (openai/gpt-oss-20b) khỏi nhóm NVIDIA (integrate.api.nvidia.com/v1): xóa 2 <option> trong optgroup '🟢 NVIDIA' của model-select (index.html web + android/app/src/main/assets/index.html), xóa khỏi mảng COMPAT_PROVIDERS.nvidia.models (js/app.js + android mirrors), xóa case modelLabel cho 2 model trong nhà cung cấp NVIDIA và OpenRouter, xóa entry COMPAT_MODEL_OPTS cho cả 2 id, cập nhật text hướng dẫn Base URL trong 2 file index.html. Kiểm chứng preview app không còn 2 model trong dropdown NVIDIA. Commit 7681c9b push main."
     }
   ]
 }
