@@ -472,6 +472,27 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           if (m.includes('ernie')) return 'ERNIE-5.5-Flash';
           return m;
         }
+      },
+      cohere: {
+        id: 'cohere',
+        label: 'Cohere',
+        baseUrl: 'https://api.cohere.ai/compatibility/v1',
+        keyStorage: 'cohere_api_key',
+        keyStorageMultiple: 'cohere_keys',
+        keyCount: 3,
+        keyIndexVar: 'cohereKeyIndex',
+        keyLabel: 'Cohere',
+        models: [
+          'command-a-plus-05-2026',
+          'command-a-reasoning-08-2025'
+        ],
+        extraHeaders: () => ({ 'HTTP-Referer': location.origin, 'X-Title': 'Jarvis AI' }),
+        includeReasoning: true,
+        modelLabel: m => {
+          if (m.includes('command-a-reasoning')) return 'Command A Reasoning';
+          if (m.includes('command-a-plus')) return 'Command A+';
+          return m;
+        }
       }
     };
     // --- THÔNG SỐ RIÊNG TỪNG MODEL GATEWAY (context / trần output / cách tắt reasoning / generation params) ---
@@ -619,6 +640,35 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         topP: 0.9,
         topK: 40,
         notes: '30B-A3B omni: text + ảnh + audio + video → text, reasoning bật mặc định'
+      },
+      // Cohere Command models via Cohere native API (endpoint api.cohere.ai/compatibility/v1)
+      // Command A+: Mixture of Experts, 128k context, 64k max output, text + ảnh + video
+      'command-a-plus-05-2026': {
+        contextWindow: 128000,
+        maxOutputTokens: 64000,
+        maxTokens: 64000,
+        reasoningToggle: true,
+        levels: [['high', 'Bật (mặc định)'], ['none', 'Tắt']],
+        defaultEffort: 'high',
+        inputModalities: ['text', 'image', 'video'],
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
+        notes: 'Mixture of Experts, 128k context, text + ảnh + video'
+      },
+      // Command A Reasoning: 256k context, 32k max output, text-only, reasoning-enabled
+      'command-a-reasoning-08-2025': {
+        contextWindow: 256000,
+        maxOutputTokens: 32000,
+        maxTokens: 32000,
+        reasoningToggle: true,
+        levels: [['high', 'Bật (mặc định)'], ['none', 'Tắt']],
+        defaultEffort: 'high',
+        inputModalities: ['text'],
+        temperature: 0.7,
+        topP: 0.9,
+        topK: 40,
+        notes: '256k context, text-only, reasoning-enabled'
       },
     };
     // Model dùng bể 5 key Experiential Labs (quota.js & menu key dùng chung đọc qua window)

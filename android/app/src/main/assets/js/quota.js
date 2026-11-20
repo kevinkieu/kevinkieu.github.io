@@ -273,12 +273,13 @@
       ? Object.values(window.COMPAT_PROVIDERS).find(p => Array.isArray(p.models) && p.models.includes(modelName))
       : null;
     const isNV = !!compatProv && compatProv.id === 'nvidia';
-    const isOR = !isEL && !isNV && !!modelName
+    const isCO = !!compatProv && compatProv.id === 'cohere';
+    const isOR = !isEL && !isNV && !isCO && !!modelName
       && (registryModels.includes(modelName) || modelName.includes(':free'));
-    const provLabel = isEL ? 'Experiential Labs' : (isNV ? 'NVIDIA' : (isOR ? 'OpenRouter' : 'Google'));
-    const icon = isEL ? '⚡' : (isNV ? '🟢' : (isOR ? '🛰️' : '🔑'));
-    const color = isEL ? '#0ea5e9' : (isNV ? '#76b900' : (isOR ? '#f59e0b' : '#3b82f6'));
-    const rgb = isEL ? '14,165,233' : (isNV ? '118,185,0' : (isOR ? '245,158,11' : '59,130,246'));
+    const provLabel = isEL ? 'Experiential Labs' : (isNV ? 'NVIDIA' : (isCO ? 'Cohere' : (isOR ? 'OpenRouter' : 'Google')));
+    const icon = isEL ? '⚡' : (isNV ? '🟢' : (isCO ? '🤝' : (isOR ? '🛰️' : '🔑')));
+    const color = isEL ? '#0ea5e9' : (isNV ? '#76b900' : (isCO ? '#6366f1' : (isOR ? '#f59e0b' : '#3b82f6')));
+    const rgb = isEL ? '14,165,233' : (isNV ? '118,185,0' : (isCO ? '99,102,241' : (isOR ? '245,158,11' : '59,130,246')));
     let n, label;
     if (isEL) {
       n = (ls.getItem(`jarvis_explabs_api_name_${keyNum}`) || '').trim();
@@ -286,6 +287,9 @@
     } else if (isNV) {
       n = (ls.getItem(`jarvis_nvidia_api_name_${keyNum}`) || '').trim();
       label = n ? `NV Key #${keyNum} (${n})` : `NV Key #${keyNum}`;
+    } else if (isCO) {
+      n = (ls.getItem(`jarvis_cohere_api_name_${keyNum}`) || '').trim();
+      label = n ? `CO Key #${keyNum} (${n})` : `CO Key #${keyNum}`;
     } else if (isOR) {
       n = (ls.getItem(`jarvis_openrouter_api_name_${keyNum}`) || '').trim();
       label = n ? `OR Key #${keyNum} (${n})` : `OR Key #${keyNum}`;
@@ -607,6 +611,7 @@
   const openRouterUsage = createSlotUsageTracker('jarvis_openrouter_usage', () => updateOpenRouterQuotaUI());
   const explabsUsage = createSlotUsageTracker('jarvis_explabs_usage', () => updateExplabsQuotaUI());
   const nvidiaUsage = createSlotUsageTracker('jarvis_nvidia_usage', () => updateNvidiaQuotaUI());
+  const cohereUsage = createSlotUsageTracker('jarvis_cohere_usage', () => updateCohereQuotaUI());
 
   const loadOpenRouterUsageData = () => openRouterUsage.load();
   const setOpenRouterUsageData = d => openRouterUsage.set(d);
@@ -628,6 +633,13 @@
   const isLocalNvidiaUsageAhead = u => nvidiaUsage.isAhead(u);
   const getNvidiaUsageCount = i => nvidiaUsage.count(i);
   const recordNvidiaRequest = (i, m) => nvidiaUsage.record(i, m);
+
+  const loadCohereUsageData = () => cohereUsage.load();
+  const setCohereUsageData = d => cohereUsage.set(d);
+  const mergeRemoteCohereUsage = u => cohereUsage.merge(u);
+  const isLocalCohereUsageAhead = u => cohereUsage.isAhead(u);
+  const getCohereUsageCount = i => cohereUsage.count(i);
+  const recordCohereRequest = (i, m) => cohereUsage.record(i, m);
 
   function updateOpenRouterQuotaUI() {
     // Cập nhật badge trong ô nhập OpenRouter
@@ -684,6 +696,15 @@
     if (typeof window.refreshSlotKeySelects === 'function') window.refreshSlotKeySelects('nvidia');
   }
 
+  function updateCohereQuotaUI() {
+    for (let i = 1; i <= 3; i++) {
+      const badge = $(`cohere-key-badge-${i}`);
+      if (badge) badge.innerHTML = `CO: ${getCohereUsageCount(i)} req`;
+    }
+    // Cập nhật nhãn + bộ đếm trong dropdown chọn key (sidebar & Cài đặt)
+    if (typeof window.refreshSlotKeySelects === 'function') window.refreshSlotKeySelects('cohere');
+  }
+
   window.getNvidiaUsageCount = getNvidiaUsageCount;
   window.recordNvidiaRequest = recordNvidiaRequest;
   window.updateNvidiaQuotaUI = updateNvidiaQuotaUI;
@@ -691,6 +712,14 @@
   window.setNvidiaUsageData = setNvidiaUsageData;
   window.mergeRemoteNvidiaUsage = mergeRemoteNvidiaUsage;
   window.isLocalNvidiaUsageAhead = isLocalNvidiaUsageAhead;
+
+  window.getCohereUsageCount = getCohereUsageCount;
+  window.recordCohereRequest = recordCohereRequest;
+  window.updateCohereQuotaUI = updateCohereQuotaUI;
+  window.loadCohereUsageData = loadCohereUsageData;
+  window.setCohereUsageData = setCohereUsageData;
+  window.mergeRemoteCohereUsage = mergeRemoteCohereUsage;
+  window.isLocalCohereUsageAhead = isLocalCohereUsageAhead;
 
   window.getOpenRouterUsageCount = getOpenRouterUsageCount;
   window.recordOpenRouterRequest = recordOpenRouterRequest;

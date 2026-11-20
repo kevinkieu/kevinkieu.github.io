@@ -151,6 +151,10 @@
                 <option value="particle-ai/particle-1:free">🧠 Particle-1 (Free)</option>
                 <option value="baidu/ernie-5.5-flash-preview:free">🧠 ERNIE-5.5-Flash (Free)</option>
               </optgroup>
+             <optgroup label="🤝 Cohere">
+               <option value="command-a-plus-05-2026">⚡ Command A+ (Mixture of Experts)</option>
+               <option value="command-a-reasoning-08-2025">🧠 Command A Reasoning</option>
+             </optgroup>
             </select>
           </div>
 
@@ -192,6 +196,8 @@
             <div id="explabs-next-key">Chưa có key</div>
             <select id="nvidia-key-select"><option value="auto">🔄 Tự động xoay tua</option></select>
             <div id="nvidia-next-key">Chưa có key</div>
+            <select id="cohere-key-select"><option value="auto">🔄 Tự động xoay tua</option></select>
+            <div id="cohere-next-key">Chưa có key</div>
           </div>
 
           <!-- SESSION ACTIONS (GRID & ROWS) -->
@@ -851,6 +857,25 @@
           </div>
                       <div style="font-size:0.73rem;color:var(--text-muted);margin-top:6px;line-height:1.4;">
             Base URL: https://integrate.api.nvidia.com/v1 — dùng cho nvidia/nemotron-3.5-lightning-30b-a3b, nvidia/nemotron-3.5-bolt-e4b, nvidia/nemotron-3.5-super-vl-120b-a12b, nvidia/nemotron-3-ultra-550b-a55b và nvidia/nemotron-3-nano-omni-30b-a3b-reasoning. NVIDIA không trả header CORS cho trình duyệt nên app đi qua proxy chuyển tiếp; để trống ô Proxy URL sẽ tự dùng proxy mặc định https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/v1, nhập URL khác để ghi đè. Mỗi request tự chuyển sang key kế tiếp và ghi bộ đếm riêng cho từng ô.
+          </div>
+        </fieldset>
+
+        <!-- 3 COHERE API KEYS -->
+        <fieldset class="settings-group" style="border-color:#6366f1;background:rgba(99,102,241,0.04);">
+          <legend style="color:#6366f1;font-weight:700;">🤝 3 Cohere API Keys</legend>
+          <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
+            <span class="field-label">🤝 Cohere API Key (xoay tua):</span>
+            <select id="cohere-key-select-settings" class="modern-select" style="flex:1;">
+              <option value="auto">🔄 Tự động xoay tua</option>
+            </select>
+          </div>
+          <div class="api-keys-grid" id="cohere-keys-container" style="margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button id="btn-check-cohere-duplicates" class="btn">👯 Kiểm tra Trùng</button>
+            <span id="cohere-key-status-msg" style="font-size:.78rem;font-weight:600;"></span>
+          </div>
+          <div style="font-size:0.73rem;color:var(--text-muted);margin-top:6px;line-height:1.4;">
+            Base URL: https://api.cohere.ai/compatibility/v1 — dùng cho command-a-plus-05-2026 và command-a-reasoning-08-2025. Model Cohere native API. Mỗi request tự chuyển sang key kế tiếp và ghi bộ đếm riêng cho từng ô.
           </div>
         </fieldset>
 

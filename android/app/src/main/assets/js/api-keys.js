@@ -27,6 +27,7 @@
   const OR_KEY_COUNT = 5;
   const EL_KEY_COUNT = 5;
   const NV_KEY_COUNT = 3;
+  const CO_KEY_COUNT = 3;
 
   // Render container 10 dòng API keys (giữ nguyên template từ app.js)
   const container = $('api-keys-container');
@@ -80,6 +81,19 @@
     `).join('');
   }
 
+  // Render container 3 dòng Cohere API keys (xoay tua)
+  const coContainer = $('cohere-keys-container');
+  if (coContainer) {
+    coContainer.innerHTML = Array.from({ length: CO_KEY_COUNT }, (_, i) => `
+      <div class="api-key-row" style="display:flex;gap:6px;align-items:center;">
+        <span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);min-width:30px;text-align:center;background:rgba(255,255,255,0.05);padding:6px 0;border-radius:var(--radius-sm);border:1px solid var(--border);">#${i+1}</span>
+        <input type="text" id="cohere-key-name-${i+1}" placeholder="Tên gợi nhớ ${i+1}" class="modern-input" style="width:115px;flex:0 0 115px;font-size:0.8rem;padding:7px 10px;" title="Tên gợi nhớ cho Cohere Key ${i+1}">
+        <input type="password" id="cohere-key-${i+1}" placeholder="Cohere API Key ${i+1} (co-...)" class="modern-input" style="flex:1;min-width:110px;font-size:0.8rem;padding:7px 10px;" title="Dán Cohere API Key vào đây">
+        <span id="cohere-key-badge-${i+1}" style="font-size:0.68rem;font-weight:700;padding:4px 6px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.05);white-space:nowrap;border:1px solid var(--border);flex-shrink:0;">CO: 0 req</span>
+      </div>
+    `).join('');
+  }
+
   // Đọc key + tên từ localStorage (hỗ trợ 3 bộ key cũ: jarvis_/huanmu_/javiss_)
   const readRawKey = i => (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
   const readRawName = i => (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || "").trim();
@@ -106,6 +120,19 @@
     if (!key) return 1;
     for (let i = 1; i <= NV_KEY_COUNT; i++) {
       let k = readRawNvKey(i);
+      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
+      if (k === key) return i;
+    }
+    return 1;
+  };
+
+  // Tìm số thứ tự ô (1..3) của một Cohere key
+  const readRawCoKey = i => (ls.getItem(`jarvis_cohere_api_${i}`) || "").trim();
+  const readRawCoName = i => (ls.getItem(`jarvis_cohere_api_name_${i}`) || "").trim();
+  const findCohereSlotIndexForKey = key => {
+    if (!key) return 1;
+    for (let i = 1; i <= CO_KEY_COUNT; i++) {
+      let k = readRawCoKey(i);
       if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
       if (k === key) return i;
     }
@@ -147,6 +174,13 @@
       ids: ['nvidia-key-select', 'nvidia-key-select-settings'],
       hintId: 'nvidia-next-key', icon: '🟢', short: 'NV',
       usageFn: 'getNvidiaUsageCount', indexVar: 'nvidiaKeyIndex'
+    },
+    {
+      kind: 'cohere', storage: 'jarvis_selected_cohere_slot',
+      count: CO_KEY_COUNT, readKey: readRawCoKey, readName: readRawCoName,
+      ids: ['cohere-key-select', 'cohere-key-select-settings'],
+      hintId: 'cohere-next-key', icon: '🤝', short: 'CO',
+      usageFn: 'getCohereUsageCount', indexVar: 'cohereKeyIndex'
     }
   ];
 
@@ -221,7 +255,8 @@
     google: { label: '🔑 Google API Key:', selectId: 'api-key-select' },
     openrouter: { label: '🛰️ OpenRouter API Key:', selectId: 'openrouter-key-select', hintId: 'openrouter-next-key' },
     explabs: { label: '⚡ Experiential Labs Key:', selectId: 'explabs-key-select', hintId: 'explabs-next-key' },
-    nvidia: { label: '🟢 NVIDIA API Key:', selectId: 'nvidia-key-select', hintId: 'nvidia-next-key' }
+    nvidia: { label: '🟢 NVIDIA API Key:', selectId: 'nvidia-key-select', hintId: 'nvidia-next-key' },
+    cohere: { label: '🤝 Cohere API Key:', selectId: 'cohere-key-select', hintId: 'cohere-next-key' }
   };
 
   // Nền tảng của model đang chọn: nvidia/openrouter (registry gateway), explabs, còn lại là Google
@@ -430,6 +465,34 @@
     if (typeof window.updateNvidiaQuotaUI === 'function') window.updateNvidiaQuotaUI();
   }
 
+  // --- INIT COHERE KEYS FROM LOCALSTORAGE ---
+  function initCohereKeys() {
+    const keys = [];
+    for (let i = 1; i <= CO_KEY_COUNT; i++) {
+      let k = readRawCoKey(i);
+      const n = readRawCoName(i);
+      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
+        k = deobfuscateKey(k);
+        ls.setItem(`jarvis_cohere_api_${i}`, k);
+      }
+      const el = $(`cohere-key-${i}`);
+      if (el) el.value = k;
+      const nameEl = $(`cohere-key-name-${i}`);
+      if (nameEl) nameEl.value = n;
+      if (k) keys.push(k);
+    }
+    window.cohereKeys = keys;
+    window.cohereKeyIndex = 0;
+
+    const s = $('cohere-key-status-msg');
+    if (s) {
+      s.innerText = keys.length ? `✅ Có ${keys.length} Cohere Key` : "⚠️ Chưa có Key";
+      s.style.color = keys.length ? "var(--success)" : "var(--danger)";
+    }
+    renderSlotSelects(SLOT_SELECT_GROUPS.find(g => g.kind === 'cohere'));
+    if (typeof window.updateCohereQuotaUI === 'function') window.updateCohereQuotaUI();
+  }
+
   // --- INIT EXTERNAL CONFIGURATIONS ---
   function initExternalConfigs() {
     cfgMap.forEach(([id, k, def = '']) => {
@@ -501,11 +564,19 @@
       ls.setItem(`jarvis_nvidia_api_${i}`, nvVal);
       ls.setItem(`jarvis_nvidia_api_name_${i}`, nvName);
     }
+    // Lưu 3 Cohere keys
+    for (let i = 1; i <= CO_KEY_COUNT; i++) {
+      const coVal = $(`cohere-key-${i}`)?.value.trim() || '';
+      const coName = $(`cohere-key-name-${i}`)?.value.trim() || '';
+      ls.setItem(`jarvis_cohere_api_${i}`, coVal);
+      ls.setItem(`jarvis_cohere_api_name_${i}`, coName);
+    }
     initAPIKeys();
     initExternalConfigs();
     initOpenRouterKeys();
     initExplabsKeys();
     initNvidiaKeys();
+    initCohereKeys();
     // Đẩy ngay API key ngoài (Tavily, Serper, Experiential Labs, OpenRouter, NVIDIA...)
     // lên Cloud Gist, không cần chờ có tin nhắn chat mới.
     if (window.JarvisSync && typeof window.JarvisSync.scheduleAutoSync === 'function') {
@@ -636,6 +707,16 @@
     showToast(dups.length ? `⚠️ Experiential Labs trùng: ${dups.join(', ')}!` : "✅ Experiential Labs không có key trùng.");
   }
 
+  function handleCheckCohereDuplicates() {
+    const m = {}, dups = [];
+    for (let i = 1; i <= CO_KEY_COUNT; i++) {
+      const v = $(`cohere-key-${i}`)?.value.trim();
+      const kn = $(`cohere-key-name-${i}`)?.value.trim() || `CO Key ${i}`;
+      if (v) m[v] ? dups.push(`${kn} trùng với ${m[v]}`) : m[v] = kn;
+    }
+    showToast(dups.length ? `⚠️ Cohere trùng: ${dups.join(', ')}!` : "✅ Cohere không có key trùng.");
+  }
+
   // --- CHECK DUPLICATES BUTTON HANDLER ---
   function handleCheckDuplicates() {
     const m = {}, dups = [];
@@ -666,6 +747,8 @@
   if (dupElBtn) dupElBtn.onclick = () => { handleCheckExplabsDuplicates(); };
   const dupNvBtn = $('btn-check-nvidia-duplicates');
   if (dupNvBtn) dupNvBtn.onclick = () => { handleCheckNvidiaDuplicates(); };
+  const dupCoBtn = $('btn-check-cohere-duplicates');
+  if (dupCoBtn) dupCoBtn.onclick = () => { handleCheckCohereDuplicates(); };
 
   // Kiểm tra proxy + key NVIDIA ngay trên thiết bị đang chạy (điện thoại/browser).
   // Dùng giá trị đang gõ trong ô proxy (chưa cần bấm Lưu) để phát hiện URL sai trước khi chat.
@@ -709,10 +792,13 @@
   window.findExplabsSlotIndexForKey = findExplabsSlotIndexForKey;
   window.initNvidiaKeys = initNvidiaKeys;
   window.findNvidiaSlotIndexForKey = findNvidiaSlotIndexForKey;
+  window.initCohereKeys = initCohereKeys;
+  window.findCohereSlotIndexForKey = findCohereSlotIndexForKey;
   window.refreshSlotKeySelects = refreshSlotKeySelects;
   window.renderKeyPoolMenu = renderKeyPoolMenu;
   window.handleCheckExplabsDuplicates = handleCheckExplabsDuplicates;
   window.handleCheckNvidiaDuplicates = handleCheckNvidiaDuplicates;
+  window.handleCheckCohereDuplicates = handleCheckCohereDuplicates;
   window.handleSaveKeys = handleSaveKeys;
   window.handleCheckKeys = handleCheckKeys;
   window.handleCheckDuplicates = handleCheckDuplicates;
@@ -725,5 +811,6 @@
   initOpenRouterKeys();
   initExplabsKeys();
   initNvidiaKeys();
+  initCohereKeys();
 
 })();
