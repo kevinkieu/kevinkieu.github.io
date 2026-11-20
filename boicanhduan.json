@@ -188,6 +188,10 @@
   "recent_changes": [
     {
       "date": "2026-11-20",
+      "summary": "Sửa chậm vào suy luận Gemini 3.6/3.8/Hydrogen: gộp bảng thinkingLevel theo tài liệu Google (3.8 Flash & 4 Hydrogen không nhận 'minimal' -> hạ 'low'; 3.6 Flash và 3.5/3.1 Flash-Lite nhận đủ 4 mức), dùng chung cho menu Think Depth, generateContentStream, Interactions API; bỏ auto-sync Gist 5s trong recordKeyRequest (chỉ model 20 RPD chạy) để không kéo sync Cloud vào lúc model suy luận; fallback 400 hạ 'low' thay thinkingBudget. Bump versionCode 71 / versionName 1.1.71 / ?v=71 / sw cache v71, mirror js/app.js + js/quota.js + index.html + sw.js sang android/app/src/main/assets/. Commit a79d123 push main."
+    },
+    {
+      "date": "2026-11-20",
       "summary": "Tăng maxTokens (trần output tokens) cho TẤT CẢ model NVIDIA/OpenRouter/Experiential Labs/Particle/ERNIE lên giới hạn tối đa của từng model (maxOutputTokens/apiMaxCompletionTokens) để tránh cắt断 câu trả lời giữa chừng. Cập nhật trong js/app.js, android/app/src/main/assets/js/app.js, android/app/src/main/assets/app.js COMPAT_MODEL_OPTS: GLM-5.3-Flash 32768→65536, Nemotron 3.5 Lightning/Bolt 32768→65536, Super VL 120B 32768→1048576 (gateway max 1M), Nemotron 3 Ultra giữ 32768 (maxOutputTokens=32768), Nano Omni (integrate) 32768→131072, Particle-1 32768→131072, ERNIE 5.5-Flash 32768→921600 (apiMaxCompletionTokens), Nemotron 3.5 Lightning (OR) 32768→65536, Super VL (OR) 32768→131072, Nano Omni (OR) 32768→65536. Kiểm chứng syntax node --check PASS 3 file. Mirror sang android/app/src/main/assets/."
     },
     {
