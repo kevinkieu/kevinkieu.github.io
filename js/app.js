@@ -717,14 +717,30 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     }
     window.buildNvidiaThinking = buildNvidiaThinking;
 
+    // Một model ID chỉ được thuộc MỘT nền tảng. Bể key Experiential Labs được ưu tiên:
+    // nếu ID vô tình nằm cả trong COMPAT_PROVIDERS thì resolveCompatProvider trả null,
+    // để nhánh compat không "nuốt" model Explabs (gửi nhầm API key).
+    const explabsModelSet = new Set(EXPLABS_MODELS);
     function resolveCompatProvider(modelId) {
       const m = (modelId || '').trim();
+      if (!m || explabsModelSet.has(m)) return null;
       for (const p of Object.values(COMPAT_PROVIDERS)) {
         if (p.models.includes(m)) return { provider: p, model: m };
       }
       return null;
     }
     window.resolveCompatProvider = resolveCompatProvider;
+
+    // Cảnh báo một lần lúc load nếu ID Explabs bị khai trùng trong COMPAT_PROVIDERS.
+    (function checkExplabsCompatOverlap() {
+      const dup = [];
+      for (const p of Object.values(COMPAT_PROVIDERS)) {
+        for (const id of p.models) if (explabsModelSet.has(id)) dup.push(`${id} (${p.id})`);
+      }
+      if (dup.length) {
+        console.warn('[Jarvis] Model ID Explabs khai trùng trong COMPAT_PROVIDERS: ' + dup.join(', ') + ' — Explabs được ưu tiên; hãy bỏ các ID này khỏi COMPAT_PROVIDERS.');
+      }
+    })();
 
     // Rút gọn lỗi thô của provider: OpenRouter thường trả metadata.raw là 1 khối JSON
     // (vd Google: {"error":{"code":503,"message":"...","status":"UNAVAILABLE"}}).
@@ -3474,10 +3490,12 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         keyIndexNum = findSlotIndexForKey(gKey);
       }
 
-      // Model từ gateway OpenAI-compatible (OpenRouter) không dùng Google API Key
-      const usesCompatGateway = !!resolveCompatProvider(am);
-      // Model Experiential Labs dùng bể 5 key riêng (xoay tua + đếm lượt)
+      // Model Experiential Labs dùng bể 5 key riêng (xoay tua + đếm lượt).
+      // Kiểm tra Explabs TRƯỚC và loại trừ khỏi nhánh compat, để thứ tự nhánh không
+      // còn phụ thuộc vào việc ID có nằm trong COMPAT_PROVIDERS hay không.
       const usesExplabs = EXPLABS_MODELS.includes(am);
+      // Model từ gateway OpenAI-compatible (OpenRouter/NVIDIA/Cohere) không dùng Google API Key
+      const usesCompatGateway = !usesExplabs && !!resolveCompatProvider(am);
       if (usesCompatGateway) {
         const compatNow = resolveCompatProvider(am).provider;
         if (compatNow.id === 'nvidia') {
@@ -3519,6 +3537,45 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
             return showToast("Vui lòng nhập NVIDIA API Key trong Cài đặt (⚙️)!", "danger");
           }
           if (typeof window.recordNvidiaRequest === 'function') window.recordNvidiaRequest(keyIndexNum, am);
+        } else if (compatNow.id === 'cohere') {
+          // Xoay tua 3 key Cohere, đọc theo SỐ Ô (slot) để khớp bộ đếm
+          const coKeyAtSlot = slot => {
+            let v = (ls.getItem(`jarvis_cohere_api_${slot}`) || '').trim();
+            if (v.startsWith('JVENC_') || v.startsWith('ENC_')) v = deobfuscateKey(v);
+            return v;
+          };
+          const coSlotOfKey = key => (typeof window.findCohereSlotIndexForKey === 'function')
+            ? window.findCohereSlotIndexForKey(key)
+            : Math.max(1, ((window.cohereKeys || []).indexOf(key)) + 1);
+          const coKeys = (typeof window.cohereKeys !== 'undefined' && Array.isArray(window.cohereKeys))
+            ? window.cohereKeys.filter(Boolean) : [];
+          const coSelEl = $('cohere-key-select');
+          const coSel = coSelEl ? coSelEl.value : 'auto';
+
+          if (coSel !== 'auto') {
+            // Chọn thủ công 1 ô: luôn lấy đúng key của ô đó
+            const picked = coKeyAtSlot(parseInt(coSel, 10) + 1) || coKeys[0] || '';
+            if (picked) {
+              gKey = picked;
+              keyIndexNum = coSlotOfKey(picked);
+            }
+          } else if (coKeys.length) {
+            // Tự động xoay tua vòng tròn qua các ô có key
+            const coIdx = (window.cohereKeyIndex || 0) % coKeys.length;
+            gKey = coKeys[coIdx];
+            window.cohereKeyIndex = (coIdx + 1) % coKeys.length;
+            keyIndexNum = coSlotOfKey(gKey);
+          } else {
+            // Fallback về key đơn cũ (nếu 3 ô mới đều trống)
+            gKey = (ls.getItem('cohere_api_key') || '').trim();
+            if (gKey.startsWith('JVENC_') || gKey.startsWith('ENC_')) gKey = deobfuscateKey(gKey);
+            keyIndexNum = 1;
+          }
+          if (!gKey) {
+            bD?.remove();
+            return showToast("Vui lòng nhập Cohere API Key trong Cài đặt (⚙️)!", "danger");
+          }
+          if (typeof window.recordCohereRequest === 'function') window.recordCohereRequest(keyIndexNum, am);
         } else {
         // Xoay tua OpenRouter keys (5 key) - đọc theo SỐ Ô (slot) để khớp bộ đếm,
         // vì window.openRouterKeys đã lọc bỏ các ô trống nên chỉ số mảng ≠ số ô.
@@ -4252,14 +4309,18 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
             let compatErrText = '';
             // Bể key của provider: chỉ xoay sang key khác khi đang để "Tự động xoay tua"
             // (khóa thủ công 1 key thì giữ đúng key đó, giống nhánh Google).
-            const compatPool = prov.id === 'nvidia'
-              ? (Array.isArray(window.nvidiaKeys) ? window.nvidiaKeys.filter(Boolean) : [])
-              : (Array.isArray(window.openRouterKeys) ? window.openRouterKeys.filter(Boolean) : []);
-            const compatSelEl = $(prov.id === 'nvidia' ? 'nvidia-key-select' : 'openrouter-key-select');
+            const compatPoolSrc = prov.id === 'nvidia' ? window.nvidiaKeys
+              : (prov.id === 'cohere' ? window.cohereKeys : window.openRouterKeys);
+            const compatPool = Array.isArray(compatPoolSrc) ? compatPoolSrc.filter(Boolean) : [];
+            const compatSelEl = $(prov.id === 'nvidia' ? 'nvidia-key-select'
+              : (prov.id === 'cohere' ? 'cohere-key-select' : 'openrouter-key-select'));
             const compatAuto = !compatSelEl || compatSelEl.value === 'auto';
-            const compatSlotOf = key => prov.id === 'nvidia'
-              ? ((typeof window.findNvidiaSlotIndexForKey === 'function') ? window.findNvidiaSlotIndexForKey(key) : keyIndexNum)
-              : ((typeof window.findOpenRouterSlotIndexForKey === 'function') ? window.findOpenRouterSlotIndexForKey(key) : keyIndexNum);
+            const compatSlotOf = key => {
+              if (prov.id === 'nvidia' && typeof window.findNvidiaSlotIndexForKey === 'function') return window.findNvidiaSlotIndexForKey(key);
+              if (prov.id === 'cohere' && typeof window.findCohereSlotIndexForKey === 'function') return window.findCohereSlotIndexForKey(key);
+              if (prov.id === 'openrouter' && typeof window.findOpenRouterSlotIndexForKey === 'function') return window.findOpenRouterSlotIndexForKey(key);
+              return keyIndexNum;
+            };
             let compatKeySwitches = 0;
             // Provider tạm thời quá tải (Google AI Studio hay trả 503 rồi 200 ngay sau đó) → thử lại vài lần
             const COMPAT_MAX_ATTEMPTS = 4;
