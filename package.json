@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "check-models": "node scratch/check_model_registry.js",
-    "smoke:openrouter": "node scratch/openrouter_nemotron_smoke.js"
+    "smoke:openrouter": "node scratch/openrouter_nemotron_smoke.js",
+    "sync-assets": "node scripts/sync-web-assets.js",
+    "check-assets": "node scripts/sync-web-assets.js --check"
   },
   "repository": {
     "type": "git",

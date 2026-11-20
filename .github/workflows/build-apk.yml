@@ -11,6 +11,7 @@ on:
       - 'index.html'
       - 'manifest.json'
       - 'sw.js'
+      - 'scripts/**'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -26,6 +27,11 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: 🟢 Cài đặt Node.js (cho scripts/sync-web-assets.js)
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
     - name: ☕ Cài đặt JDK 17
       uses: actions/setup-java@v4
       with:
@@ -39,12 +45,9 @@ jobs:
 
     - name: 🔄 Đồng bộ mã nguồn Web mới nhất vào Android Assets
       run: |
-        mkdir -p android/app/src/main/assets/js android/app/src/main/assets/css
-        cp -f index.html manifest.json sw.js android/app/src/main/assets/ || true
-        cp -f icon*.png android/app/src/main/assets/ || true
-        cp -rf js/* android/app/src/main/assets/js/
-        cp -rf css/* android/app/src/main/assets/css/
-        echo "Đã đồng bộ toàn bộ tài nguyên Web vào Android Assets"
+        # Dùng script đồng bộ dùng chung thay cho cp thủ công (tránh lệch file)
+        node scripts/sync-web-assets.js
+        node scripts/sync-web-assets.js --check
 
     - name: ⚙️ Khởi tạo Gradle Wrapper & Cấp quyền thực thi
       run: |

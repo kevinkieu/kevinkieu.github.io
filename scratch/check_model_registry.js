@@ -21,10 +21,11 @@ function extractObject(src, marker) {
 }
 
 const indexHtml = read('index.html');
-const appJs = read('js/app.js');
+// Registry model đã tách khỏi js/app.js sang js/model-registry.js
+const registryJs = read('js/model-registry.js');
 
-const providers = extractObject(appJs, 'const COMPAT_PROVIDERS = {');
-const opts = extractObject(appJs, 'const COMPAT_MODEL_OPTS = {');
+const providers = extractObject(registryJs, 'const COMPAT_PROVIDERS = {');
+const opts = extractObject(registryJs, 'const COMPAT_MODEL_OPTS = {');
 const registryModels = Object.values(providers).flatMap(p => p.models || []);
 
 for (const provider of Object.values(providers)) {

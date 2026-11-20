@@ -10,16 +10,14 @@ echo.
 echo [1/3] Dang chay node bump-version.js va dong bo assets...
 node bump-version.js
 
-if not exist "android\app\src\main\assets" mkdir "android\app\src\main\assets"
-
-:: Copy assets sang Android
-xcopy /s /e /y "index.html" "android\app\src\main\assets\" >nul 2>&1
-copy /y "index.html" "android\app\src\main\assets\" >nul
-copy /y "manifest.json" "android\app\src\main\assets\" >nul
-copy /y "sw.js" "android\app\src\main\assets\" >nul
-copy /y "icon*.png" "android\app\src\main\assets\" >nul
-xcopy /s /e /y "js" "android\app\src\main\assets\js\" >nul
-xcopy /s /e /y "css" "android\app\src\main\assets\css\" >nul
+:: Copy assets sang Android bang script dung chung (scripts/sync-web-assets.js)
+:: => chi mot danh sach file duy nhat, khong lech giua web root va assets
+node scripts\sync-web-assets.js
+if !ERRORLEVEL! NEQ 0 (
+    echo [LOI] Dong bo assets that bai.
+    pause
+    exit /b 1
+)
 
 echo [2/3] Cau hinh moi truong Java / Android SDK...
 if exist "C:\Program Files\Microsoft\jdk-17.0.21.21-hotspot" (
