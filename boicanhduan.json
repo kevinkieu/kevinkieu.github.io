@@ -188,6 +188,22 @@
   "recent_changes": [
     {
       "date": "2026-11-20",
+      "summary": "Tích hợp nền tảng Cohere (Command A+ 05-2026 & Command A Reasoning 08-2025) như provider riêng: baseUrl https://api.cohere.ai/compatibility/v1, 3 key xoay tua + đếm quota, thinking depth / max tokens theo từng model (Command A+: 128k ctx/64k out, text+ảnh+video; Reasoning: 256k ctx/32k out, text-only, reasoningToggle High/Tắt). Thêm optgroup '🤝 Cohere' + fieldset 3 key Cohere trong Settings (index.html). js/app.js: COMPAT_PROVIDERS.cohere (keyCount 3, keyIndexVar cohereKeyIndex, includeReasoning true, modelLabel), COMPAT_MODEL_OPTS cho 2 model; js/api-keys.js: CO_KEY_COUNT, readRawCoKey/Name, initCohereKeys, handleCheckCohereDuplicates, SLOT_SELECT_GROUPS.kind:'cohere', KEY_POOL_MENUS.cohere; js/quota.js: cohereUsage, badge 🤝. Mirror sang android/app/src/main/assets/. Commit 1888264 push main."
+    },
+    {
+      "date": "2026-11-20",
+      "summary": "Sửa lỗi 401 Cohere 'Incorrect API key provided': js/app.js thêm nhánh else if (compatNow.id === 'cohere') trong khối chọn key trước khi gửi (thứ tự nvidia → cohere → else OpenRouter) + mở rộng compatPoolSrc/compatSelEl/compatSlotOf trong vòng retry sang cohere, đảm bảo dùng đúng bể key Cohere thay vì key OpenRouter. Mirror android. Commit 1888264."
+    },
+    {
+      "date": "2026-11-20",
+      "summary": "Bảo vệ Experiential Labs không bị gateway compat nuốt: explabsModelSet, resolveCompatProvider() trả null cho mọi ID trong EXPLABS_MODELS (gpt-6-luna, deepseek-v4.1-flash, qwen4-max:free), IIFE checkExplabsCompatOverlap() cảnh báo console.warn, usesCompatGateway = !usesExplabs && !!resolveCompatProvider(am). Giờ thứ tự nhánh không còn quan trọng. Mirror android. Commit 1888264."
+    },
+    {
+      "date": "2026-11-20",
+      "summary": "Sửa lỗi 422 Cohere 'top_k is not supported' và rà soát toàn bộ tham số: Cohere Compatibility API chỉ nhận whitelist (model, messages, stream, reasoning_effort, response_format, tools, temperature, max_tokens, stop, seed, top_p, frequency_penalty, presence_penalty) — KHÔNG có top_k, stream_options. js/app.js: COMPAT_PROVIDERS.cohere thêm unsupportedParams:['top_k','stream_options'] + reasoningEffortParam:'reasoning_effort'; body build xoá param bị cấm, reasoning gửi reasoning_effort: thk!=='none'?'high':'none' (không gửi reasoning object/include_reasoning); thêm lưới an toàn COMPAT_STRIPPABLE_PARAMS + compatParamStrips tự gỡ tham số khi 4xx chứa '<param> is not supported'. Kiểm chứng curl thật: cả 2 model HTTP 200 (reasoning_effort none/high), gửi lại top_k:40 → HTTP 422 tái hiện. Mirror android/app/src/main/assets/js/app.js. Chưa commit/push bản sửa này."
+    },
+    {
+      "date": "2026-11-20",
       "summary": "Sửa chậm vào suy luận Gemini 3.6/3.8/Hydrogen: gộp bảng thinkingLevel theo tài liệu Google (3.8 Flash & 4 Hydrogen không nhận 'minimal' -> hạ 'low'; 3.6 Flash và 3.5/3.1 Flash-Lite nhận đủ 4 mức), dùng chung cho menu Think Depth, generateContentStream, Interactions API; bỏ auto-sync Gist 5s trong recordKeyRequest (chỉ model 20 RPD chạy) để không kéo sync Cloud vào lúc model suy luận; fallback 400 hạ 'low' thay thinkingBudget. Bump versionCode 71 / versionName 1.1.71 / ?v=71 / sw cache v71, mirror js/app.js + js/quota.js + index.html + sw.js sang android/app/src/main/assets/. Commit a79d123 push main."
     },
     {
