@@ -2,32 +2,12 @@
    Jarvis AI - Main Application Core (Chat, Sessions, Models & Controllers)
    ========================================================================== */
 
-const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStorage;
-    // Minimal window bindings - use module pattern instead of global pollution
-    window.$ = $;
-    window.$$ = $;
-    window.ls = ls;
-    window.ss = ss;
-    window.lsRef = ls;
-    window.ssRef = ss;
-    // GoogleGenAI được nạp từ CDN trong index.html (esm.run) và gán vào window.
-    // Cầu nối lazy: module này có thể chạy trước hoặc sau khi CDN tải xong.
-    const GoogleGenAI = new Proxy(function () {}, {
-      construct(_target, args) {
-        if (!window.GoogleGenAI) throw new Error('GoogleGenAI chưa được tải từ CDN.');
-        return new window.GoogleGenAI(...args);
-      },
-      get(_target, prop) {
-        if (!window.GoogleGenAI) throw new Error('GoogleGenAI chưa được tải từ CDN.');
-        return window.GoogleGenAI[prop];
-      }
-    });
+// $ / $$ / ls / ss / GoogleGenAI: do js/globals.js khai báo (nạp trước file này).
     // ==========================================================================
     // ALIAS MODEL REGISTRY
     // Dữ liệu model + thinking levels đã tách sang js/model-registry.js (nạp trước
     // file này trong index.html). Alias dưới đây giữ nguyên mọi tham chiếu cũ.
     // ==========================================================================
-    const FLASH_LITE_MODEL = window.FLASH_LITE_MODEL;
     const AUX_FALLBACK_MODELS = window.AUX_FALLBACK_MODELS;
     const THINKING_LEVELS_BY_MODEL = window.THINKING_LEVELS_BY_MODEL;
     const THINKING_LEVEL_LABELS = window.THINKING_LEVEL_LABELS;
@@ -59,107 +39,19 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     const stripThinkingForCopy = window.stripThinkingForCopy;
     const isThinkingHidden = window.isThinkingHidden;
 
-    // Export core refs via Object.defineProperty for controlled access
 
-    // --- ANDROID NATIVE BRIDGE & PERSISTENCE ENGINE ---
-    // Yêu cầu trình duyệt / WebView cấp quyền lưu trữ vĩnh viễn (Persistent Storage)
-    if (navigator.storage && navigator.storage.persist) {
-      navigator.storage.persist().catch(() => {});
-    }
 
-    function syncFromNativeBridge() {
-      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.getAllDataJson === 'function') {
-        try {
-          const raw = window.JarvisNativeBridge.getAllDataJson();
-          if (raw) {
-            const data = JSON.parse(raw);
-            for (const [k, v] of Object.entries(data)) {
-              if (v !== null && v !== undefined && !ls.getItem(k)) {
-                ls.setItem(k, v);
-              }
-            }
-          }
-        } catch (e) {
-          console.warn("syncFromNativeBridge error:", e);
-        }
-      }
-    }
 
-    function saveToNativeBridge(key, val) {
-      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.setItem === 'function') {
-        try {
-          if (val === null || val === undefined) {
-            window.JarvisNativeBridge.removeItem(key);
-          } else {
-            window.JarvisNativeBridge.setItem(key, String(val));
-          }
-        } catch (e) {
-          console.warn("saveToNativeBridge error:", e);
-        }
-      }
-    }
 
-    // Persistent Storage & Safe LocalStorage Wrapper with Quota Protection & Native Bridge Sync
-    if (window.JarvisNativeBridge) {
-      syncFromNativeBridge();
-    }
-    const _nativeOrigSetItem = localStorage.setItem.bind(localStorage);
-    const _nativeOrigRemoveItem = localStorage.removeItem.bind(localStorage);
-    localStorage.setItem = function(k, v) {
-      try {
-        _nativeOrigSetItem(k, v);
-      } catch (err) {
-        if (err.name === 'QuotaExceededError' || err.code === 22) {
-          console.warn("LocalStorage Quota Exceeded on key:", k);
-          if (typeof showToast === 'function') {
-            showToast("⚠️ LocalStorage (5MB) đã đầy. Dữ liệu chat được lưu an toàn trên IndexedDB!", "warning");
-          }
-        }
-      }
-      if (window.JarvisNativeBridge) {
-        saveToNativeBridge(k, v);
-      }
-    };
-    localStorage.removeItem = function(k) {
-      try {
-        _nativeOrigRemoveItem(k);
-      } catch {}
-      if (window.JarvisNativeBridge) {
-        saveToNativeBridge(k, null);
-      }
-    };
 
-    // Init libraries
-    marked.use({ breaks: true });
-    mermaid.initialize({ startOnLoad: false, theme: 'default' });
 
-    // Register PWA Service Worker (only for web browser, disabled in Native Android app)
-    if ('serviceWorker' in navigator) {
-      if (window.JarvisNativeBridge) {
-        navigator.serviceWorker.getRegistrations().then(regs => {
-          for (const reg of regs) reg.unregister();
-        }).catch(() => {});
-      } else {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
-      }
-    }
 
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    }
-    window.escapeHtml = escapeHtml;
+    // [escapeHtml: do js/globals.js khai báo]
 
 
     // [Đã tách sang js/cipher.js: obfuscateKey / deobfuscateKey / sanitizeSessionForBackup]
 
-    let apiKeys = [], globalKeyIndex = 0, liveKeyIndex = 0, liveRetryCount = 0, abortController = null;
-    const SAFETY = [
+    SAFETY = [
       'HARM_CATEGORY_HARASSMENT',
       'HARM_CATEGORY_HATE_SPEECH',
       'HARM_CATEGORY_SEXUALLY_EXPLICIT',
@@ -167,17 +59,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       'HARM_CATEGORY_CIVIC_INTEGRITY'
     ].map(category => ({ category, threshold: 'BLOCK_NONE' }));
 
-    const getNowTime24h = () => {
-      const d = new Date();
-      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    };
+    // [getNowTime24h: do js/globals.js khai báo]
 
-    const formatGoogleApiError = e => {
-      const m = e?.message || "";
-      return (m.includes("429") || m.includes("RESOURCE_EXHAUSTED")) ? "⚠️ Hết Quota (429)." 
-           : (m.includes("503") || m.includes("UNAVAILABLE")) ? "⚠️ Máy chủ quá tải (503)." 
-           : m ? `❌ Lỗi: ${m}` : "❌ Lỗi máy chủ Google.";
-    };
+    // [formatGoogleApiError: do js/globals.js khai báo]
 
     // Chỉ trích xuất từ khóa tìm kiếm web khi người dùng bọc trong cặp dấu #từ khóa#.
     // Dấu ngoặc kép chỉ còn là nhấn mạnh; # không bị markdown gạch ngang và rất hiếm khi xuất hiện trong câu văn.
@@ -291,7 +175,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
     // [Đã tách sang js/api-keys.js: render container 10 API keys + init + handlers]
     // cfgMap vẫn giữ tại đây (getExternalConfigsObj dùng) và publish lên window
-    const cfgMap = [
+    cfgMap = [
       ['global-context-input', 'jarvis_global_context'],
       ['tavily-key-input', 'tavily_api_key'],
       ['serper-key-input', 'serper_api_key'],
@@ -300,7 +184,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       ['nvidia-proxy-url', 'nvidia_proxy_url'],
       ['live-temperature', 'live_temperature', '0.7']
     ];
-    window.cfgMap = cfgMap;
+    if (typeof cfgMap !== 'undefined') window.cfgMap = cfgMap;
 
     // Rút gọn lỗi thô của provider: OpenRouter thường trả metadata.raw là 1 khối JSON
     // (vd Google: {"error":{"code":503,"message":"...","status":"UNAVAILABLE"}}).
@@ -328,7 +212,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       if (!msg) return code ? `HTTP ${code}` : '';
       return code ? `${msg} (${code})` : msg;
     }
-    window.formatUpstreamError = formatUpstreamError;
+    if (typeof formatUpstreamError !== 'undefined') window.formatUpstreamError = formatUpstreamError;
 
     // [Đã tách sang js/api-keys.js: initAPIKeys / initExternalConfigs + 3 button handlers + auto-init]
     // [Đã tách sang js/database.js: IndexedDB engine (db, initDB, saveToDB, getAllFromDB, clearAllDB, file/TTS stores)]
@@ -346,10 +230,10 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         } catch {}
       }, 300);
     }
-    window.syncSessionsToNative = syncSessionsToNative;
+    if (typeof syncSessionsToNative !== 'undefined') window.syncSessionsToNative = syncSessionsToNative;
 
     // --- DOM REFERENCES ---
-    const DOM = {
+    DOM = {
       chat: $('chat-container'),
       input: $('user-input'),
       sendBtn: $('send-button'),
@@ -420,44 +304,20 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     }
 
     // Export for quota.js and other modules
-    window.getGoogleKeySlot = getGoogleKeySlot;
-    window.setGoogleKeySlot = setGoogleKeySlot;
-    window.activeKeyPoolKind = activeKeyPoolKind;
+    if (typeof getGoogleKeySlot !== 'undefined') window.getGoogleKeySlot = getGoogleKeySlot;
+    if (typeof setGoogleKeySlot !== 'undefined') window.setGoogleKeySlot = setGoogleKeySlot;
+    if (typeof activeKeyPoolKind !== 'undefined') window.activeKeyPoolKind = activeKeyPoolKind;
 
-
-    let sessions = [], activeId = null, chatHistory = [], filesData = [], txtContent = "", isProcessing = false;
-    let folders = JSON.parse(ls.getItem('jarvis_folders') || ls.getItem('huanmu_folders') || ls.getItem('javiss_folders') || '["Mặc định"]');
-    let activeFolder = ls.getItem('jarvis_active_folder') || ls.getItem('huanmu_active_folder') || "All";
-    let openTabs = JSON.parse(ls.getItem('jarvis_tabs') || ls.getItem('huanmu_tabs') || '[]');
-
-    // --- SỐ TIN NHẠN NGỮ CẢNH GỬI ĐI KÈM CHO generateContentStream (lưu vào localStorage) ---
-    let contextMsgCount = parseInt(ls.getItem('jarvis_context_messages') || '10', 10);
-    if (!contextMsgCount || contextMsgCount < 1) contextMsgCount = 10;
-    if (DOM.contextMsgCount) {
-      DOM.contextMsgCount.value = contextMsgCount;
-      DOM.contextMsgCount.addEventListener('change', () => {
-        const v = parseInt(DOM.contextMsgCount.value, 10);
-        if (Number.isFinite(v) && v >= 1 && v <= 200) {
-          contextMsgCount = v;
-          ls.setItem('jarvis_context_messages', String(contextMsgCount));
-        } else {
-          DOM.contextMsgCount.value = contextMsgCount;
-        }
-      });
-    }
 
     // Global bindings & live proxies for modular access across js/live.js, js/arena.js, js/tts.js, js/quota.js, js/medication.js
-    window.DOM = DOM;
-    window.SAFETY = SAFETY;
-    window.FLASH_LITE_MODEL = FLASH_LITE_MODEL;
+    if (typeof DOM !== 'undefined') window.DOM = DOM;
+    if (typeof SAFETY !== 'undefined') window.SAFETY = SAFETY;
+    if (typeof FLASH_LITE_MODEL !== 'undefined') window.FLASH_LITE_MODEL = FLASH_LITE_MODEL;
     // [window.DB_NAME / STORE_NAME / FILE_STORE / TTS_STORE: do js/database.js expose]
     window.getSessionApiKey = (cs, forceRotate) => getSessionApiKey(cs, forceRotate);
-    window.showToast = (msg, type) => showToast(msg, type);
     // DEBUG: gọi jarvisDebug() trong Console để lấy số liệu chẩn đoán.
     // (Không dùng copy() vì app đã định nghĩa window.copy riêng cho nút Copy Code.)
     window.jarvisDebug = () => console.log(JSON.stringify(window.__jarvisTurnDebug || null, null, 1));
-    window.getNowTime24h = () => getNowTime24h();
-    window.formatGoogleApiError = err => formatGoogleApiError(err);
 
     window.fallbackBrowserDownload = (blob, fn) => fallbackBrowserDownload(blob, fn);
     // [window.saveToDB / getAllFromDB / clearAllDB / initDB / getDB: do js/database.js expose]
@@ -551,7 +411,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       }, true);
     }
 
-    window.enableHorizontalScrollAndDrag = enableHorizontalScrollAndDrag;
+    if (typeof enableHorizontalScrollAndDrag !== 'undefined') window.enableHorizontalScrollAndDrag = enableHorizontalScrollAndDrag;
     enableHorizontalScrollAndDrag(DOM.tabsContainer);
     enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
     enableHorizontalScrollAndDrag($('image-preview-grid'));
@@ -562,8 +422,6 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     Object.defineProperty(window, 'liveRetryCount', { get: () => liveRetryCount, set: v => { liveRetryCount = v; }, configurable: true });
     // OpenRouter 5-key state: js/api-keys.js gán qua setter, app.js đọc qua getter
     // (không được tham chiếu window.* trong getter/setter của chính nó → đệ quy vô hạn).
-    let openRouterKeys = [];
-    let openRouterKeyIndex = 0;
     Object.defineProperty(window, 'openRouterKeys', { get: () => openRouterKeys, set: v => { openRouterKeys = Array.isArray(v) ? v : []; }, configurable: true });
     Object.defineProperty(window, 'openRouterKeyIndex', { get: () => openRouterKeyIndex, set: v => { openRouterKeyIndex = Number(v) || 0; }, configurable: true });
     // [window.db: do js/database.js gán trực tiếp khi initDB xong]
@@ -615,7 +473,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       const title = words.slice(0, 5).join(' ');
       return title.charAt(0).toUpperCase() + title.slice(1);
     }
-    window.generateLocalFallbackTitle = generateLocalFallbackTitle;
+    if (typeof generateLocalFallbackTitle !== 'undefined') window.generateLocalFallbackTitle = generateLocalFallbackTitle;
 
     // --- AUTO-NAME SESSION ---
     async function tryAutoNameSession(sessionObj, userText, botText, preferredKey = null) {
@@ -827,7 +685,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       const btnSendHf = $('btn-send-hands-free');
       if (btnSendHf) btnSendHf.style.display = 'none';
     }
-    window.stopHandsFreeVoice = stopHandsFreeVoice;
+    if (typeof stopHandsFreeVoice !== 'undefined') window.stopHandsFreeVoice = stopHandsFreeVoice;
 
     async function processHandsFreeAudioBlob(blob) {
       if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing) return;
@@ -1134,7 +992,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         stopHandsFreeVoice();
       }
     }
-    window.startHandsFreeRecorder = startHandsFreeRecorder;
+    if (typeof startHandsFreeRecorder !== 'undefined') window.startHandsFreeRecorder = startHandsFreeRecorder;
     window.startHandsFreeListener = startHandsFreeRecorder;
 
     function commitAndSendHandsFree() {
@@ -1149,7 +1007,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         handsFreeRecorder.stop();
       }
     }
-    window.commitAndSendHandsFree = commitAndSendHandsFree;
+    if (typeof commitAndSendHandsFree !== 'undefined') window.commitAndSendHandsFree = commitAndSendHandsFree;
 
     async function toggleHandsFreeVoice(forceState) {
       if (typeof window.isLiveActive === 'function' && window.isLiveActive()) {
@@ -1210,7 +1068,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       await startHandsFreeRecorder();
       showToast("🎙️ Đã bật Đàm thoại Rảnh tay 2 chiều liên tục!", "success");
     }
-    window.toggleHandsFreeVoice = toggleHandsFreeVoice;
+    if (typeof toggleHandsFreeVoice !== 'undefined') window.toggleHandsFreeVoice = toggleHandsFreeVoice;
 
     // Hands-Free triggers
     const btnHandsFreeVoice = $('btn-hands-free-voice');
@@ -1231,229 +1089,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     const btnSendHf = $('btn-send-hands-free');
     if (btnSendHf) btnSendHf.onclick = () => commitAndSendHandsFree();
 
-    // --- WEB SHARE TARGET & SHORTCUTS CONTROLLER ---
-    function openShareTargetModal(content, detectedUrl) {
-      const modal = $('share-target-modal');
-      const prevBox = $('share-preview-content');
-      const urlInd = $('share-url-indicator');
-      const urlTxt = $('share-detected-url');
-      const btnExtract = $('btn-share-extract-now');
-      const btnInsert = $('btn-share-insert-input');
-      
-      if (!modal) return;
-      prevBox.innerText = content;
-
-      if (detectedUrl) {
-        urlInd.style.display = 'block';
-        urlTxt.innerText = detectedUrl;
-        btnExtract.style.display = 'block';
-        btnExtract.onclick = async () => {
-          modal.style.display = 'none';
-          if (oLay) oLay.style.display = 'none';
-          await processSharedUrl(detectedUrl);
-        };
-      } else {
-        urlInd.style.display = 'none';
-        btnExtract.style.display = 'none';
-      }
-
-      btnInsert.onclick = () => {
-        modal.style.display = 'none';
-        if (oLay) oLay.style.display = 'none';
-        DOM.input.value = (DOM.input.value ? DOM.input.value + '\n\n' : '') + content;
-        DOM.input.focus();
-        showToast("💬 Đã đưa nội dung vào ô nhập liệu!");
-      };
-
-      
-
-      modal.style.display = 'block';
-      if (oLay) oLay.style.display = 'block';
-    }
-
-        async function processSharedUrl(url) {
-      showToast("⏳ Đang bóc tách nội dung liên kết...", "warning");
-      try {
-        if (url.includes("youtube.com") || url.includes("youtu.be")) {
-          const yt = await window.extractYouTubeContent(url);
-          const k = getSessionApiKey(sessions.find(x => x.id === activeId));
-          let summary = "";
-          if (k) {
-            try {
-              const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
-                model: FLASH_LITE_MODEL,
-                contents: `Phân tích và tóm tắt chi tiết video YouTube sau:\n- Tiêu đề: ${yt.title}\n- Kênh: ${yt.author}\n- Link: ${url}\n${yt.content ? yt.content : ''}\nHãy nêu rõ chủ đề chính, các luận điểm nổi bật và ý nghĩa của video. Tuyệt đối KHÔNG từ chối là không xem được video.`,
-                config: { safetySettings: SAFETY, maxOutputTokens: 700 }
-              });
-              summary = res.text;
-            } catch(e) {
-              summary = `Tiêu đề: ${yt.title} (Kênh: ${yt.author})`;
-            }
-          } else {
-            summary = `Tiêu đề: ${yt.title} (Kênh: ${yt.author})`;
-          }
-          txtContent += `\n[YouTube: ${yt.title} - ${yt.author} (${url})]:\n${summary}\n`;
-          DOM.textFileList.innerHTML += `📺 YouTube: ${escapeHtml(yt.title.substring(0, 24))}...<br>`;
-        } else {
-          const ext = await window.extractWebPageContent(url);
-          txtContent += `\n[Nội dung ${url} qua ${ext.source}]:\n${ext.content}\n`;
-          DOM.textFileList.innerHTML += `🌐 ${ext.source} (${url.substring(0, 30)}...)<br>`;
-        }
-        DOM.previewBox.style.display = 'block';
-        DOM.fileCount.innerText = filesData.length + (txtContent ? 1 : 0);
-        updateTokenCount();
-        showToast("✅ Đã bóc tách nội dung liên kết chia sẻ!", "success");
-      } catch (e) {
-        showToast(`Lỗi bóc tách: ${e.message}`, 'danger');
-      }
-    }
-
-    function handleIncomingWebShare() {
-      const params = new URLSearchParams(window.location.search);
-      const action = params.get('action');
-
-      
-      if (action === 'live') {
-        window.history.replaceState({}, document.title, window.location.pathname);
-        setTimeout(() => startLiveVoiceCall(), 300);
-        return;
-      }
-      if (action === 'tts') {
-        window.history.replaceState({}, document.title, window.location.pathname);
-        setTimeout(() => openTTSStudioModal(), 300);
-        return;
-      }
-
-      const shareTitle = params.get('share_title') || '';
-      const shareText = params.get('share_text') || '';
-      const shareUrl = params.get('share_url') || '';
-
-      if (shareTitle || shareText || shareUrl) {
-        window.history.replaceState({}, document.title, window.location.pathname);
-
-        const parts = [];
-        if (shareTitle) parts.push(shareTitle);
-        if (shareText && shareText !== shareTitle) parts.push(shareText);
-        if (shareUrl && !shareText.includes(shareUrl)) parts.push(shareUrl);
-        const full = parts.join('\n\n').trim();
-
-        const match = full.match(/https?:\/\/[^\s]+/i);
-        const detUrl = match ? match[0] : (shareUrl ? shareUrl.trim() : '');
-
-        setTimeout(() => openShareTargetModal(full, detUrl), 400);
-      }
-    }
-
-    // --- STORAGE & MEMORY MANAGEMENT CONTROLLER ---
-    async function updateStorageStatus() {
-      try {
-        if (navigator.storage && navigator.storage.estimate) {
-          const est = await navigator.storage.estimate();
-          const usedBytes = est.usage || 0;
-          const quotaBytes = est.quota || 0;
-          const usedMB = (usedBytes / (1024 * 1024)).toFixed(1);
-          const quotaGB = (quotaBytes / (1024 * 1024 * 1024)).toFixed(1);
-          const pct = quotaBytes > 0 ? ((usedBytes / quotaBytes) * 100).toFixed(2) : '0';
-
-          const usedEl = $('storage-used-txt');
-          const quotaEl = $('storage-quota-txt');
-          const barEl = $('storage-bar-progress');
-
-          if (usedEl) usedEl.innerText = `${usedMB} MB (${pct}%)`;
-          if (quotaEl) quotaEl.innerText = `Khả dụng: ${quotaGB} GB`;
-          if (barEl) {
-            barEl.style.width = `${Math.min(Math.max(parseFloat(pct), 1), 100)}%`;
-            if (parseFloat(pct) > 80) barEl.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
-            else if (parseFloat(pct) > 50) barEl.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
-            else barEl.style.background = 'linear-gradient(90deg, #10b981, #059669)';
-          }
-        }
-
-        if (navigator.storage && navigator.storage.persisted) {
-          const isPersisted = await navigator.storage.persisted();
-          const statusEl = $('storage-persist-status');
-          const btnPersist = $('btn-request-persist');
-          if (statusEl) {
-            if (isPersisted) {
-              statusEl.innerText = "🟢 Đã kích hoạt (Vĩnh viễn)";
-              statusEl.style.color = "var(--success)";
-              if (btnPersist) btnPersist.style.display = "none";
-            } else {
-              statusEl.innerText = "⚪ Chưa bật";
-              statusEl.style.color = "var(--warning)";
-              if (btnPersist) btnPersist.style.display = "inline-block";
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Lỗi kiểm tra bộ nhớ:", e);
-      }
-    }
-
-    $('btn-refresh-storage')?.addEventListener('click', () => {
-      updateStorageStatus();
-      showToast("🔄 Đã cập nhật trạng thái bộ nhớ!", "success");
-    });
-
-    $('btn-request-persist')?.addEventListener('click', async () => {
-      if (navigator.storage && navigator.storage.persist) {
-        const ok = await navigator.storage.persist();
-        if (ok) {
-          showToast("🛡️ Đã kích hoạt Lưu trữ Vĩnh viễn (Persistent Storage)!", "success");
-        } else {
-          showToast("Trình duyệt chưa cho phép cấp quyền vĩnh viễn.", "warning");
-        }
-        updateStorageStatus();
-      }
-    });
-
-    $('btn-clear-temp-cache')?.addEventListener('click', () => {
-      if (confirm("Bạn có muốn dọn sạch bộ nhớ đệm tìm kiếm (search cache) và dữ liệu tạm thời không?\n(Toàn bộ Lịch sử chat và API keys sẽ được BẢO TỒN NGUYÊN VẸN 100%)")) {
-        try {
-          const keys = [];
-          for (let i = 0; i < sessionStorage.length; i++) {
-            const k = sessionStorage.key(i);
-            if (k && (k.startsWith('src_') || k.startsWith('cache_'))) keys.push(k);
-          }
-          keys.forEach(k => sessionStorage.removeItem(k));
-          updateStorageStatus();
-          showToast(`🧹 Đã dọn sạch ${keys.length} mục bộ đệm tạm thời!`, "success");
-        } catch (e) {
-          showToast(`Lỗi dọn cache: ${e.message}`, "danger");
-        }
-      }
-    });
-
-    // Wire up settings open to refresh storage status
-    $('btn-open-settings')?.addEventListener('click', () => {
-      setTimeout(updateStorageStatus, 100);
-    });
-
     // --- COLOR TAGS CONTROLLER ---
-    document.querySelectorAll('#session-color-picker .color-chip-btn').forEach(chip => {
-      chip.onclick = async () => {
-        const color = chip.getAttribute('data-color');
-        const s = sessions.find(x => x.id === activeId);
-        if (s) {
-          s.color = color === 'none' ? null : color;
-          await saveToDB(s);
-          updateColorPickerUI();
-          renderSel();
-          renderTabs();
-          showToast('Đã gán nhãn màu phiên!');
-        }
-      };
-    });
-
-    function updateColorPickerUI() {
-      const s = sessions.find(x => x.id === activeId);
-      const curColor = s?.color || 'none';
-      document.querySelectorAll('#session-color-picker .color-chip-btn').forEach(chip => {
-        const c = chip.getAttribute('data-color');
-        chip.classList.toggle('active', c === curColor);
-      });
-    }
-
+    initColorTags();
     
     // [Quản lý Key Quota Tracker đã được chuyển sang js/quota.js]
 
@@ -1744,7 +1381,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       }
       return t;
     }
-    window.readPDF = readPDF;
+    if (typeof readPDF !== 'undefined') window.readPDF = readPDF;
 
     async function compressImageIfNeeded(f) {
       if (!f.type.startsWith('image/') || f.type === 'image/gif' || f.type === 'image/svg+xml') return f;
@@ -1885,8 +1522,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       }
     };
 
-    const oLay = $('modal-overlay'), closeModals = () => {
-    window.closeModals = closeModals;
+    oLay = $('modal-overlay');
+    closeModals = () => {
+    if (typeof closeModals !== 'undefined') window.closeModals = closeModals;
       document.querySelectorAll('.modal-box, #command-palette-modal, #daily-briefing-modal, #share-target-modal').forEach(m => m.style.display = 'none');
       if (oLay) oLay.style.display = 'none';
       if (typeof window.closeTTSStudioModal === 'function') window.closeTTSStudioModal();
@@ -1894,6 +1532,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     const closeBtns = document.querySelectorAll('.close-btn');
     closeBtns.forEach(b => b && (b.onclick = closeModals));
     if (oLay) oLay.onclick = closeModals;
+
+    // [Storage Manager: js/storage-manager.js tự khởi tạo]
 
     // CLIPBOARD PASTE (SCREENSHOTS & IMAGES)
     window.addEventListener('paste', async e => {
@@ -2025,7 +1665,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       });
     }
 
-    window.switchSess = switchSess;
+    if (typeof switchSess !== 'undefined') window.switchSess = switchSess;
     window.closeTab = (id, e) => {
       e.stopPropagation();
       openTabs = openTabs.filter(x => x !== id);
@@ -2403,7 +2043,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         .replace(/https?:\/\/\S+/g, '')
         .trim();
     }
-    window.sanitizeTranscript = sanitizeTranscript;
+    if (typeof sanitizeTranscript !== 'undefined') window.sanitizeTranscript = sanitizeTranscript;
 
     window.openMsgInTTSStudio = (btnOrIdx, directIdx) => {
       let raw = "";
@@ -2458,7 +2098,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       if (cur.trim()) chunks.push(cur.trim());
       return chunks.length ? chunks : [text];
     }
-    window.splitTextIntoSmartChunks = splitTextIntoSmartChunks;
+    if (typeof splitTextIntoSmartChunks !== 'undefined') window.splitTextIntoSmartChunks = splitTextIntoSmartChunks;
 
     let currentSpeakingAbort = false;
     let currentSpeakingUrls = [];
@@ -2486,7 +2126,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         currentSpeakingBtn = null;
       }
     }
-    window.stopCurrentSpeaking = stopCurrentSpeaking;
+    if (typeof stopCurrentSpeaking !== 'undefined') window.stopCurrentSpeaking = stopCurrentSpeaking;
 
     async function playTextAudio(rawText, options = {}) {
       const { btn = null, onStart = null, onEnd = null, onError = null } = options;
@@ -2688,7 +2328,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
       playNextWebSpeech();
     }
-    window.playTextAudio = playTextAudio;
+    if (typeof playTextAudio !== 'undefined') window.playTextAudio = playTextAudio;
 
     window.toggleSpeakMsg = async (btn, i) => {
       if (currentSpeakingBtn === btn) {
@@ -4659,209 +4299,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     // BOOTSTRAP APP
     loadSess();
   
-    // --- FLOATING SELECTION TOOLBAR CONTROLLER ---
-    const selToolbar = $('selection-toolbar');
-    let currentSelectedText = "";
-
-    function hideSelectionToolbar() {
-      if (selToolbar) selToolbar.style.display = 'none';
-    }
-
-    const checkSelection = () => {
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed) {
-        hideSelectionToolbar();
-        return;
-      }
-      const txt = sel.toString().trim();
-      if (txt.length < 2) {
-        hideSelectionToolbar();
-        return;
-      }
-
-      const anchor = sel.anchorNode;
-      if (!DOM.chat || !DOM.chat.contains(anchor)) {
-        hideSelectionToolbar();
-        return;
-      }
-
-      currentSelectedText = txt;
-      try {
-        const range = sel.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        if (rect.width === 0 && rect.height === 0) return;
-
-        let top = rect.top - 44;
-        let left = rect.left + (rect.width / 2) - 140;
-
-        if (top < 10) top = rect.bottom + 8;
-        if (left < 10) left = 10;
-        if (left + 290 > window.innerWidth) left = window.innerWidth - 300;
-
-        selToolbar.style.top = `${top}px`;
-        selToolbar.style.left = `${left}px`;
-        selToolbar.style.display = 'flex';
-      } catch (e) {}
-    };
-
-    document.addEventListener('selectionchange', checkSelection);
-    document.addEventListener('mouseup', checkSelection);
-    document.addEventListener('touchend', checkSelection);
-
-    const runQuickActionOnText = instruction => {
-      if (!currentSelectedText) return;
-      hideSelectionToolbar();
-      DOM.input.value = `${instruction}\n> "${currentSelectedText}"`;
-      DOM.input.dispatchEvent(new Event('input'));
-      DOM.sendBtn.click();
-    };
-
-    $('sel-btn-explain').onclick = () => runQuickActionOnText("Hãy giải thích chi tiết, dễ hiểu đoạn văn bản sau:");
-    $('sel-btn-translate').onclick = () => runQuickActionOnText("Hãy dịch đoạn văn bản sau sang tiếng Việt chuẩn xác (hoặc tiếng Anh nếu gốc đã là tiếng Việt):");
-    $('sel-btn-summarize').onclick = () => runQuickActionOnText("Hãy tóm tắt ngắn gọn các ý cốt lõi của đoạn văn bản sau thành các gạch đầu dòng:");
-    $('sel-btn-copy').onclick = () => {
-      copyRawText(currentSelectedText);
-      hideSelectionToolbar();
-      showToast("Đã sao chép đoạn chọn!", "success");
-    };
-
-    // --- SMART FOLLOW-UP QUESTIONS GENERATOR (TẠM THỜI TRÊN DOM, KHÔNG LƯU INDEXEDDB) ---
-    function renderFollowUpChips(lines) {
-      if (!lines || !lines.length) return null;
-      const fBox = document.createElement('div');
-      fBox.className = 'follow-up-container';
-      fBox.innerHTML = `
-        <span class="follow-up-title">💡 Gợi ý câu hỏi tiếp theo:</span>
-        ${lines.map(q => `<button class="follow-up-chip" type="button"><span>👉</span> ${escapeHtml(q)}</button>`).join('')}
-      `;
-      fBox.querySelectorAll('.follow-up-chip').forEach(btn => {
-        btn.onclick = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const query = btn.innerText.replace(/^👉\s*/, '').trim();
-          fBox.remove();
-          DOM.input.value = query;
-          DOM.input.dispatchEvent(new Event('input'));
-          DOM.input.focus();
-          DOM.sendBtn.click();
-        };
-      });
-      return fBox;
-    }
-
-    async function generateFollowUpSuggestions(userPrompt, botReply, botContainer) {
-      if (!botReply || botReply.trim().length < 4) return;
-      try {
-        const cs = sessions.find(x => x.id === activeId);
-        const k = getSessionApiKey(cs) || (apiKeys.length ? apiKeys[0] : '');
-        if (!k) return;
-        const ai = new GoogleGenAI({ apiKey: k });
-        const targetModel = FLASH_LITE_MODEL; // Tiết kiệm quota 20 RPD của 3.6 Flash, dùng Flash-Lite (500 RPD)
-        const res = await ai.models.generateContent({
-          model: targetModel,
-          contents: `Bạn là trợ lý AI thông minh. Dựa vào đối thoại vừa rồi:\nNgười dùng: "${(userPrompt || '').slice(0, 150)}"\nAI: "${botReply.slice(0, 250)}"\nHãy gợi ý đúng 3 câu hỏi tiếp theo thật ngắn gọn bằng tiếng Việt (mỗi câu tối đa 8 từ, mỗi câu trên 1 dòng, không đánh số, không gạch đầu dòng, không giải thích gì thêm) để người dùng có thể bấm vào hỏi tiếp:`,
-          config: {
-            safetySettings: SAFETY,
-            maxOutputTokens: 350,
-            temperature: 0.7
-          }
-        });
-
-        let text = '';
-        try {
-          text = res.text || '';
-        } catch (_) {}
-        if (!text && res.candidates?.[0]?.content?.parts) {
-          text = res.candidates[0].content.parts.map(p => p.text || '').join('\n').trim();
-        }
-
-        const lines = text.split('\n')
-          .map(l => l.replace(/^[-*0-9.)\s👉💡]+/, '').trim())
-          .filter(l => l.length >= 2 && l.length <= 60)
-          .slice(0, 3);
-
-        if (lines.length > 0) {
-          document.querySelectorAll('.follow-up-container').forEach(el => el.remove());
-          const fBox = renderFollowUpChips(lines);
-          const container = botContainer || DOM.chat.querySelector('.message-container:last-child');
-          const target = container?.querySelector('.msg-content') || container?.querySelector('.bot-message') || container;
-          if (fBox && target) {
-            target.appendChild(fBox);
-          }
-        }
-      } catch (err) {
-        console.warn("Lỗi tạo follow-up suggestions:", err);
-      }
-    }
-
-
-
-    // --- KEY & CONFIG SYNC HELPERS (PROTECTED AGAINST SECRET SCANNER) ---
-
-    window.getGoogleKeysList = (obfuscate = false) => getGoogleKeysList(obfuscate);
-    function getGoogleKeysList(obfuscate = false) {
-      const list = [];
-      for (let i = 1; i <= 10; i++) {
-        const val = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || "").trim();
-        list.push(obfuscate && val ? obfuscateKey(val) : val);
-      }
-      return list;
-    }
-
-    function setGoogleKeysList(keys) {
-      if (!Array.isArray(keys)) return;
-      for (let i = 1; i <= 10; i++) {
-        let val = (keys[i - 1] || "").trim();
-        if (val.startsWith('JVENC_') || val.startsWith('ENC_')) val = deobfuscateKey(val);
-        ls.setItem(`jarvis_api_${i}`, val);
-        ls.setItem(`huanmu_api_${i}`, val);
-        if ($(`api-key-${i}`)) $(`api-key-${i}`).value = val;
-      }
-      initAPIKeys();
-    }
-
-    function getGoogleKeyNamesList() {
-      const list = [];
-      for (let i = 1; i <= 10; i++) {
-        const val = (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || "").trim();
-        list.push(val);
-      }
-      return list;
-    }
-
-    function setGoogleKeyNamesList(names) {
-      if (!Array.isArray(names)) return;
-      for (let i = 1; i <= 10; i++) {
-        const val = (names[i - 1] || "").trim();
-        ls.setItem(`jarvis_api_name_${i}`, val);
-        ls.setItem(`huanmu_api_name_${i}`, val);
-        if ($(`api-key-name-${i}`)) $(`api-key-name-${i}`).value = val;
-      }
-      initAPIKeys();
-    }
-
-    function getExternalConfigsObj(obfuscate = false) {
-      const obj = {};
-      cfgMap.forEach(([_, k]) => {
-        const val = ls.getItem(k) || '';
-        obj[k] = (obfuscate && val) ? obfuscateKey(val) : val;
-      });
-      obj['live_search_enabled'] = ls.getItem('live_search_enabled') || 'true';
-      obj['live_context_enabled'] = ls.getItem('live_context_enabled') || 'true';
-      return obj;
-    }
-
-    function setExternalConfigsObj(obj) {
-      if (!obj || typeof obj !== 'object') return;
-      Object.entries(obj).forEach(([k, val]) => {
-        let v = val;
-        if (typeof v === 'string' && (v.startsWith('JVENC_') || v.startsWith('ENC_'))) {
-          v = deobfuscateKey(v);
-        }
-        ls.setItem(k, v);
-      });
-      initExternalConfigs();
-    }
+    initSelectionToolbar();
 
     // --- [GITHUB GIST CLOUD SYNC & 2-WAY SMART MERGE MOVED TO js/sync.js] ---
     function scheduleAutoSync(delay = 10000) {
@@ -4870,25 +4308,100 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       }
     }
 
-    // Global shared states for modular extensions (live.js, sync.js, rag.js, tts.js)
-    try {
-      Object.defineProperty(window, 'folders', { get: () => folders, set: v => { folders = v; }, configurable: true });
-      Object.defineProperty(window, 'activeFolder', { get: () => activeFolder, set: v => { activeFolder = v; }, configurable: true });
-      Object.defineProperty(window, 'customPrompts', { get: () => customPrompts, set: v => { customPrompts = v; }, configurable: true });
-    } catch (e) {
-      console.warn("Property definition error:", e);
-    }
+    // [Trạng thái chia sẻ: js/globals.js đã định nghĩa qua Object.defineProperty]
 
     // [window.clearAllDB / sanitizeSessionForBackup: do js/database.js + js/cipher.js expose]
-    window.renderFolders = renderFolders;
-    window.renderTabs = renderTabs;
-    window.getGoogleKeyNamesList = getGoogleKeyNamesList;
-    window.setGoogleKeyNamesList = setGoogleKeyNamesList;
-    window.getExternalConfigsObj = getExternalConfigsObj;
-    window.setExternalConfigsObj = setExternalConfigsObj;
-    window.setGoogleKeysList = setGoogleKeysList;
-    window.saveToNativeBridge = saveToNativeBridge;
-    window.scheduleAutoSync = scheduleAutoSync;
+    if (typeof renderFolders !== 'undefined') window.renderFolders = renderFolders;
+    if (typeof renderTabs !== 'undefined') window.renderTabs = renderTabs;
+    if (typeof saveToNativeBridge !== 'undefined') window.saveToNativeBridge = saveToNativeBridge;
+    if (typeof scheduleAutoSync !== 'undefined') window.scheduleAutoSync = scheduleAutoSync;
+    if (typeof getGoogleKeyNamesList !== 'undefined') window.getGoogleKeyNamesList = getGoogleKeyNamesList;
+    if (typeof setGoogleKeyNamesList !== 'undefined') window.setGoogleKeyNamesList = setGoogleKeyNamesList;
+    if (typeof getExternalConfigsObj !== 'undefined') window.getExternalConfigsObj = getExternalConfigsObj;
+    if (typeof setExternalConfigsObj !== 'undefined') window.setExternalConfigsObj = setExternalConfigsObj;
+    if (typeof setGoogleKeysList !== 'undefined') window.setGoogleKeysList = setGoogleKeysList;
+    if (typeof updateKeyQuotaUI !== 'undefined') window.updateKeyQuotaUI = updateKeyQuotaUI;
+    if (typeof showToast !== 'undefined') window.showToast = showToast;
+    if (typeof deobfuscateKey !== 'undefined') window.deobfuscateKey = deobfuscateKey;
+    if (typeof stripThinkingForCopy !== 'undefined') window.stripThinkingForCopy = stripThinkingForCopy;
+    if (typeof getSessionApiKey !== 'undefined') window.getSessionApiKey = getSessionApiKey;
+    if (typeof updateColorPickerUI !== 'undefined') window.updateColorPickerUI = updateColorPickerUI;
+    if (typeof renderSel !== 'undefined') window.renderSel = renderSel;
+    if (typeof updateTokenCount !== 'undefined') window.updateTokenCount = updateTokenCount;
+    if (typeof newSess !== 'undefined') window.newSess = newSess;
+    if (typeof processUploadFiles !== 'undefined') window.processUploadFiles = processUploadFiles;
+    if (typeof formatGoogleApiError !== 'undefined') window.formatGoogleApiError = formatGoogleApiError;
+    if (typeof getNowTime24h !== 'undefined') window.getNowTime24h = getNowTime24h;
+    if (typeof isThinkingHidden !== 'undefined') window.isThinkingHidden = isThinkingHidden;
+    if (typeof mergeThinkingSegments !== 'undefined') window.mergeThinkingSegments = mergeThinkingSegments;
+    if (typeof mergeAdjacentThinkingBlocks !== 'undefined') window.mergeAdjacentThinkingBlocks = mergeAdjacentThinkingBlocks;
+    if (typeof buildThinkingDetailsHtml !== 'undefined') window.buildThinkingDetailsHtml = buildThinkingDetailsHtml;
+    if (typeof thinkingStats !== 'undefined') window.thinkingStats = thinkingStats;
+    if (typeof renderMsgContent !== 'undefined') window.renderMsgContent = renderMsgContent;
+    if (typeof appendMsg !== 'undefined') window.appendMsg = appendMsg;
+    if (typeof reRenderHistory !== 'undefined') window.reRenderHistory = reRenderHistory;
+    if (typeof captureChatScroll !== 'undefined') window.captureChatScroll = captureChatScroll;
+    if (typeof restoreChatScroll !== 'undefined') window.restoreChatScroll = restoreChatScroll;
+    if (typeof copyRawText !== 'undefined') window.copyRawText = copyRawText;
+    if (typeof getDynamicSI !== 'undefined') window.getDynamicSI = getDynamicSI;
+    if (typeof tryAutoNameSession !== 'undefined') window.tryAutoNameSession = tryAutoNameSession;
+    if (typeof condenseSessionMemory !== 'undefined') window.condenseSessionMemory = condenseSessionMemory;
+    if (typeof forkSessionAt !== 'undefined') window.forkSessionAt = forkSessionAt;
+    if (typeof openShareTargetModal !== 'undefined') window.openShareTargetModal = openShareTargetModal;
+    if (typeof processSharedUrl !== 'undefined') window.processSharedUrl = processSharedUrl;
+    if (typeof handleIncomingWebShare !== 'undefined') window.handleIncomingWebShare = handleIncomingWebShare;
+    if (typeof renderFollowUpChips !== 'undefined') window.renderFollowUpChips = renderFollowUpChips;
+    if (typeof generateFollowUpSuggestions !== 'undefined') window.generateFollowUpSuggestions = generateFollowUpSuggestions;
+    if (typeof initSelectionToolbar !== 'undefined') window.initSelectionToolbar = initSelectionToolbar;
+    if (typeof currentSelectedText !== 'undefined') window.currentSelectedText = currentSelectedText;
+    if (typeof hideSelectionToolbar !== 'undefined') window.hideSelectionToolbar = hideSelectionToolbar;
+    if (typeof renderLibrary !== 'undefined') window.renderLibrary = renderLibrary;
+    if (typeof addFileFromLib !== 'undefined') window.addFileFromLib = addFileFromLib;
+    if (typeof saveFileToLib !== 'undefined') window.saveFileToLib = saveFileToLib;
+    if (typeof getAllFilesFromLib !== 'undefined') window.getAllFilesFromLib = getAllFilesFromLib;
+    if (typeof deleteFromDB !== 'undefined') window.deleteFromDB = deleteFromDB;
+    if (typeof getAllFromDB !== 'undefined') window.getAllFromDB = getAllFromDB;
+    if (typeof saveToDB !== 'undefined') window.saveToDB = saveToDB;
+    if (typeof initDB !== 'undefined') window.initDB = initDB;
+    if (typeof fileToBase64 !== 'undefined') window.fileToBase64 = fileToBase64;
+    if (typeof compressImageIfNeeded !== 'undefined') window.compressImageIfNeeded = compressImageIfNeeded;
+    if (typeof extractYouTubeContent !== 'undefined') window.extractYouTubeContent = extractYouTubeContent;
+    if (typeof extractWebPageContent !== 'undefined') window.extractWebPageContent = extractWebPageContent;
+    if (typeof fetchTavilySearch !== 'undefined') window.fetchTavilySearch = fetchTavilySearch;
+    if (typeof fetchSerperSearch !== 'undefined') window.fetchSerperSearch = fetchSerperSearch;
+    if (typeof resolveCompatProvider !== 'undefined') window.resolveCompatProvider = resolveCompatProvider;
+    if (typeof buildReasoningPayload !== 'undefined') window.buildReasoningPayload = buildReasoningPayload;
+    if (typeof buildNvidiaThinking !== 'undefined') window.buildNvidiaThinking = buildNvidiaThinking;
+    if (typeof AUX_FALLBACK_MODELS !== 'undefined') window.AUX_FALLBACK_MODELS = AUX_FALLBACK_MODELS;
+    if (typeof EXPLABS_MODELS !== 'undefined') window.EXPLABS_MODELS = EXPLABS_MODELS;
+    if (typeof COMPAT_PROVIDERS !== 'undefined') window.COMPAT_PROVIDERS = COMPAT_PROVIDERS;
+    if (typeof COMPAT_MODEL_OPTS !== 'undefined') window.COMPAT_MODEL_OPTS = COMPAT_MODEL_OPTS;
+    if (typeof THINKING_LEVELS_BY_MODEL !== 'undefined') window.THINKING_LEVELS_BY_MODEL = THINKING_LEVELS_BY_MODEL;
+    if (typeof THINKING_LEVEL_LABELS !== 'undefined') window.THINKING_LEVEL_LABELS = THINKING_LEVEL_LABELS;
+    if (typeof DEFAULT_THINKING_LEVELS !== 'undefined') window.DEFAULT_THINKING_LEVELS = DEFAULT_THINKING_LEVELS;
+    if (typeof getModelThinkingLevels !== 'undefined') window.getModelThinkingLevels = getModelThinkingLevels;
+    if (typeof resolveThinkingLevel !== 'undefined') window.resolveThinkingLevel = resolveThinkingLevel;
+    if (typeof NVIDIA_DEFAULT_PROXY !== 'undefined') window.NVIDIA_DEFAULT_PROXY = NVIDIA_DEFAULT_PROXY;
+    if (typeof getFlashModelBucket !== 'undefined') window.getFlashModelBucket = getFlashModelBucket;
+    if (typeof findSlotIndexForKey !== 'undefined') window.findSlotIndexForKey = findSlotIndexForKey;
+    if (typeof recordKeyRequest !== 'undefined') window.recordKeyRequest = recordKeyRequest;
+    if (typeof openRouterKeys !== 'undefined') window.openRouterKeys = openRouterKeys;
+    if (typeof openRouterKeyIndex !== 'undefined') window.openRouterKeyIndex = openRouterKeyIndex;
+    if (typeof nvidiaKeys !== 'undefined') window.nvidiaKeys = nvidiaKeys;
+    if (typeof nvidiaKeyIndex !== 'undefined') window.nvidiaKeyIndex = nvidiaKeyIndex;
+    if (typeof cohereKeys !== 'undefined') window.cohereKeys = cohereKeys;
+    if (typeof cohereKeyIndex !== 'undefined') window.cohereKeyIndex = cohereKeyIndex;
+    if (typeof explabsKeys !== 'undefined') window.explabsKeys = explabsKeys;
+    if (typeof explabsKeyIndex !== 'undefined') window.explabsKeyIndex = explabsKeyIndex;
+    if (typeof findOpenRouterSlotIndexForKey !== 'undefined') window.findOpenRouterSlotIndexForKey = findOpenRouterSlotIndexForKey;
+    if (typeof findNvidiaSlotIndexForKey !== 'undefined') window.findNvidiaSlotIndexForKey = findNvidiaSlotIndexForKey;
+    if (typeof findCohereSlotIndexForKey !== 'undefined') window.findCohereSlotIndexForKey = findCohereSlotIndexForKey;
+    if (typeof findExplabsSlotIndexForKey !== 'undefined') window.findExplabsSlotIndexForKey = findExplabsSlotIndexForKey;
+    if (typeof recordOpenRouterRequest !== 'undefined') window.recordOpenRouterRequest = recordOpenRouterRequest;
+    if (typeof recordNvidiaRequest !== 'undefined') window.recordNvidiaRequest = recordNvidiaRequest;
+    if (typeof recordCohereRequest !== 'undefined') window.recordCohereRequest = recordCohereRequest;
+    if (typeof recordExplabsRequest !== 'undefined') window.recordExplabsRequest = recordExplabsRequest;
+    if (typeof getGoogleKeysList !== 'undefined') window.getGoogleKeysList = getGoogleKeysList;
 
 // --- [GEMINI TTS STUDIO PRO MODULE MOVED TO js/tts.js] ---
 
@@ -4897,7 +4410,6 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
     // Init Web Share Target & Shortcuts listener and Storage estimation
     handleIncomingWebShare();
-    updateStorageStatus();
 
 
     // [Quản lý Key Quota Modal & Events đã được chuyển sang js/quota.js]
