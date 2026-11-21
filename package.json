@@ -4,7 +4,8 @@
   "description": "<div align=\"center\">",
   "main": "bump-version.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npx vitest run",
+    "test:watch": "npx vitest",
     "check-models": "node scratch/check_model_registry.js",
     "smoke:openrouter": "node scratch/openrouter_nemotron_smoke.js",
     "sync-assets": "node scripts/sync-web-assets.js",
@@ -21,5 +22,10 @@
   "bugs": {
     "url": "https://github.com/kevinkieu/kevinkieu.github.io/issues"
   },
-  "homepage": "https://github.com/kevinkieu/kevinkieu.github.io#readme"
+  "homepage": "https://github.com/kevinkieu/kevinkieu.github.io#readme",
+  "devDependencies": {
+    "@vitest/coverage-v8": "^5.1.1",
+    "jsdom": "^31.0.1",
+    "vitest": "^5.1.1"
+  }
 }

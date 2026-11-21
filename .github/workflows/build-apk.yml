@@ -15,11 +15,31 @@ on:
       - '.github/workflows/build-apk.yml'
 
 jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+
+    - name: 🟢 Cài đặt Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: 📦 Cài đặt dependencies
+      run: npm ci
+
+    - name: 🧪 Chạy unit tests
+      run: npx vitest run --reporter=verbose
+
   build:
     name: Build APK
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    needs: test
 
     steps:
     - name: 📥 Checkout repository
