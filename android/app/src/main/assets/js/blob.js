@@ -53,10 +53,14 @@
         if (e.name !== 'AbortError') console.warn('Share API failed:', e);
       }
     }
-    // Fallback: copy to clipboard
+    // Fallback: copy to clipboard (không ném lỗi ra UI nếu clipboard bị chặn)
     if (data.text && navigator.clipboard) {
-      await navigator.clipboard.writeText(data.text);
-      return true;
+      try {
+        await navigator.clipboard.writeText(data.text);
+        return true;
+      } catch (e) {
+        console.warn('Clipboard fallback failed:', e);
+      }
     }
     return false;
   }

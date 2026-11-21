@@ -47,8 +47,12 @@ function loadBlobModule() {
         }
       }
       if (data.text && navigator.clipboard) {
-        await navigator.clipboard.writeText(data.text);
-        return true;
+        try {
+          await navigator.clipboard.writeText(data.text);
+          return true;
+        } catch (e) {
+          console.warn('Clipboard fallback failed:', e);
+        }
       }
       return false;
     }

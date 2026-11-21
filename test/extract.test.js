@@ -343,7 +343,7 @@ describe('extract.js', () => {
       localStorage.setItem('jina_api_key', 'JVENC_jina_key');
       localStorage.removeItem('tavily_api_key');
       setupFetch(
-        { ok: true, text: async () => 'Content from Jina' }
+        { ok: true, text: async () => 'Content from Jina Reader. '.repeat(3) }
       );
       
       const result = await extract.extractWebPageContent('https://example.com/article');
@@ -361,7 +361,7 @@ describe('extract.js', () => {
       setupFetch(
         { ok: false }, // Tavily extract fails (non-ok)
         { ok: false }, // Jina fails (non-ok)
-        { ok: true, json: async () => ({ contents: '<html><body>Proxy content from example</body></html>' }) }
+        { ok: true, json: async () => ({ contents: '<html><body>Proxy content from example. Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor.</body></html>' }) }
       );
       
       const result = await extract.extractWebPageContent('https://example.com/article');
@@ -395,7 +395,7 @@ describe('extract.js', () => {
       localStorage.setItem('tavily_api_key', 'test_key');
       setupFetch(
         { ok: true, json: async () => ({ results: [{ raw_content: 'Just a moment... Cloudflare verification' }] }) },
-        { ok: true, text: async () => 'Good content from Jina after Cloudflare block' }
+        { ok: true, text: async () => 'Good content from Jina after the block was bypassed. '.repeat(3) }
       );
       
       const result = await extract.extractWebPageContent('https://example.com/article');
