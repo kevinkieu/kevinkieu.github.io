@@ -200,8 +200,7 @@
 
   function getActiveKeySlot() {
     try {
-      const selEl = $('api-key-select');
-      const sel = selEl ? selEl.value : 'auto';
+      const sel = (typeof window.getGoogleKeySlot === 'function') ? window.getGoogleKeySlot() : 'auto';
       if (sel !== 'auto') {
         return parseInt(sel, 10) + 1;
       }
@@ -371,10 +370,11 @@
   }
 
   function selectKeySlotQuick(slotIndex) {
-    const selEl = $('api-key-select');
-    if (selEl) {
-      selEl.value = String(slotIndex - 1);
-      selEl.dispatchEvent(new Event('change'));
+    const val = String(slotIndex - 1);
+    if (typeof window.setGoogleKeySlot === 'function') {
+      window.setGoogleKeySlot(val);
+    } else {
+      ls.setItem('jarvis_selected_google_slot', val);
     }
     if (typeof window.sessions !== 'undefined' && Array.isArray(window.sessions) && typeof window.activeId !== 'undefined') {
       const cs = window.sessions.find(x => x.id === window.activeId);
@@ -382,7 +382,7 @@
         let manualKey = (ls.getItem(`jarvis_api_${slotIndex}`) || ls.getItem(`huanmu_api_${slotIndex}`) || "").trim();
         if (manualKey.startsWith('JVENC_') || manualKey.startsWith('ENC_')) manualKey = deobfuscateKey(manualKey);
         cs.assignedApiKey = manualKey;
-        cs.keySel = String(slotIndex - 1);
+        cs.keySel = val;
         saveToDB(cs);
       }
     }

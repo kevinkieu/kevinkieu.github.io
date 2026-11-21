@@ -151,35 +151,34 @@
     return 1;
   };
 
-  // --- KEY POOL SELECTS (sidebar + Cài đặt) ---
-  // Hai bộ chọn cùng đọc/ghi 1 giá trị trong localStorage nên luôn đồng bộ.
+  // --- KEY POOL SELECTS (chỉ Cài đặt - sidebar hidden đã xóa) ---
   const SLOT_SELECT_GROUPS = [
     {
       kind: 'openrouter', storage: 'jarvis_selected_openrouter_slot',
       count: OR_KEY_COUNT, readKey: readRawOrKey, readName: readRawOrName,
-      ids: ['openrouter-key-select', 'openrouter-key-select-settings'],
-      hintId: 'openrouter-next-key', icon: '🛰️', short: 'OR',
+      ids: ['openrouter-key-select-settings'],
+      icon: '🛰️', short: 'OR',
       usageFn: 'getOpenRouterUsageCount', indexVar: 'openRouterKeyIndex'
     },
     {
       kind: 'explabs', storage: 'jarvis_selected_explabs_slot',
       count: EL_KEY_COUNT, readKey: readRawElKey, readName: readRawElName,
-      ids: ['explabs-key-select', 'explabs-key-select-settings'],
-      hintId: 'explabs-next-key', icon: '⚡', short: 'EL',
+      ids: ['explabs-key-select-settings'],
+      icon: '⚡', short: 'EL',
       usageFn: 'getExplabsUsageCount', indexVar: 'explabsKeyIndex'
     },
     {
       kind: 'nvidia', storage: 'jarvis_selected_nvidia_slot',
       count: NV_KEY_COUNT, readKey: readRawNvKey, readName: readRawNvName,
-      ids: ['nvidia-key-select', 'nvidia-key-select-settings'],
-      hintId: 'nvidia-next-key', icon: '🟢', short: 'NV',
+      ids: ['nvidia-key-select-settings'],
+      icon: '🟢', short: 'NV',
       usageFn: 'getNvidiaUsageCount', indexVar: 'nvidiaKeyIndex'
     },
     {
       kind: 'cohere', storage: 'jarvis_selected_cohere_slot',
       count: CO_KEY_COUNT, readKey: readRawCoKey, readName: readRawCoName,
-      ids: ['cohere-key-select', 'cohere-key-select-settings'],
-      hintId: 'cohere-next-key', icon: '🤝', short: 'CO',
+      ids: ['cohere-key-select-settings'],
+      icon: '🤝', short: 'CO',
       usageFn: 'getCohereUsageCount', indexVar: 'cohereKeyIndex'
     }
   ];
@@ -228,19 +227,6 @@
         };
       }
     });
-
-    const hint = $(group.hintId);
-    if (hint) {
-      if (!keys.length) {
-        hint.innerText = 'Chưa có key nào';
-      } else if (value === 'auto') {
-        const idx = (Number(window[group.indexVar]) || 0) % keys.length;
-        hint.innerText = `🔄 Kế tiếp: Key #${keys[idx].slot} · ${getSlotUsage(group, keys[idx].slot)} req (${keys.length} key xoay)`;
-      } else {
-        const slot = parseInt(value, 10) + 1;
-        hint.innerText = `📌 Đang khóa vào Key #${slot} · ${getSlotUsage(group, slot)} req`;
-      }
-    }
     renderKeyPoolMenu();
   }
 
@@ -249,14 +235,13 @@
   }
 
   // --- MENU KEY DÙNG CHUNG (sidebar) ---
-  // 4 bể key vốn có 4 menu riêng; nay gộp thành 1 menu tự đổi danh sách key theo nền tảng
-  // của model đang chọn. Các <select> gốc vẫn tồn tại (ẩn) vì app.js/quota.js đọc trực tiếp id.
+  // Gộp 4 bể key thành 1 menu tự đổi danh sách theo model. Dùng select trong Cài đặt làm nguồn.
   const KEY_POOL_MENUS = {
-    google: { label: '🔑 Google API Key:', selectId: 'api-key-select' },
-    openrouter: { label: '🛰️ OpenRouter API Key:', selectId: 'openrouter-key-select', hintId: 'openrouter-next-key' },
-    explabs: { label: '⚡ Experiential Labs Key:', selectId: 'explabs-key-select', hintId: 'explabs-next-key' },
-    nvidia: { label: '🟢 NVIDIA API Key:', selectId: 'nvidia-key-select', hintId: 'nvidia-next-key' },
-    cohere: { label: '🤝 Cohere API Key:', selectId: 'cohere-key-select', hintId: 'cohere-next-key' }
+    google: { label: '🔑 Google API Key:', selectId: 'api-key-select', hintFn: googleKeyPoolHint },
+    openrouter: { label: '🛰️ OpenRouter API Key:', selectId: 'openrouter-key-select-settings', hintFn: (v) => slotHint('openrouter', v) },
+    explabs: { label: '⚡ Experiential Labs Key:', selectId: 'explabs-key-select-settings', hintFn: (v) => slotHint('explabs', v) },
+    nvidia: { label: '🟢 NVIDIA API Key:', selectId: 'nvidia-key-select-settings', hintFn: (v) => slotHint('nvidia', v) },
+    cohere: { label: '🤝 Cohere API Key:', selectId: 'cohere-key-select-settings', hintFn: (v) => slotHint('cohere', v) }
   };
 
   // Nền tảng của model đang chọn: nvidia/openrouter (registry gateway), explabs, còn lại là Google
@@ -278,36 +263,77 @@
     return `📌 Đang khóa vào Key #${slot}${name ? ' · ' + name : ''}`;
   }
 
+  // Sinh hint cho bể key 5-slot (OpenRouter, Explabs, NVIDIA, Cohere)
+  function slotHint(kind, value) {
+    const group = SLOT_SELECT_GROUPS.find(g => g.kind === kind);
+    if (!group) return 'Chưa có key nào';
+    const keys = collectSlotKeys(group);
+    if (!keys.length) return 'Chưa có key nào';
+    if (value === 'auto') {
+      const idx = (Number(window[group.indexVar]) || 0) % keys.length;
+      return `🔄 Kế tiếp: Key #${keys[idx].slot} · ${getSlotUsage(group, keys[idx].slot)} req (${keys.length} key xoay)`;
+    }
+    const slot = parseInt(value, 10) + 1;
+    return `📌 Đang khóa vào Key #${slot} · ${getSlotUsage(group, slot)} req`;
+  }
+
   function renderKeyPoolMenu() {
     const sel = $('key-pool-select');
     if (!sel) return;
-    const pool = KEY_POOL_MENUS[activeKeyPoolKind()] || KEY_POOL_MENUS.google;
-    const src = $(pool.selectId);
+    const kind = activeKeyPoolKind();
+    const pool = KEY_POOL_MENUS[kind] || KEY_POOL_MENUS.google;
     const label = $('key-pool-label');
     if (label) label.innerText = pool.label;
     if (!sel.dataset.wired) {
       sel.dataset.wired = '1';
       sel.onchange = () => {
-        // Ghi lựa chọn vào đúng select gốc của nền tảng để logic xoay tua/lưu phiên chạy như cũ
-        const target = $(KEY_POOL_MENUS[activeKeyPoolKind()]?.selectId || KEY_POOL_MENUS.google.selectId);
-        if (!target) return;
-        target.value = sel.value;
-        target.dispatchEvent(new Event('change'));
+        const target = $(KEY_POOL_MENUS[activeKeyPoolKind()]?.selectId);
+        if (target) {
+          target.value = sel.value;
+          target.dispatchEvent(new Event('change'));
+        } else if (kind === 'google') {
+          // Google keys: store selection directly in localStorage
+          ls.setItem('jarvis_selected_google_slot', sel.value);
+        }
         renderKeyPoolMenu();
       };
     }
-    const hint = $('key-pool-hint');
+
+    if (kind === 'google') {
+      // Google keys: build options from window.apiKeys
+      const keys = Array.isArray(window.apiKeys) ? window.apiKeys : [];
+      const stored = ls.getItem('jarvis_selected_google_slot') || 'auto';
+      const value = (stored === 'auto' || keys.some((_, i) => String(i) === stored)) ? stored : 'auto';
+      if (value !== stored) ls.setItem('jarvis_selected_google_slot', value);
+
+      const options = keys.map((k, i) => {
+        const n = ls.getItem(`jarvis_api_name_${i+1}`) || '';
+        const label = n ? `🔑 ${n} (${k.substring(0, 5)}...)` : `🔑 Key ${i+1} (${k.substring(0, 5)}...)`;
+        return `<option value="${i}">${label}</option>`;
+      }).join('');
+
+      if (sel.innerHTML !== '<option value="auto">🔄 Tự động xoay tua</option>' + options) {
+        sel.innerHTML = '<option value="auto">🔄 Tự động xoay tua</option>' + options;
+      }
+      if ([...sel.options].some(o => o.value === value)) sel.value = value;
+
+      const hint = $('key-pool-hint');
+      if (hint) hint.innerText = googleKeyPoolHint(sel.value);
+      return;
+    }
+
+    // Non-Google: copy from settings select
+    const src = $(pool.selectId);
     if (!src) {
       sel.innerHTML = '';
+      const hint = $('key-pool-hint');
       if (hint) hint.innerText = 'Chưa có key nào';
       return;
     }
     if (sel.innerHTML !== src.innerHTML) sel.innerHTML = src.innerHTML;
     if ([...sel.options].some(o => o.value === src.value)) sel.value = src.value;
-    if (hint) {
-      const hintEl = pool.hintId ? $(pool.hintId) : null;
-      hint.innerText = hintEl ? hintEl.innerText : googleKeyPoolHint(sel.value);
-    }
+    const hint = $('key-pool-hint');
+    if (hint && pool.hintFn) hint.innerText = pool.hintFn(sel.value);
   }
 
   // --- INIT API KEYS FROM LOCALSTORAGE ---
@@ -338,21 +364,21 @@
       s.innerText = keys.length ? `✅ Có ${keys.length} Google Key` : "⚠️ Chưa có Key";
       s.style.color = keys.length ? "var(--success)" : "var(--danger)";
     }
-    [$('api-key-select'), $('live-key-select')].forEach(d => {
-      if (!d) return;
-      const cur = d.value;
-      d.innerHTML = '<option value="auto">🔄 Tự động xoay Key</option>';
+    const liveSel = $('live-key-select');
+    if (liveSel) {
+      const cur = liveSel.value;
+      liveSel.innerHTML = '<option value="auto">🔄 Tự động xoay Key</option>';
       for (let i = 1; i <= 10; i++) {
         let k = readRawKey(i);
         const n = readRawName(i);
         if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
         if (k) {
           const label = n ? `🔑 ${n} (${k.substring(0, 5)}...)` : `🔑 Key ${i} (${k.substring(0, 5)}...)`;
-          d.innerHTML += `<option value="${i-1}">${label}</option>`;
+          liveSel.innerHTML += `<option value="${i-1}">${label}</option>`;
         }
       }
-      if ([...d.options].some(o => o.value === cur)) d.value = cur;
-    });
+      if ([...liveSel.options].some(o => o.value === cur)) liveSel.value = cur;
+    }
     renderKeyPoolMenu();
     if (typeof window.updateKeyQuotaUI === 'function') window.updateKeyQuotaUI();
   }

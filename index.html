@@ -186,20 +186,6 @@
             <div id="key-pool-hint" style="font-size:0.7rem;color:var(--text-muted);margin-top:3px;">Chưa có key</div>
           </div>
 
-          <!-- 4 select gốc của từng nền tảng: ẩn khỏi sidebar nhưng giữ nguyên id,
-               vì logic xoay tua (app.js) và bộ đếm (quota.js) đọc trực tiếp chúng. -->
-          <div id="key-pool-sources" style="display:none;" aria-hidden="true">
-            <select id="api-key-select"><option value="auto">🔄 Tự động xoay tua</option></select>
-            <select id="openrouter-key-select"><option value="auto">🔄 Tự động xoay tua</option></select>
-            <div id="openrouter-next-key">Chưa có key</div>
-            <select id="explabs-key-select"><option value="auto">🔄 Tự động xoay tua</option></select>
-            <div id="explabs-next-key">Chưa có key</div>
-            <select id="nvidia-key-select"><option value="auto">🔄 Tự động xoay tua</option></select>
-            <div id="nvidia-next-key">Chưa có key</div>
-            <select id="cohere-key-select"><option value="auto">🔄 Tự động xoay tua</option></select>
-            <div id="cohere-next-key">Chưa có key</div>
-          </div>
-
           <!-- SESSION ACTIONS (GRID & ROWS) -->
           <div class="side-btn-grid" style="margin-top:10px;">
             <button id="btn-new-session" class="btn primary" style="grid-column: span 2;">➕ Thêm phiên mới</button>
@@ -1824,6 +1810,7 @@
   <script type="module" src="./js/tts.js?v=72"></script>
   <script type="module" src="./js/translate.js?v=72"></script>
   <script type="module" src="./js/eventBus.js?v=72"></script>
+  <script type="module" src="./js/rag-core.js?v=72"></script>
   <script type="module" src="./js/rag.js?v=72"></script>
 </body>
 </html>

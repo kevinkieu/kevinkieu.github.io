@@ -61,58 +61,6 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
     // Export core refs via Object.defineProperty for controlled access
 
-    // ==========================================================================
-    // HOISTED MODULE BRIDGES & PROXIES
-    // (Hoisted as function declarations to prevent Temporal Dead Zone errors)
-    // ==========================================================================
-    function getMyDeviceId() { return (typeof window.getMyDeviceId === 'function') ? window.getMyDeviceId() : 'pc_default'; }
-    function getCurrentQuotaCycle() { return (typeof window.getCurrentQuotaCycle === 'function') ? window.getCurrentQuotaCycle() : ''; }
-    function getFlashModelBucket(m) { return (typeof window.getFlashModelBucket === 'function') ? window.getFlashModelBucket(m) : null; }
-    function getSelectedFlashModelBucket() { return (typeof window.getSelectedFlashModelBucket === 'function') ? window.getSelectedFlashModelBucket() : 'hydrogen'; }
-    function loadKeyUsageData() { return (typeof window.loadKeyUsageData === 'function') ? window.loadKeyUsageData() : { cycle: '', keys: {} }; }
-    function saveKeyUsageData(d) { return (typeof window.saveKeyUsageData === 'function') ? window.saveKeyUsageData(d) : null; }
-    function getKeyUsageCount(s, b) { return (typeof window.getKeyUsageCount === 'function') ? window.getKeyUsageCount(s, b) : 0; }
-    function recordKeyRequest(k, b) { return (typeof window.recordKeyRequest === 'function') ? window.recordKeyRequest(k, b) : null; }
-    function updateKeyQuotaUI() { return (typeof window.updateKeyQuotaUI === 'function') ? window.updateKeyQuotaUI() : null; }
-    function resetKeyUsageToday() { return (typeof window.resetKeyUsageToday === 'function') ? window.resetKeyUsageToday() : null; }
-    function findSlotIndexForKey(k) { return (typeof window.findSlotIndexForKey === 'function') ? window.findSlotIndexForKey(k) : -1; }
-    function getActiveKeySlot() { return (typeof window.getActiveKeySlot === 'function') ? window.getActiveKeySlot() : null; }
-    function getKeyBadgeHtml(s, m) { return (typeof window.getKeyBadgeHtml === 'function') ? window.getKeyBadgeHtml(s, m) : ''; }
-    function openKeyQuotaModal() { return (typeof window.openKeyQuotaModal === 'function') ? window.openKeyQuotaModal() : null; }
-    function closeKeyQuotaModal() { return (typeof window.closeKeyQuotaModal === 'function') ? window.closeKeyQuotaModal() : null; }
-
-    function saveOrShareBlob(b, fn) { return (typeof window.saveOrShareBlob === 'function') ? window.saveOrShareBlob(b, fn) : null; }
-    function copyRawText(t, m) { return (typeof window.copyRawText === 'function') ? window.copyRawText(t, m) : null; }
-    function exportAllSessions() { return (typeof window.exportAllSessions === 'function') ? window.exportAllSessions() : null; }
-    function exportChatDoc() { return (typeof window.exportChatDoc === 'function') ? window.exportChatDoc() : null; }
-    function exportChatPDF() { return (typeof window.exportChatPDF === 'function') ? window.exportChatPDF() : null; }
-
-    function getSearchCache(q, e) { return (typeof window.getSearchCache === 'function') ? window.getSearchCache(q, e) : null; }
-    function setSearchCache(q, e, d) { return (typeof window.setSearchCache === 'function') ? window.setSearchCache(q, e, d) : null; }
-    function fetchTavilySearch(q) { return (typeof window.fetchTavilySearch === 'function') ? window.fetchTavilySearch(q) : Promise.reject('No Tavily'); }
-    function fetchSerperSearch(q) { return (typeof window.fetchSerperSearch === 'function') ? window.fetchSerperSearch(q) : Promise.reject('No Serper'); }
-    function executeLiveSearch(q, p) { return (typeof window.executeLiveSearch === 'function') ? window.executeLiveSearch(q, p) : Promise.resolve(''); }
-    function extractYouTubeContent(u) { return (typeof window.extractYouTubeContent === 'function') ? window.extractYouTubeContent(u) : Promise.reject('No YT'); }
-    function extractWebPageContent(u) { return (typeof window.extractWebPageContent === 'function') ? window.extractWebPageContent(u) : Promise.reject('No Extract'); }
-
-    function executeChatSlashCommand(t) { return (typeof window.executeChatSlashCommand === 'function') ? window.executeChatSlashCommand(t) : false; }
-    function openPromptLibraryModal() { return (typeof window.openPromptLibraryModal === 'function') ? window.openPromptLibraryModal() : null; }
-    function openCommandPalette() { return (typeof window.openCommandPalette === 'function') ? window.openCommandPalette() : null; }
-    function closeCommandPalette() { return (typeof window.closeCommandPalette === 'function') ? window.closeCommandPalette() : null; }
-    function renderSnippets() { return (typeof window.renderSnippets === 'function') ? window.renderSnippets() : null; }
-    function renderPromptList() { return (typeof window.renderPromptList === 'function') ? window.renderPromptList() : null; }
-
-    function openDailyBriefing(f) { return (typeof window.openDailyBriefing === 'function') ? window.openDailyBriefing(f) : null; }
-    function generateDailyBriefing(f) { return (typeof window.generateDailyBriefing === 'function') ? window.generateDailyBriefing(f) : null; }
-
-    function openMedicationTab() { return (typeof window.openMedicationTab === 'function') ? window.openMedicationTab() : null; }
-    function openMedicationModal() { return (typeof window.openMedicationModal === 'function') ? window.openMedicationModal() : null; }
-    function closeMedicationModal() { return (typeof window.closeMedicationModal === 'function') ? window.closeMedicationModal() : null; }
-    function openMaxFormModal(m) { return (typeof window.openMaxFormModal === 'function') ? window.openMaxFormModal(m) : null; }
-    function closeMaxFormModal() { return (typeof window.closeMaxFormModal === 'function') ? window.closeMaxFormModal() : null; }
-    function initMaxMedicationReminder() { return (typeof window.initMaxMedicationReminder === 'function') ? window.initMaxMedicationReminder() : null; }
-
-    
     // --- ANDROID NATIVE BRIDGE & PERSISTENCE ENGINE ---
     // Yêu cầu trình duyệt / WebView cấp quyền lưu trữ vĩnh viễn (Persistent Storage)
     if (navigator.storage && navigator.storage.persist) {
@@ -265,7 +213,13 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               try {
                 let toRender = latest;
                 const hideThinking = isThinkingHidden();
-                if (hideThinking) {                  toRender = toRender.replace(/<(?:thinking|thought)>[\s\S]*?<\/(?:thinking|thought)>/gi, '')                                     .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');                } else {                  toRender = toRender.replace(/<(?:thinking|thought)>([\s\S]*?)<\/(?:thinking|thought)>/gi, (m, p1) => buildThinkingDetailsHtml(p1));                  toRender = mergeAdjacentThinkingBlocks(toRender);                }
+                if (hideThinking) {
+                  toRender = toRender.replace(/<(?:thinking|thought)>[\s\S]*?<\/(?:thinking|thought)>/gi, '')
+                                     .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');
+                } else {
+                  toRender = toRender.replace(/<(?:thinking|thought)>([\s\S]*?)<\/(?:thinking|thought)>/gi, (m, p1) => buildThinkingDetailsHtml(p1));
+                  toRender = mergeAdjacentThinkingBlocks(toRender);
+                }
                 targetEl.innerHTML = marked.parse(toRender, { sanitize: true });
               } catch (_) {}
               pending = false;
@@ -414,7 +368,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       globContext: $('global-context-input'),
       model: $('model-select'),
       engineSel: $('engine-select'),
-      apiKeySel: $('api-key-select'),
+      apiKeySel: null, // Deprecated: use getGoogleKeySlot()/setGoogleKeySlot()
       toggleGlob: $('toggle-global-context'),
       toggleSearch: $('toggle-search'),
       searchEngineBox: $('search-engine-box'),
@@ -440,9 +394,36 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       btnToggleSnippets: $('btn-toggle-snippets') || { addEventListener: () => {}, onclick: null },
       btnFileLibrary: $('btn-file-library') || { addEventListener: () => {}, click: () => {}, onclick: null },
       btnAddUrl: $('btn-add-url') || { addEventListener: () => {}, click: () => {}, onclick: null },
-      btnTheme: $('btn-theme'),
+            btnTheme: $('btn-theme'),
       tabsContainer: $('tabs-container')
     };
+
+    // --- GOOGLE KEY SLOT HELPERS (replaces DOM.apiKeySel) ---
+    const GOOGLE_SLOT_KEY = 'jarvis_selected_google_slot';
+    function getGoogleKeySlot() { return ls.getItem(GOOGLE_SLOT_KEY) || 'auto'; }
+    function setGoogleKeySlot(val) {
+      ls.setItem(GOOGLE_SLOT_KEY, val);
+      // Sync unified key-pool-select if it's currently showing Google keys
+      const kpSel = $('key-pool-select');
+      if (kpSel && activeKeyPoolKind() === 'google') {
+        if ([...kpSel.options].some(o => o.value === val)) kpSel.value = val;
+      }
+    }
+
+    // Helper to get active key pool kind (mirrors api-keys.js)
+    function activeKeyPoolKind() {
+      const model = (DOM.model?.value || '').trim();
+      const compat = (typeof window.resolveCompatProvider === 'function') ? window.resolveCompatProvider(model) : null;
+      if (compat && compat.provider) return compat.provider.id;
+      const expModels = Array.isArray(window.EXPLABS_MODELS) ? window.EXPLABS_MODELS : [];
+      return expModels.includes(model) ? 'explabs' : 'google';
+    }
+
+    // Export for quota.js and other modules
+    window.getGoogleKeySlot = getGoogleKeySlot;
+    window.setGoogleKeySlot = setGoogleKeySlot;
+    window.activeKeyPoolKind = activeKeyPoolKind;
+
 
     let sessions = [], activeId = null, chatHistory = [], filesData = [], txtContent = "", isProcessing = false;
     let folders = JSON.parse(ls.getItem('jarvis_folders') || ls.getItem('huanmu_folders') || ls.getItem('javiss_folders') || '["Mặc định"]');
@@ -467,14 +448,6 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
     // Global bindings & live proxies for modular access across js/live.js, js/arena.js, js/tts.js, js/quota.js, js/medication.js
     window.DOM = DOM;
-    try {
-      Object.defineProperty(window, 'sessions', { get: () => sessions, set: (v) => { sessions = v; }, configurable: true });
-      Object.defineProperty(window, 'activeId', { get: () => activeId, set: (v) => { activeId = v; }, configurable: true });
-      Object.defineProperty(window, 'chatHistory', { get: () => chatHistory, set: (v) => { chatHistory = v; }, configurable: true });
-    } catch (_) {
-      window.sessions = sessions;
-      window.activeId = activeId;
-    }
     window.SAFETY = SAFETY;
     window.FLASH_LITE_MODEL = FLASH_LITE_MODEL;
     // [window.DB_NAME / STORE_NAME / FILE_STORE / TTS_STORE: do js/database.js expose]
@@ -583,9 +556,6 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
     enableHorizontalScrollAndDrag($('image-preview-grid'));
 
-    Object.defineProperty(window, 'sessions', { get: () => sessions, set: v => { sessions = v; }, configurable: true });
-    Object.defineProperty(window, 'activeId', { get: () => activeId, set: v => { activeId = v; }, configurable: true });
-    Object.defineProperty(window, 'chatHistory', { get: () => chatHistory, set: v => { chatHistory = v; }, configurable: true });
     Object.defineProperty(window, 'apiKeys', { get: () => apiKeys, set: v => { apiKeys = v; }, configurable: true });
     Object.defineProperty(window, 'globalKeyIndex', { get: () => globalKeyIndex, set: v => { globalKeyIndex = v; }, configurable: true });
     Object.defineProperty(window, 'liveKeyIndex', { get: () => liveKeyIndex, set: v => { liveKeyIndex = v; }, configurable: true });
@@ -1301,11 +1271,11 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       if (oLay) oLay.style.display = 'block';
     }
 
-    async function processSharedUrl(url) {
+        async function processSharedUrl(url) {
       showToast("⏳ Đang bóc tách nội dung liên kết...", "warning");
       try {
         if (url.includes("youtube.com") || url.includes("youtu.be")) {
-          const yt = await extractYouTubeContent(url);
+          const yt = await window.extractYouTubeContent(url);
           const k = getSessionApiKey(sessions.find(x => x.id === activeId));
           let summary = "";
           if (k) {
@@ -1325,7 +1295,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           txtContent += `\n[YouTube: ${yt.title} - ${yt.author} (${url})]:\n${summary}\n`;
           DOM.textFileList.innerHTML += `📺 YouTube: ${escapeHtml(yt.title.substring(0, 24))}...<br>`;
         } else {
-          const ext = await extractWebPageContent(url);
+          const ext = await window.extractWebPageContent(url);
           txtContent += `\n[Nội dung ${url} qua ${ext.source}]:\n${ext.content}\n`;
           DOM.textFileList.innerHTML += `🌐 ${ext.source} (${url.substring(0, 30)}...)<br>`;
         }
@@ -1488,25 +1458,22 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
     // [Quản lý Key Quota Tracker đã được chuyển sang js/quota.js]
 
     window.selectKeySlotQuick = (slotIndex) => {
-      if (DOM.apiKeySel) {
-        DOM.apiKeySel.value = String(slotIndex - 1);
-        DOM.apiKeySel.dispatchEvent(new Event('change'));
-      }
+      const val = String(slotIndex - 1);
+      setGoogleKeySlot(val);
       const cs = sessions.find(x => x.id === activeId);
       if (cs) {
         let manualKey = (ls.getItem(`jarvis_api_${slotIndex}`) || ls.getItem(`huanmu_api_${slotIndex}`) || '').trim();
         if (manualKey.startsWith('JVENC_') || manualKey.startsWith('ENC_')) manualKey = deobfuscateKey(manualKey);
         cs.assignedApiKey = manualKey;
-        cs.keySel = String(slotIndex - 1);
+        cs.keySel = val;
         saveToDB(cs);
       }
-      updateKeyQuotaUI();
+      window.updateKeyQuotaUI();
       showToast(`🔑 Đã chuyển sang Key #${slotIndex}!`, 'info');
     };
 
     const getSessionApiKey = (cs, forceRotate = false) => {
-      const selEl = $('api-key-select');
-      const sel = selEl ? selEl.value : 'auto';
+      const sel = cs?.keySel ?? getGoogleKeySlot();
       if (sel !== 'auto') {
         let manualKey = (ls.getItem(`jarvis_api_${parseInt(sel)+1}`) || ls.getItem(`huanmu_api_${parseInt(sel)+1}`) || "").trim();
         if (manualKey.startsWith('JVENC_') || manualKey.startsWith('ENC_')) manualKey = deobfuscateKey(manualKey);
@@ -1516,7 +1483,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       // Kiểm tra model đang sử dụng có phải 20 RPD (Hydrogen, 3.6 hoặc 3.8 Flash) không:
       const activeModEl = $('model-select');
       const activeMod = activeModEl ? activeModEl.value : 'gemini-4-hydrogen';
-      const flashBucket = getFlashModelBucket(activeMod); // 'hydrogen' | '3.8' | '3.6' | null
+      const flashBucket = window.getFlashModelBucket(activeMod); // 'hydrogen' | '3.8' | '3.6' | null
       const shouldAvoidExhausted = ls.getItem('jarvis_skip_exhausted_keys') !== 'false';
 
       // Nếu không forceRotate và phiên đã gán key (Interactions API cần giữ key cố định cho interactionId):
@@ -1524,8 +1491,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         if (!flashBucket || !shouldAvoidExhausted) {
           return cs.assignedApiKey;
         }
-        const assignedSlot = findSlotIndexForKey(cs.assignedApiKey);
-        if (getKeyUsageCount(assignedSlot, flashBucket) < 20) {
+        const assignedSlot = window.findSlotIndexForKey(cs.assignedApiKey);
+        if (window.getKeyUsageCount(assignedSlot, flashBucket) < 20) {
           return cs.assignedApiKey;
         }
       }
@@ -1535,8 +1502,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         let candidates = [...apiKeys];
         if (flashBucket && shouldAvoidExhausted) {
           const notExhausted = apiKeys.filter(k => {
-            const slot = findSlotIndexForKey(k);
-            return getKeyUsageCount(slot, flashBucket) < 20;
+            const slot = window.findSlotIndexForKey(k);
+            return window.getKeyUsageCount(slot, flashBucket) < 20;
           });
           if (notExhausted.length > 0) {
             candidates = notExhausted;
@@ -1549,8 +1516,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         // 2. THUẬT TOÁN CÂN BẰNG TẢI TRẢI ĐỀU (LEAST-USED FIRST):
         // Tìm số lượt gọi của model này trên từng key ứng viên
         const usageList = candidates.map(k => {
-          const slot = findSlotIndexForKey(k);
-          return { key: k, slot, usage: flashBucket ? getKeyUsageCount(slot, flashBucket) : 0 };
+          const slot = window.findSlotIndexForKey(k);
+          return { key: k, slot, usage: flashBucket ? window.getKeyUsageCount(slot, flashBucket) : 0 };
         });
 
         // Tìm mức lượt dùng nhỏ nhất hiện tại của model này
@@ -1643,7 +1610,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       DOM.input.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
           const val = DOM.input.value.trim();
-          if (val.startsWith('/') && executeChatSlashCommand(val)) {
+          if (val.startsWith('/') && window.executeChatSlashCommand(val)) {
             e.preventDefault();
             DOM.input.value = '';
             DOM.input.style.height = 'auto';
@@ -1756,7 +1723,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
     window.exportCleanArticle = () => {
       const m = chatHistory.filter(x => x.role === 'model').map(x => x.text);
-      m.length ? saveOrShareBlob(new Blob([`# Jarvis AI - Bài viết trích xuất\n\n` + m.join('\n\n---\n\n')], { type: 'text/markdown' }), `JarvisAI_Export_${Date.now()}.md`) : showToast("Hội thoại trống!", "warning");
+      m.length ? window.saveOrShareBlob(new Blob([`# Jarvis AI - Bài viết trích xuất\n\n` + m.join('\n\n---\n\n')], { type: 'text/markdown' }), `JarvisAI_Export_${Date.now()}.md`) : showToast("Hội thoại trống!", "warning");
     };
 
     window.applySnippet = p => {
@@ -1850,13 +1817,13 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       DOM.fileUpload.value = '';
     };
 
-    DOM.btnAddUrl.onclick = async () => {
+        DOM.btnAddUrl.onclick = async () => {
       const u = prompt("Nhập link URL website hoặc YouTube:");
       if (!u?.match(/https?:\/\//)) return;
       DOM.btnAddUrl.innerHTML = "⏳...";
       try {
         if (u.includes("youtube.com") || u.includes("youtu.be")) {
-          const yt = await extractYouTubeContent(u);
+          const yt = await window.extractYouTubeContent(u);
           const k = getSessionApiKey(sessions.find(x => x.id === activeId));
           let summary = "";
           if (k) {
@@ -1876,7 +1843,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           txtContent += `\n[YouTube: ${yt.title} - ${yt.author} (${u})]:\n${summary}\n`;
           DOM.textFileList.innerHTML += `📺 YouTube: ${escapeHtml(yt.title.substring(0, 24))}...<br>`;
         } else {
-          const ext = await extractWebPageContent(u);
+          const ext = await window.extractWebPageContent(u);
           txtContent += `\n[Nội dung ${u} qua ${ext.source}]:\n${ext.content}\n`;
           DOM.textFileList.innerHTML += `🌐 ${ext.source}<br>`;
         }
@@ -2090,19 +2057,19 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         if (d && d.length > 0) {
           sessions = d.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
           try { renderFolders(); } catch (_) {}
-          try { if (typeof renderSnippets === 'function') renderSnippets(); } catch (_) {}
+          try { if (typeof window.renderSnippets === 'function') window.renderSnippets(); } catch (_) {}
           activeId = ls.getItem('jarvis_active_id') || ls.getItem('huanmu_active_id') || ls.getItem('javiss_active_id') || sessions[0].id;
           if (!sessions.find(s => s.id === activeId)) activeId = sessions[0].id;
           await switchSess(activeId);
         } else {
           try { renderFolders(); } catch (_) {}
-          try { if (typeof renderSnippets === 'function') renderSnippets(); } catch (_) {}
+          try { if (typeof window.renderSnippets === 'function') window.renderSnippets(); } catch (_) {}
           await newSess();
         }
       } catch (e) {
-        console.error("Lỗi khởi động loadSess:", e);
-        try { renderFolders(); } catch (_) {}
-        try { if (typeof renderSnippets === 'function') renderSnippets(); } catch (_) {}
+          console.error("Lỗi khởi động loadSess:", e);
+          try { renderFolders(); } catch (_) {}
+          try { if (typeof window.renderSnippets === 'function') window.renderSnippets(); } catch (_) {}
       }
     }
 
@@ -2156,7 +2123,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         DOM.sysInst.value = s.sys || '';
         DOM.model.value = s.mod || 'gemini-4-hydrogen';
         DOM.engineSel.value = s.engine || 'stream';
-        DOM.apiKeySel.value = s.keySel || 'auto';
+        setGoogleKeySlot(s.keySel || 'auto');
         // Menu key dùng chung phải theo model của phiên vừa mở (không có sự kiện change)
         if (typeof window.renderKeyPoolMenu === 'function') window.renderKeyPoolMenu();
         DOM.temp.value = s.tmp || 0.5;
@@ -2341,7 +2308,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
           sys: DOM.sysInst.value,
           mod: DOM.model.value,
           engine: DOM.engineSel.value,
-          keySel: DOM.apiKeySel.value,
+          keySel: getGoogleKeySlot(),
           tmp: DOM.temp.value,
           tpp: DOM.topP.value,
           top: DOM.topK.value,
@@ -2355,8 +2322,9 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
         if (DOM.engineSel.value === 'stream') {
           s.assignedApiKey = null;
         } else if (DOM.engineSel.value === 'interactions') {
-          if (DOM.apiKeySel.value !== 'auto') {
-            const idx = parseInt(DOM.apiKeySel.value, 10) + 1;
+          const sel = getGoogleKeySlot();
+          if (sel !== 'auto') {
+            const idx = parseInt(sel, 10) + 1;
             let mk = (ls.getItem(`jarvis_api_${idx}`) || ls.getItem(`huanmu_api_${idx}`) || ls.getItem(`javiss_api_${idx}`) || "").trim();
             if (mk.startsWith('JVENC_') || mk.startsWith('ENC_')) mk = deobfuscateKey(mk);
             if (mk) s.assignedApiKey = mk;
@@ -2387,7 +2355,8 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       updateConfig(); updateKeyQuotaUI();
     });
     DOM.engineSel.addEventListener('change', updateConfig);
-    [DOM.sysInst, DOM.apiKeySel, DOM.toggleGlob, DOM.toggleSearch, DOM.searchEngineSel, DOM.thinking].forEach(el => el?.addEventListener?.('change', updateConfig));
+    [DOM.sysInst, DOM.toggleGlob, DOM.toggleSearch, DOM.searchEngineSel, DOM.thinking].forEach(el => el?.addEventListener?.('change', updateConfig));
+    // key-pool-select has its own change handler in renderKeyPoolMenu which calls setGoogleKeySlot
 
     if (DOM.btnToggleSessionMem) {
       DOM.btnToggleSessionMem.onclick = () => {
@@ -2883,7 +2852,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
       let gKey = "";
       let keyIndexNum = 1;
 
-      const manualSel = DOM.apiKeySel?.value || cs?.keySel || 'auto';
+      const manualSel = getGoogleKeySlot();
       if (manualSel !== 'auto') {
         const idx = parseInt(manualSel, 10) + 1;
         let manualKey = (ls.getItem(`jarvis_api_${idx}`) || ls.getItem(`huanmu_api_${idx}`) || ls.getItem(`javiss_api_${idx}`) || "").trim();
@@ -4903,9 +4872,6 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
 
     // Global shared states for modular extensions (live.js, sync.js, rag.js, tts.js)
     try {
-      Object.defineProperty(window, 'sessions', { get: () => sessions, set: v => { sessions = v; }, configurable: true });
-      Object.defineProperty(window, 'activeId', { get: () => activeId, set: v => { activeId = v; }, configurable: true });
-      Object.defineProperty(window, 'chatHistory', { get: () => chatHistory, set: v => { chatHistory = v; }, configurable: true });
       Object.defineProperty(window, 'folders', { get: () => folders, set: v => { folders = v; }, configurable: true });
       Object.defineProperty(window, 'activeFolder', { get: () => activeFolder, set: v => { activeFolder = v; }, configurable: true });
       Object.defineProperty(window, 'customPrompts', { get: () => customPrompts, set: v => { customPrompts = v; }, configurable: true });
