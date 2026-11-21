@@ -193,7 +193,7 @@
   "changelog": {
     "file": "CHANGELOG.md",
     "note": "Lịch sử thay đổi chi tiết đã chuyển từ recent_changes sang CHANGELOG.md để boicanhduan.json chỉ còn mô tả kiến trúc.",
-    "entries": 36,
-    "last_change_date": "2026-11-20"
+    "entries": 37,
+    "last_change_date": "2026-11-21"
   }
 }
