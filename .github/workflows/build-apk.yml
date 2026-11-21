@@ -25,7 +25,7 @@ jobs:
     - name: 🟢 Cài đặt Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '22'
         cache: 'npm'
 
     - name: 📦 Cài đặt dependencies
@@ -50,7 +50,7 @@ jobs:
     - name: 🟢 Cài đặt Node.js (cho scripts/sync-web-assets.js)
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '22'
 
     - name: ☕ Cài đặt JDK 17
       uses: actions/setup-java@v4
