@@ -28,6 +28,54 @@
   const copyRawText = (text, msg) => (typeof window.copyRawText === 'function' ? window.copyRawText(text, msg) : undefined);
   const saveToDB = s => (typeof window.saveToDB === 'function' ? window.saveToDB(s) : Promise.resolve());
 
+  // --- MARKDOWN WORKER (lazy init) ---
+  let markdownWorker = null;
+  let workerToken = 0;
+  const workerPending = new Map();
+
+  function getMarkdownWorker() {
+    if (markdownWorker) return markdownWorker;
+    try {
+      markdownWorker = new Worker('./js/markdown.worker.js');
+      markdownWorker.onmessage = e => {
+        const { token, success, html, error } = e.data;
+        const resolve = workerPending.get(token);
+        if (resolve) {
+          workerPending.delete(token);
+          if (success) resolve({ html });
+          else resolve({ error: new Error(error) });
+        }
+      };
+      markdownWorker.onerror = e => {
+        console.warn('Markdown worker error:', e);
+        // Reject all pending
+        for (const [, resolve] of workerPending) resolve({ error: new Error('Worker error') });
+        workerPending.clear();
+      };
+    } catch (e) {
+      console.warn('Cannot create markdown worker:', e);
+      markdownWorker = null;
+    }
+    return markdownWorker;
+  }
+
+  async function renderMarkdownInWorker(markdown) {
+    const worker = getMarkdownWorker();
+    if (!worker) return { error: new Error('No worker') };
+    const token = ++workerToken;
+    return new Promise(resolve => {
+      workerPending.set(token, resolve);
+      worker.postMessage({ token, type: 'RENDER', markdown });
+      // Timeout fallback
+      setTimeout(() => {
+        if (workerPending.has(token)) {
+          workerPending.delete(token);
+          resolve({ error: new Error('Worker timeout') });
+        }
+      }, 5000);
+    });
+  }
+
 // --- GỘP CÁC ĐOẠN SUY LUẬN LIỀN NHAU THÀNH MỘT KHỐI 💭 DUY NHẤT ---
     // Provider có thể trả suy luận thành nhiều đoạn liền nhau trong cùng một stream
     // (nhiều cục reasoning_content, hoặc  thinking/<thought> nằm ngay trong content).
@@ -46,14 +94,9 @@
 
     // Gộp reasoning_content với các đoạn  thinking/<thought> còn sót trong content.
     function mergeThinkingSegments(thinking, content) {
-      let merged = (thinking || '').trim();
-      const rest = String(content || '').replace(/<(?:think|thought)>([\s\S]*?)(?:<\/(?:think|thought)>|$)/gi, (m, seg) => {
+      let merged = (thinking || '').trim();      const rest = String(content || '').replace(/<(?:thinking|thought)>([\s\S]*?)(?:<\/(?:thinking|thought)>|$)/gi, (m, seg) => {
         const clean = (seg || '').trim();
-        if (clean) merged = merged ? `${merged}\n\n${clean}` : clean;
-        return '';
-      }).trim();
-      return { thinking: merged, content: rest };
-    }
+        if (clean) merged = merged ? `${merged}\n\n${clean}` : clean;        return '';      }).trim();      return { thinking: merged, content: rest };    }
 
     // Lưới an toàn cho nội dung đã render (kể cả tin nhắn cũ trong lịch sử):
     // nhiều <details class="thinking-block"> đứng liền nhau -> gộp thành một khối duy nhất.
@@ -74,75 +117,23 @@
       });
     };
 
-    // --- MARKDOWN & SYNTAX HIGHLIGHTING RENDERER ---
+    // --- MARKDOWN & SYNTAX HIGHLIGHTING RENDERER (Worker + Fallback) ---
     async function renderMsgContent(el, t) {
       t = t || "";
       // Khối suy luận được tách RIÊNG khỏi chuỗi Markdown.
       // Lý do: marked cắt HTML block tại dòng trống, nếu để chung thì nó sinh ra
       // "<p>...</div></details></p>" và trình duyệt có thể nuốt luôn phần câu trả lời vào <details> (đang thu gọn).
-      let thinkingHtml = '';
-      const hideThinking = isThinkingHidden();
-      if (hideThinking) {
-        t = t.replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>/gi, '')
-             .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');
-      } else {
-        t = t.replace(/<(?:think|thought)>([\s\S]*?)<\/(?:think|thought)>/gi, (m, p1) => buildThinkingDetailsHtml(p1));
-        // Rút các khối <details> ra khỏi chuỗi trước khi parse Markdown (tránh bị nuốt câu trả lời)
-        t = t.replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, (m) => {
-          thinkingHtml += m;
-          return '';
-        });
+      let thinkingHtml = '';      const hideThinking = isThinkingHidden();      if (hideThinking) {        t = t.replace(/<(?:thinking|thought)>[\s\S]*?<\/(?:thinking|thought)>/gi, '')             .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');      } else {        t = t.replace(/<(?:thinking|thought)>([\s\S]*?)<\/(?:thinking|thought)>/gi, (m, p1) => buildThinkingDetailsHtml(p1));        // Rút các khối <details> ra khỏi chuỗi trước khi parse Markdown (tránh bị nuốt câu trả lời)        t = t.replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, (m) => {          thinkingHtml += m;          return '';        });
         // Các khối 💭 liền nhau (vd: reasoning_content +  thinking trong content) -> một khối duy nhất
         thinkingHtml = mergeAdjacentThinkingBlocks(thinkingHtml);
       }
-      el.innerHTML = marked.parse(t.replace(/\[URL:\s*(https?:\/\/[^\s]+)\]/g, '<a href="$1" target="_blank" style="color:var(--primary);text-decoration:underline;">$1</a>'));
-      if (thinkingHtml) el.insertAdjacentHTML('afterbegin', thinkingHtml);
       
-      // Math KaTeX
-      window.renderMathInElement?.(el, {
-        delimiters: [
-          { left: '$$', right: '$$', display: true },
-          { left: '$', right: '$', display: false }
-        ],
-        throwOnError: false
-      });
+      // URL placeholders -> links trước khi parse
+      const markdownForWorker = t.replace(/\[URL:\s*(https?:\/\/[^\s]+)\]/g, '<a href="$1" target="_blank" style="color:var(--primary);text-decoration:underline;">$1</a>');
 
-      // Mermaid diagrams
-      const mds = el.querySelectorAll('code.language-mermaid');
-      for (let i = 0; i < mds.length; i++) {
-        try {
-          const { svg } = await mermaid.render('m_' + Date.now() + '_' + i, mds[i].textContent);
-          const d = document.createElement('div');
-          d.style.cssText = 'overflow-x:auto;padding:10px;text-align:center;background:var(--bg-card);border-radius:var(--radius-md);margin:10px 0;max-width:100%;box-sizing:border-box;';
-          d.innerHTML = svg;
-          mds[i].parentElement.replaceWith(d);
-        } catch {}
-      }
-
-      // Code blocks beautification & Copy buttons
-      el.querySelectorAll('pre code').forEach(block => {
-        if (!block.classList.contains('language-mermaid')) {
-          hljs.highlightElement(block);
-          const pre = block.parentElement;
-          if (!pre.parentElement.classList.contains('code-block-wrapper')) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'code-block-wrapper';
-            const lang = (block.className.match(/language-(\w+)/) || [, 'code'])[1];
-            const header = document.createElement('div');
-            header.className = 'code-block-header';
-            header.innerHTML = `<span>${lang}</span><button class="code-copy-btn">📋 Copy Code</button>`;
-            header.querySelector('.code-copy-btn').onclick = function() {
-              copyRawText(block.innerText, '📋 Đã copy đoạn mã!');
-              this.innerText = '✅ Copied!';
-              setTimeout(() => this.innerText = '📋 Copy Code', 2000);
-            };
-            pre.parentNode.insertBefore(wrapper, pre);
-            wrapper.appendChild(header);
-            wrapper.appendChild(pre);
-          }
-        }
-      });
-    }
+      // Try worker first (off main thread: marked.parse + hljs.highlightElement)      let html = '';      const workerResult = await renderMarkdownInWorker(markdownForWorker);      if (workerResult.error) {        // Fallback: main thread (original logic)        html = marked.parse(markdownForWorker);        el.innerHTML = html;        if (thinkingHtml) el.insertAdjacentHTML('afterbegin', thinkingHtml);                // Code blocks beautification & Copy buttons (main thread)        el.querySelectorAll('pre code').forEach(block => {          if (!block.classList.contains('language-mermaid')) {            hljs.highlightElement(block);            const pre = block.parentElement;            if (!pre.parentElement.classList.contains('code-block-wrapper')) {              const wrapper = document.createElement('div');              wrapper.className = 'code-block-wrapper';              const lang = (block.className.match(/language-(\w+)/) || [, 'code'])[1];              const header = document.createElement('div');              header.className = 'code-block-header';              header.innerHTML = `<span>${lang}</span><button class="code-copy-btn">📋 Copy Code</button>`;              header.querySelector('.code-copy-btn').onclick = function() {                copyRawText(block.innerText, '📋 Đã copy đoạn mã!');                this.innerText = '✅ Copied!';                setTimeout(() => this.innerText = '📋 Copy Code', 2000);              };              pre.parentNode.insertBefore(wrapper, pre);              wrapper.appendChild(header);              wrapper.appendChild(pre);            }          }        });      } else {        // Worker success: inject HTML (already has code blocks highlighted + wrapped)        el.innerHTML = workerResult.html;        if (thinkingHtml) el.insertAdjacentHTML('afterbegin', thinkingHtml);        // Wire up copy buttons from worker-generated markup        el.querySelectorAll('.code-copy-btn').forEach(btn => {          btn.onclick = function() {            const codeText = this.getAttribute('data-code') || '';            copyRawText(codeText, '📋 Đã copy đoạn mã!');            this.innerText = '✅ Copied!';            setTimeout(() => this.innerText = '📋 Copy Code', 2000);          };        });      }
+            // Math KaTeX (always on main thread)      window.renderMathInElement?.(el, {        delimiters: [          { left: '$$', right: '$$', display: true },          { left: '$', right: '$', display: false }        ],        throwOnError: false      });
+      // Mermaid diagrams (always on main thread)      const mds = el.querySelectorAll('code.language-mermaid');      for (let i = 0; i < mds.length; i++) {        try {          const { svg } = await mermaid.render('m_' + Date.now() + '_' + i, mds[i].textContent);          const d = document.createElement('div');          d.style.cssText = 'overflow-x:auto;padding:10px;text-align:center;background:var(--bg-card);border-radius:var(--radius-md);margin:10px 0;max-width:100%;box-sizing:border-box;';          d.innerHTML = svg;          mds[i].parentElement.replaceWith(d);        } catch {}      }    }
 
     async function appendMsg(sd, t, i, iHL = false) {
       t = t || "";
@@ -225,17 +216,7 @@
       }
     }
 
-    // Bo khoi suy nghi (thinking) khoi noi dung truoc khi sao chep
-    function stripThinkingForCopy(text) {
-      if (!text) return '';
-      return text
-        .replace(/<details\b[^>]*class="[^"]*thinking-block[^"]*"[^>]*>[\s\S]*?<\/details>\s*/gi, '')
-        .replace(/<details\b[^>]*>\s*<summary\b[^>]*class="[^"]*thinking-summary[^"]*"[^>]*>[\s\S]*?<\/details>\s*/gi, '')
-        .replace(/<div\b[^>]*class="[^"]*thinking-streaming[^"]*"[^>]*>[\s\S]*?<\/div>\s*/gi, '')
-        .replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>\s*/gi, '')
-        .replace(/<(?:think|thought)>[\s\S]*$/i, '')
-        .trim();
-    }
+    // Bo khoi suy nghi (thinking) khoi noi dung truoc khi sao chep    function stripThinkingForCopy(text) {      if (!text) return '';      return text        .replace(/<details\b[^>]*class="[^"]*thinking-block[^"]*"[^>]*>[\s\S]*?<\/details>\s*/gi, '')        .replace(/<details\b[^>]*>\s*<summary\b[^>]*class="[^"]*thinking-summary[^"]*"[^>]*>[\s\S]*?<\/details>\s*/gi, '')        .replace(/<div\b[^>]*class="[^"]*thinking-streaming[^"]*"[^>]*>[\s\S]*?<\/div>\s*/gi, '')        .replace(/<(?:thinking|thought)>[\s\S]*?<\/(?:thinking|thought)>\s*/gi, '')        .replace(/<(?:thinking|thought)>[\s\S]*$/i, '')        .trim();    }
 
     function getCopyText(el) {
       if (!el) return '';

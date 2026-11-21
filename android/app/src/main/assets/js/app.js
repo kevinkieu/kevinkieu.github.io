@@ -265,13 +265,7 @@ const $ = id => document.getElementById(id), ls = localStorage, ss = sessionStor
               try {
                 let toRender = latest;
                 const hideThinking = isThinkingHidden();
-                if (hideThinking) {
-                  toRender = toRender.replace(/<(?:think|thought)>[\s\S]*?<\/(?:think|thought)>/gi, '')
-                                     .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');
-                } else {
-                  toRender = toRender.replace(/<(?:think|thought)>([\s\S]*?)<\/(?:think|thought)>/gi, (m, p1) => buildThinkingDetailsHtml(p1));
-                  toRender = mergeAdjacentThinkingBlocks(toRender);
-                }
+                if (hideThinking) {                  toRender = toRender.replace(/<(?:thinking|thought)>[\s\S]*?<\/(?:thinking|thought)>/gi, '')                                     .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');                } else {                  toRender = toRender.replace(/<(?:thinking|thought)>([\s\S]*?)<\/(?:thinking|thought)>/gi, (m, p1) => buildThinkingDetailsHtml(p1));                  toRender = mergeAdjacentThinkingBlocks(toRender);                }
                 targetEl.innerHTML = marked.parse(toRender, { sanitize: true });
               } catch (_) {}
               pending = false;
