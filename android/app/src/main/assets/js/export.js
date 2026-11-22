@@ -105,6 +105,9 @@
       const isSecret = k.includes('key') || k.includes('_api_') || k === 'brave_worker_url';
       cfgs[k] = isSecret && val ? obfuscateKey(val) : val;
     });
+    // Cấu hình provider/model động (key đã JVENC_ obfuscate trong localStorage, giữ nguyên khi sao lưu)
+    cfgs['jarvis_dynamic_providers'] = ls.getItem('jarvis_dynamic_providers') || "";
+    cfgs['jarvis_dynamic_models'] = ls.getItem('jarvis_dynamic_models') || "";
     cfgs['live_search_enabled'] = ls.getItem('live_search_enabled') || 'true';
     cfgs['live_context_enabled'] = ls.getItem('live_context_enabled') || 'true';
     cfgs['jarvis_folders'] = ls.getItem('jarvis_folders') || '["Mặc định"]';

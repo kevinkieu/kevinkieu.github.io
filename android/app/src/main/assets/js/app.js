@@ -2667,7 +2667,7 @@
       // Model Experiential Labs dùng bể 5 key riêng (xoay tua + đếm lượt).
       // Kiểm tra Explabs TRƯỚC và loại trừ khỏi nhánh compat, để thứ tự nhánh không
       // còn phụ thuộc vào việc ID có nằm trong COMPAT_PROVIDERS hay không.
-      const usesExplabs = EXPLABS_MODELS.includes(am);
+      const usesExplabs = (window.EXPLABS_MODELS || []).includes(am);
       // Model từ gateway OpenAI-compatible (OpenRouter/NVIDIA/Cohere) không dùng Google API Key
       const usesCompatGateway = !usesExplabs && !!resolveCompatProvider(am);
       if (usesCompatGateway) {
@@ -3400,7 +3400,7 @@
           bD.querySelector('.typing-bubble')?.remove();
 
           // Dựng messages theo chuẩn OpenAI: system + 10 tin gần nhất + lượt hiện tại (kèm tệp nếu model nhận)
-          const mOpts = COMPAT_MODEL_OPTS[am] || null;
+          const mOpts = (window.COMPAT_MODEL_OPTS || {})[am] || null;
           const compatMessages = [];
           const compatSI = getDynamicSI(ragSnippet);
           if (compatSI) compatMessages.push({ role: 'system', content: compatSI });

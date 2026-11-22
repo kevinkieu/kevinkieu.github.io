@@ -794,6 +794,7 @@
               cohereKeys: getCohereKeysList(true),
               cohereKeyNames: getCohereKeyNamesList(),
               externalConfigs: getExternalConfigsObj(true),
+              dynamicProviders: window.DynamicProviders?.exportConfig(true),
               model: getDOM().model?.value || 'gemini-3.6-flash',
               temperature: getDOM().temp?.value || 0.5,
               searchEngine: getDOM().searchEngineSel?.value || 'tavily',
@@ -1045,6 +1046,7 @@
               cohereKeys: getCohereKeysList(true),
               cohereKeyNames: getCohereKeyNamesList(),
             externalConfigs: getExternalConfigsObj(true),
+            dynamicProviders: window.DynamicProviders?.exportConfig(true),
             model: getDOM().model?.value || 'gemini-3.6-flash',
             temperature: getDOM().temp?.value || 0.5,
             searchEngine: getDOM().searchEngineSel?.value || 'tavily',
@@ -1145,6 +1147,9 @@
           if (parsed.settings.cohereKeys) setCohereKeysList(parsed.settings.cohereKeys);
           if (parsed.settings.cohereKeyNames) setCohereKeyNamesList(parsed.settings.cohereKeyNames);
           if (parsed.settings.externalConfigs) setExternalConfigsObj(parsed.settings.externalConfigs);
+          if (parsed.settings.dynamicProviders && typeof window.DynamicProviders?.importConfig === 'function') {
+            window.DynamicProviders.importConfig(parsed.settings.dynamicProviders, { merge: true });
+          }
           if (parsed.settings.model && getDOM().model) getDOM().model.value = parsed.settings.model;
           if (parsed.settings.temperature && getDOM().temp) {
             getDOM().temp.value = parsed.settings.temperature;
