@@ -31,7 +31,7 @@
   </script>
 
   <!-- MODULAR STYLESHEETS -->
-  <link rel="stylesheet" href="./css/style.css?v=73">
+  <link rel="stylesheet" href="./css/style.css?v=74">
   <link rel="stylesheet" href="./css/live.css">
   <link rel="stylesheet" href="./css/tts.css">
   <link rel="stylesheet" href="./css/translate.css">
@@ -768,6 +768,16 @@
               <input type="number" id="stall-timeout-input" class="modern-input" min="10" max="180" step="5" value="45">
               <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;line-height:1.4;">
                 Nếu Google không trả về chữ nào trong khoảng này, app tự hạ cấu hình suy luận rồi thử lại thay vì treo.
+              </div>
+            </div>
+            <div>
+              <label style="cursor:pointer;font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="lite-fallback-enabled" checked> ⚡ Tự chuyển sang Gemini 3.5 Flash Lite khi chờ quá lâu
+              </label>
+              <label class="field-label" for="lite-fallback-input" style="margin-top:6px;display:block;">⏳ Ngưỡng chờ phản hồi đầu tiên trước khi đổi model (giây, 3–60):</label>
+              <input type="number" id="lite-fallback-input" class="modern-input" min="3" max="60" step="1" value="8">
+              <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;line-height:1.4;">
+                Đo thực tế Gemini 3.6/3.8 có lúc giữ 23–33 giây mới nhả byte đầu. Quá ngưỡng này mà chưa có chữ, app huỷ lượt đang chờ, chạy lại bằng Flash Lite và báo trên bong bóng tin nhắn.
               </div>
             </div>
             <label style="cursor:pointer;font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:8px;">
@@ -1832,8 +1842,8 @@
   <script type="module" src="./js/session-cleanup.js?v=76"></script>
   <script type="module" src="./js/model-registry.js?v=76"></script>
   <script type="module" src="./js/chat-render.js?v=76"></script>
-  <script type="module" src="./js/app.js?v=76"></script>
-    <script type="module" src="./js/api-keys.js?v=76"></script>
+  <script type="module" src="./js/app.js?v=82"></script>
+    <script type="module" src="./js/api-keys.js?v=77"></script>
   <script type="module" src="./js/sync.js?v=76"></script>
   <script type="module" src="./js/live.js?v=76"></script>
   <script type="module" src="./js/tts.js?v=76"></script>

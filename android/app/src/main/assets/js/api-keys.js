@@ -22,7 +22,8 @@
     ['web-extract-engine-input', 'web_extract_engine', 'auto'],
     ['nvidia-proxy-url', 'nvidia_proxy_url'],
     ['live-temperature', 'live_temperature', '0.7'],
-    ['stall-timeout-input', 'jarvis_stall_timeout_sec', '45']
+    ['stall-timeout-input', 'jarvis_stall_timeout_sec', '45'],
+    ['lite-fallback-input', 'jarvis_lite_fallback_sec', '8']
   ];
 
   const OR_KEY_COUNT = 5;
@@ -585,6 +586,7 @@
       }
     });
     if ($('live-temp-val')) $('live-temp-val').innerText = ls.getItem('live_temperature') || '0.7';
+    if ($('lite-fallback-enabled')) $('lite-fallback-enabled').checked = ls.getItem('jarvis_lite_fallback_enabled') !== 'false';
     if ($('live-toggle-search')) $('live-toggle-search').checked = ls.getItem('live_search_enabled') !== 'false';
     if ($('live-toggle-context')) $('live-toggle-context').checked = ls.getItem('live_context_enabled') !== 'false';
     if ($('hide-deepseek-thinking-checkbox')) {
@@ -619,6 +621,7 @@
       ls.setItem(`huanmu_api_name_${i}`, nameVal);
     }
     cfgMap.forEach(([id, k]) => ls.setItem(k, $(id)?.value.trim() || ''));
+    ls.setItem('jarvis_lite_fallback_enabled', $('lite-fallback-enabled')?.checked ? 'true' : 'false');
     ls.setItem('live_search_enabled', $('live-toggle-search')?.checked ? 'true' : 'false');
     ls.setItem('live_context_enabled', $('live-toggle-context')?.checked ? 'true' : 'false');
     ls.setItem('jarvis_hide_deepseek_thinking', $('hide-deepseek-thinking-checkbox')?.checked ? 'true' : 'false');

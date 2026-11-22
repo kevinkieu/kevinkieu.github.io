@@ -2505,7 +2505,7 @@
       const cs = sessions.find(x => x.id === activeId);
       const currentEngine = cs?.engine || DOM.engineSel?.value || 'stream';
       // DEBUG: dấu vết lượt gửi (đọc bằng: copy(JSON.stringify(window.__jarvisTurnDebug)))
-      window.__jarvisTurnDebug = { model: am, engine: currentEngine, startedAt: new Date().toISOString() };
+      window.__jarvisTurnDebug = { model: am, engine: currentEngine, startedAt: new Date().toISOString(), startedAtMs: performance.now() };
 
       let gKey = "";
       let keyIndexNum = 1;
@@ -2822,6 +2822,9 @@
 
         // TYPING INDICATOR BUBBLE
         const currentKeyBadge = getKeyBadgeHtml(keyIndexNum, am);
+        // Nhãn chờ: hiện ngay khi gửi, tự biến mất cùng .typing-bubble khi có chunk đầu tiên.
+        // Google thường giữ kết nối 5–17s trước byte đầu nên cần chỉ báo để không tưởng app treo.
+        const waitProviderLabel = usesExplabs ? 'Experiential Labs' : (usesCompatGateway ? resolveCompatProvider(am).provider.label : 'Google');
         bD = document.createElement('div');
         bD.className = 'message-container';
         bD.innerHTML = `
@@ -2831,6 +2834,7 @@
               <span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}</span>
               ${currentKeyBadge}
               <div class="typing-bubble">
+                <span class="wait-label">⏳ Đang chờ ${waitProviderLabel}…</span>
                 <span class="typing-dot"></span>
                 <span class="typing-dot"></span>
                 <span class="typing-dot"></span>
@@ -3810,7 +3814,7 @@
           }
 
           let streamAttempts = 0;
-          const maxStreamAttempts = Math.max(Math.min(apiKeys.length || 1, 3), 2);
+          let maxStreamAttempts = Math.max(Math.min(apiKeys.length || 1, 3), 2);
           let currentThinking = "";
           let currentContent = "";
           // Đếm chunk để biết Google có stream thật hay chỉ trả 1 cục
@@ -3818,6 +3822,34 @@
           // Chẩn đoán: in ra đúng cấu hình gửi Google để đối chiếu khi request bị treo
           console.warn('[Gemini V73] model =', am, '| thk =', thk, '| thinking =', JSON.stringify(config.thinkingConfig || null), '| maxOutputTokens =', config.maxOutputTokens);
           window.__jarvisTurnDebug = Object.assign(window.__jarvisTurnDebug || {}, { branch: 'google-stream', thinkingConfig: config.thinkingConfig || null, maxOutputTokens: config.maxOutputTokens });
+
+          // Tự chuyển model khi Google xếp hàng: đo thực tế TTFT 23-33s với mọi cấu hình, nên nếu quá
+          // ngưỡng ở Cài đặt → Hiệu năng (mặc định 8s, tắt được) mà chưa có chunk đầu thì huỷ attempt
+          // và chạy lại bằng Flash Lite — tối đa một lần mỗi lượt để không lặp vô hạn.
+          const LITE_FALLBACK_MODEL = 'gemini-3.5-flash-lite';
+          const _liteSec = parseInt(ls.getItem('jarvis_lite_fallback_sec'), 10);
+          const LITE_FALLBACK_ENABLED = ls.getItem('jarvis_lite_fallback_enabled') !== 'false';
+          const FIRST_CHUNK_SWITCH_MS = (Number.isFinite(_liteSec) ? Math.min(60, Math.max(3, _liteSec)) : 8) * 1000;
+          let liteSwitched = false;
+
+          // Badge nhỏ trên header tin nhắn khi app tự đổi model (404 hoặc quá ngưỡng chờ)
+          const showModelFallbackBadge = (model, tone, title) => {
+            const tones = {
+              amber: ['#f59e0b', 'rgba(245,158,11,.15)', 'rgba(245,158,11,.4)', '🔁'],
+              sky: ['#38bdf8', 'rgba(56,189,248,.15)', 'rgba(56,189,248,.4)', '⚡']
+            };
+            const [color, bg, border, icon] = tones[tone] || tones.amber;
+            try {
+              const header = bD?.querySelector('.message-header');
+              if (!header || header.querySelector('.model-fallback-badge')) return;
+              const badge = document.createElement('span');
+              badge.className = 'model-fallback-badge';
+              badge.style.cssText = `font-size:.68rem;font-weight:700;padding:2px 6px;border-radius:6px;background:${bg};color:${color};border:1px solid ${border};margin-left:6px;white-space:nowrap;`;
+              badge.title = title;
+              badge.innerText = icon + ' ' + model;
+              header.appendChild(badge);
+            } catch (_) {}
+          };
 
           while (streamAttempts < maxStreamAttempts) {
             streamAttempts++;
@@ -3834,9 +3866,23 @@
             const _stallSec = parseInt(ls.getItem('jarvis_stall_timeout_sec'), 10);
             const STALL_TIMEOUT_MS = (Number.isFinite(_stallSec) ? Math.min(180, Math.max(10, _stallSec)) : 45) * 1000;
             let stallTimer = setTimeout(() => { stalled = true; attemptCtrl.abort(); }, STALL_TIMEOUT_MS);
+            // Hạn chót chunk đầu tiên (Cài đặt → Hiệu năng, mặc định 8s, tắt được): chỉ áp dụng cho
+            // model Gemini 3.x và chỉ đổi model một lần, để không phải ngồi chờ 23-33s khi Google xếp hàng.
+            let switchToLite = false;
+            const canSwitchLite = LITE_FALLBACK_ENABLED && !liteSwitched && am !== LITE_FALLBACK_MODEL && /^gemini-3\./.test(am);
+            let firstChunkTimer = canSwitchLite
+              ? setTimeout(() => { switchToLite = true; attemptCtrl.abort(); }, FIRST_CHUNK_SWITCH_MS)
+              : null;
+            const stopFirstChunkTimer = () => { if (firstChunkTimer) { clearTimeout(firstChunkTimer); firstChunkTimer = null; } };
             const stopStallTimer = () => { if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } };
-            const cleanupAttempt = () => { stopStallTimer(); abortController.signal.removeEventListener('abort', relayAbort); };
+            const cleanupAttempt = () => { stopStallTimer(); stopFirstChunkTimer(); abortController.signal.removeEventListener('abort', relayAbort); };
             try {
+              // Mốc gửi thật: từ lúc bấm Gửi đến lúc app gọi API. Nếu mốc này lớn thì
+              // độ trễ nằm TRONG app (chuẩn bị lịch sử, đồng bộ, RAG...), không phải Google.
+              window.__jarvisTurnDebug.reqSentAtMs = performance.now();
+              window.__jarvisTurnDebug.prepMs = Math.round(window.__jarvisTurnDebug.reqSentAtMs - (window.__jarvisTurnDebug.startedAtMs || 0));
+              if (!window.__jarvisTurnDebug.prepFirstMs) window.__jarvisTurnDebug.prepFirstMs = window.__jarvisTurnDebug.prepMs;
+              console.warn('[Gemini V78] prep (app chuẩn bị trước khi gọi API) =', window.__jarvisTurnDebug.prepFirstMs, 'ms | messageCount =', contents.length);
               const resStream = await new GoogleGenAI({ apiKey: gKey }).models.generateContentStream({
                 model: am,
                 contents,
@@ -3846,11 +3892,14 @@
               // Mốc headers: nếu mốc này đã trễ ~10s thì độ trễ nằm ở phía Google (xếp hàng/cold start),
               // không phải ở phần suy luận của model.
               const headersMs = Math.round(performance.now() - attemptStart);
+              window.__jarvisTurnDebug.headersMs = headersMs;
+              window.__jarvisTurnDebug.totalToHeadersMs = Math.round(performance.now() - (window.__jarvisTurnDebug.startedAtMs || 0));
 
               for await (const ck of resStream) {
                 if (!gotFirstChunk) {
                   gotFirstChunk = true;
                   stopStallTimer();
+                  stopFirstChunkTimer();
                   // Tách rõ 2 chặng: chờ headers (phía Google) vs chờ model nghĩ (sau headers)
                   console.warn('[Gemini V73] headers =', headersMs, 'ms | chunk đầu sau headers =', Math.round(performance.now() - attemptStart) - headersMs, 'ms | attempt #' + streamAttempts);
                 }
@@ -3864,8 +3913,17 @@
                   for (const part of ck.candidates[0].content.parts) {
                     if (part.thought) {
                       const t = typeof part.thought === 'string' ? part.thought : (typeof part.text === 'string' ? part.text : '');
-                      if (t) deltaThought += t;
+                      if (t) {
+                        deltaThought += t;
+                        if (!window.__jarvisTurnDebug.firstThinkingAtMs) {
+                          window.__jarvisTurnDebug.firstThinkingAtMs = performance.now();
+                          window.__jarvisTurnDebug.firstThinkingWaitMs = Math.round((window.__jarvisTurnDebug.firstThinkingAtMs - (window.__jarvisTurnDebug.startedAtMs || 0)) || 0);
+                        }
+                      }
                     } else if (typeof part.text === 'string') {
+                      if (!window.__jarvisTurnDebug.firstContentAtMs) {
+                        window.__jarvisTurnDebug.firstContentAtMs = performance.now();
+                      }
                       deltaText += part.text;
                     }
                   }
@@ -3912,6 +3970,27 @@
                 lastErr = new Error('Google không phản hồi sau ' + Math.round(STALL_TIMEOUT_MS / 1000) + ' giây (stream trò)');
                 break;
               }
+              // Chưa có chunk đầu trong ngưỡng chờ: đổi sang Gemini 3.5 Flash Lite thay vì chờ tiếp
+              if (switchToLite && !pS && !abortController.signal.aborted) {
+                const prevModel = am;
+                const waitSec = FIRST_CHUNK_SWITCH_MS / 1000;
+                liteSwitched = true;
+                am = LITE_FALLBACK_MODEL;
+                // Flash Lite có hạn mức output riêng (65000) và nhận đủ 4 mức thinking
+                config.maxOutputTokens = Math.max(Number(config.maxOutputTokens) || 0, 65000);
+                if (config.thinkingConfig) {
+                  config.thinkingConfig = { thinkingLevel: resolveThinkingLevel(am, thk) || thk, includeThoughts: true };
+                }
+                window.__jarvisTurnDebug.modelSwitchedFrom = prevModel;
+                window.__jarvisTurnDebug.modelSwitchedAtMs = Math.round(performance.now() - attemptStart);
+                const switchMsg = `${prevModel} chưa phản hồi sau ${waitSec}s — đã tự chuyển sang Gemini 3.5 Flash Lite`;
+                console.warn('[Fallback chờ] ' + switchMsg);
+                showToast('⚡ ' + switchMsg, 'warning');
+                showModelFallbackBadge(am, 'sky', `Model trước đó không phản hồi sau ${waitSec}s, app đã tự chuyển sang model dự phòng`);
+                // Lượt chạy lại bằng model mới có ngân sách thử riêng, không ăn vào số lần thử của model ban đầu
+                maxStreamAttempts += 1;
+                continue;
+              }
               if (e.name === 'AbortError' || abortController.signal.aborted) throw e;
               lastErr = e;
 
@@ -3942,17 +4021,7 @@
                   am = (am === 'gemini-3.8-flash') ? 'gemini-3.5-flash-lite' : 'gemini-3.8-flash';
                   console.warn(`[Fallback] Chuyển sang model dự phòng: ${am}`);
                   showToast(`🔁 Model ${fallbackFromModel} không khả dụng — đã tự chuyển sang ${am}`, 'warning');
-                  try {
-                    const fbHeader = bD?.querySelector('.message-header');
-                    if (fbHeader && !fbHeader.querySelector('.model-fallback-badge')) {
-                      const fbBadge = document.createElement('span');
-                      fbBadge.className = 'model-fallback-badge';
-                      fbBadge.style.cssText = 'font-size:.68rem;font-weight:700;padding:2px 6px;border-radius:6px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.4);margin-left:6px;white-space:nowrap;';
-                      fbBadge.title = 'Model yêu cầu không khả dụng, app đã tự chuyển sang model dự phòng';
-                      fbBadge.innerText = '🔁 ' + am;
-                      fbHeader.appendChild(fbBadge);
-                    }
-                  } catch (_) {}
+                  showModelFallbackBadge(am, 'amber', 'Model yêu cầu không khả dụng, app đã tự chuyển sang model dự phòng');
                   continue;
                 }
 
@@ -4114,6 +4183,9 @@
         }
       } finally {
         const wasAborted = abortController?.signal?.aborted;
+        // Dọn nhãn chờ/chấm nhấp nháy khi lượt kết thúc mà chưa từng có chunk (vd: người dùng bấm Dừng).
+        // Nếu không, "⏳ Đang chờ Google…" sẽ nằm lại vĩnh viễn trên bong bóng tin nhắn.
+        bD?.querySelector('.typing-bubble')?.remove();
         isProcessing = false;
         abortController = null;
         DOM.sendBtn.innerHTML = `<span>Gửi</span> <svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;

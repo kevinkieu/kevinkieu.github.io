@@ -259,6 +259,12 @@
       border-radius: var(--radius-full);
       box-shadow: var(--shadow-sm);
     }
+    .wait-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
     .typing-dot {
       width: 6px;
       height: 6px;
