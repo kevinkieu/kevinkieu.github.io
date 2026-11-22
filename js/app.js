@@ -2998,9 +2998,10 @@
         const base64Files = [];
         for (const f of imgs) base64Files.push(await fileToBase64(f));
 
-        const nowForTurn = new Date();
-        const curDateText = `${nowForTurn.getDate()}/${nowForTurn.getMonth() + 1}/${nowForTurn.getFullYear()}`;
-        const promptWithTime = `[Mốc thời gian gửi tin: ${curDateText} (Năm ${nowForTurn.getFullYear()})]\n${fnP}`;
+        // KHÔNG chèn mốc thời gian vào tin nhắn người dùng nữa: model hay lặp lại nguyên câu
+        // "[Mốc thời gian gửi tin: ...]" / "[Timestamp sent: ...]" ở đầu câu trả lời. Mốc thời
+        // gian hiện tại đã nằm trong system instruction (getDynamicSI → timeInstruction).
+        const promptWithTime = fnP || '[Người dùng gửi tệp đính kèm]';
 
         const currentParts = [{ text: promptWithTime }];
         base64Files.forEach(({ mimeType, data }) => {

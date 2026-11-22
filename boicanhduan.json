@@ -13,7 +13,7 @@
       "PWA",
       "Android (WebView + native medication alarms)"
     ],
-    "versioning": "Android versionCode 72 / versionName 1.1.72 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=83), sw cache jarvis-ai-pwa-v75"
+    "versioning": "Android versionCode 72 / versionName 1.1.72 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=84), sw cache jarvis-ai-pwa-v76"
   },
   "runtime_entry": {
     "web": "index.html",
@@ -305,6 +305,6 @@
     "note": "Lịch sử thay đổi chi tiết đã chuyển từ recent_changes sang CHANGELOG.md để boicanhduan.json chỉ còn mô tả kiến trúc.",
     "entries": 42,
     "last_change_date": "2026-11-22",
-    "latest_summary": "Ảnh được gửi cho MỌI model ở cả 4 nhánh (Gemini stream, Interactions, Experiential Labs, gateway OpenAI-compatible); provider từ chối ảnh thì toast '<tên model> does not process images (không xử lý ảnh)' và tự gửi lại không kèm ảnh; inputModalities chỉ còn lọc video/audio. Thêm quy tắc cố định cho agent trong AGENTS.md (model mới phải nhận ảnh, key provider mới phải mã hoá + đồng bộ Gist/backup). Bump app.js ?v=83, sw cache v75."
+    "latest_summary": "Bỏ mốc thời gian chèn vào tin nhắn người dùng (model hay lặp lại [Mốc thời gian gửi tin]/[Timestamp sent] ở đầu câu trả lời) — mốc thời gian đã có trong system instruction getDynamicSI. Ảnh được gửi cho MỌI model ở cả 4 nhánh (Gemini stream, Interactions, Experiential Labs, gateway OpenAI-compatible); provider từ chối ảnh thì toast '<tên model> does not process images (không xử lý ảnh)' và tự gửi lại không kèm ảnh; inputModalities chỉ còn lọc video/audio. Thêm quy tắc cố định cho agent trong AGENTS.md (model mới phải nhận ảnh, key provider mới phải mã hoá + đồng bộ Gist/backup). Bump app.js ?v=83, sw cache v75."
   }
 }
