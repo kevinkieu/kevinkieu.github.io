@@ -181,7 +181,7 @@
     const models = getModels();
     const id = model.id;
     if (!id) throw new Error('Model ID là bắt buộc');
-    if (models[id]) throw new Error('Model ID đã tồn tại: ' + id);
+    if (models[id]) throw new Error('Model ID đã tồn tại: ' + id + '. Hãy dùng ID dạng "provider/model" để tránh trùng lặp.');
     const provider = getProvider(model.provider);
     if (!provider) throw new Error('Provider không tồn tại: ' + model.provider);
     const newModel = {
@@ -570,15 +570,16 @@
     let html = '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;"><thead><tr style="text-align:left;"><th style="padding:6px;border-bottom:2px solid var(--border);">ID</th><th style="padding:6px;border-bottom:2px solid var(--border);">Nhãn</th><th style="padding:6px;border-bottom:2px solid var(--border);">Provider</th><th style="padding:6px;border-bottom:2px solid var(--border);">Max input</th><th style="padding:6px;border-bottom:2px solid var(--border);">Max output</th><th style="padding:6px;border-bottom:2px solid var(--border);text-align:center;">Hành động</th></tr></thead><tbody>';
     Object.values(models).forEach(m => {
       const p = providers[m.provider];
-      const builtIn = m.provider === 'google' || m.provider === 'explabs';
+      // Chỉ coi là built-in nếu model nằm trong DEFAULT_MODELS (không cho xoá model mặc định gốc)
+      const isBuiltInDefault = DEFAULT_MODELS && DEFAULT_MODELS[m.id];
       html += `<tr>
-        <td style="padding:6px 4px;border-bottom:1px solid var(--border);font-family:monospace;font-size:0.78rem;">${escapeHtml(m.id)}${builtIn ? ' <span style="font-size:0.68rem;color:var(--text-muted);">(built-in)</span>' : ''}</td>
+        <td style="padding:6px 4px;border-bottom:1px solid var(--border);font-family:monospace;font-size:0.78rem;">${escapeHtml(m.id)}${isBuiltInDefault ? ' <span style="font-size:0.68rem;color:var(--text-muted);">(built-in)</span>' : ''}</td>
         <td style="padding:6px 4px;border-bottom:1px solid var(--border);">${escapeHtml(m.label || m.id)}</td>
         <td style="padding:6px 4px;border-bottom:1px solid var(--border);">${p ? escapeHtml(p.label) : escapeHtml(m.provider)}</td>
         <td style="padding:6px 4px;border-bottom:1px solid var(--border);">${m.contextWindow || '-'}</td>
         <td style="padding:6px 4px;border-bottom:1px solid var(--border);">${m.maxTokens || '-'}</td>
         <td style="padding:6px 4px;border-bottom:1px solid var(--border);text-align:center;">
-          ${builtIn ? '' : `<button class="dp-btn dp-btn-edit" data-mid="${escapeHtmlAttr(m.id)}">Sửa</button> <button class="dp-btn dp-btn-del" data-mid="${escapeHtmlAttr(m.id)}">Xoá</button>`}
+          ${isBuiltInDefault ? '' : `<button class="dp-btn dp-btn-edit" data-mid="${escapeHtmlAttr(m.id)}">Sửa</button> <button class="dp-btn dp-btn-del" data-mid="${escapeHtmlAttr(m.id)}">Xoá</button>`}
         </td>
       </tr>`;
     });
@@ -590,6 +591,11 @@
     });
     box.querySelectorAll('.dp-btn-del').forEach(btn => {
       btn.onclick = e => { const mid = e.currentTarget.dataset.mid; if (confirm(`Xoá model "${escapeHtml(mid)}"?`)) { deleteModel(mid); dpToast('Đã xoá model ' + escapeHtml(mid), 'success'); renderAll(); } };
+    });
+
+    // Also bind edit buttons (already done above)
+    box.querySelectorAll('.dp-btn-edit').forEach(btn => {
+      btn.onclick = e => { const mid = e.currentTarget.dataset.mid; loadModelIntoForm(mid); };
     });
   }
 

@@ -2668,129 +2668,75 @@
       // Kiểm tra Explabs TRƯỚC và loại trừ khỏi nhánh compat, để thứ tự nhánh không
       // còn phụ thuộc vào việc ID có nằm trong COMPAT_PROVIDERS hay không.
       const usesExplabs = (window.EXPLABS_MODELS || []).includes(am);
-      // Model từ gateway OpenAI-compatible (OpenRouter/NVIDIA/Cohere) không dùng Google API Key
+      // Model từ gateway OpenAI-compatible (OpenRouter/NVIDIA/Cohere + dynamic providers) không dùng Google API Key
       const usesCompatGateway = !usesExplabs && !!resolveCompatProvider(am);
       if (usesCompatGateway) {
         const compatNow = resolveCompatProvider(am).provider;
-        if (compatNow.id === 'nvidia') {
-          // Xoay tua 3 key NVIDIA, đọc theo SỐ Ô (slot) để khớp bộ đếm
-          const nvKeyAtSlot = slot => {
-            let v = (ls.getItem(`jarvis_nvidia_api_${slot}`) || '').trim();
-            if (v.startsWith('JVENC_') || v.startsWith('ENC_')) v = deobfuscateKey(v);
-            return v;
-          };
-          const nvSlotOfKey = key => (typeof window.findNvidiaSlotIndexForKey === 'function')
-            ? window.findNvidiaSlotIndexForKey(key)
-            : Math.max(1, ((window.nvidiaKeys || []).indexOf(key)) + 1);
-          const nvKeys = (typeof window.nvidiaKeys !== 'undefined' && Array.isArray(window.nvidiaKeys))
-            ? window.nvidiaKeys.filter(Boolean) : [];
-          const nvSelEl = $('nvidia-key-select');
-          const nvSel = nvSelEl ? nvSelEl.value : 'auto';
+        // Generic key handling for ALL OpenAI-compatible providers (NVIDIA, Cohere, OpenRouter, dynamic)
+        // Use provider's keyStorageMultiple() to get correct localStorage key names
+        const keyStorageNames = (typeof compatNow.keyStorageMultiple === 'function')
+          ? compatNow.keyStorageMultiple()
+          : [];
+        const keyCount = keyStorageNames.length;
 
-          if (nvSel !== 'auto') {
-            // Chọn thủ công 1 ô: luôn lấy đúng key của ô đó
-            const picked = nvKeyAtSlot(parseInt(nvSel, 10) + 1) || nvKeys[0] || '';
-            if (picked) {
-              gKey = picked;
-              keyIndexNum = nvSlotOfKey(picked);
-            }
-          } else if (nvKeys.length) {
-            // Tự động xoay tua vòng tròn qua các ô có key
-            const nvIdx = (window.nvidiaKeyIndex || 0) % nvKeys.length;
-            gKey = nvKeys[nvIdx];
-            window.nvidiaKeyIndex = (nvIdx + 1) % nvKeys.length;
-            keyIndexNum = nvSlotOfKey(gKey);
-          } else {
-            // Fallback về key đơn cũ (nếu 3 ô mới đều trống)
-            gKey = (ls.getItem('nvidia_api_key') || '').trim();
-            if (gKey.startsWith('JVENC_') || gKey.startsWith('ENC_')) gKey = deobfuscateKey(gKey);
-            keyIndexNum = 1;
-          }
-          if (!gKey) {
-            bD?.remove();
-            return showToast("Vui lòng nhập NVIDIA API Key trong Cài đặt (⚙️)!", "danger");
-          }
-          if (typeof window.recordNvidiaRequest === 'function') window.recordNvidiaRequest(keyIndexNum, am);
-        } else if (compatNow.id === 'cohere') {
-          // Xoay tua 3 key Cohere, đọc theo SỐ Ô (slot) để khớp bộ đếm
-          const coKeyAtSlot = slot => {
-            let v = (ls.getItem(`jarvis_cohere_api_${slot}`) || '').trim();
-            if (v.startsWith('JVENC_') || v.startsWith('ENC_')) v = deobfuscateKey(v);
-            return v;
-          };
-          const coSlotOfKey = key => (typeof window.findCohereSlotIndexForKey === 'function')
-            ? window.findCohereSlotIndexForKey(key)
-            : Math.max(1, ((window.cohereKeys || []).indexOf(key)) + 1);
-          const coKeys = (typeof window.cohereKeys !== 'undefined' && Array.isArray(window.cohereKeys))
-            ? window.cohereKeys.filter(Boolean) : [];
-          const coSelEl = $('cohere-key-select');
-          const coSel = coSelEl ? coSelEl.value : 'auto';
-
-          if (coSel !== 'auto') {
-            // Chọn thủ công 1 ô: luôn lấy đúng key của ô đó
-            const picked = coKeyAtSlot(parseInt(coSel, 10) + 1) || coKeys[0] || '';
-            if (picked) {
-              gKey = picked;
-              keyIndexNum = coSlotOfKey(picked);
-            }
-          } else if (coKeys.length) {
-            // Tự động xoay tua vòng tròn qua các ô có key
-            const coIdx = (window.cohereKeyIndex || 0) % coKeys.length;
-            gKey = coKeys[coIdx];
-            window.cohereKeyIndex = (coIdx + 1) % coKeys.length;
-            keyIndexNum = coSlotOfKey(gKey);
-          } else {
-            // Fallback về key đơn cũ (nếu 3 ô mới đều trống)
-            gKey = (ls.getItem('cohere_api_key') || '').trim();
-            if (gKey.startsWith('JVENC_') || gKey.startsWith('ENC_')) gKey = deobfuscateKey(gKey);
-            keyIndexNum = 1;
-          }
-          if (!gKey) {
-            bD?.remove();
-            return showToast("Vui lòng nhập Cohere API Key trong Cài đặt (⚙️)!", "danger");
-          }
-          if (typeof window.recordCohereRequest === 'function') window.recordCohereRequest(keyIndexNum, am);
-        } else {
-        // Xoay tua OpenRouter keys (5 key) - đọc theo SỐ Ô (slot) để khớp bộ đếm,
-        // vì window.openRouterKeys đã lọc bỏ các ô trống nên chỉ số mảng ≠ số ô.
-        const orKeyAtSlot = slot => {
-          let v = (ls.getItem(`jarvis_openrouter_api_${slot}`) || '').trim();
+        const keyAtSlot = (slot) => {
+          if (slot < 1 || slot > keyCount) return '';
+          const keyName = keyStorageNames[slot - 1];
+          let v = (ls.getItem(keyName) || '').trim();
           if (v.startsWith('JVENC_') || v.startsWith('ENC_')) v = deobfuscateKey(v);
           return v;
         };
-        const orSlotOfKey = key => (typeof window.findOpenRouterSlotIndexForKey === 'function')
-          ? window.findOpenRouterSlotIndexForKey(key)
-          : Math.max(1, ((window.openRouterKeys || []).indexOf(key)) + 1);
-        const orKeys = (typeof window.openRouterKeys !== 'undefined' && Array.isArray(window.openRouterKeys))
-          ? window.openRouterKeys.filter(Boolean) : [];
-        const orSelEl = $('openrouter-key-select');
-        const orSel = orSelEl ? orSelEl.value : 'auto';
 
-        if (orSel !== 'auto') {
-          // Chọn thủ công 1 ô: luôn lấy đúng key của ô đó
-          const picked = orKeyAtSlot(parseInt(orSel, 10) + 1) || orKeys[0] || '';
-          if (picked) {
-            gKey = picked;
-            keyIndexNum = orSlotOfKey(picked);
+        const slotOfKey = (key) => {
+          const idx = keyStorageNames.indexOf(key);
+          return idx >= 0 ? idx + 1 : 1;
+        };
+
+        // Read all keys for this provider
+        const allKeys = keyStorageNames.map(name => {
+          let v = (ls.getItem(name) || '').trim();
+          if (v.startsWith('JVENC_') || v.startsWith('ENC_')) v = deobfuscateKey(v);
+          return v;
+        }).filter(Boolean);
+
+        // Get selector element if exists (dynamic providers may not have UI selector)
+        const selEl = $('' + compatNow.id + '-key-select');
+        const sel = selEl ? selEl.value : 'auto';
+
+        if (sel !== 'auto' && keyCount > 0) {
+          // Manual slot selection: get key from that slot (sel is 0-based index)
+          const slotIdx = parseInt(sel, 10);
+          if (!isNaN(slotIdx) && slotIdx >= 0 && slotIdx < keyCount) {
+            const picked = keyAtSlot(slotIdx + 1) || allKeys[0] || '';
+            if (picked) {
+              gKey = picked;
+              keyIndexNum = slotOfKey(picked);
+            }
           }
-        } else if (orKeys.length) {
-          // Tự động xoay tua vòng tròn qua các ô có key
-          const orIdx = (window.openRouterKeyIndex || 0) % orKeys.length;
-          gKey = orKeys[orIdx];
-          window.openRouterKeyIndex = (orIdx + 1) % orKeys.length;
-          keyIndexNum = orSlotOfKey(gKey);
+        } else if (allKeys.length) {
+          // Auto round-robin through available keys
+          const providerKeyIndexVar = compatNow.keyIndexVar || (compatNow.id + 'KeyIndex');
+          const providerKeyIndex = (window[providerKeyIndexVar] || 0) % allKeys.length;
+          gKey = allKeys[providerKeyIndex];
+          window[providerKeyIndexVar] = (providerKeyIndex + 1) % allKeys.length;
+          keyIndexNum = slotOfKey(gKey);
         } else {
-          // Fallback về key đơn cũ (nếu 5 ô mới đều trống)
-          gKey = (ls.getItem('openrouter_api_key') || '').trim();
+          // Fallback to legacy single key if exists
+          const legacyKeyName = compatNow.keyStorage || ('jarvis_' + compatNow.id + '_api');
+          gKey = (ls.getItem(legacyKeyName) || '').trim();
           if (gKey.startsWith('JVENC_') || gKey.startsWith('ENC_')) gKey = deobfuscateKey(gKey);
           keyIndexNum = 1;
         }
+
         if (!gKey) {
           bD?.remove();
-          return showToast("Vui lòng nhập OpenRouter API Key trong Cài đặt (⚙️)!", "danger");
+          return showToast("Vui lòng nhập API Key cho provider " + (compatNow.label || compatNow.id) + " trong Cài đặt (⚙️)!", "danger");
         }
-        if (typeof window.recordOpenRouterRequest === 'function') window.recordOpenRouterRequest(keyIndexNum, am);
-        }
+
+        // Record usage if function exists
+        const recordFn = window['record' + compatNow.id.charAt(0).toUpperCase() + compatNow.id.slice(1) + 'Request'];
+        if (typeof recordFn === 'function') recordFn(keyIndexNum, am);
+
       } else if (usesExplabs) {
         // Xoay tua 5 key Experiential Labs, đọc theo SỐ Ô (slot) để khớp bộ đếm
         const elKeyAtSlot = slot => {
