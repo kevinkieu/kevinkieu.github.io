@@ -36,7 +36,8 @@
       "check-models": "node scratch/check_model_registry.js — đối chiếu optgroup model trong index.html ↔ COMPAT_PROVIDERS ↔ COMPAT_MODEL_OPTS",
       "smoke:openrouter": "node scratch/openrouter_nemotron_smoke.js — gọi thật OpenRouter khi có OPENROUTER_API_KEY",
       "sync-assets": "node scripts/sync-web-assets.js — mirror web root sang android/app/src/main/assets",
-      "check-assets": "node scripts/sync-web-assets.js --check — báo lệch, exit 1"
+      "check-assets": "node scripts/sync-web-assets.js --check — báo lệch, exit 1",
+      "check-map": "node scripts/check-project-map.js — đối chiếu boicanhduan.json với cây file thật (đường dẫn chết + file chưa mô tả), exit 1"
     },
     "devDependencies": [
       "vitest",
@@ -230,6 +231,7 @@
         "test/search.test.js": "Kiểm tra cache tìm kiếm, extractQuotedKeywords, điều phối executeLiveSearch với fetch mock.",
         "test/session-cleanup.test.js": "Kiểm tra auto-cleanup chỉ xoá phiên trống > 1 giờ, không xoá phiên đang mở/có tin nhắn.",
         "scripts/sync-web-assets.js": "Danh sách file duy nhất để mirror web root → android/app/src/main/assets; tự xoá file thừa/thư mục rỗng; --check để so sánh.",
+        "scripts/check-project-map.js": "npm run check-map: đối chiếu boicanhduan.json với cây file thật (mọi file trong js/, css/, test/, scripts/, worker/, scratch/ và file gốc phải được mô tả; mọi đường dẫn trong bản đồ phải còn tồn tại), hỗ trợ key dạng 'thư mục/*'.",
         "scratch/check_model_registry.js": "npm run check-models: đối chiếu optgroup trong index.html với COMPAT_PROVIDERS/COMPAT_MODEL_OPTS.",
         "scratch/openrouter_nemotron_smoke.js": "npm run smoke:openrouter: gọi thật OpenRouter cho các model Nemotron khi có OPENROUTER_API_KEY.",
         "scratch/nvidia-proxy.js": "Proxy Node local (CORS + stream) cho NVIDIA integrate API khi chạy web.",
@@ -259,7 +261,7 @@
         ".nojekyll": "Marker tắt Jekyll cho GitHub Pages.",
         ".well-known/assetlinks.json": "Android app links / asset links metadata.",
         "bump-version.js": "Tăng versionCode/versionName trong android/app/build.gradle và đồng bộ cache buster ?v= / sw cache version.",
-        "package.json": "Khai báo npm scripts (test, test:watch, check-models, smoke:openrouter, sync-assets, check-assets) và devDependencies (vitest, @vitest/coverage-v8, jsdom); script chi tiết ở runtime_entry.npm_scripts."
+        "package.json": "Khai báo npm scripts (test, test:watch, check-models, smoke:openrouter, sync-assets, check-assets, check-map) và devDependencies (vitest, @vitest/coverage-v8, jsdom); script chi tiết ở runtime_entry.npm_scripts."
       }
     }
   ],
@@ -287,7 +289,7 @@
   "developer_workflow": {
     "local_run": "Chạy static server tại gốc dự án (ví dụ node scratch/static-server.js, python -m http.server hoặc npx serve) rồi mở index.html. Không cần build/bundler.",
     "pwa_install": "Cài từ trình duyệt qua manifest/Service Worker.",
-    "testing": "npm test (vitest run). Sau mỗi thay đổi JS nên chạy npm run check-models nếu có đụng model, npm run check-assets để chắc mirror Android khớp.",
+    "testing": "npm test (vitest run). Sau mỗi thay đổi JS nên chạy npm run check-models nếu có đụng model, npm run check-assets để chắc mirror Android khớp, npm run check-map để chắc boicanhduan.json không lệch cây file.",
     "asset_sync": "Sửa file web (index.html/js/css/sw.js/manifest/icon) thì chạy \"npm run sync-assets\" (hoặc node scripts/sync-web-assets.js) để mirror sang android/app/src/main/assets; \"npm run check-assets\" báo lệch (exit 1). Cả ba luồng build (build.js, build-apk.bat, CI) đều gọi chính script này.",
     "cache_busting": "Khi sửa JS/CSS phải bump query ?v= của đúng file đó trong index.html (SW dùng stale-while-revalidate cho /js/ và /css/ nên không bump là trình duyệt chạy bản cũ), css/style.css dùng chung ?v=; sw.js bump CACHE_NAME khi cần xoá cache cũ.",
     "version_bump": "node bump-version.js: tăng versionCode/versionName trong android/app/build.gradle và đồng bộ cache buster.",

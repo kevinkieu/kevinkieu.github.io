@@ -9,7 +9,8 @@
     "check-models": "node scratch/check_model_registry.js",
     "smoke:openrouter": "node scratch/openrouter_nemotron_smoke.js",
     "sync-assets": "node scripts/sync-web-assets.js",
-    "check-assets": "node scripts/sync-web-assets.js --check"
+    "check-assets": "node scripts/sync-web-assets.js --check",
+    "check-map": "node scripts/check-project-map.js"
   },
   "repository": {
     "type": "git",
