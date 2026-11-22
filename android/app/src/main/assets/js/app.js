@@ -2507,6 +2507,29 @@
       // DEBUG: dấu vết lượt gửi (đọc bằng: copy(JSON.stringify(window.__jarvisTurnDebug)))
       window.__jarvisTurnDebug = { model: am, engine: currentEngine, startedAt: new Date().toISOString(), startedAtMs: performance.now() };
 
+      // --- ẢNH: mọi model đều được gửi kèm ảnh; nếu provider/nền tảng từ chối thì báo
+      // toast theo đúng TÊN model đang chọn và gửi lại lượt đó không kèm ảnh. ---
+      const modelLabelOf = (id) => {
+        const mid = String(id || '').trim();
+        const cp = (typeof resolveCompatProvider === 'function') ? resolveCompatProvider(mid) : null;
+        if (cp) { try { return cp.provider.modelLabel(mid); } catch (_) {} }
+        const opt = Array.from(DOM.model?.options || []).find(o => o.value === mid);
+        return (opt?.text || mid || 'Model').trim();
+      };
+      // Chỉ bắt lỗi "model không nhận ảnh" (không bắt lỗi ảnh hỏng/quá lớn/mất mạng)
+      const isImageRejection = (msg) => {
+        const s = String(msg || '');
+        if (!s) return false;
+        return /(does not|doesn't|do not|cannot|can't|unable to|not able to)\s+(process|support|accept|handle|read)\s+[^.\n]{0,30}(image|vision|visual|photo|picture)/i.test(s)
+          || /(image|vision|visual|multimodal)[^.\n]{0,40}(not supported|is not supported|unsupported|not accepted|not allowed)/i.test(s)
+          || /unsupported[_\s](media|modality|content[_\s]?type)/i.test(s)
+          || /(only|text-only)[^.\n]{0,30}(text|language)[^.\n]{0,30}(input|model|supported)/i.test(s);
+      };
+      const notifyImagesUnsupported = (label) => {
+        showToast(`⚠️ ${label} does not process images (không xử lý ảnh) — đã gửi lại không kèm ảnh.`, 'warning');
+        console.warn('[Ảnh] Provider từ chối ảnh:', label);
+      };
+
       let gKey = "";
       let keyIndexNum = 1;
 
@@ -2984,10 +3007,16 @@
           currentParts.push({ inlineData: { mimeType, data } });
         });
 
+        // Có ít nhất 1 ảnh trong lượt này? (dùng chung cho mọi nhánh model)
+        const hasImageFiles = base64Files.some(f => String(f.mimeType || '').startsWith('image/'));
+
         const interactionInput = [];
         if (fnP) interactionInput.push({ type: 'text', text: promptWithTime });
         base64Files.forEach(({ mimeType, data }) => {
-          interactionInput.push({ type: 'image', data, mime_type: mimeType });
+          // Interactions API chỉ nhận type 'image' cho ảnh thật (video/audio không gửi kiểu này)
+          if (String(mimeType || '').startsWith('image/')) {
+            interactionInput.push({ type: 'image', data, mime_type: mimeType });
+          }
         });
 
         const thk = DOM.thinking.value;
@@ -3078,29 +3107,28 @@
                   });
                 });
               }
-              if (base64Files && base64Files.length > 0) {
-                const userContent = [{ type: 'text', text: promptWithTime }];
-                for (const f of base64Files) {
-                  if (f.mimeType && f.mimeType.startsWith('image/')) {
-                    userContent.push({
-                      type: 'image_url',
-                      image_url: {
-                        url: `data:${f.mimeType};base64,${f.data}`
-                      }
-                    });
+              // Ảnh LUÔN được gửi cho mọi model Explabs; model từ chối thì gửi lại không kèm ảnh.
+              const expUserContent = (withImages) => {
+                if (!hasImageFiles) return promptWithTime;
+                const parts = [{ type: 'text', text: promptWithTime }];
+                if (withImages) {
+                  for (const f of base64Files) {
+                    if (String(f.mimeType || '').startsWith('image/')) {
+                      parts.push({ type: 'image_url', image_url: { url: `data:${f.mimeType};base64,${f.data}` } });
+                    }
                   }
                 }
-                expMessages.push({ role: 'user', content: userContent });
-              } else {
-                expMessages.push({ role: 'user', content: promptWithTime });
-              }
+                return parts;
+              };
+              let expWithImages = hasImageFiles;
+              expMessages.push({ role: 'user', content: expUserContent(expWithImages) });
 
               // reasoning_effort cho các model Experiential Labs hỗ trợ (Qwen4 Max, GPT-6 Luna, DeepSeek V4.1 Flash)
               // Think Depth minimal -> none (tắt), low/medium/high giữ nguyên
               const expReasoningMap = { minimal: 'none', low: 'low', medium: 'medium', high: 'high' };
               const expLevel = expReasoningMap[DOM.thinking?.value] || 'low';
               const supportsReasoningEffort = am === 'qwen4-max:free' || am === 'gpt-6-luna' || am === 'deepseek-v4.1-flash';
-              const expRes = await fetch('https://api.experientiallabs.ai/v1/chat/completions', {
+              const sendExp = () => fetch('https://api.experientiallabs.ai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -3115,9 +3143,21 @@
                 signal: abortController.signal
               });
 
+              let expRes = await sendExp();
               if (!expRes.ok) {
                 const errData = await expRes.json().catch(() => ({}));
-                throw new Error(errData?.error?.message || ('HTTP ' + expRes.status));
+                const expErrMsg = errData?.error?.message || ('HTTP ' + expRes.status);
+                // Model không xử lý ảnh: báo toast theo tên model, gửi lại đúng lượt này không kèm ảnh
+                if (expWithImages && isImageRejection(expErrMsg)) {
+                  expWithImages = false;
+                  expMessages[expMessages.length - 1].content = expUserContent(false);
+                  notifyImagesUnsupported(modelLabelOf(am));
+                  expRes = await sendExp();
+                }
+                if (!expRes.ok) {
+                  const errData2 = await expRes.json().catch(() => ({}));
+                  throw new Error(errData2?.error?.message || expErrMsg);
+                }
               }
 
               const reader = expRes.body.getReader();
@@ -3273,13 +3313,14 @@
           }
           if (base64Files && base64Files.length > 0) {
             const compatUserContent = [{ type: 'text', text: promptWithTime }];
-            // Model chưa khai báo inputModalities thì giữ mặc định cũ: text + ảnh
+            // Ảnh LUÔN gửi cho MỌI model (kể cả model khai báo text-only): provider từ chối thì
+            // vòng thử lại bên dưới bắt lỗi, báo toast "<tên model> does not process images"
+            // rồi gửi lại không kèm ảnh. Chỉ video/audio còn lọc theo inputModalities.
             const accepts = (mOpts && Array.isArray(mOpts.inputModalities)) ? mOpts.inputModalities : ['text', 'image'];
             const skippedKinds = [];
             for (const f of base64Files) {
               const mt = f.mimeType || '';
               if (mt.startsWith('image/')) {
-                if (!accepts.includes('image')) { skippedKinds.push('ảnh'); continue; }
                 compatUserContent.push({
                   type: 'image_url',
                   image_url: { url: `data:${mt};base64,${f.data}` }
@@ -3310,6 +3351,18 @@
           }
 
           const compatLabel = prov.modelLabel(am);
+          // Ảnh đã gửi kèm lượt này? Nếu provider từ chối, gỡ ảnh rồi gửi lại đúng một lần.
+          let compatHasImages = hasImageFiles;
+          const dropCompatImages = () => {
+            for (let i = compatMessages.length - 1; i >= 0; i--) {
+              const cMsg = compatMessages[i];
+              if (cMsg.role !== 'user' || !Array.isArray(cMsg.content)) continue;
+              const kept = cMsg.content.filter(p => p.type !== 'image_url');
+              cMsg.content = kept.length > 1 ? kept : (kept[0]?.text || promptWithTime);
+              return true;
+            }
+            return false;
+          };
           let compatThinking = '';
           let compatContent = '';
 
@@ -3411,6 +3464,14 @@
               compatRes = await sendCompat();
               if (compatRes.ok) break;
               compatErrText = await compatRes.text().catch(() => '');
+              // Model không xử lý ảnh (text-only): bỏ ảnh khỏi lượt, báo toast theo tên model, thử lại
+              if (compatHasImages && attempt < COMPAT_MAX_ATTEMPTS - 1 && compatRes.status >= 400 && compatRes.status < 500 && isImageRejection(compatErrText)) {
+                compatHasImages = false;
+                dropCompatImages();
+                notifyImagesUnsupported(compatLabel);
+                compatErrText = '';
+                continue;
+              }
               // Gateway từ chối ĐÚNG một tham số (vd Cohere: "top_k is not supported" - HTTP 422):
               // gỡ tham số đó rồi thử lại thay vì báo lỗi cả lượt.
               const rejectedParam = (() => {
@@ -3607,6 +3668,8 @@
           let currentTryKey = gKey;
           let retryCount = 0;
           const maxRetries = Math.min(apiKeys.length, 3);
+          // Ảnh đã gửi kèm lượt này? Model từ chối thì bỏ ảnh, báo toast rồi thử lại.
+          let ixHasImages = hasImageFiles;
 
           while (retryCount <= maxRetries) {
             try {
@@ -3653,6 +3716,16 @@
               break;
             } catch (err) {
               lastErr = err;
+              // Model không xử lý ảnh: bỏ phần ảnh khỏi input, báo toast rồi thử lại
+              if (ixHasImages && isImageRejection(err.message)) {
+                ixHasImages = false;
+                if (Array.isArray(interactionParams.input)) {
+                  const kept = interactionParams.input.filter(p => p.type !== 'image');
+                  interactionParams.input = kept.length > 1 ? kept : (kept[0]?.text || promptWithTime);
+                }
+                notifyImagesUnsupported(modelLabelOf(am));
+                if (retryCount < maxRetries) { retryCount++; continue; }
+              }
               const isKeyOrQuotaErr = err.message && (
                 err.message.includes('API key') ||
                 err.message.includes('403') ||
@@ -3772,6 +3845,8 @@
             });
           }
           contents.push({ role: 'user', parts: currentParts });
+          // Ảnh đã gửi kèm lượt này? Nếu Google từ chối, bỏ inlineData ảnh rồi gửi lại.
+          let googleHasImages = hasImageFiles;
 
           const isGemma = /^gemma-/.test(am);
           // Model Gemini 3.x/4 dùng thinkingLevel; thinkingBudget là tham số cũ của dòng 2.5.
@@ -3997,6 +4072,18 @@
               // 1. Nếu lỗi xảy ra trước khi nhận chữ (!pS): Tự phục hồi thông minh
               if (!pS) {
                 console.warn(`generateContentStream lần ${streamAttempts} lỗi:`, e.message);
+
+                // 0. Model không xử lý ảnh: bỏ ảnh khỏi lượt, báo toast theo tên model rồi gửi lại
+                if (googleHasImages && isImageRejection(e.message)) {
+                  googleHasImages = false;
+                  const lastUserTurn = contents[contents.length - 1];
+                  if (lastUserTurn?.parts) {
+                    lastUserTurn.parts = lastUserTurn.parts.filter(p => !(p.inlineData && String(p.inlineData.mimeType || '').startsWith('image/')));
+                  }
+                  notifyImagesUnsupported(modelLabelOf(am));
+                  maxStreamAttempts += 1;
+                  continue;
+                }
 
                 // A. Nếu lỗi do thinkingConfig (400 Bad Request): thử lại với mức thấp nhất hoặc gỡ bỏ
                 if (config.thinkingConfig && (e.message?.includes('thinking') || e.message?.includes('400') || e.message?.includes('INVALID_ARGUMENT'))) {

@@ -13,7 +13,7 @@
       "PWA",
       "Android (WebView + native medication alarms)"
     ],
-    "versioning": "Android versionCode 72 / versionName 1.1.72 (android/app/build.gradle), cache buster ?v= trong index.html, sw cache jarvis-ai-pwa-v74"
+    "versioning": "Android versionCode 72 / versionName 1.1.72 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=83), sw cache jarvis-ai-pwa-v75"
   },
   "runtime_entry": {
     "web": "index.html",
@@ -66,7 +66,9 @@
     "model_layer": {
       "js/model-registry.js": "Nguồn duy nhất cho: THINKING_LEVELS_BY_MODEL + nhãn mức + DEFAULT_THINKING_LEVELS, FLASH_LITE_MODEL / AUX_FALLBACK_MODELS, COMPAT_PROVIDERS (nvidia / openrouter / cohere / explabs), NVIDIA_DEFAULT_PROXY, COMPAT_MODEL_OPTS (maxTokens, temperature/topP/topK, levels, noReasoning, inputModalities...), EXPLABS_MODELS, buildReasoningPayload / buildNvidiaThinking / resolveCompatProvider.",
       "thinking_level_rule": "Gemini 3.8 Flash và 4 Hydrogen KHÔNG nhận 'minimal' → resolveThinkingLevel() tự hạ về 'low'; 3.6 Flash, 3.5/3.1 Flash-Lite nhận đủ 4 mức.",
-      "engine_select": "index.html #engine-select: 'stream' (generateContentStream + xoay 10 key) hoặc 'interactions' (Interactions API). Stream là engine mặc định, có fallback unary và tự nhảy sang Stream Engine nếu Interactions lỗi."
+      "engine_select": "index.html #engine-select: 'stream' (generateContentStream + xoay 10 key) hoặc 'interactions' (Interactions API). Stream là engine mặc định, có fallback unary và tự nhảy sang Stream Engine nếu Interactions lỗi.",
+      "image_support_rule": "MỌI model (Google, Interactions, Experiential Labs, NVIDIA/OpenRouter/Cohere) đều được gửi kèm ảnh: Gemini dùng part inlineData, Interactions dùng part type 'image' (chỉ cho ảnh thật), gateway OpenAI-compatible + Experiential Labs dùng image_url. inputModalities trong COMPAT_MODEL_OPTS chỉ còn dùng để lọc video/audio — không được dùng để chặn ảnh. Khi provider/nền tảng từ chối ảnh, js/app.js nhận diện bằng isImageRejection(), hiện toast '⚠️ <tên model> does not process images (không xử lý ảnh) — đã gửi lại không kèm ảnh.' (tên model lấy từ modelLabelOf: nhãn provider hoặc text option của #model-select) rồi tự gửi lại đúng lượt đó không kèm ảnh.",
+      "provider_key_rule": "Mọi nền tảng/provider mới thêm phải có API key được obfuscate (JVENC_) khi lên Gist Cloud và trong backup JSON, đúng như nhóm key Google: storage key jarvis_<provider>_api_1..N (+ jarvis_<provider>_api_name_1..N) và jarvis_<provider>_usage; khai báo bể key + cfgMap trong js/api-keys.js, thêm nhánh get/set/merge/isLocalAhead + đóng gói ở cả 2 luồng push + khôi phục ở luồng 'Ghi đè Máy' trong js/sync.js, thêm key/tên/usage vào js/export.js (điều kiện mã hoá phải bắt cả tên dạng *_api_*), thêm vào js/key-config-sync.js, và bộ đếm lượt dùng trong js/quota.js."
     },
     "cdn_libs_loaded_in_index_html": [
       "marked",
@@ -134,7 +136,7 @@
       "files": {
         "js/model-registry.js": "Registry tầng model (tách khỏi app.js): THINKING_LEVELS_BY_MODEL + nhãn mức, FLASH_LITE_MODEL/AUX_FALLBACK_MODELS, COMPAT_PROVIDERS (NVIDIA/OpenRouter/Cohere) + NVIDIA_DEFAULT_PROXY, COMPAT_MODEL_OPTS (tham số từng model), EXPLABS_MODELS, buildReasoningPayload / buildNvidiaThinking / resolveCompatProvider. Nạp trước app.js; xuất qua window, app.js giữ alias cùng tên nên không đổi call site.",
         "js/chat-render.js": "Renderer lịch sử chat: thinkingStats / buildThinkingDetailsHtml / mergeThinkingSegments / mergeAdjacentThinkingBlocks (khối suy luận 💭), renderMsgContent (Markdown + KaTeX + Mermaid + highlight + Copy Code), appendMsg (bong bóng + thanh action), captureChatScroll / restoreChatScroll / reRenderHistory, stripThinkingForCopy / getCopyText / copy. Trạng thái dùng chung đọc động qua window.",
-        "js/app.js": "Controller chính: quản lý phiên & chatHistory, gửi tin, engine 'stream' (generateContentStream: thinkingLevel theo model, safetySettings, maxOutputTokens 8192/32768/65000, watchdog + fallback Flash Lite, xoay key, nối tiếp stream khi bị cắt, FAIL-SAFE hỏi lại với thinking tắt) và engine 'interactions'; gateway OpenAI-compatible (OpenRouter/NVIDIA/Experiential/Cohere) với streaming + reasoning; system instruction động (getDynamicSI) + global context; temperature/top-p/top-k; đính kèm tệp; auto-name, auto-summary, branch-fork; ghi âm rảnh tay + VAD; đếm token/latency; helper DOM, đăng ký SW, xử lý quota localStorage, hook native bridge. Slot key Google lưu qua getGoogleKeySlot/setGoogleKeySlot.",
+        "js/app.js": "Controller chính: quản lý phiên & chatHistory, gửi tin, engine 'stream' (generateContentStream: thinkingLevel theo model, safetySettings, maxOutputTokens 8192/32768/65000, watchdog + fallback Flash Lite, xoay key, nối tiếp stream khi bị cắt, FAIL-SAFE hỏi lại với thinking tắt) và engine 'interactions'; gateway OpenAI-compatible (OpenRouter/NVIDIA/Experiential/Cohere) với streaming + reasoning; system instruction động (getDynamicSI) + global context; temperature/top-p/top-k; đính kèm tệp (ảnh luôn gửi cho mọi model ở mọi nhánh; provider từ chối ảnh thì toast '<tên model> does not process images (không xử lý ảnh)' và gửi lại không kèm ảnh qua modelLabelOf/isImageRejection/notifyImagesUnsupported); auto-name, auto-summary, branch-fork; ghi âm rảnh tay + VAD; đếm token/latency; helper DOM, đăng ký SW, xử lý quota localStorage, hook native bridge. Slot key Google lưu qua getGoogleKeySlot/setGoogleKeySlot.",
         "js/database.js": "IndexedDB (JavissUltimateOS_DB): store chat_sessions, file_library, tts_audio_library, session_backup (mirror để phục hồi), init + CRUD helpers.",
         "js/api-keys.js": "UI + lưu trữ bể key: 10 key Google (kèm tên gợi nhớ, kiểm tra định dạng/trùng/quota), 5 OpenRouter, 5 Experiential Labs, 3 NVIDIA, 3 Cohere; menu chọn key dùng chung theo nền tảng của model đang chọn; cfgMap các cấu hình ngoài (Tavily, Serper, proxy NVIDIA, live temperature, watchdog jarvis_stall_timeout_sec, ngưỡng chuyển Flash Lite jarvis_lite_fallback_sec + công tắc jarvis_lite_fallback_enabled); nút Lưu Cấu Hình đồng bộ ngay lên Gist qua scheduleAutoSync.",
         "js/commands.js": "Command palette, thư viện prompt mẫu và định tuyến lệnh dạng /slash.",
@@ -194,7 +196,7 @@
       "id": "cloud_sync",
       "name": "GitHub Gist 2-way sync và merge đa thiết bị",
       "files": {
-        "js/sync.js": "Đồng bộ Gist 2 chiều: merge thông minh cho phiên, knowledge base, thư mục, prompt, API key/cấu hình ngoài, bộ đếm lượt dùng key, thuốc + lịch sử uống thuốc, tombstone, phục hồi khi rate-limit, auto-sync nền, sync lúc khởi động, luồng pull/push restore, trạng thái sync trên header."
+        "js/sync.js": "Đồng bộ Gist 2 chiều: merge thông minh cho phiên, knowledge base, thư mục, prompt, API key/cấu hình ngoài (Google, OpenRouter, Experiential Labs, NVIDIA, Cohere — provider mới phải thêm đủ nhánh get/set/merge/push/pull như các nhóm này), bộ đếm lượt dùng key, thuốc + lịch sử uống thuốc, tombstone, phục hồi khi rate-limit, auto-sync nền, sync lúc khởi động, luồng pull/push restore, trạng thái sync trên header."
       }
     },
     {
@@ -249,7 +251,7 @@
       "name": "Tệp phụ trợ",
       "files": {
         "boicanhduan.json": "Bản đồ dự án (kiến trúc, tính năng, file) — không chứa lịch sử thay đổi, xem CHANGELOG.md.",
-        "AGENTS.md": "Quy tắc làm việc cho agent/người sửa code (tech stack, quy tắc sửa file, ngôn ngữ trả lời).",
+        "AGENTS.md": "Quy tắc làm việc cho agent/người sửa code (tech stack, quy tắc sửa file, ngôn ngữ trả lời) + quy tắc bắt buộc khi thêm model/nền tảng: model mới phải nhận ảnh và key của provider mới phải được mã hoá + đồng bộ Gist/backup.",
         "CHANGELOG.md": "Lịch sử thay đổi chi tiết, mới nhất ở trên cùng.",
         "TODO.md": "Danh sách việc còn lại/đã xong gần nhất (ví dụ gỡ model Gemma & Experiential Labs).",
         "README.md": "Hướng dẫn tổng quan dự án.",
@@ -301,8 +303,8 @@
   "changelog": {
     "file": "CHANGELOG.md",
     "note": "Lịch sử thay đổi chi tiết đã chuyển từ recent_changes sang CHANGELOG.md để boicanhduan.json chỉ còn mô tả kiến trúc.",
-    "entries": 40,
+    "entries": 42,
     "last_change_date": "2026-11-22",
-    "latest_summary": "Tự chuyển sang gemini-3.5-flash-lite khi chưa có chunk đầu trong ngưỡng (mặc định 8s, cấu hình + công tắc ở Cài đặt → Hiệu năng), gom helper showModelFallbackBadge, thêm mốc đo prep/headers/firstThought + nhãn \"Đang chờ\"; bump app.js ?v=82, api-keys.js ?v=77, style.css ?v=74, sw cache v74."
+    "latest_summary": "Ảnh được gửi cho MỌI model ở cả 4 nhánh (Gemini stream, Interactions, Experiential Labs, gateway OpenAI-compatible); provider từ chối ảnh thì toast '<tên model> does not process images (không xử lý ảnh)' và tự gửi lại không kèm ảnh; inputModalities chỉ còn lọc video/audio. Thêm quy tắc cố định cho agent trong AGENTS.md (model mới phải nhận ảnh, key provider mới phải mã hoá + đồng bộ Gist/backup). Bump app.js ?v=83, sw cache v75."
   }
 }

@@ -92,11 +92,18 @@
       'jarvis_openrouter_usage',
       'jarvis_nvidia_api_1', 'jarvis_nvidia_api_2', 'jarvis_nvidia_api_3',
       'jarvis_nvidia_api_name_1', 'jarvis_nvidia_api_name_2', 'jarvis_nvidia_api_name_3',
-      'jarvis_nvidia_usage', 'nvidia_proxy_url'
+      'jarvis_nvidia_usage', 'nvidia_proxy_url',
+      'jarvis_explabs_api_1', 'jarvis_explabs_api_2', 'jarvis_explabs_api_3', 'jarvis_explabs_api_4', 'jarvis_explabs_api_5',
+      'jarvis_explabs_api_name_1', 'jarvis_explabs_api_name_2', 'jarvis_explabs_api_name_3', 'jarvis_explabs_api_name_4', 'jarvis_explabs_api_name_5',
+      'jarvis_explabs_usage',
+      'jarvis_cohere_api_1', 'jarvis_cohere_api_2', 'jarvis_cohere_api_3',
+      'jarvis_cohere_api_name_1', 'jarvis_cohere_api_name_2', 'jarvis_cohere_api_name_3',
+      'jarvis_cohere_usage'
     ];
     cfgKeys.forEach(k => {
       const val = ls.getItem(k) || "";
-      cfgs[k] = (k.includes('key') || k === 'brave_worker_url') && val ? obfuscateKey(val) : val;
+      const isSecret = k.includes('key') || k.includes('_api_') || k === 'brave_worker_url';
+      cfgs[k] = isSecret && val ? obfuscateKey(val) : val;
     });
     cfgs['live_search_enabled'] = ls.getItem('live_search_enabled') || 'true';
     cfgs['live_context_enabled'] = ls.getItem('live_context_enabled') || 'true';

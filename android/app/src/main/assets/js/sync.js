@@ -96,6 +96,11 @@
   const getNvidiaKeyNamesList = () => getSlotKeyNamesList('jarvis_nvidia_api', 3);
   const setNvidiaKeysList = keys => setSlotKeysList('jarvis_nvidia_api', 3, 'nvidia-key', keys, () => window.initNvidiaKeys?.());
   const setNvidiaKeyNamesList = names => setSlotKeyNamesList('jarvis_nvidia_api', 3, 'nvidia-key', names, () => window.initNvidiaKeys?.());
+
+  const getCohereKeysList = obf => getSlotKeysList('jarvis_cohere_api', 3, obf);
+  const getCohereKeyNamesList = () => getSlotKeyNamesList('jarvis_cohere_api', 3);
+  const setCohereKeysList = keys => setSlotKeysList('jarvis_cohere_api', 3, 'cohere-key', keys, () => window.initCohereKeys?.());
+  const setCohereKeyNamesList = names => setSlotKeyNamesList('jarvis_cohere_api', 3, 'cohere-key', names, () => window.initCohereKeys?.());
   const getExternalConfigsObj = obf => (typeof window.getExternalConfigsObj === 'function') ? window.getExternalConfigsObj(obf) : {};
   const setExternalConfigsObj = obj => window.setExternalConfigsObj && window.setExternalConfigsObj(obj);
   const deobfuscateKey = k => (typeof window.deobfuscateKey === 'function') ? window.deobfuscateKey(k) : k;
@@ -478,6 +483,13 @@
               hasChanges = true;
             }
 
+            if (mergeRemoteSlotKeys(cloudData.settings?.cohereKeys, getCohereKeysList(false), setCohereKeysList)) {
+              hasChanges = true;
+            }
+            if (mergeRemoteSlotNames(cloudData.settings?.cohereKeyNames, getCohereKeyNamesList(), setCohereKeyNamesList)) {
+              hasChanges = true;
+            }
+
             // D2. HỢP NHẤT CẤU HÌNH NGOÀI & API KEY DỊCH VỤ ĐÃ MÃ HÓA
             // (Tavily, Serper, Experiential Labs, OpenRouter...).
             // Nguyên tắc: máy nào đã có key thì giữ nguyên, chỉ nhận từ Cloud khi ô đó đang trống.
@@ -512,6 +524,10 @@
             }
             if (cloudData.keyUsageExplabs && typeof window.mergeRemoteExplabsUsage === 'function') {
               const usageChanged = window.mergeRemoteExplabsUsage(cloudData.keyUsageExplabs);
+              if (usageChanged) hasChanges = true;
+            }
+            if (cloudData.keyUsageCohere && typeof window.mergeRemoteCohereUsage === 'function') {
+              const usageChanged = window.mergeRemoteCohereUsage(cloudData.keyUsageCohere);
               if (usageChanged) hasChanges = true;
             }
             if (cloudData.keyUsageNvidia && typeof window.mergeRemoteNvidiaUsage === 'function') {
@@ -652,6 +668,9 @@
           if (!isLocalAhead && cloudData?.keyUsageExplabs && typeof window.isLocalExplabsUsageAhead === 'function') {
             if (window.isLocalExplabsUsageAhead(cloudData.keyUsageExplabs)) isLocalAhead = true;
           }
+          if (!isLocalAhead && cloudData?.keyUsageCohere && typeof window.isLocalCohereUsageAhead === 'function') {
+            if (window.isLocalCohereUsageAhead(cloudData.keyUsageCohere)) isLocalAhead = true;
+          }
           if (!isLocalAhead && cloudData?.keyUsageNvidia && typeof window.isLocalNvidiaUsageAhead === 'function') {
             if (window.isLocalNvidiaUsageAhead(cloudData.keyUsageNvidia)) isLocalAhead = true;
           }
@@ -662,7 +681,8 @@
             if (slotSettingsChanged(getGoogleKeysList(), getGoogleKeyNamesList(), settings.keys || [], settings.keyNames || []) ||
                 slotSettingsChanged(getOpenRouterKeysList(false), getOpenRouterKeyNamesList(), settings.openRouterKeys || [], settings.openRouterKeyNames || []) ||
                 slotSettingsChanged(getExplabsKeysList(false), getExplabsKeyNamesList(), settings.explabsKeys || [], settings.explabsKeyNames || []) ||
-                slotSettingsChanged(getNvidiaKeysList(false), getNvidiaKeyNamesList(), settings.nvidiaKeys || [], settings.nvidiaKeyNames || [])) {
+                slotSettingsChanged(getNvidiaKeysList(false), getNvidiaKeyNamesList(), settings.nvidiaKeys || [], settings.nvidiaKeyNames || []) ||
+                slotSettingsChanged(getCohereKeysList(false), getCohereKeyNamesList(), settings.cohereKeys || [], settings.cohereKeyNames || [])) {
               isLocalAhead = true;
             }
           }
@@ -761,6 +781,7 @@
             keyUsageOpenRouter: (typeof window.loadOpenRouterUsageData === 'function') ? window.loadOpenRouterUsageData() : null,
             keyUsageExplabs: (typeof window.loadExplabsUsageData === 'function') ? window.loadExplabsUsageData() : null,
             keyUsageNvidia: (typeof window.loadNvidiaUsageData === 'function') ? window.loadNvidiaUsageData() : null,
+            keyUsageCohere: (typeof window.loadCohereUsageData === 'function') ? window.loadCohereUsageData() : null,
             settings: {
               keys: getGoogleKeysList(true),
               keyNames: getGoogleKeyNamesList(),
@@ -770,6 +791,8 @@
               explabsKeyNames: getExplabsKeyNamesList(),
               nvidiaKeys: getNvidiaKeysList(true),
               nvidiaKeyNames: getNvidiaKeyNamesList(),
+              cohereKeys: getCohereKeysList(true),
+              cohereKeyNames: getCohereKeyNamesList(),
               externalConfigs: getExternalConfigsObj(true),
               model: getDOM().model?.value || 'gemini-3.6-flash',
               temperature: getDOM().temp?.value || 0.5,
@@ -1009,6 +1032,7 @@
           keyUsageOpenRouter: (typeof window.loadOpenRouterUsageData === 'function') ? window.loadOpenRouterUsageData() : null,
                       keyUsageExplabs: (typeof window.loadExplabsUsageData === 'function') ? window.loadExplabsUsageData() : null,
             keyUsageNvidia: (typeof window.loadNvidiaUsageData === 'function') ? window.loadNvidiaUsageData() : null,
+            keyUsageCohere: (typeof window.loadCohereUsageData === 'function') ? window.loadCohereUsageData() : null,
             settings: {
               keys: getGoogleKeysList(true),
               keyNames: getGoogleKeyNamesList(),
@@ -1018,6 +1042,8 @@
               explabsKeyNames: getExplabsKeyNamesList(),
               nvidiaKeys: getNvidiaKeysList(true),
               nvidiaKeyNames: getNvidiaKeyNamesList(),
+              cohereKeys: getCohereKeysList(true),
+              cohereKeyNames: getCohereKeyNamesList(),
             externalConfigs: getExternalConfigsObj(true),
             model: getDOM().model?.value || 'gemini-3.6-flash',
             temperature: getDOM().temp?.value || 0.5,
@@ -1116,6 +1142,8 @@
           if (parsed.settings.explabsKeyNames) setExplabsKeyNamesList(parsed.settings.explabsKeyNames);
           if (parsed.settings.nvidiaKeys) setNvidiaKeysList(parsed.settings.nvidiaKeys);
           if (parsed.settings.nvidiaKeyNames) setNvidiaKeyNamesList(parsed.settings.nvidiaKeyNames);
+          if (parsed.settings.cohereKeys) setCohereKeysList(parsed.settings.cohereKeys);
+          if (parsed.settings.cohereKeyNames) setCohereKeyNamesList(parsed.settings.cohereKeyNames);
           if (parsed.settings.externalConfigs) setExternalConfigsObj(parsed.settings.externalConfigs);
           if (parsed.settings.model && getDOM().model) getDOM().model.value = parsed.settings.model;
           if (parsed.settings.temperature && getDOM().temp) {
@@ -1148,7 +1176,11 @@
         window.updateKeyQuotaUI?.();
         window.updateOpenRouterQuotaUI?.();
         window.updateExplabsQuotaUI?.();
+        if (parsed.keyUsageCohere && typeof window.setCohereUsageData === 'function') {
+          window.setCohereUsageData(parsed.keyUsageCohere);
+        }
         window.updateNvidiaQuotaUI?.();
+        window.updateCohereQuotaUI?.();
 
         let importedKCount = 0;
         if (parsed.knowledgeBase && Array.isArray(parsed.knowledgeBase) && window.JarvisRAG && typeof window.JarvisRAG.importKnowledge === 'function') {

@@ -58,6 +58,8 @@
       const val = ls.getItem(k) || '';
       obj[k] = (obfuscate && val) ? window.obfuscateKey(val) : val;
     });
+    const jinaVal = ls.getItem('jina_api_key') || '';
+    obj['jina_api_key'] = (obfuscate && jinaVal) ? window.obfuscateKey(jinaVal) : jinaVal;
     obj['live_search_enabled'] = ls.getItem('live_search_enabled') || 'true';
     obj['live_context_enabled'] = ls.getItem('live_context_enabled') || 'true';
     return obj;
