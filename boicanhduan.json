@@ -6,13 +6,14 @@
       "Vanilla JS app",
       "Android WebView app"
     ],
-    "language": "JavaScript (ES modules)",
-    "purpose": "Multimodal AI assistant with chat, live voice/video call, dual-screen live translation, TTS studio, personal knowledge base + RAG, semantic search, and GitHub Gist 2-way sync.",
+    "language": "JavaScript (ES modules, không bundler, không framework)",
+    "purpose": "Multimodal AI assistant: chat đa model (Google Gemini + gateway OpenAI-compatible), live voice/video call, phiên dịch trực tiếp 2 màn hình, TTS studio, knowledge base + RAG, tìm kiếm web, tủ thuốc/nhắc uống thuốc và đồng bộ GitHub Gist 2 chiều.",
     "platforms": [
       "Web",
       "PWA",
       "Android (WebView + native medication alarms)"
-    ]
+    ],
+    "versioning": "Android versionCode 72 / versionName 1.1.72 (android/app/build.gradle), cache buster ?v= trong index.html, sw cache jarvis-ai-pwa-v74"
   },
   "runtime_entry": {
     "web": "index.html",
@@ -27,60 +28,123 @@
       "build-apk.bat"
     ],
     "ci": ".github/workflows/build-apk.yml",
-    "versioning": "bump-version.js"
+    "versioning_script": "bump-version.js",
+    "asset_sync": "scripts/sync-web-assets.js",
+    "npm_scripts": {
+      "test": "npx vitest run — chạy toàn bộ test (test/*.test.js, 7 file / 82 test)",
+      "test:watch": "npx vitest",
+      "check-models": "node scratch/check_model_registry.js — đối chiếu optgroup model trong index.html ↔ COMPAT_PROVIDERS ↔ COMPAT_MODEL_OPTS",
+      "smoke:openrouter": "node scratch/openrouter_nemotron_smoke.js — gọi thật OpenRouter khi có OPENROUTER_API_KEY",
+      "sync-assets": "node scripts/sync-web-assets.js — mirror web root sang android/app/src/main/assets",
+      "check-assets": "node scripts/sync-web-assets.js --check — báo lệch, exit 1"
+    },
+    "devDependencies": [
+      "vitest",
+      "@vitest/coverage-v8",
+      "jsdom"
+    ]
   },
   "architecture": {
-    "pattern": "module-based vanilla JS, shared state exposed on window, IndexedDB for persistence, localStorage for settings/keys, native bridge in Android WebView",
-    "external_apis": [
-      "Google Gemini (chat + BidiGenerateContent live streaming + TTS + embeddings)",
-      "OpenRouter / Experiential Labs / NVIDIA integrate API (OpenAI-compatible chat completions + streaming)",
-      "Tavily / Serper / Jina / Brave (web search and content extraction)",
-      "GitHub Gist (encrypted cloud sync)"
+    "pattern": "Vanilla JS nhiều module dạng IIFE gắn lên window, không bundler; IndexedDB cho dữ liệu lớn, localStorage cho cấu hình/key; Android WebView chạy lại chính bộ asset web đã mirror.",
+    "module_load_order": [
+      "1. CDN <script> đồng bộ trong <head>: marked, katex + auto-render, mermaid, highlight.js, lamejs",
+      "2. <script type=module> inline: import * as genai from 'https://esm.run/@google/genai' → window.GoogleGenAI",
+      "3. cuối <body>, thứ tự bắt buộc: js/globals.js (classic script, khai báo $ / $$ / ls / ss / các biến toàn cục) → js/lazy-libs.js (classic) → các module phụ (search, extract, blob, export, quota, storage-manager, color-tags, follow-up-chips, selection-toolbar, web-share-target, key-config-sync, medication, commands, briefing, cipher, database, session-cleanup) → js/model-registry.js → js/chat-render.js → js/app.js → js/api-keys.js → js/sync.js, live.js, tts.js, translate.js → js/eventBus.js → js/rag-core.js → js/rag.js",
+      "Lý do: app.js giữ alias cho toàn bộ API mà model-registry.js/chat-render.js/globals.js xuất qua window, nên các file đó phải nạp trước; rag.js cần eventBus.js."
     ],
+    "state_sharing": "Trạng thái dùng chung (chatHistory, sessions, activeId, DOM, cfgMap, SAFETY, apiKeys...) do js/globals.js và js/app.js khai báo rồi publish qua window bằng getter/setter (Object.defineProperty), nên module khác đọc được giá trị mới nhất mà không cần import.",
+    "external_apis": [
+      "Google Gemini: generateContentStream (chat, kèm thinkingConfig theo model), Interactions API (engine thay thế), BidiGenerateContent (live voice/video), TTS, Embedding 2 (+ fallback embedding-001)",
+      "OpenRouter (openai/gpt, nvidia/*, z-ai/*, qwen...) — OpenAI-compatible chat completions + streaming",
+      "NVIDIA integrate.api.nvidia.com (OpenAI-compatible, cần proxy CORS khi chạy web: scratch/nvidia-proxy.js cho local, worker/nvidia-proxy.js cho Cloudflare Workers)",
+      "Experiential Labs (OpenAI-compatible)",
+      "Cohere Compatibility API (Command A+, Command A Reasoning; reasoning_effort thay cho reasoning object)",
+      "Tavily / Serper / Jina Reader / Brave (tìm kiếm & trích xuất nội dung web)",
+      "GitHub Gist (đồng bộ cloud mã hoá 2 chiều)"
+    ],
+    "model_layer": {
+      "js/model-registry.js": "Nguồn duy nhất cho: THINKING_LEVELS_BY_MODEL + nhãn mức + DEFAULT_THINKING_LEVELS, FLASH_LITE_MODEL / AUX_FALLBACK_MODELS, COMPAT_PROVIDERS (nvidia / openrouter / cohere / explabs), NVIDIA_DEFAULT_PROXY, COMPAT_MODEL_OPTS (maxTokens, temperature/topP/topK, levels, noReasoning, inputModalities...), EXPLABS_MODELS, buildReasoningPayload / buildNvidiaThinking / resolveCompatProvider.",
+      "thinking_level_rule": "Gemini 3.8 Flash và 4 Hydrogen KHÔNG nhận 'minimal' → resolveThinkingLevel() tự hạ về 'low'; 3.6 Flash, 3.5/3.1 Flash-Lite nhận đủ 4 mức.",
+      "engine_select": "index.html #engine-select: 'stream' (generateContentStream + xoay 10 key) hoặc 'interactions' (Interactions API). Stream là engine mặc định, có fallback unary và tự nhảy sang Stream Engine nếu Interactions lỗi."
+    },
     "cdn_libs_loaded_in_index_html": [
-      "pdf.js",
-      "html2pdf.js",
       "marked",
       "katex + auto-render",
       "mermaid",
       "highlight.js",
       "lamejs",
       "@google/genai (via esm.run)"
-    ]
+    ],
+    "lazy_cdn_libs": [
+      "pdf.js (chỉ tải khi cần đọc PDF, qua js/lazy-libs.js)",
+      "html2pdf.js (chỉ tải khi xuất PDF)"
+    ],
+    "service_worker": {
+      "file": "sw.js",
+      "cache": "jarvis-ai-pwa-v74",
+      "precache": "STATIC_ASSETS: index.html, manifest, icons, 5 file CSS, js/{model-registry,chat-render,app,sync,live,tts,translate,rag,search,extract,blob,markdown.worker}.js + toàn bộ CDN_LIBS",
+      "html": "network-first (để bản deploy GitHub Pages lên ngay), fallback cache → ./index.html",
+      "js_css_cdn": "stale-while-revalidate",
+      "bypass": "googleapis.com, tavily.com, jina.ai, serper.dev, brave.com, api.github.com, gist.githubusercontent.com, integrate.api.nvidia.com, freebuff.site",
+      "other": "cache-first cho icon/manifest"
+    },
+    "latency_and_recovery": {
+      "debug_hooks": "window.__jarvisTurnDebug + jarvisDebug() ghi prepMs (app chuẩn bị), headersMs (TTFT thực tế phía Google), firstThinkingWaitMs, firstContentAtMs, modelSwitchedFrom/modelSwitchedAtMs; log '[Gemini V73/V78] ...' trong Console.",
+      "stall_watchdog": "Cấu hình Cài đặt → Hiệu năng, localStorage jarvis_stall_timeout_sec (10–180s, mặc định 45s): không có chunk đầu thì huỷ attempt, hạ thinkingLevel → 'low' → bỏ thinkingConfig rồi thử lại.",
+      "lite_fallback": "localStorage jarvis_lite_fallback_sec (3–60s, mặc định 8s) + jarvis_lite_fallback_enabled (mặc định bật): quá ngưỡng chưa có chunk đầu thì huỷ attempt và chạy lại bằng gemini-3.5-flash-lite (maxOutputTokens 65000, giữ mức Think Depth đã chọn), toast + badge ⚡ trên header tin nhắn; chỉ đổi 1 lần/lượt (liteSwitched) và được nới ngân sách thử (maxStreamAttempts += 1).",
+      "model_404_fallback": "Lỗi 404/not found → đổi gemini-3.8-flash ↔ gemini-3.5-flash-lite, toast + badge 🔁 (dùng chung helper showModelFallbackBadge).",
+      "key_rotation": "429/403/quota → xoay sang key Google kế tiếp trong bể 10 key, cập nhật badge key và bộ đếm quota.",
+      "gateway_retry": "Nhánh OpenAI-compatible tự thử lại tối đa 4 lần với 429/502/503/504 (600/1500/2500ms)."
+    }
   },
   "features": [
     {
       "id": "shell_and_pwa",
       "name": "App shell and PWA",
       "files": {
-        "index.html": "Main UI skeleton: sidebar, header, chat, modals, input panel, file upload, transcript, token/latency bar, search/memory toggles. Loads js/eventBus.js before js/rag.js.",
-        "manifest.json": "PWA manifest (icons, display, theme color, app name, start URL).",
-        "sw.js": "Service Worker: static asset cache, network-first for HTML/JS/CSS, bypass for live/API/search endpoints, cache CDN libs.",
-        "css/style.css": "Core UI styles, layout, sidebar, chat bubbles, modals, inputs, theme variables.",
-        "css/live.css": "Live call modal styles.",
-        "css/tts.css": "TTS studio styles.",
-        "css/translate.css": "Dual-screen translator styles.",
-        "css/rag.css": "Knowledge/RAG/search styles."
+        "index.html": "Khung UI: sidebar, header, chat, sidebar settings/modal (Cài đặt: engine, Think Depth, bộ nhớ, ngưỡng ngữ cảnh, Hiệu năng có watchdog + công tắc/ngưỡng chuyển Flash Lite, API key các nền tảng, dữ liệu & xuất tệp), input panel, upload tệp, token/latency bar, toggle search/memory. Nạp js/globals.js đầu tiên và app.js trước api-keys.js.",
+        "manifest.json": "PWA manifest (icons, display, theme color, app name, start URL, share_target).",
+        "sw.js": "Service Worker: precache tài nguyên tĩnh + CDN, network-first cho HTML, stale-while-revalidate cho JS/CSS/CDN, bypass các endpoint API/search/Gist.",
+        "css/style.css": "Style lõi: layout, sidebar, bong bóng chat, khối 💭, modal, input, biến theme, nhãn chờ '.wait-label' trong bong bóng suy luận.",
+        "css/live.css": "Style modal gọi live.",
+        "css/tts.css": "Style TTS studio.",
+        "css/translate.css": "Style trình phiên dịch 2 màn hình.",
+        "css/rag.css": "Style knowledge/RAG/tìm kiếm."
+      }
+    },
+    {
+      "id": "bootstrap_and_ui_helpers",
+      "name": "Bootstrap toàn cục và các helper UI tách rời",
+      "files": {
+        "js/globals.js": "Nạp ĐẦU TIÊN (classic script): $ / $$ / ls / ss, window bindings, toàn bộ biến trạng thái dùng chung (sessions, activeId, chatHistory, DOM, cfgMap, SAFETY, apiKeys, key index, med data...) publish qua window bằng defineProperty, kèm utility sớm (escapeHtml...).",
+        "js/lazy-libs.js": "Loader CDN theo nhu cầu: window.ensureLib('pdfjs' | 'html2pdf') chỉ tải thư viện nặng khi thật sự dùng (đọc PDF, xuất PDF), giảm script phải tải lúc mở app.",
+        "js/key-config-sync.js": "Helper đọc/ghi cấu hình ngoài (getGoogleKeysList, getExternalConfigsObj, setExternalConfigsObj) dùng chung cho đồng bộ Gist và backup.",
+        "js/color-tags.js": "Gán màu nhãn cho phiên chat qua #session-color-picker (color chip), lưu vào session.",
+        "js/follow-up-chips.js": "Sinh chip câu hỏi tiếp theo sau mỗi câu trả lời (renderFollowUpChips) và gắn sự kiện điền vào ô nhập.",
+        "js/selection-toolbar.js": "Thanh công cụ nổi khi bôi đen văn bản (copy, hỏi lại, dịch, đọc TTS) + ẩn/hiện theo vùng chọn.",
+        "js/web-share-target.js": "Nhận nội dung chia sẻ từ hệ điều hành/PWA share target, mở modal xem trước và đưa URL/nội dung vào chat.",
+        "js/storage-manager.js": "Quản lý bộ nhớ & storage: trạng thái lưu trữ, xin persistent storage, thống kê dung lượng, dọn cache tạm.",
+        "js/session-cleanup.js": "Tự dọn phiên TRỐNG (0 tin nhắn) cũ hơn 1 giờ khi mở app; không bao giờ xoá phiên đang mở hay phiên có tin nhắn; công tắc 'Tự dọn phiên trống' (localStorage jarvis_auto_cleanup, mặc định bật)."
       }
     },
     {
       "id": "chat_and_core",
-      "name": "Chat, sessions, models, core app logic",
+      "name": "Chat, sessions, model và logic lõi",
       "files": {
-        "js/model-registry.js": "Registry tầng model (tách khỏi app.js): bảng THINKING_LEVELS_BY_MODEL + nhãn mức, FLASH_LITE_MODEL/AUX_FALLBACK_MODELS, COMPAT_PROVIDERS (NVIDIA/OpenRouter/Cohere) + NVIDIA_DEFAULT_PROXY, COMPAT_MODEL_OPTS (thông số từng model), EXPLABS_MODELS, buildReasoningPayload / buildNvidiaThinking / resolveCompatProvider. Nạp trước app.js trong index.html; mọi thứ xuất qua window, app.js giữ alias cùng tên nên không đổi call site.",
-        "js/chat-render.js": "Renderer lịch sử chat (tách khỏi app.js): thinkingStats / buildThinkingDetailsHtml / mergeThinkingSegments / mergeAdjacentThinkingBlocks (khối suy luận 💭), renderMsgContent (Markdown + KaTeX + Mermaid + highlight code + nút Copy Code), appendMsg (bong bóng tin nhắn + thanh action), captureChatScroll / restoreChatScroll / reRenderHistory, stripThinkingForCopy / getCopyText / copy. Nạp trước app.js trong index.html; trạng thái dùng chung (chatHistory / sessions / activeId / DOM) đọc động qua window, app.js giữ alias cùng tên.",
-        "js/app.js": "Main controller (đã tách bảng thinking levels + registry model sang js/model-registry.js và phần render lịch sử chat sang js/chat-render.js): session management, chat history data, rendering (markdown + thinking blocks), model/engine selection, API key wiring, OpenAI-compatible gateway (OpenRouter with streaming and reasoning), system instruction + global context, temperature/top-p/top-k/thinking level, file attachments, auto-naming, auto-summary, branch-forking, hands-free voice recorder + VAD, token/latency counters, DOM helpers, PWA SW registration, localStorage quota handling, native bridge sync hooks. Chọn slot Google lưu trong localStorage qua getGoogleKeySlot/setGoogleKeySlot thay cho select ẩn trong DOM; các hàm dùng nội bộ gọi qua window thay vì proxy hoisted functions.",
-        "js/database.js": "IndexedDB persistence for sessions and related stores, init + CRUD helpers.",
-        "js/api-keys.js": "API key pool UI + storage (Google key rotation and quota tracking) plus external API key storage (Tavily, Serper, Experiential Labs, OpenRouter, NVIDIA 3 ô key kèm tên gợi nhớ).",
-        "js/commands.js": "Command palette / prompt library / slash-command routing helpers.",
-        "js/search.js": "Search cache (sessionStorage 1h TTL), Tavily AI Search, Serper Google Search, điều phối executeLiveSearch (xoay tua tự động), extractQuotedKeywords.",
-        "js/extract.js": "Trích xuất YouTube (noembed + oEmbed fallback + Tavily/Serper assist), trích xuất trang web (Tavily Extract → Jina Reader → Proxy → Search Assist), phụ thuộc js/search.js.",
-        "js/blob.js": "Blob & Share utilities (stub): blobToBase64, base64ToBlob, downloadBlob, saveBlobViaNative (Android bridge), shareContent, copyToClipboard. Sẵn sàng mở rộng cho export/share.",
-        "js/markdown.worker.js": "Web Worker cho marked.parse() + hljs.highlight(): tách parsing Markdown & syntax highlighting ra khỏi main thread. Giao thức message: {type: 'RENDER', token, markdown} -> {token, success, html}. Fallback tự động về main thread nếu worker fail/timeout. Không dùng DOM APIs (regex + hljs.highlight string-based).",
-        "js/export.js": "Xuất hội thoại PDF/Word/Markdown, sao lưu + nhập toàn bộ cấu hình và phiên ra JSON (mã hoá key), lưu file qua Android Native Download.",
-        "js/cipher.js": "Mã hoá/giải mã key dạng JVENC_ (chỉ để tương thích định dạng backup cũ, không phải bảo mật thật) và che key trong lịch sử chat.",
-        "js/quota.js": "UI hạn ngạch key: badge + popover lượt dùng theo key cho Google/OpenRouter/Experiential Labs/NVIDIA; nhận diện provider (nhãn + icon + tên key) từ COMPAT_PROVIDERS.",
-        "js/briefing.js": "Daily briefing: thời tiết, điểm tin AI, nhắc nhở từ Second Brain và đọc bản tin bằng TTS.",
+        "js/model-registry.js": "Registry tầng model (tách khỏi app.js): THINKING_LEVELS_BY_MODEL + nhãn mức, FLASH_LITE_MODEL/AUX_FALLBACK_MODELS, COMPAT_PROVIDERS (NVIDIA/OpenRouter/Cohere) + NVIDIA_DEFAULT_PROXY, COMPAT_MODEL_OPTS (tham số từng model), EXPLABS_MODELS, buildReasoningPayload / buildNvidiaThinking / resolveCompatProvider. Nạp trước app.js; xuất qua window, app.js giữ alias cùng tên nên không đổi call site.",
+        "js/chat-render.js": "Renderer lịch sử chat: thinkingStats / buildThinkingDetailsHtml / mergeThinkingSegments / mergeAdjacentThinkingBlocks (khối suy luận 💭), renderMsgContent (Markdown + KaTeX + Mermaid + highlight + Copy Code), appendMsg (bong bóng + thanh action), captureChatScroll / restoreChatScroll / reRenderHistory, stripThinkingForCopy / getCopyText / copy. Trạng thái dùng chung đọc động qua window.",
+        "js/app.js": "Controller chính: quản lý phiên & chatHistory, gửi tin, engine 'stream' (generateContentStream: thinkingLevel theo model, safetySettings, maxOutputTokens 8192/32768/65000, watchdog + fallback Flash Lite, xoay key, nối tiếp stream khi bị cắt, FAIL-SAFE hỏi lại với thinking tắt) và engine 'interactions'; gateway OpenAI-compatible (OpenRouter/NVIDIA/Experiential/Cohere) với streaming + reasoning; system instruction động (getDynamicSI) + global context; temperature/top-p/top-k; đính kèm tệp; auto-name, auto-summary, branch-fork; ghi âm rảnh tay + VAD; đếm token/latency; helper DOM, đăng ký SW, xử lý quota localStorage, hook native bridge. Slot key Google lưu qua getGoogleKeySlot/setGoogleKeySlot.",
+        "js/database.js": "IndexedDB (JavissUltimateOS_DB): store chat_sessions, file_library, tts_audio_library, session_backup (mirror để phục hồi), init + CRUD helpers.",
+        "js/api-keys.js": "UI + lưu trữ bể key: 10 key Google (kèm tên gợi nhớ, kiểm tra định dạng/trùng/quota), 5 OpenRouter, 5 Experiential Labs, 3 NVIDIA, 3 Cohere; menu chọn key dùng chung theo nền tảng của model đang chọn; cfgMap các cấu hình ngoài (Tavily, Serper, proxy NVIDIA, live temperature, watchdog jarvis_stall_timeout_sec, ngưỡng chuyển Flash Lite jarvis_lite_fallback_sec + công tắc jarvis_lite_fallback_enabled); nút Lưu Cấu Hình đồng bộ ngay lên Gist qua scheduleAutoSync.",
+        "js/commands.js": "Command palette, thư viện prompt mẫu và định tuyến lệnh dạng /slash.",
+        "js/search.js": "Cache tìm kiếm (sessionStorage, TTL 1 giờ), Tavily AI Search, Serper Google Search, điều phối executeLiveSearch (xoay tua engine), extractQuotedKeywords.",
+        "js/extract.js": "Trích xuất YouTube (noembed + oEmbed fallback + Tavily/Serper assist) và trang web (Tavily Extract → Jina Reader → Proxy → Search Assist); phụ thuộc js/search.js.",
+        "js/blob.js": "Blob & Share utilities: blobToBase64, base64ToBlob, downloadBlob, saveBlobViaNative (cầu Android), shareContent, copyToClipboard.",
+        "js/markdown.worker.js": "Web Worker cho marked.parse() + hljs.highlight() (giao thức {type:'RENDER', token, markdown} → {token, success, html}); fallback về main thread nếu worker lỗi/timeout; không dùng DOM API.",
+        "js/export.js": "Xuất hội thoại PDF/Word/Markdown, sao lưu + nhập toàn bộ cấu hình và phiên ra JSON (mã hoá key), lưu qua Android Native Download.",
+        "js/cipher.js": "Mã hoá/giải mã key dạng JVENC_ (chỉ để tương thích backup cũ, không phải bảo mật thật) và che key trong lịch sử chat.",
+        "js/quota.js": "UI hạn ngạch key: badge + popover lượt dùng theo key cho Google/OpenRouter/Experiential Labs/NVIDIA/Cohere; nhận diện provider (nhãn, icon, tên key) từ COMPAT_PROVIDERS.",
+        "js/briefing.js": "Daily briefing: thời tiết, điểm tin AI, nhắc nhở từ Second Brain, đọc bản tin bằng TTS; dùng AUX_FALLBACK_MODELS khi model chính lỗi.",
         "js/medication.js": "Tủ thuốc + lịch uống theo cữ, nhắc nhở và lịch sử; chỉ bật UI trong app Android native hoặc khi bật thủ công."
       }
     },
@@ -88,113 +152,155 @@
       "id": "live_voice_video",
       "name": "Multimodal live voice/video call",
       "files": {
-        "js/live.js": "Gemini bidirectional live WebSocket (BidiGenerateContent), PCM streaming (16kHz in, 24kHz playback), camera streaming, live speech recognition, farewell/silence hangup detection, tool calls for search_web/read_url, key rotation on disconnect, transcript capture synced back to chat.",
-        "css/live.css": "Live call modal styles."
+        "js/live.js": "Gemini bidirectional live WebSocket (BidiGenerateContent), PCM streaming (16kHz vào, 24kHz phát), stream camera, nhận dạng lời nói, phát hiện tạm biệt/im lặng để cúp máy, tool calls search_web/read_url, xoay key khi mất kết nối, ghi transcript về chat.",
+        "css/live.css": "Style modal gọi live."
       }
     },
     {
       "id": "translate",
-      "name": "Dual-screen face-to-face live translator",
+      "name": "Phiên dịch trực tiếp 2 màn hình",
       "files": {
-        "js/translate.js": "Bilingual interpretation via Gemini live translate/bidirectional model, speaker toggle, VU meter, local SpeechRecognition transcript, model/key fallback, guest language selection, screen flip helper.",
-        "css/translate.css": "Split-screen translator styles."
+        "js/translate.js": "Phiên dịch song ngữ qua model live translate/bidirectional, toggle người nói, VU meter, transcript SpeechRecognition cục bộ, fallback model/key, chọn ngôn ngữ khách, helper lật màn hình.",
+        "css/translate.css": "Style màn hình chia đôi."
       }
     },
     {
       "id": "tts",
       "name": "Text-to-speech studio",
       "files": {
-        "js/tts.js": "Gemini TTS studio, voice presets, expression tags, smart chunking, WAV construction, MP3 encode (lamejs), visualizer, playback, IndexedDB TTS library, history list with play/download/delete.",
-        "css/tts.css": "TTS studio styles."
+        "js/tts.js": "Gemini TTS studio: voice preset, thẻ biểu cảm, chia đoạn thông minh, dựng WAV, encode MP3 (lamejs), visualizer, phát lại, thư viện TTS trong IndexedDB, lịch sử nghe/tải/xoá; model mặc định gemini-3.8-flash-lite-tts.",
+        "css/tts.css": "Style TTS studio."
       }
     },
     {
       "id": "rag_and_memory",
-      "name": "Personal knowledge base, RAG, embeddings, semantic search",
+      "name": "Knowledge base, RAG, embeddings, semantic search",
       "files": {
-        "js/rag.js": "Gemini Embedding 2 (+ fallback embedding-001), IndexedDB vector store, document chunking with overlap, indexing with progress, hybrid vector + lexical search, smart intent filter for personal-identity queries, context retrieval for chat, auto-learn memory extraction, persona synthesis, knowledge modal UI. Search is worker-first: searchSimilarVectors routes through js/rag.worker.js and falls back to searchSimilarVectorsMain on the main thread; both paths use js/rag-core.js (window.RagCore) for consistent scoring and tokenization.",
-        "css/rag.css": "Knowledge/RAG/search styles."
+        "js/rag.js": "Gemini Embedding 2 (+ fallback embedding-001), vector store IndexedDB, chunking có overlap, index kèm tiến trình, tìm kiếm hybrid vector + lexical, lọc ý định cho câu hỏi về bản thân, lấy ngữ cảnh cho chat, auto-learn memory, tổng hợp persona, UI knowledge modal. Tìm kiếm ưu tiên worker: searchSimilarVectors qua js/rag.worker.js, fallback searchSimilarVectorsMain; cả hai dùng js/rag-core.js để chấm điểm/tokenize thống nhất.",
+        "css/rag.css": "Style knowledge/RAG/tìm kiếm."
       }
     },
     {
       "id": "event_bus_and_rag_worker",
-      "name": "Cross-module Event Bus + RAG Web Worker (performance)",
+      "name": "Event Bus + RAG Web Worker (hiệu năng)",
       "files": {
-        "js/eventBus.js": "Lightweight pub/sub event bus exposed as window.EventBus; emits app:ready once core modules are loaded; loaded in index.html before js/rag.js. Optional adoption - existing modules are not forced to migrate; bus is for light cross-module signals only (no large state).",
-        "js/rag-core.js": "Shared RAG helpers for cosine similarity, hybrid scoring and query tokenization; used by js/rag.js and js/rag.worker.js to keep ranking consistent without duplicated core logic.",
-        "js/rag.worker.js": "Web Worker computing cosine similarity + hybrid scoring off the main thread; loads shared scoring/tokenization helpers from js/rag-core.js via importScripts so worker and main-thread search stay consistent; single message handler."
+        "js/eventBus.js": "Pub/sub nhẹ exposed as window.EventBus; phát app:ready khi module lõi sẵn sàng; nạp trước js/rag.js. Chỉ dùng cho tín hiệu nhẹ, không mang state lớn.",
+        "js/rag-core.js": "Helper RAG dùng chung: cosine similarity, hybrid scoring, tokenize query; dùng bởi js/rag.js và js/rag.worker.js để ranking không lệch.",
+        "js/rag.worker.js": "Web Worker tính cosine + hybrid scoring ngoài main thread; importScripts js/rag-core.js; một message handler duy nhất."
       }
     },
     {
       "id": "cloud_sync",
-      "name": "GitHub Gist 2-way sync and multi-device merge",
+      "name": "GitHub Gist 2-way sync và merge đa thiết bị",
       "files": {
-        "js/sync.js": "GitHub Gist 2-way sync with smart merge for sessions, knowledge base, folders, prompts, API keys/external configs, key-usage counters, medications + med history, tombstone handling, rate-limit recovery, background auto-sync, startup sync, pull/push restore flows, sync header status."
+        "js/sync.js": "Đồng bộ Gist 2 chiều: merge thông minh cho phiên, knowledge base, thư mục, prompt, API key/cấu hình ngoài, bộ đếm lượt dùng key, thuốc + lịch sử uống thuốc, tombstone, phục hồi khi rate-limit, auto-sync nền, sync lúc khởi động, luồng pull/push restore, trạng thái sync trên header."
       }
     },
     {
       "id": "android_native",
-      "name": "Android WebView wrapper and medication reminders",
+      "name": "Android WebView wrapper và nhắc uống thuốc",
       "files": {
-        "android/build.gradle": "Top-level Android build script (AGP 8.2.2).",
+        "android/build.gradle": "Build script cấp project (AGP 8.2.2).",
         "android/gradle/wrapper/*": "Gradle wrapper jar + properties.",
-        "android/settings.gradle": "Project includes + repository config.",
-        "android/gradle.properties": "Gradle JVM args + AndroidX/R class settings.",
-        "android/app/build.gradle": "App module config: versioning, permissions, packaging, WebView assets.",
-        "android/app/src/main/AndroidManifest.xml": "Permissions and components: alarms, notifications, boot receiver, WebView activity.",
-        "android/app/src/main/java/com/kevinkieu/jarvisai/MainActivity.java": "WebView setup, JS bridge for native persistence/alarms, medication reminder integration.",
-        "android/app/src/main/java/com/kevinkieu/jarvisai/MedicationAlarmReceiver.java": "Alarm/receiver logic for medication notifications.",
-        "android/app/src/main/res/*": "UI resources: layout, strings, colors, themes, icons.",
-        "android/app/src/main/assets/*": "Bundled web app assets for offline APK (index.html, manifest, sw.js, css/, js/ incl. eventBus.js + rag-core.js + rag.worker.js + model-registry.js + chat-render.js mirrors, icons). Được đồng bộ bằng scripts/sync-web-assets.js (gọi từ build.js, build-apk.bat và CI) — script là danh sách file duy nhất, có chế độ --check để phát hiện lệch.",
-        "build-apk.bat": "Windows build script: runs node bump-version.js, syncs web assets into Android assets, auto-detects JAVA_HOME/ANDROID_HOME, runs gradlew.bat assembleRelease, copies APK to project root as JarvisAI.apk / JarvisAI_Offline.apk.",
-        "build.js": "Cross-platform Node build script: bump-version.js, copies index.html/manifest.json/sw.js/icons/js/css into Android assets, then gradlew assembleRelease (gradlew.bat on Windows) and copies APK to project root. Requires JDK 17 + Android SDK locally.",
-        ".github/workflows/build-apk.yml": "GitHub Actions CI building the APK automatically (behaviour documented in developer_workflow.ci_cd).",
-        "install-phone.bat": "Install built APK to device via USB ADB.",
-        "install-phone-wifi.bat": "Install built APK to device via Wi-Fi debugging ADB."
+        "android/settings.gradle": "Khai báo project include + repository.",
+        "android/gradle.properties": "JVM args và cấu hình AndroidX/R class.",
+        "android/app/build.gradle": "Cấu hình module app: versionCode/versionName, quyền, packaging, asset WebView.",
+        "android/app/src/main/AndroidManifest.xml": "Quyền và component: alarm, notification, boot receiver, WebView activity.",
+        "android/app/src/main/java/com/kevinkieu/jarvisai/MainActivity.java": "Thiết lập WebView, JS bridge cho lưu trữ native/alarm, tích hợp nhắc uống thuốc.",
+        "android/app/src/main/java/com/kevinkieu/jarvisai/MedicationAlarmReceiver.java": "Logic alarm/receiver cho thông báo uống thuốc.",
+        "android/app/src/main/res/*": "Tài nguyên UI: layout, strings, colors, themes, icon.",
+        "android/app/src/main/assets/*": "Bộ asset web đóng gói cho APK offline (index.html, manifest, sw.js, css/, js/ gồm mọi module + worker + mirror model-registry/chat-render/globals, icon). Đồng bộ bằng scripts/sync-web-assets.js (43 file, gọi từ build.js, build-apk.bat và CI), có --check để phát hiện lệch.",
+        "build-apk.bat": "Script build Windows: node bump-version.js → sync assets → tự dò JAVA_HOME/ANDROID_HOME → gradlew.bat assembleRelease → copy APK ra gốc thành JarvisAI.apk / JarvisAI_Offline.apk.",
+        "build.js": "Script build Node đa nền tảng: bump-version, sync asset (dùng chung scripts/sync-web-assets.js), gradlew assembleRelease (gradlew.bat trên Windows), copy APK. Cần JDK 17 + Android SDK.",
+        ".github/workflows/build-apk.yml": "CI GitHub Actions build APK (chi tiết ở developer_workflow.ci_cd).",
+        "install-phone.bat": "Cài APK qua ADB USB.",
+        "install-phone-wifi.bat": "Cài APK qua ADB Wi-Fi debugging."
+      }
+    },
+    {
+      "id": "testing_and_tooling",
+      "name": "Kiểm thử tự động và công cụ dev",
+      "files": {
+        "test/setup.js": "Vitest setup: mock localStorage/sessionStorage, window, các API trình duyệt tối thiểu.",
+        "test/api-key-validation.test.js": "Kiểm tra validateGoogleKeyFormat và logic kiểm tra key trong js/api-keys.js.",
+        "test/blob.test.js": "Kiểm tra blobToBase64/base64ToBlob/downloadBlob của js/blob.js.",
+        "test/extract.test.js": "Kiểm tra trích xuất YouTube (noembed/oEmbed) và trang web trong js/extract.js với fetch được mock.",
+        "test/markdown.worker.test.js": "Kiểm tra giao thức message của js/markdown.worker.js (RENDER → html, xử lý lỗi).",
+        "test/refactored-modules.test.js": "Smoke test các module sau tách file (model-registry, chat-render, globals...) còn export đủ API qua window.",
+        "test/search.test.js": "Kiểm tra cache tìm kiếm, extractQuotedKeywords, điều phối executeLiveSearch với fetch mock.",
+        "test/session-cleanup.test.js": "Kiểm tra auto-cleanup chỉ xoá phiên trống > 1 giờ, không xoá phiên đang mở/có tin nhắn.",
+        "scripts/sync-web-assets.js": "Danh sách file duy nhất để mirror web root → android/app/src/main/assets; tự xoá file thừa/thư mục rỗng; --check để so sánh.",
+        "scratch/check_model_registry.js": "npm run check-models: đối chiếu optgroup trong index.html với COMPAT_PROVIDERS/COMPAT_MODEL_OPTS.",
+        "scratch/openrouter_nemotron_smoke.js": "npm run smoke:openrouter: gọi thật OpenRouter cho các model Nemotron khi có OPENROUTER_API_KEY.",
+        "scratch/nvidia-proxy.js": "Proxy Node local (CORS + stream) cho NVIDIA integrate API khi chạy web.",
+        "scratch/static-server.js": "Static server nhỏ dùng khi preview web app ở localhost.",
+        "scratch/test_browser.js": "Helper smoke test trình duyệt nhanh.",
+        "scratch/ep.json": "Dữ liệu tạm (endpoint/provider) dùng khi kiểm tra model.",
+        "scratch/or_models.json": "Bản dump danh sách model OpenRouter phục vụ đối chiếu slug/giá/context.",
+        "scratch/server.log": "Log của static server khi preview app ở localhost.",
+        "worker/nvidia-proxy.js": "Template Cloudflare Worker proxy cho NVIDIA integrate API (CORS + stream) — bản deploy của scratch/nvidia-proxy.js.",
+        "worker/sites.deploy.json": "Manifest deploy của Worker proxy NVIDIA."
       }
     },
     {
       "id": "aux_files",
-      "name": "Auxiliary/project files",
+      "name": "Tệp phụ trợ",
       "files": {
-        "boicanhduan.json": "Bản đồ dự án (kiến trúc, tính năng, file) — không còn chứa lịch sử thay đổi, xem CHANGELOG.md.",
-        "scratch/test_browser.js": "Likely a quick browser/launch test helper.",
-        "icon.png": "App icon asset.",
-        "icon-192.png": "PWA/Android icon 192.",
-        "icon-512.png": "PWA/Android icon 512.",
-        "README.md": "Project readme and documentation.",
-        ".gitattributes": "Git attribute rules.",
-        ".gitignore": "Git ignore rules.",
-        ".nojekyll": "GitHub Pages no-jekyll marker.",
+        "boicanhduan.json": "Bản đồ dự án (kiến trúc, tính năng, file) — không chứa lịch sử thay đổi, xem CHANGELOG.md.",
+        "AGENTS.md": "Quy tắc làm việc cho agent/người sửa code (tech stack, quy tắc sửa file, ngôn ngữ trả lời).",
+        "CHANGELOG.md": "Lịch sử thay đổi chi tiết, mới nhất ở trên cùng.",
+        "TODO.md": "Danh sách việc còn lại/đã xong gần nhất (ví dụ gỡ model Gemma & Experiential Labs).",
+        "README.md": "Hướng dẫn tổng quan dự án.",
+        "icon.png": "Icon app (nguồn).",
+        "icon-192.png": "Icon PWA/Android 192.",
+        "icon-512.png": "Icon PWA/Android 512.",
+        ".gitattributes": "Quy tắc thuộc tính git (line endings).",
+        ".gitignore": "Quy tắc bỏ qua của git.",
+        ".nojekyll": "Marker tắt Jekyll cho GitHub Pages.",
         ".well-known/assetlinks.json": "Android app links / asset links metadata.",
-        "CHANGELOG.md": "Lịch sử thay đổi của dự án (chuyển từ recent_changes trong boicanhduan.json).",
-        "scripts/sync-web-assets.js": "Đồng bộ web root -> android/app/src/main/assets theo một danh sách file duy nhất; --check để kiểm tra lệch."
+        "bump-version.js": "Tăng versionCode/versionName trong android/app/build.gradle và đồng bộ cache buster ?v= / sw cache version.",
+        "package.json": "Khai báo npm scripts (test, test:watch, check-models, smoke:openrouter, sync-assets, check-assets) và devDependencies (vitest, @vitest/coverage-v8, jsdom); script chi tiết ở runtime_entry.npm_scripts."
       }
     }
   ],
   "state_and_storage": {
     "browser": {
-      "localStorage": "Settings, API keys (optionally obfuscated), folders, tabs, theme, sync config, medication data, deleted-id tombstones, key usage data",
-      "indexeddb": "Chat sessions, knowledge/vector store, TTS history, file/TTS-related stores"
+      "localStorage_settings": [
+        "jarvis_api_1..10 (+ jarvis_api_name_1..10), huanmu_api_* (bản cũ), jarvis_openrouter_api_* / jarvis_explabs_api_* / jarvis_nvidia_api_* / jarvis_cohere_api_* (+ tên gợi nhớ)",
+        "jarvis_lite_fallback_sec (ngưỡng chờ trước khi đổi sang Flash Lite, 3–60s, mặc định 8)",
+        "jarvis_lite_fallback_enabled ('false' để tắt tự chuyển model)",
+        "jarvis_stall_timeout_sec (watchdog chờ phản hồi đầu tiên, 10–180s, mặc định 45)",
+        "jarvis_context_messages (số tin ngữ cảnh gửi kèm, mặc định 10)",
+        "jarvis_auto_cleanup ('false' để tắt tự dọn phiên trống)",
+        "jarvis_hide_deepseek_thinking, live_search_enabled, live_context_enabled, live_temperature",
+        "tavily_api_key, serper_api_key, auto_search_default_engine, web_extract_engine, nvidia_proxy_url, jarvis_global_context",
+        "màu nhãn phiên, tab đang mở, theme, cấu hình sync Gist, dữ liệu thuốc, tombstone id đã xoá, bộ đếm lượt dùng key"
+      ],
+      "localStorage_notes": "Key có thể được obfuscate (JVENC_) khi lên Gist/backup; app vẫn giải mã khi đọc.",
+      "indexeddb": "JavissUltimateOS_DB: chat_sessions, knowledge/vector store, file_library, tts_audio_library, session_backup (mirror phục hồi)"
     },
     "android": {
-      "webview": "Runs the same web app with bundled assets",
-      "native": "AlarmManager/NotificationManager for medication reminders, RECEIVE_BOOT_COMPLETED rescheduling, notification actions (taken/snooze), JS bridge for persistence"
+      "webview": "Chạy lại chính bộ asset web đã mirror trong assets/",
+      "native": "AlarmManager/NotificationManager cho nhắc uống thuốc, RECEIVE_BOOT_COMPLETED đặt lại lịch, action thông báo (đã uống/hoãn), JS bridge cho lưu trữ và tải tệp"
     }
   },
   "developer_workflow": {
-    "local_run": "Serve the project via a local HTTP server (for example Python http.server / npx serve) and open index.html.",
-    "pwa_install": "Install from browser via manifest/Service Worker.",
-    "android_build": "Three options: (1) node build.js cross-platform (needs JDK 17 + Android SDK; chmod +x gradlew on first run); (2) build-apk.bat on Windows; (3) push to main or workflow_dispatch so GitHub Actions builds the APK (artifact JarvisAI-Android-App + GitHub Release). Note: a sandboxed environment without Android SDK/Gradle cannot produce the APK locally.",
-    "android_deploy": "Use install-phone.bat (USB ADB) or install-phone-wifi.bat (Wi-Fi debugging ADB) to install a built APK to a connected device.",
-    "version_bump": "Run bump-version.js to increment Android versionCode/versionName and sync cache busters in index.html and sw.js.",
-    "ci_cd": ".github/workflows/build-apk.yml builds the APK on push to main/master when android/**, js/**, css/**, index.html, manifest.json, sw.js or the workflow itself change, or via manual workflow_dispatch. Behaviour after hardening (commit a7d55c4) and test job removal (commit a4531eb): no \"Run Tests\" job anymore — Build APK runs directly after push (like before). Deterministic version bump (versionCode = current + 1 read via awk, versionName 1.1.X, no github.run_number), assembleRelease preferred, on failure builds debug and labels it JarvisAI-debug.apk; uploads artifact JarvisAI-Android-App (30-day retention); creates GitHub Release v1.1.X with dynamic notes + generate_release_notes only when the release build succeeds. Pushing boicanhduan.json alone does NOT trigger this workflow (not in its paths filter).",
-    "asset_sync": "Sửa file web (index.html/js/css/sw.js/manifest/icon) thì chạy \"npm run sync-assets\" (hoặc node scripts/sync-web-assets.js) để mirror sang android/app/src/main/assets; \"npm run check-assets\" báo lệch (exit 1). Cả ba luồng build (build.js, build-apk.bat, CI) đều gọi chính script này."
+    "local_run": "Chạy static server tại gốc dự án (ví dụ node scratch/static-server.js, python -m http.server hoặc npx serve) rồi mở index.html. Không cần build/bundler.",
+    "pwa_install": "Cài từ trình duyệt qua manifest/Service Worker.",
+    "testing": "npm test (vitest run). Sau mỗi thay đổi JS nên chạy npm run check-models nếu có đụng model, npm run check-assets để chắc mirror Android khớp.",
+    "asset_sync": "Sửa file web (index.html/js/css/sw.js/manifest/icon) thì chạy \"npm run sync-assets\" (hoặc node scripts/sync-web-assets.js) để mirror sang android/app/src/main/assets; \"npm run check-assets\" báo lệch (exit 1). Cả ba luồng build (build.js, build-apk.bat, CI) đều gọi chính script này.",
+    "cache_busting": "Khi sửa JS/CSS phải bump query ?v= của đúng file đó trong index.html (SW dùng stale-while-revalidate cho /js/ và /css/ nên không bump là trình duyệt chạy bản cũ), css/style.css dùng chung ?v=; sw.js bump CACHE_NAME khi cần xoá cache cũ.",
+    "version_bump": "node bump-version.js: tăng versionCode/versionName trong android/app/build.gradle và đồng bộ cache buster.",
+    "android_build": "Ba cách: (1) node build.js đa nền tảng (cần JDK 17 + Android SDK; chmod +x gradlew lần đầu); (2) build-apk.bat trên Windows; (3) push lên main hoặc workflow_dispatch để GitHub Actions build (artifact JarvisAI-Android-App + GitHub Release). Môi trường không có Android SDK/Gradle thì không tạo được APK tại máy.",
+    "android_deploy": "Dùng install-phone.bat (ADB USB) hoặc install-phone-wifi.bat (ADB Wi-Fi debugging) để cài APK đã build.",
+    "debug_latency": "Gửi một tin rồi xem window.__jarvisTurnDebug / jarvisDebug() trong Console: prepMs nhỏ nghĩa là app không chậm; headersMs lớn nghĩa là phía Google xếp hàng. Có thể hạ ngưỡng jarvis_lite_fallback_sec để buộc đổi model sớm.",
+    "ci_cd": ".github/workflows/build-apk.yml build APK khi push lên main/master và có thay đổi ở android/**, js/**, css/**, index.html, manifest.json, sw.js, scripts/** hoặc chính workflow, hoặc chạy workflow_dispatch. Không còn job \"Run Tests\" — Build APK chạy ngay sau push. Version bump tất định (versionCode = hiện tại + 1 đọc bằng awk, versionName 1.1.X, không dùng github.run_number), ưu tiên assembleRelease, lỗi thì build debug và đặt tên JarvisAI-debug.apk; upload artifact JarvisAI-Android-App (giữ 30 ngày); tạo GitHub Release v1.1.X với notes tự động + generate_release_notes chỉ khi build release thành công. Push riêng boicanhduan.json KHÔNG kích hoạt workflow (không nằm trong paths filter)."
   },
   "changelog": {
     "file": "CHANGELOG.md",
     "note": "Lịch sử thay đổi chi tiết đã chuyển từ recent_changes sang CHANGELOG.md để boicanhduan.json chỉ còn mô tả kiến trúc.",
-    "entries": 38,
-    "last_change_date": "2026-11-21"
+    "entries": 40,
+    "last_change_date": "2026-11-22",
+    "latest_summary": "Tự chuyển sang gemini-3.5-flash-lite khi chưa có chunk đầu trong ngưỡng (mặc định 8s, cấu hình + công tắc ở Cài đặt → Hiệu năng), gom helper showModelFallbackBadge, thêm mốc đo prep/headers/firstThought + nhãn \"Đang chờ\"; bump app.js ?v=82, api-keys.js ?v=77, style.css ?v=74, sw cache v74."
   }
 }
