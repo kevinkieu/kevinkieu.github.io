@@ -260,6 +260,9 @@
       toggleMemory: $('toggle-memory'),
       contextMsgCount: $('context-message-count'),
       toggleAutoSummary: $('toggle-auto-summary'),
+      compactThreshold: $('compact-message-threshold'),
+      btnManualCompact: $('btn-manual-compact'),
+      compactStatusMsg: $('compact-status-msg'),
       toggleRagEmbedding: $('toggle-rag-embedding'),
       btnToggleSessionMem: $('btn-toggle-session-memory'),
       sessionMemState: $('session-memory-state'),
@@ -281,6 +284,38 @@
             btnTheme: $('btn-theme'),
       tabsContainer: $('tabs-container')
     };
+
+    // --- NGƯỠNG TIN NHẮN TỰ ĐỘNG NÉN NGỮ CẢNH (lưu vào localStorage) ---
+    let autoSummaryThreshold = parseInt(ls.getItem('jarvis_auto_summary_threshold') || '16', 10);
+    if (!Number.isFinite(autoSummaryThreshold) || autoSummaryThreshold < 6) autoSummaryThreshold = 16;
+    if (autoSummaryThreshold > 200) autoSummaryThreshold = 200;
+    if (DOM.compactThreshold) {
+      DOM.compactThreshold.value = autoSummaryThreshold;
+      DOM.compactThreshold.addEventListener('change', () => {
+        const v = parseInt(DOM.compactThreshold.value, 10);
+        if (Number.isFinite(v) && v >= 6 && v <= 200) {
+          autoSummaryThreshold = v;
+          ls.setItem('jarvis_auto_summary_threshold', String(v));
+        } else {
+          DOM.compactThreshold.value = autoSummaryThreshold;
+        }
+      });
+    }
+    if (DOM.btnManualCompact) {
+      DOM.btnManualCompact.addEventListener('click', async () => {
+        const cs = sessions.find(x => x.id === activeId);
+        if (!cs) { showToast('⚠️ Chưa có phiên nào đang mở!', 'warning'); return; }
+        if (!chatHistory || chatHistory.length < 4) { showToast('⚠️ Cần ít nhất 4 tin nhắn để nén ngữ cảnh!', 'warning'); return; }
+        const label = DOM.btnManualCompact.innerHTML;
+        DOM.btnManualCompact.disabled = true;
+        DOM.btnManualCompact.innerHTML = '⏳ Đang nén ngữ cảnh...';
+        if (DOM.compactStatusMsg) DOM.compactStatusMsg.textContent = 'Đang tóm tắt các tin nhắn cũ...';
+        const ok = await condenseSessionMemory(cs, true);
+        DOM.btnManualCompact.disabled = false;
+        DOM.btnManualCompact.innerHTML = label;
+        if (DOM.compactStatusMsg) DOM.compactStatusMsg.textContent = ok ? '✅ Đã cập nhật bộ nhớ tóm tắt cho phiên này.' : '⚠️ Chưa nén được — cần Google API Key hoặc phiên chưa đủ tin nhắn.';
+      });
+    }
 
     // --- SỐ TIN NHẮN NGỮ CẢNH GỬI ĐI KÈM CHO generateContentStream (lưu vào localStorage) ---
     let contextMsgCount = parseInt(ls.getItem('jarvis_context_messages') || '10', 10);
@@ -565,16 +600,22 @@
     }
 
     // --- AUTO-SUMMARY LONG-TERM MEMORY (NÉN LỊCH SỬ DÀI) ---
-    async function condenseSessionMemory(sessionObj) {
-      if (!sessionObj || chatHistory.length <= 16 || DOM.toggleAutoSummary?.checked === false) return;
+    // force = true khi người dùng bấm nút nén thủ công (bỏ qua ngưỡng + checkbox)
+    async function condenseSessionMemory(sessionObj, force = false) {
+      if (!sessionObj || !chatHistory || chatHistory.length < 4) return false;
+      if (!force && (chatHistory.length <= autoSummaryThreshold || DOM.toggleAutoSummary?.checked === false)) return false;
       const lastCond = sessionObj.lastCondensedLength || 0;
-      if (chatHistory.length - lastCond < 10) return;
+      if (!force && chatHistory.length - lastCond < 10) return false;
 
       const k = getSessionApiKey(sessionObj);
-      if (!k) return;
+      if (!k) {
+        if (force) showToast('⚠️ Cần Google API Key để nén ngữ cảnh!', 'warning');
+        return false;
+      }
 
+      const keepRecent = Math.min(10, Math.max(2, chatHistory.length - 2));
       try {
-        const toSummarize = chatHistory.slice(0, chatHistory.length - 10).map(m => `${m.role === 'model' ? 'AI' : 'User'}: ${stripThinkingForCopy(m.text).slice(0, 300)}`).join('\n');
+        const toSummarize = chatHistory.slice(0, chatHistory.length - keepRecent).map(m => `${m.role === 'model' ? 'AI' : 'User'}: ${stripThinkingForCopy(m.text).slice(0, 300)}`).join('\n');
         const prevSummary = sessionObj.summaryMemory ? `[Bối cảnh cốt lõi trước đó]:\n${sessionObj.summaryMemory}\n\n[Diễn biến mới cần cập nhật]:\n` : '';
         const promptText = `Hãy cập nhật và cô đọng các thông tin quan trọng, ngữ cảnh và các quyết định cốt lõi trong đoạn hội thoại sau thành 1 đoạn ngắn gọn (khoảng 3-5 gạch đầu dòng):\n\n${prevSummary}${toSummarize}`;
 
@@ -601,9 +642,15 @@
           sessionObj.lastCondensedLength = chatHistory.length;
           await saveToDB(sessionObj);
           console.log('[Auto-Summary] Đã nén trí nhớ dài hạn thành công:', sessionObj.summaryMemory);
+          if (force) showToast('🗜️ Đã nén ngữ cảnh thành công!', 'success');
+          return true;
         }
+        if (force) showToast('⚠️ Model không trả về nội dung tóm tắt.', 'warning');
+        return false;
       } catch (e) {
         console.warn('Lỗi tóm tắt bộ nhớ dài:', e);
+        if (force) showToast('⚠️ Lỗi khi nén ngữ cảnh: ' + (e?.message || e), 'danger');
+        return false;
       }
     }
 
@@ -2819,7 +2866,7 @@
         }
 
         // AUTO-SUMMARY BỘ NHỚ DÀI HẠN
-        if (chatHistory.length > 16 && cs) {
+        if (chatHistory.length > autoSummaryThreshold && cs) {
           condenseSessionMemory(cs);
         }
 
