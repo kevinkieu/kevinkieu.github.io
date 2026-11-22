@@ -14,8 +14,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%232563eb'/><text x='50' y='65' font-size='48' font-weight='bold' fill='white' text-anchor='middle'>J</text></svg>">
 
   <!-- CDN LIBRARIES -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- pdf.js & html2pdf được nạp theo nhu cầu qua js/lazy-libs.js (giảm bundle ban đầu) -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -32,7 +31,7 @@
   </script>
 
   <!-- MODULAR STYLESHEETS -->
-  <link rel="stylesheet" href="./css/style.css?v=72">
+  <link rel="stylesheet" href="./css/style.css?v=73">
   <link rel="stylesheet" href="./css/live.css">
   <link rel="stylesheet" href="./css/tts.css">
   <link rel="stylesheet" href="./css/translate.css">
@@ -55,7 +54,7 @@
           </div>
           <span class="brand-name">Jarvis AI</span>
         </div>
-        <button id="close-sidebar-btn" class="icon-btn mobile-only" title="Đóng Menu">
+        <button id="close-sidebar-btn" class="icon-btn mobile-only" aria-label="Đóng Menu" title="Đóng Menu">
           <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
@@ -223,7 +222,7 @@
     <main class="main-content">
       <header class="main-header">
         <div class="header-left">
-          <button id="toggle-sidebar-btn" class="icon-btn mobile-only" title="Mở Sidebar">
+          <button id="toggle-sidebar-btn" class="icon-btn mobile-only" aria-label="Mở Sidebar" title="Mở Sidebar">
             <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
           <div style="display:flex;align-items:center;gap:6px;white-space:nowrap;">
@@ -289,7 +288,7 @@
           <!-- GLOBAL SEARCH BUTTON -->
           <div class="header-search-bar">
             <input type="text" id="search-chat-input" placeholder="Tìm kiếm phiên...">
-            <button id="btn-global-search" class="icon-btn" style="width:32px;height:32px;" title="Tìm kiếm">
+            <button id="btn-global-search" class="icon-btn" style="width:32px;height:32px;" aria-label="Tìm kiếm" title="Tìm kiếm">
               <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </button>
           </div>
@@ -367,10 +366,10 @@
 
         <div class="input-container-box">
           <textarea id="user-input" rows="1" placeholder="Nhập tin nhắn (Ctrl+Enter gửi, gõ #từ khóa# để tìm web khi bật Tìm kiếm Web, Ctrl+K mở lệnh)..."></textarea>
-          <button id="btn-hands-free-voice" class="icon-btn hands-free-mic-btn" type="button" title="Trò chuyện rảnh tay 2 chiều liên tục (Hands-Free Voice Flow)">
+          <button id="btn-hands-free-voice" class="icon-btn hands-free-mic-btn" type="button" aria-label="Trò chuyện rảnh tay" title="Trò chuyện rảnh tay 2 chiều liên tục (Hands-Free Voice Flow)">
             🎙️
           </button>
-          <button id="send-button">
+          <button id="send-button" aria-label="Gửi tin nhắn">
             <span>Gửi</span>
             <svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
@@ -485,7 +484,7 @@
           <svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
           Kho Prompt Mẫu Cá Nhân
         </h3>
-        <button class="close-btn icon-btn" title="Đóng">&times;</button>
+        <button class="close-btn icon-btn" aria-label="Đóng" title="Đóng">&times;</button>
       </div>
       <div class="modal-scroll-body">
         <div style="display:flex;gap:8px;align-items:flex-end;">
@@ -631,13 +630,13 @@
     </div>
 
     <!-- MODAL SETTINGS -->
-    <div id="settings-modal" class="modal-box">
+    <div id="settings-modal" class="modal-box" role="dialog" aria-modal="true" aria-label="Cài đặt Hệ thống">
       <div class="modal-header">
         <h3>
           <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           Cài đặt Hệ thống
         </h3>
-        <button class="close-btn icon-btn" title="Đóng">&times;</button>
+        <button class="close-btn icon-btn" aria-label="Đóng" title="Đóng">&times;</button>
       </div>
       <div class="modal-scroll-body">
         <!-- DEDICATED CLOUD SYNC SECTION IN SETTINGS -->
@@ -757,6 +756,27 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button id="btn-refresh-storage" class="btn" style="padding:6px 12px;font-size:0.8rem;">🔄 Kiểm tra lại</button>
             <button id="btn-clear-temp-cache" class="btn" style="padding:6px 12px;font-size:0.8rem;" title="Xóa cache tìm kiếm web & dữ liệu tạm, giữ nguyên lịch sử chat">🧹 Dọn Cache Tạm</button>
+          </div>
+        </fieldset>
+
+        <!-- PERFORMANCE & AUTO MAINTENANCE -->
+        <fieldset class="settings-group" style="border: 2px solid #8b5cf6; background: rgba(139,92,246,0.04);">
+          <legend style="color:#8b5cf6; font-weight:700;">⚡ Hiệu năng & Tự bảo trì</legend>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <label class="field-label" for="stall-timeout-input">⏱️ Watchdog chờ phản hồi đầu tiên (giây, 10–180):</label>
+              <input type="number" id="stall-timeout-input" class="modern-input" min="10" max="180" step="5" value="45">
+              <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;line-height:1.4;">
+                Nếu Google không trả về chữ nào trong khoảng này, app tự hạ cấu hình suy luận rồi thử lại thay vì treo.
+              </div>
+            </div>
+            <label style="cursor:pointer;font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="toggle-auto-cleanup" checked> 🧹 Tự dọn phiên trống (0 tin nhắn) khi mở app
+            </label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <button id="btn-restore-session-backup" class="btn" style="padding:6px 12px;font-size:0.8rem;" title="Khôi phục hội thoại từ bản sao lưu IndexedDB">♻️ Phục hồi từ bản sao lưu</button>
+              <span id="session-backup-status" style="font-size:0.78rem;color:var(--text-muted);" role="status" aria-live="polite"></span>
+            </div>
           </div>
         </fieldset>
 
@@ -900,7 +920,7 @@
           <h3 style="margin:0;font-size:1.05rem;">🔍 Tìm kiếm Nâng cao & Ngữ nghĩa AI</h3>
           <span class="badge" style="background:rgba(14,165,233,0.15);color:#0ea5e9;font-size:0.7rem;padding:2px 8px;border-radius:10px;">Gemini Embedding 2</span>
         </div>
-        <button class="close-btn icon-btn">&times;</button>
+        <button class="close-btn icon-btn" aria-label="Đóng">&times;</button>
       </div>
       <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
         <div style="position:relative;display:flex;align-items:center;">
@@ -945,7 +965,7 @@
           <h3 style="margin:0;font-size:1.05rem;">🧠 Kho Tri Thức Cá Nhân & RAG Studio</h3>
           <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.7rem;padding:2px 8px;border-radius:10px;">gemini-embedding-2</span>
         </div>
-        <button class="close-btn icon-btn">&times;</button>
+        <button class="close-btn icon-btn" aria-label="Đóng">&times;</button>
       </div>
 
       <!-- TABS HEADER -->
@@ -1106,7 +1126,7 @@
           <h3 style="margin:0;font-size:1.05rem;">🧠 Dữ liệu Trí nhớ RAG Đã Trích Xuất</h3>
           <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981;font-size:0.7rem;padding:2px 8px;border-radius:10px;">Đã nạp vào Context</span>
         </div>
-        <button class="close-btn icon-btn">&times;</button>
+        <button class="close-btn icon-btn" aria-label="Đóng">&times;</button>
       </div>
       <div style="padding:16px;max-height:65vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
         <div style="font-size:0.78rem;color:var(--text-muted);">
@@ -1120,7 +1140,7 @@
     <div id="file-library-modal" class="modal-box">
       <div class="modal-header">
         <h3>🗄️ Thư viện Tài liệu</h3>
-        <button class="close-btn icon-btn">&times;</button>
+        <button class="close-btn icon-btn" aria-label="Đóng">&times;</button>
       </div>
       <div style="padding:16px;">
         <label class="btn primary" style="cursor:pointer;display:inline-block;margin-bottom:12px;">
@@ -1135,7 +1155,7 @@
     <div id="camera-modal" class="modal-box">
       <div class="modal-header">
         <h3>📷 Chụp ảnh từ Camera</h3>
-        <button class="close-btn icon-btn">&times;</button>
+        <button class="close-btn icon-btn" aria-label="Đóng">&times;</button>
       </div>
       <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">
         <video id="camera-preview" autoplay playsinline style="width:100%;max-height:300px;border-radius:var(--radius-md);background:#000;object-fit:cover;"></video>
@@ -1147,7 +1167,7 @@
     <div id="bulk-edit-modal" class="modal-box">
       <div class="modal-header">
         <h3>🛠️ Quản lý Lịch sử Tin nhắn</h3>
-        <button class="close-btn icon-btn">&times;</button>
+        <button class="close-btn icon-btn" aria-label="Đóng">&times;</button>
       </div>
       <div style="padding:16px;flex:1;display:flex;flex-direction:column;overflow:hidden;">
         <div style="margin-bottom:10px;display:flex;justify-content:space-between;gap:8px;">
@@ -1163,7 +1183,7 @@
     <div id="cloud-sync-modal" class="modal-box" style="max-width:580px;">
       <div class="modal-header">
         <h3 style="display:flex;align-items:center;gap:8px;">☁️ Đồng bộ Cloud qua GitHub Gist</h3>
-        <button class="close-btn icon-btn">&times;</button>
+        <button class="close-btn icon-btn" aria-label="Đóng">&times;</button>
       </div>
       <div class="modal-scroll-body">
         <div style="font-size:0.83rem;color:var(--text-muted);line-height:1.5;">
@@ -1591,7 +1611,7 @@
     <button class="sel-btn" id="sel-btn-copy">📋 Copy</button>
   </div>
 
-  <div id="toast" class="toast"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <button id="scroll-to-top" title="Cuộn lên đầu trang">▲</button>
 
   <!-- ==========================================
@@ -1791,33 +1811,35 @@
   </div>
 
   <!-- JAVASCRIPT APPLICATION MODULES -->
-  <script src="./js/globals.js?v=74"></script>
-  <script type="module" src="./js/search.js?v=74"></script>
-  <script type="module" src="./js/extract.js?v=74"></script>
-  <script type="module" src="./js/blob.js?v=74"></script>
-  <script type="module" src="./js/export.js?v=74"></script>
-  <script type="module" src="./js/quota.js?v=74"></script>
-  <script type="module" src="./js/storage-manager.js?v=74"></script>
-  <script type="module" src="./js/color-tags.js?v=74"></script>
-  <script type="module" src="./js/follow-up-chips.js?v=74"></script>
-  <script type="module" src="./js/selection-toolbar.js?v=74"></script>
-  <script type="module" src="./js/web-share-target.js?v=74"></script>
-  <script type="module" src="./js/key-config-sync.js?v=74"></script>
-  <script type="module" src="./js/medication.js?v=74"></script>
-  <script type="module" src="./js/commands.js?v=74"></script>
-    <script type="module" src="./js/briefing.js?v=74"></script>
-  <script type="module" src="./js/cipher.js?v=74"></script>
-  <script type="module" src="./js/database.js?v=74"></script>
-  <script type="module" src="./js/model-registry.js?v=74"></script>
-  <script type="module" src="./js/chat-render.js?v=74"></script>
-  <script type="module" src="./js/app.js?v=74"></script>
-    <script type="module" src="./js/api-keys.js?v=74"></script>
-  <script type="module" src="./js/sync.js?v=74"></script>
-  <script type="module" src="./js/live.js?v=74"></script>
-  <script type="module" src="./js/tts.js?v=74"></script>
-  <script type="module" src="./js/translate.js?v=74"></script>
-  <script type="module" src="./js/eventBus.js?v=74"></script>
-  <script type="module" src="./js/rag-core.js?v=74"></script>
-  <script type="module" src="./js/rag.js?v=74"></script>
+  <script src="./js/globals.js?v=76"></script>
+  <script src="./js/lazy-libs.js?v=76"></script>
+  <script type="module" src="./js/search.js?v=76"></script>
+  <script type="module" src="./js/extract.js?v=76"></script>
+  <script type="module" src="./js/blob.js?v=76"></script>
+  <script type="module" src="./js/export.js?v=76"></script>
+  <script type="module" src="./js/quota.js?v=76"></script>
+  <script type="module" src="./js/storage-manager.js?v=76"></script>
+  <script type="module" src="./js/color-tags.js?v=76"></script>
+  <script type="module" src="./js/follow-up-chips.js?v=76"></script>
+  <script type="module" src="./js/selection-toolbar.js?v=76"></script>
+  <script type="module" src="./js/web-share-target.js?v=76"></script>
+  <script type="module" src="./js/key-config-sync.js?v=76"></script>
+  <script type="module" src="./js/medication.js?v=76"></script>
+  <script type="module" src="./js/commands.js?v=76"></script>
+    <script type="module" src="./js/briefing.js?v=76"></script>
+  <script type="module" src="./js/cipher.js?v=76"></script>
+  <script type="module" src="./js/database.js?v=76"></script>
+  <script type="module" src="./js/session-cleanup.js?v=76"></script>
+  <script type="module" src="./js/model-registry.js?v=76"></script>
+  <script type="module" src="./js/chat-render.js?v=76"></script>
+  <script type="module" src="./js/app.js?v=76"></script>
+    <script type="module" src="./js/api-keys.js?v=76"></script>
+  <script type="module" src="./js/sync.js?v=76"></script>
+  <script type="module" src="./js/live.js?v=76"></script>
+  <script type="module" src="./js/tts.js?v=76"></script>
+  <script type="module" src="./js/translate.js?v=76"></script>
+  <script type="module" src="./js/eventBus.js?v=76"></script>
+  <script type="module" src="./js/rag-core.js?v=76"></script>
+  <script type="module" src="./js/rag.js?v=76"></script>
 </body>
 </html>

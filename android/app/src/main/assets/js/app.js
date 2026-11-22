@@ -1390,6 +1390,8 @@
     if (DOM.btnToggleSnippets?.onclick) DOM.btnToggleSnippets.onclick = () => DOM.snippetsContainer.style.display = DOM.snippetsContainer.style.display === 'flex' ? 'none' : 'flex';
 
     async function readPDF(f) {
+      const pdfjsLib = (typeof window.ensureLib === 'function') ? await window.ensureLib('pdfjs') : window.pdfjsLib;
+      if (!pdfjsLib) throw new Error('Chưa tải được thư viện PDF.js');
       const p = await pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise;
       let t = "";
       for (let i = 1; i <= p.numPages; i++) {
@@ -3828,7 +3830,9 @@
             abortController.signal.addEventListener('abort', relayAbort, { once: true });
             let stalled = false;
             let gotFirstChunk = false;
-            const STALL_TIMEOUT_MS = 45000;
+            // Cấu hình trong Cài đặt → Hiệu năng (giây, 10–180). Mặc định 45s.
+            const _stallSec = parseInt(ls.getItem('jarvis_stall_timeout_sec'), 10);
+            const STALL_TIMEOUT_MS = (Number.isFinite(_stallSec) ? Math.min(180, Math.max(10, _stallSec)) : 45) * 1000;
             let stallTimer = setTimeout(() => { stalled = true; attemptCtrl.abort(); }, STALL_TIMEOUT_MS);
             const stopStallTimer = () => { if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } };
             const cleanupAttempt = () => { stopStallTimer(); abortController.signal.removeEventListener('abort', relayAbort); };
@@ -3934,8 +3938,21 @@
 
                 // B. Nếu lỗi do Model không tìm thấy hoặc khai tử (404 Not Found): Chuyển sang Flash-Lite / 3.8 Flash
                 if (e.message?.includes('404') || e.message?.includes('not found')) {
+                  const fallbackFromModel = am;
                   am = (am === 'gemini-3.8-flash') ? 'gemini-3.5-flash-lite' : 'gemini-3.8-flash';
                   console.warn(`[Fallback] Chuyển sang model dự phòng: ${am}`);
+                  showToast(`🔁 Model ${fallbackFromModel} không khả dụng — đã tự chuyển sang ${am}`, 'warning');
+                  try {
+                    const fbHeader = bD?.querySelector('.message-header');
+                    if (fbHeader && !fbHeader.querySelector('.model-fallback-badge')) {
+                      const fbBadge = document.createElement('span');
+                      fbBadge.className = 'model-fallback-badge';
+                      fbBadge.style.cssText = 'font-size:.68rem;font-weight:700;padding:2px 6px;border-radius:6px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.4);margin-left:6px;white-space:nowrap;';
+                      fbBadge.title = 'Model yêu cầu không khả dụng, app đã tự chuyển sang model dự phòng';
+                      fbBadge.innerText = '🔁 ' + am;
+                      fbHeader.appendChild(fbBadge);
+                    }
+                  } catch (_) {}
                   continue;
                 }
 

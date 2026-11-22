@@ -94,6 +94,31 @@
         }
       });
 
+      $('btn-restore-session-backup')?.addEventListener('click', async () => {
+        const statusEl = $('session-backup-status');
+        if (typeof window.restoreSessionsFromBackup !== 'function') {
+          showToast('Chưa sẵn sàng phục hồi (IndexedDB đang khởi tạo).', 'warning');
+          return;
+        }
+        try {
+          if (statusEl) statusEl.innerText = '⏳ Đang phục hồi...';
+          const res = await window.restoreSessionsFromBackup();
+          if (!res.restored) {
+            if (statusEl) statusEl.innerText = 'Chưa có bản sao lưu nào.';
+            showToast('Chưa có bản sao lưu hội thoại nào để phục hồi.', 'warning');
+            return;
+          }
+          if (statusEl) statusEl.innerText = `✅ Đã phục hồi ${res.restored} phiên.`;
+          showToast(`♻️ Đã phục hồi ${res.restored} phiên từ bản sao lưu!`, 'success');
+          if (confirm(`Đã phục hồi ${res.restored} phiên từ bản sao lưu IndexedDB.\nTải lại trang để thấy đầy đủ?`)) {
+            location.reload();
+          }
+        } catch (e) {
+          if (statusEl) statusEl.innerText = '❌ Phục hồi thất bại.';
+          showToast(`Lỗi phục hồi: ${e.message}`, 'danger');
+        }
+      });
+
       $('btn-clear-temp-cache')?.addEventListener('click', () => {
         if (confirm("Bạn có muốn dọn sạch bộ nhớ đệm tìm kiếm (search cache) và dữ liệu tạm thời không?\n(Toàn bộ Lịch sử chat và API keys sẽ được BẢO TỒN NGUYÊN VẸN 100%)")) {
           try {

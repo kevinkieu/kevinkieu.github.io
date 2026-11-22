@@ -2312,3 +2312,13 @@
       justify-content: flex-end;
     }
 
+
+/* --- ACCESSIBILITY: vòng focus rõ ràng khi dùng bàn phím --- */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--primary, #2563eb) !important;
+  outline-offset: 2px;
+}
+
+.color-chip-btn:focus-visible { outline-offset: 3px; }
+
+.key-validate-hint { transition: color 0.2s ease; }

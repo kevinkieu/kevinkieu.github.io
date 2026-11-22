@@ -12,18 +12,22 @@
   const STORE_NAME = "chat_sessions";
   const FILE_STORE = "file_library";
   const TTS_STORE = "tts_audio_library";
+  // Bản sao lưu hội thoại (mirror) để phục hồi khi store chính hỏng/trống.
+  const BACKUP_STORE = "session_backup";
   let db;
 
   // --- INITIALIZE DATABASE ---
   function initDB() {
     return new Promise((res, rej) => {
-      const rq = indexedDB.open(DB_NAME, 7);
+      const rq = indexedDB.open(DB_NAME, 8);
       rq.onupgradeneeded = e => {
         let d = e.target.result;
         if (!d.objectStoreNames.contains(STORE_NAME)) d.createObjectStore(STORE_NAME, { keyPath: "id" });
         if (!d.objectStoreNames.contains(FILE_STORE)) d.createObjectStore(FILE_STORE, { keyPath: "id" });
         if (!d.objectStoreNames.contains(TTS_STORE)) d.createObjectStore(TTS_STORE, { keyPath: "id", autoIncrement: true });
+        if (!d.objectStoreNames.contains(BACKUP_STORE)) d.createObjectStore(BACKUP_STORE, { keyPath: "id" });
       };
+      rq.onblocked = () => console.warn('[DB] Nâng cấp IndexedDB bị chặn bởi một tab khác đang mở. Hãy đóng các tab Jarvis cũ.');
       rq.onsuccess = async e => {
         db = e.target.result;
         window.db = db;
@@ -47,10 +51,31 @@
             }
           };
         } catch { }
+        syncBackupFromMain();
         res();
       };
       rq.onerror = e => rej(e);
     });
+  }
+
+  // --- MIRROR EXISTING SESSIONS INTO BACKUP ---
+  // Phiên được tạo trước khi có store sao lưu (hoặc từ bản migrate cũ) sẽ được
+  // chép sang backup một lần lúc mở app, để nút "Phục hồi" luôn có dữ liệu.
+  // Chỉ THÊM vào backup, không bao giờ xoá — store chính vẫn là nguồn chuẩn.
+  function syncBackupFromMain() {
+    try {
+      if (!db || !db.objectStoreNames.contains(BACKUP_STORE)) return;
+      const t = db.transaction([STORE_NAME, BACKUP_STORE], "readwrite");
+      const backup = t.objectStore(BACKUP_STORE);
+      const rq = t.objectStore(STORE_NAME).getAll();
+      rq.onsuccess = () => {
+        (rq.result || []).forEach(s => {
+          if (s && s.id) backup.put(s);
+        });
+      };
+    } catch (e) {
+      console.warn('[DB] Không đồng bộ được bản sao lưu:', e);
+    }
   }
 
   // --- SAVE SESSION TO DB ---
@@ -60,8 +85,9 @@
         if (s && typeof s === 'object') {
           s.updatedAt = Date.now();
         }
-        const t = db.transaction(STORE_NAME, "readwrite");
+        const t = db.transaction([STORE_NAME, BACKUP_STORE], "readwrite");
         t.objectStore(STORE_NAME).put(s);
+        t.objectStore(BACKUP_STORE).put(s);
         t.oncomplete = () => {
           // Sync to native bridge if available
           if (typeof window.syncSessionsToNative === 'function') {
@@ -96,8 +122,9 @@
   function clearAllDB() {
     return new Promise((resolve, reject) => {
       try {
-        const t = db.transaction(STORE_NAME, "readwrite");
+        const t = db.transaction([STORE_NAME, BACKUP_STORE], "readwrite");
         t.objectStore(STORE_NAME).clear();
+        t.objectStore(BACKUP_STORE).clear();
         t.oncomplete = () => {
           if (window.JarvisNativeBridge) {
             window.saveToNativeBridge('jarvis_sessions_backup', '[]');
@@ -136,8 +163,9 @@
   function deleteFromDB(i) {
     return new Promise((resolve, reject) => {
       try {
-        const t = db.transaction(STORE_NAME, "readwrite");
+        const t = db.transaction([STORE_NAME, BACKUP_STORE], "readwrite");
         t.objectStore(STORE_NAME).delete(i);
+        t.objectStore(BACKUP_STORE).delete(i);
         t.oncomplete = () => {
           // Record deleted ID
           try {
@@ -176,6 +204,32 @@
     } catch (e) { }
   }
 
+  // --- RESTORE SESSIONS FROM MIRROR BACKUP ---
+  // Đọc toàn bộ bản sao lưu rồi ghi trả về store chính. Chỉ chạy khi người dùng bấm
+  // "Phục hồi" trong Cài đặt, không tự động chạy lúc mở app.
+  function restoreSessionsFromBackup() {
+    return new Promise((resolve, reject) => {
+      try {
+        const rq = db.transaction(BACKUP_STORE, "readonly").objectStore(BACKUP_STORE).getAll();
+        rq.onsuccess = () => {
+          const items = (rq.result || []).filter(s => s && s.id);
+          if (!items.length) return resolve({ restored: 0, sessions: [] });
+          try {
+            const t = db.transaction([STORE_NAME, BACKUP_STORE], "readwrite");
+            items.forEach(s => t.objectStore(STORE_NAME).put(s));
+            t.oncomplete = () => resolve({ restored: items.length, sessions: items });
+            t.onerror = err => reject(err);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        rq.onerror = err => reject(err);
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
   // --- PUBLIC API ---
   window.initDB = initDB;
   window.saveToDB = saveToDB;
@@ -189,5 +243,7 @@
   window.STORE_NAME = STORE_NAME;
   window.FILE_STORE = FILE_STORE;
   window.TTS_STORE = TTS_STORE;
+  window.BACKUP_STORE = BACKUP_STORE;
+  window.restoreSessionsFromBackup = restoreSessionsFromBackup;
 
 })();

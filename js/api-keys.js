@@ -21,7 +21,8 @@
     ['auto-search-engine-input', 'auto_search_default_engine', 'tavily'],
     ['web-extract-engine-input', 'web_extract_engine', 'auto'],
     ['nvidia-proxy-url', 'nvidia_proxy_url'],
-    ['live-temperature', 'live_temperature', '0.7']
+    ['live-temperature', 'live_temperature', '0.7'],
+    ['stall-timeout-input', 'jarvis_stall_timeout_sec', '45']
   ];
 
   const OR_KEY_COUNT = 5;
@@ -336,6 +337,57 @@
     if (hint && pool.hintFn) hint.innerText = pool.hintFn(sel.value);
   }
 
+  // --- VALIDATION UX CHO GOOGLE API KEY ---
+  // Kiểm tra "mềm": chỉ cảnh báo định dạng, KHÔNG chặn lưu (key proxy/hợp lệ đặc biệt vẫn dùng được).
+  function validateGoogleKeyFormat(raw) {
+    const k = String(raw || '').trim();
+    if (!k) return { valid: false, empty: true, message: '' };
+    if (k.startsWith('AIza') && k.length >= 35) {
+      return { valid: true, empty: false, message: '✅ Định dạng hợp lệ (AIza…)' };
+    }
+    if (k.startsWith('AQ.') && k.length >= 20) {
+      return { valid: true, empty: false, message: '✅ Định dạng hợp lệ (AQ.…)' };
+    }
+    if (/^(sk-|nvapi-|co-|xpl_|tvly-|serper)/i.test(k)) {
+      return { valid: false, empty: false, message: '⚠️ Đây là key của nhà cung cấp khác — dán vào đúng ô bên dưới.' };
+    }
+    return { valid: false, empty: false, message: '⚠️ Key Google thường bắt đầu bằng "AIza" hoặc "AQ." — kiểm tra lại.' };
+  }
+  window.validateGoogleKeyFormat = validateGoogleKeyFormat;
+
+  function applyKeyValidationHint(i) {
+    const input = $(`api-key-${i}`);
+    if (!input) return;
+    const res = validateGoogleKeyFormat(input.value);
+    input.setAttribute('aria-invalid', (!res.valid && !res.empty) ? 'true' : 'false');
+    input.style.borderColor = res.empty ? '' : (res.valid ? 'var(--success)' : '#f59e0b');
+
+    const row = input.closest('.api-key-row');
+    if (!row) return;
+    row.style.flexWrap = 'wrap';
+    let hint = $(`api-key-hint-${i}`);
+    if (!hint) {
+      hint = document.createElement('span');
+      hint.id = `api-key-hint-${i}`;
+      hint.className = 'key-validate-hint';
+      hint.style.cssText = 'flex:1 0 100%;margin-left:36px;font-size:0.68rem;font-weight:600;line-height:1.3;';
+      hint.setAttribute('aria-live', 'polite');
+      row.appendChild(hint);
+    }
+    hint.innerText = res.empty ? '' : res.message;
+    hint.style.color = res.valid ? 'var(--success)' : '#f59e0b';
+  }
+
+  function wireGoogleKeyValidation() {
+    for (let i = 1; i <= 10; i++) {
+      const input = $(`api-key-${i}`);
+      if (!input || input.dataset.validationWired === '1') continue;
+      input.dataset.validationWired = '1';
+      input.addEventListener('input', () => applyKeyValidationHint(i));
+    }
+    for (let i = 1; i <= 10; i++) applyKeyValidationHint(i);
+  }
+
   // --- INIT API KEYS FROM LOCALSTORAGE ---
   function initAPIKeys() {
     const keys = [];
@@ -380,6 +432,7 @@
       if ([...liveSel.options].some(o => o.value === cur)) liveSel.value = cur;
     }
     renderKeyPoolMenu();
+    wireGoogleKeyValidation();
     if (typeof window.updateKeyQuotaUI === 'function') window.updateKeyQuotaUI();
   }
 
@@ -608,7 +661,17 @@
     if (window.JarvisSync && typeof window.JarvisSync.scheduleAutoSync === 'function') {
       window.JarvisSync.scheduleAutoSync(3000);
     }
-    showToast("Đã lưu cấu hình Google & Hệ thống!");
+    const badSlots = [];
+    for (let i = 1; i <= 10; i++) {
+      const v = $(`api-key-${i}`)?.value.trim() || '';
+      if (!v) continue;
+      if (!validateGoogleKeyFormat(v).valid) badSlots.push(i);
+    }
+    if (badSlots.length) {
+      showToast(`Đã lưu! ⚠️ Google Key #${badSlots.join(', #')} sai định dạng — kiểm tra lại.`, 'warning');
+    } else {
+      showToast("Đã lưu cấu hình Google & Hệ thống!");
+    }
   }
 
   // --- CHECK KEYS BUTTON HANDLER ---

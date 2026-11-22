@@ -140,10 +140,18 @@
     saveOrShareBlob(new Blob(['\ufeff', h], { type: 'application/msword' }), `JarvisAI_Chat_${Date.now()}.doc`);
   }
 
-  function exportChatPDF() {
+  async function exportChatPDF() {
     const history = window.chatHistory || [];
     const marked = window.marked;
-    const html2pdf = window.html2pdf;
+    let html2pdf = window.html2pdf;
+    if (!html2pdf && typeof window.ensureLib === 'function') {
+      showToast('⏳ Đang tải thư viện xuất PDF...', 'info');
+      try {
+        html2pdf = await window.ensureLib('html2pdf');
+      } catch (e) {
+        return showToast(`Không tải được thư viện PDF: ${e.message}`, 'danger');
+      }
+    }
     if (!html2pdf) {
       return showToast("Thư viện html2pdf chưa sẵn sàng!", "warning");
     }
