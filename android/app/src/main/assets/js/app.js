@@ -282,6 +282,22 @@
       tabsContainer: $('tabs-container')
     };
 
+    // --- SỐ TIN NHẮN NGỮ CẢNH GỬI ĐI KÈM CHO generateContentStream (lưu vào localStorage) ---
+    let contextMsgCount = parseInt(ls.getItem('jarvis_context_messages') || '10', 10);
+    if (!contextMsgCount || contextMsgCount < 1) contextMsgCount = 10;
+    if (DOM.contextMsgCount) {
+      DOM.contextMsgCount.value = contextMsgCount;
+      DOM.contextMsgCount.addEventListener('change', () => {
+        const v = parseInt(DOM.contextMsgCount.value, 10);
+        if (Number.isFinite(v) && v >= 1 && v <= 200) {
+          contextMsgCount = v;
+          ls.setItem('jarvis_context_messages', String(contextMsgCount));
+        } else {
+          DOM.contextMsgCount.value = contextMsgCount;
+        }
+      });
+    }
+
     // --- GOOGLE KEY SLOT HELPERS (replaces DOM.apiKeySel) ---
     const GOOGLE_SLOT_KEY = 'jarvis_selected_google_slot';
     function getGoogleKeySlot() { return ls.getItem(GOOGLE_SLOT_KEY) || 'auto'; }
