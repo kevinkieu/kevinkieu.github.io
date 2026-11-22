@@ -241,7 +241,6 @@
         "scratch/test_browser.js": "Helper smoke test trình duyệt nhanh.",
         "scratch/ep.json": "Dữ liệu tạm (endpoint/provider) dùng khi kiểm tra model.",
         "scratch/or_models.json": "Bản dump danh sách model OpenRouter phục vụ đối chiếu slug/giá/context.",
-        "scratch/server.log": "Log của static server khi preview app ở localhost.",
         "worker/nvidia-proxy.js": "Template Cloudflare Worker proxy cho NVIDIA integrate API (CORS + stream) — bản deploy của scratch/nvidia-proxy.js.",
         "worker/sites.deploy.json": "Manifest deploy của Worker proxy NVIDIA."
       }
