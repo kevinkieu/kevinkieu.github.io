@@ -13,7 +13,7 @@
       "PWA",
       "Android (WebView + native medication alarms)"
     ],
-    "versioning": "Android versionCode 72 / versionName 1.1.72 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=85), sw cache jarvis-ai-pwa-v77"
+    "versioning": "Android versionCode 72 / versionName 1.1.72 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=87), sw cache jarvis-ai-pwa-v79"
   },
   "runtime_entry": {
     "web": "index.html",
@@ -84,7 +84,7 @@
     ],
     "service_worker": {
       "file": "sw.js",
-      "cache": "jarvis-ai-pwa-v77",
+      "cache": "jarvis-ai-pwa-v79",
       "precache": "STATIC_ASSETS: index.html, manifest, icons, 5 file CSS, js/{model-registry,chat-render,app,sync,live,tts,translate,rag,search,extract,blob,markdown.worker}.js + toàn bộ CDN_LIBS",
       "html": "network-first (để bản deploy GitHub Pages lên ngay), fallback cache → ./index.html",
       "js_css_cdn": "stale-while-revalidate",

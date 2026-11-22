@@ -712,6 +712,14 @@
             <button id="btn-manual-compact" class="btn" style="width:100%;padding:10px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:white;font-weight:600;">
               🗜️ Nén ngữ cảnh ngay (Manual Compact)
             </button>
+            <div>
+              <div style="font-size:0.78rem;font-weight:600;margin-bottom:4px;">🧠 Bộ nhớ tóm tắt hiện tại của phiên:</div>
+              <div id="compact-summary-preview" style="max-height:160px;overflow:auto;white-space:pre-wrap;font-size:0.78rem;line-height:1.45;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;color:var(--text-main);font-style:italic;opacity:0.7;">Chưa có bộ nhớ tóm tắt cho phiên này.</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                <button id="btn-resummarize-compact" class="btn" style="flex:1;padding:8px;font-size:0.8rem;">🔄 Tóm tắt lại</button>
+                <button id="btn-clear-compact" class="btn danger" style="flex:1;padding:8px;font-size:0.8rem;">🗑️ Xoá bộ nhớ tóm tắt</button>
+              </div>
+            </div>
             <div id="compact-status-msg" style="font-size:0.75rem;color:var(--text-muted);" role="status" aria-live="polite"></div>
           </div>
         </fieldset>
@@ -1860,7 +1868,7 @@
   <script type="module" src="./js/session-cleanup.js?v=76"></script>
   <script type="module" src="./js/model-registry.js?v=76"></script>
   <script type="module" src="./js/chat-render.js?v=76"></script>
-  <script type="module" src="./js/app.js?v=85"></script>
+  <script type="module" src="./js/app.js?v=87"></script>
     <script type="module" src="./js/api-keys.js?v=77"></script>
   <script type="module" src="./js/sync.js?v=76"></script>
   <script type="module" src="./js/live.js?v=76"></script>

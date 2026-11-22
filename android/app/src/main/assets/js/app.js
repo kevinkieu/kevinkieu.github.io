@@ -263,6 +263,9 @@
       compactThreshold: $('compact-message-threshold'),
       btnManualCompact: $('btn-manual-compact'),
       compactStatusMsg: $('compact-status-msg'),
+      compactSummaryPreview: $('compact-summary-preview'),
+      btnResummarizeCompact: $('btn-resummarize-compact'),
+      btnClearCompact: $('btn-clear-compact'),
       toggleRagEmbedding: $('toggle-rag-embedding'),
       btnToggleSessionMem: $('btn-toggle-session-memory'),
       sessionMemState: $('session-memory-state'),
@@ -314,6 +317,43 @@
         DOM.btnManualCompact.disabled = false;
         DOM.btnManualCompact.innerHTML = label;
         if (DOM.compactStatusMsg) DOM.compactStatusMsg.textContent = ok ? '✅ Đã cập nhật bộ nhớ tóm tắt cho phiên này.' : '⚠️ Chưa nén được — cần Google API Key hoặc phiên chưa đủ tin nhắn.';
+      });
+    }
+    if (DOM.btnResummarizeCompact) {
+      DOM.btnResummarizeCompact.addEventListener('click', async () => {
+        const cs = sessions.find(x => x.id === activeId);
+        if (!cs) { showToast('⚠️ Chưa có phiên nào đang mở!', 'warning'); return; }
+        if (!chatHistory || chatHistory.length < 4) { showToast('⚠️ Cần ít nhất 4 tin nhắn để tóm tắt lại!', 'warning'); return; }
+        const label = DOM.btnResummarizeCompact.innerHTML;
+        const oldSummary = cs.summaryMemory;
+        const oldLastCond = cs.lastCondensedLength;
+        DOM.btnResummarizeCompact.disabled = true;
+        DOM.btnResummarizeCompact.innerHTML = '⏳ Đang tóm tắt...';
+        if (DOM.compactStatusMsg) DOM.compactStatusMsg.textContent = 'Đang tóm tắt lại toàn bộ hội thoại...';
+        cs.summaryMemory = '';
+        cs.lastCondensedLength = 0;
+        const ok = await condenseSessionMemory(cs, true);
+        if (!ok) {
+          cs.summaryMemory = oldSummary;
+          cs.lastCondensedLength = oldLastCond;
+          await saveToDB(cs);
+        }
+        DOM.btnResummarizeCompact.disabled = false;
+        DOM.btnResummarizeCompact.innerHTML = label;
+        if (!ok && DOM.compactStatusMsg) DOM.compactStatusMsg.textContent = '⚠️ Nén thất bại — đã khôi phục bộ nhớ cũ.';
+      });
+    }
+    if (DOM.btnClearCompact) {
+      DOM.btnClearCompact.addEventListener('click', async () => {
+        const cs = sessions.find(x => x.id === activeId);
+        if (!cs) { showToast('⚠️ Chưa có phiên nào đang mở!', 'warning'); return; }
+        if (!cs.summaryMemory && !cs.lastCondensedLength) { showToast('Phiên này chưa có bộ nhớ tóm tắt.', 'info'); return; }
+        cs.summaryMemory = '';
+        cs.lastCondensedLength = 0;
+        await saveToDB(cs);
+        renderCompactSummary();
+        if (DOM.compactStatusMsg) DOM.compactStatusMsg.textContent = 'Đã xoá bộ nhớ tóm tắt của phiên này.';
+        showToast('🗑️ Đã xoá bộ nhớ tóm tắt!', 'success');
       });
     }
 
@@ -599,6 +639,17 @@
       }
     }
 
+    // --- HIỂN THỊ BỘ NHỚ TÓM TẮT CỦA PHIÊN ĐANG MỞ ---
+    function renderCompactSummary() {
+      const box = DOM.compactSummaryPreview;
+      if (!box) return;
+      const cs = sessions.find(x => x.id === activeId);
+      const txt = (cs?.summaryMemory || '').trim();
+      box.textContent = txt || 'Chưa có bộ nhớ tóm tắt cho phiên này.';
+      box.style.fontStyle = txt ? 'normal' : 'italic';
+      box.style.opacity = txt ? '1' : '0.7';
+    }
+
     // --- AUTO-SUMMARY LONG-TERM MEMORY (NÉN LỊCH SỬ DÀI) ---
     // force = true khi người dùng bấm nút nén thủ công (bỏ qua ngưỡng + checkbox)
     async function condenseSessionMemory(sessionObj, force = false) {
@@ -643,6 +694,7 @@
           await saveToDB(sessionObj);
           console.log('[Auto-Summary] Đã nén trí nhớ dài hạn thành công:', sessionObj.summaryMemory);
           if (force) showToast('🗜️ Đã nén ngữ cảnh thành công!', 'success');
+          renderCompactSummary();
           return true;
         }
         if (force) showToast('⚠️ Model không trả về nội dung tóm tắt.', 'warning');
@@ -1382,7 +1434,7 @@
 
     $('toggle-sidebar-btn').onclick = () => { $('sidebar').classList.add('active'); $('sidebar-overlay').classList.add('active'); };
     $('close-sidebar-btn').onclick = $('sidebar-overlay').onclick = () => { $('sidebar').classList.remove('active'); $('sidebar-overlay').classList.remove('active'); };
-    $('btn-open-settings').onclick = () => { $('settings-modal').style.display = 'flex'; $('modal-overlay').style.display = 'block'; };
+    $('btn-open-settings').onclick = () => { $('settings-modal').style.display = 'flex'; $('modal-overlay').style.display = 'block'; renderCompactSummary(); };
 
     const getDynamicSI = (ragSnippet = '') => {
       const cs = sessions.find(x => x.id === activeId);
