@@ -1883,7 +1883,12 @@
 
       if (s) {
         DOM.sysInst.value = s.sys || '';
-        DOM.model.value = s.mod || 'gemini-4-hydrogen';
+        // Khôi phục model theo cả provider: model id có thể trùng giữa nhiều provider
+        // (vd particle-ai/particle-1:free ở OpenRouter và Kilo), chỉ gán .value sẽ chọn
+        // nhầm option đầu tiên.
+        if (!(window.DynamicProviders?.selectModelOption?.(s.mod, s.modProvider))) {
+          DOM.model.value = s.mod || 'gemini-4-hydrogen';
+        }
         DOM.engineSel.value = s.engine || 'stream';
         setGoogleKeySlot(s.keySel || 'auto');
         // Menu key dùng chung phải theo model của phiên vừa mở (không có sự kiện change)
@@ -2069,6 +2074,8 @@
         Object.assign(s, {
           sys: DOM.sysInst.value,
           mod: DOM.model.value,
+          // Lưu kèm provider đã chọn để lần mở lại khôi phục đúng option khi trùng model id
+          modProvider: window.DynamicProviders?.getSelectedModelProvider?.() || null,
           engine: DOM.engineSel.value,
           keySel: getGoogleKeySlot(),
           tmp: DOM.temp.value,
@@ -2617,13 +2624,18 @@
       // fallback resolveCompatProvider
       const getModelProvider = (modelId) => {
         const mid = String(modelId || '').trim();
-        // 1. Check dropdown optgroup via data-provider
+        // 1. Nếu là model ĐANG CHỌN trong dropdown: lấy đúng option đang được chọn.
+        //    Model id có thể trùng giữa nhiều provider (vd particle-ai/particle-1:free
+        //    ở OpenRouter và Kilo) — .find() theo value sẽ luôn lấy option đầu tiên.
+        const selOpt = DOM.model?.options?.[DOM.model.selectedIndex];
+        if (selOpt && String(selOpt.value).trim() === mid && selOpt.dataset?.provider) return selOpt.dataset.provider;
+        // 2. Model không phải model đang chọn (tin nhắn cũ): tìm option theo value
         const opt = Array.from(DOM.model?.options || []).find(o => o.value === mid);
         if (opt?.dataset?.provider) return opt.dataset.provider;
-        // 2. Fallback to resolveCompatProvider
+        // 3. Fallback to resolveCompatProvider
         const cp = (typeof resolveCompatProvider === 'function') ? resolveCompatProvider(mid) : null;
         if (cp?.provider) return cp.provider.id;
-        // 3. Check Explabs
+        // 4. Check Explabs
         const expModels = Array.isArray(window.EXPLABS_MODELS) ? window.EXPLABS_MODELS : [];
         if (expModels.includes(mid)) return 'explabs';
         return 'google';
@@ -3330,8 +3342,11 @@
         }
 
         // --- ENGINE 0B: GATEWAY OpenAI-COMPATIBLE (OpenRouter/NVIDIA/Cohere/dynamic) ---
-        const providerId = getModelProvider(am);
-        const prov = window.COMPAT_PROVIDERS?.[providerId];
+        // Tên biến phải KHÁC `providerId` ở phạm vi sendMessage: khai báo lại cùng tên
+        // trong khối try sẽ shadow biến ngoài và gây TDZ cho các chỗ dùng trước đó
+        // (vd nhãn "Đang chờ <provider>…").
+        const compatProviderId = getModelProvider(am);
+        const prov = window.COMPAT_PROVIDERS?.[compatProviderId];
         if (prov) {
           // Key đã được chọn + xoay tua ở đầu sendMessage; đây chỉ là lưới an toàn
           let compatKey = gKey;
@@ -4428,6 +4443,9 @@
             }
             initAPIKeys();
             initExternalConfigs();
+            // Nạp lại registry provider/model động từ cấu hình vừa khôi phục để select
+            // và gateway nhận ngay provider/model tự thêm (không cần reload trang).
+            try { window.DynamicProviders?.init?.(); } catch (e) { console.warn('[Backup] DynamicProviders init lỗi:', e); }
             applyFontSize(parseInt(ls.getItem('chat_font_size') || '16', 10));
             if (typeof window.reloadMaxMedicationsFromStorage === 'function') {
               window.reloadMaxMedicationsFromStorage();

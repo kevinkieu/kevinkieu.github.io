@@ -555,14 +555,32 @@
     return registry;
   }
 
+  // Chọn option model khớp CẢ value (model id) LẪN provider (data-provider).
+  // Model id có thể trùng giữa nhiều provider (vd particle-ai/particle-1:free có ở
+  // OpenRouter và Kilo), gán sel.value = id sẽ rơi vào option ĐẦU TIÊN (sai provider).
+  // providerId rỗng -> giữ hành vi cũ (chỉ khớp value).
+  function selectModelOption(modelId, providerId) {
+    const sel = $('model-select');
+    if (!sel) return false;
+    const mid = String(modelId || '');
+    if (!mid) return false;
+    const opts = Array.from(sel.options);
+    const match = opts.find(o => o.value === mid && (!providerId || o.dataset.provider === providerId))
+      || opts.find(o => o.value === mid);
+    if (!match) return false;
+    sel.selectedIndex = opts.indexOf(match);
+    return true;
+  }
+
   function rebuildModelSelect() {
     const sel = $('model-select');
     if (!sel) return;
     const providers = getProviders();
     const models = getModels();
 
-    // Preserve current value
+    // Preserve current value + provider (model id trùng giữa nhiều provider)
     const currentValue = sel.value;
+    const currentProvider = sel.options[sel.selectedIndex]?.dataset?.provider || null;
 
     // Build optgroups
     const groups = {};
@@ -597,8 +615,9 @@
     });
 
     sel.innerHTML = html;
-    // Restore value if still exists
-    if ([...sel.options].some(o => o.value === currentValue)) sel.value = currentValue;
+    // Restore value if still exists — ưu tiên khớp cả provider để không nhảy sang
+    // provider khác có cùng model id
+    if (currentValue) selectModelOption(currentValue, currentProvider);
 
     // Trigger key pool menu refresh
     if (window.renderKeyPoolMenu) window.renderKeyPoolMenu();
@@ -630,6 +649,11 @@
   function dpToast(msg, type = 'info') {
     if (typeof showToast === 'function') showToast(msg, type);
     else console.log(`[DynamicProviders] ${msg}`);
+  }
+
+  // Provider/model tự thêm cũng phải lên Gist Cloud ngay (không cần chờ chat)
+  function dpAutoSync(ms = 3000) {
+    try { window.JarvisSync?.scheduleAutoSync?.(ms); } catch (_) {}
   }
 
   function renderProviderKeyInputs(count, providerId) {
@@ -675,7 +699,7 @@
       btn.onclick = e => { const id = e.currentTarget.dataset.id; loadProviderIntoForm(id); };
     });
     box.querySelectorAll('.dp-btn-del').forEach(btn => {
-      btn.onclick = e => { const id = e.currentTarget.dataset.id; if (confirm(`Xoá provider "${escapeHtml(id)}? Các model thuộc provider này cũng sẽ bị xoá.`)) { deleteProvider(id); dpToast('Đã xoá provider ' + escapeHtml(id), 'success'); renderAll(); window.DynamicProviders.init(); } };
+      btn.onclick = e => { const id = e.currentTarget.dataset.id; if (confirm(`Xoá provider "${escapeHtml(id)}? Các model thuộc provider này cũng sẽ bị xoá.`)) { deleteProvider(id); dpToast('Đã xoá provider ' + escapeHtml(id), 'success'); renderAll(); window.DynamicProviders.init(); dpAutoSync(); } };
     });
   }
 
@@ -707,7 +731,7 @@
       btn.onclick = e => { const mkey = e.currentTarget.dataset.mkey; loadModelIntoForm(mkey); };
     });
     box.querySelectorAll('.dp-btn-del').forEach(btn => {
-      btn.onclick = e => { const mkey = e.currentTarget.dataset.mkey; if (confirm(`Xoá model "${escapeHtml(mkey)}"?`)) { deleteModel(mkey); dpToast('Đã xoá model ' + escapeHtml(mkey), 'success'); renderAll(); window.DynamicProviders.init(); } };
+      btn.onclick = e => { const mkey = e.currentTarget.dataset.mkey; if (confirm(`Xoá model "${escapeHtml(mkey)}"?`)) { deleteModel(mkey); dpToast('Đã xoá model ' + escapeHtml(mkey), 'success'); renderAll(); window.DynamicProviders.init(); dpAutoSync(); } };
     });
   }
 
@@ -788,6 +812,8 @@
       renderAll();
       // Refresh runtime registry so new provider's keys & models are available immediately
       window.DynamicProviders.init();
+      // Đẩy provider + bể key/tên vừa nhập lên Gist Cloud
+      dpAutoSync();
     } catch (e) {
       dpToast('Lỗi: ' + e.message, 'danger');
     }
@@ -867,6 +893,7 @@
       rebuildModelSelect();
       // Refresh runtime registry so new model is available immediately
       window.DynamicProviders.init();
+      dpAutoSync();
     } catch (e) {
       dpToast('Lỗi: ' + e.message, 'danger');
     }
@@ -1055,6 +1082,7 @@
     buildRuntimeRegistry,
     init,
     rebuildModelSelect,
+    selectModelOption,   // selectModelOption(modelId, providerId) -> chọn đúng option theo value + data-provider
     getSelectedModelProvider,
     // Backup/Sync
     exportConfig,

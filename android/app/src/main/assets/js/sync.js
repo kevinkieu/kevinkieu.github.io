@@ -752,6 +752,32 @@
             const localFP = fingerprint(window.DynamicProviders.exportConfig(false) || {});
             const cloudFP = fingerprint(cloudData.settings?.dynamicProviders || {});
             if (localFP !== cloudFP) isLocalAhead = true;
+
+            // So sánh cả BỂ KEY + TÊN + USAGE của provider động (giải mã Cloud trước khi so).
+            // Nhờ vậy chỉ cần nhập/đổi key provider tự thêm là máy này được coi là "mới hơn"
+            // và đẩy lên Gist ngay, không phải chờ chat.
+            if (!isLocalAhead) {
+              const normalizeSlotKeys = dp => {
+                const out = {};
+                Object.keys(dp?.providers || {}).sort().forEach(id => {
+                  const pr = dp.providers[id] || {};
+                  const dec = arr => (Array.isArray(arr) ? arr : []).map(v => {
+                    let s = String(v || '').trim();
+                    if (s.startsWith('JVENC_') || s.startsWith('ENC_')) s = String(deobfuscateKey(s) || '').trim();
+                    return s;
+                  });
+                  out[id] = JSON.stringify({
+                    keys: dec(pr.keys),
+                    keyNames: (Array.isArray(pr.keyNames) ? pr.keyNames : []).map(n => String(n || '')),
+                    usage: pr.usage || {}
+                  });
+                });
+                return JSON.stringify(out);
+              };
+              const localSlots = normalizeSlotKeys(window.DynamicProviders.exportConfig(false) || {});
+              const cloudSlots = normalizeSlotKeys(cloudData.settings?.dynamicProviders || {});
+              if (localSlots !== cloudSlots) isLocalAhead = true;
+            }
           }
         }
 
@@ -841,6 +867,8 @@
               externalConfigs: getExternalConfigsObj(true),
               dynamicProviders: window.DynamicProviders?.exportConfig(true),
               model: getDOM().model?.value || 'gemini-3.6-flash',
+              // Provider đã chọn (model id có thể trùng giữa nhiều provider)
+              modelProvider: window.DynamicProviders?.getSelectedModelProvider?.() || null,
               temperature: getDOM().temp?.value || 0.5,
               searchEngine: getDOM().searchEngineSel?.value || 'tavily',
               globalContext: getDOM().globContext?.value || '',
@@ -1093,6 +1121,8 @@
             externalConfigs: getExternalConfigsObj(true),
             dynamicProviders: window.DynamicProviders?.exportConfig(true),
             model: getDOM().model?.value || 'gemini-3.6-flash',
+            // Provider đã chọn (model id có thể trùng giữa nhiều provider)
+            modelProvider: window.DynamicProviders?.getSelectedModelProvider?.() || null,
             temperature: getDOM().temp?.value || 0.5,
             searchEngine: getDOM().searchEngineSel?.value || 'tavily',
             globalContext: getDOM().globContext?.value || '',
@@ -1195,7 +1225,11 @@
           if (parsed.settings.dynamicProviders && typeof window.DynamicProviders?.importConfig === 'function') {
             window.DynamicProviders.importConfig(parsed.settings.dynamicProviders, { merge: true });
           }
-          if (parsed.settings.model && getDOM().model) getDOM().model.value = parsed.settings.model;
+          if (parsed.settings.model && getDOM().model) {
+            // Khôi phục theo cả provider để không chọn nhầm option trùng model id
+            const applied = window.DynamicProviders?.selectModelOption?.(parsed.settings.model, parsed.settings.modelProvider);
+            if (!applied) getDOM().model.value = parsed.settings.model;
+          }
           if (parsed.settings.temperature && getDOM().temp) {
             getDOM().temp.value = parsed.settings.temperature;
             if (getDOM().tempVal) getDOM().tempVal.innerText = parsed.settings.temperature;

@@ -105,9 +105,29 @@
       const isSecret = k.includes('key') || k.includes('_api_') || k === 'brave_worker_url';
       cfgs[k] = isSecret && val ? obfuscateKey(val) : val;
     });
-    // Cấu hình provider/model động (key đã JVENC_ obfuscate trong localStorage, giữ nguyên khi sao lưu)
+    // Cấu hình provider/model động (định nghĩa provider/model)
     cfgs['jarvis_dynamic_providers'] = ls.getItem('jarvis_dynamic_providers') || "";
     cfgs['jarvis_dynamic_models'] = ls.getItem('jarvis_dynamic_models') || "";
+    // Bể key + tên gợi nhớ + bộ đếm của TỪNG provider động (Kilo, ...).
+    // Bắt buộc phải có trong backup JSON và phải obfuscate (JVENC_) như key Google,
+    // nếu không key provider tự thêm sẽ mất khi khôi phục sang máy khác.
+    try {
+      const dpProviders = JSON.parse(ls.getItem('jarvis_dynamic_providers') || '{}') || {};
+      Object.entries(dpProviders).forEach(([id, p]) => {
+        if (!p || typeof p !== 'object') return;
+        const keyPrefix = p.keyPrefix || `jarvis_provider_${id}_api`;
+        const namePrefix = p.keyNamePrefix || `jarvis_provider_${id}_name`;
+        const count = Math.min(Math.max(parseInt(p.keyCount, 10) || 0, 0), 10);
+        for (let i = 1; i <= count; i++) {
+          const slotKey = (ls.getItem(`${keyPrefix}_${i}`) || '').trim();
+          cfgs[`${keyPrefix}_${i}`] = slotKey ? obfuscateKey(slotKey) : '';
+          cfgs[`${namePrefix}_${i}`] = ls.getItem(`${namePrefix}_${i}`) || '';
+        }
+        cfgs[`jarvis_provider_${id}_usage`] = ls.getItem(`jarvis_provider_${id}_usage`) || '';
+      });
+    } catch (e) {
+      console.warn('[Backup] Không đọc được danh sách provider động:', e);
+    }
     cfgs['live_search_enabled'] = ls.getItem('live_search_enabled') || 'true';
     cfgs['live_context_enabled'] = ls.getItem('live_context_enabled') || 'true';
     cfgs['jarvis_folders'] = ls.getItem('jarvis_folders') || '["Mặc định"]';
