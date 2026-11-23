@@ -3698,6 +3698,11 @@
               if (prov.id === 'nvidia' && networkLike) {
                 return showToast(`Lỗi NVIDIA: không kết nối được proxy (${compatErr.message}). Kiểm tra mạng hoặc NVIDIA Proxy URL trong Cài đặt.`, 'danger');
               }
+              if (networkLike) {
+                // In luôn endpoint để biết base URL của provider đang trỏ đâu (Kilo trên APK
+                // hay gặp "Failed to fetch" khi Base URL trỏ thẳng gateway chặn CORS).
+                return showToast(`Lỗi ${prov.keyLabel}: không kết nối được ${compatUrl} (${compatErr.message}). Kiểm tra Base URL của provider trong Cài đặt.`, 'danger');
+              }
               return showToast(`Lỗi ${prov.keyLabel}: ${compatErr.message}`, 'danger');
             }
           }

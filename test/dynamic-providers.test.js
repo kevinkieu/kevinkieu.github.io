@@ -44,13 +44,16 @@ describe('dynamic-providers.js — provider/model động (Kilo)', () => {
     loadModule('js/dynamic-providers.js');
   });
 
-  it('đăng ký provider Kilo vào runtime registry với base URL đã nhập', () => {
+  it('đăng ký provider Kilo vào runtime registry và tự đi qua proxy CORS khi base URL trỏ thẳng gateway', () => {
     const registry = addKilo();
     const kilo = registry.compatProviders.kilo;
     expect(kilo).toBeTruthy();
     expect(kilo.label).toBe('Kilo');
+    // Base URL lưu nguyên như người dùng nhập...
     expect(kilo.baseUrl).toBe('https://ai-gateway.kilo.ai/api/v1');
-    expect(kilo.getBaseUrl()).toBe('https://ai-gateway.kilo.ai/api/v1');
+    // ...nhưng lúc gọi request phải đổi sang proxy: ai-gateway.kilo.ai không trả CORS
+    // nên gọi thẳng từ WebView/trình duyệt luôn "Failed to fetch".
+    expect(kilo.getBaseUrl()).toBe('https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/kilo/v1');
     expect(kilo.models).toContain(MODEL_ID);
     expect(window.COMPAT_PROVIDERS.kilo).toBeTruthy();
     expect(window.COMPAT_MODEL_OPTS[MODEL_ID]).toMatchObject({

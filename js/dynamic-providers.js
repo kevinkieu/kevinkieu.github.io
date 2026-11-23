@@ -11,6 +11,18 @@
   const ls = window.ls || localStorage;
   const $ = id => document.getElementById(id);
 
+  // Gateway Kilo không trả CORS cho origin WebView (https://appassets.androidplatform.net)
+  // nên base URL trỏ thẳng ai-gateway.kilo.ai luôn bị "Failed to fetch" (APK cũ hay cấu hình
+  // nhập tay trước đây). Tự chuyển qua proxy đã deploy (/kilo/v1) lúc gọi request.
+  const KILO_DEFAULT_PROXY = 'https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/kilo/v1';
+
+  function normalizeCompatBaseUrl(raw) {
+    const url = String(raw || '').trim().replace(/\/+$/, '');
+    if (!url) return url;
+    if (/^https?:\/\/ai-gateway\.kilo\.ai(\/|$)/i.test(url)) return KILO_DEFAULT_PROXY;
+    return url;
+  }
+
   // --- STORAGE KEYS ---
   const STORAGE_KEYS = {
     PROVIDERS: 'jarvis_dynamic_providers',
@@ -434,7 +446,11 @@
         keyCount: keyCount,
         keyIndexVar: `${p.id}KeyIndex`,
         keyLabel: p.label,
-        getBaseUrl: typeof p.baseUrl === 'function' ? p.baseUrl : () => p.baseUrl,
+        // Chuẩn hoá base URL lúc dùng: base trỏ thẳng gateway chặn CORS (Kilo) tự đi qua proxy
+        getBaseUrl: (() => {
+          const raw = typeof p.baseUrl === 'function' ? p.baseUrl : () => p.baseUrl;
+          return () => normalizeCompatBaseUrl(raw());
+        })(),
         models: providerModelIds,
         extraHeaders: p.extraHeaders,
         includeReasoning: p.includeReasoning,
@@ -765,18 +781,35 @@
     const elSave = $('dp-save-provider'); if (elSave) elSave.innerText = 'Lưu provider';
   }
 
+  // Đưa form vào tầm mắt + nháy viền: trên điện thoại form nằm phía trên bảng danh sách
+  // nên bấm "Sửa" mà không cuộn lên thì trông như không có gì xảy ra.
+  function focusDynamicForm(targetId) {
+    const el = $(targetId);
+    if (!el) return;
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) { el.scrollIntoView(); }
+    el.style.transition = 'box-shadow .25s ease';
+    el.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.55)';
+    setTimeout(() => { el.style.boxShadow = ''; }, 1400);
+  }
+
   function loadProviderIntoForm(id) {
-    const p = getProvider(id); if (!p) return;
-    $('dp-provider-id').value = p.id;
-    $('dp-provider-label').value = p.label || '';
-    $('dp-provider-baseurl').value = p.baseUrl || '';
-    $('dp-provider-type').value = p.type || 'openai_compat';
-    $('dp-provider-keycount').value = p.keyCount || 5;
-    $('dp-provider-keyprefix').value = p.keyPrefix || `jarvis_provider_${id}_api`;
+    const p = getProvider(id);
+    if (!p) return dpToast(`Không tìm thấy provider "${id}"`, 'warning');
+    // Ô nào không có trong DOM (vd #dp-provider-type đã bỏ khỏi Settings) thì bỏ qua,
+    // trước đây gán .value thẳng vào null làm cả hàm ném lỗi -> bấm "Sửa" không phản hồi.
+    const setVal = (elId, value) => { const el = $(elId); if (el) el.value = value; };
+    setVal('dp-provider-id', p.id);
+    setVal('dp-provider-label', p.label || '');
+    setVal('dp-provider-baseurl', p.baseUrl || '');
+    setVal('dp-provider-type', p.type || 'openai_compat');
+    setVal('dp-provider-keycount', p.keyCount || 5);
+    setVal('dp-provider-keyprefix', p.keyPrefix || `jarvis_provider_${id}_api`);
     renderProviderKeyInputs(p.keyCount || 5, id);
     const elMsg = $('dp-provider-msg'); if (elMsg) elMsg.innerText = `Chỉnh sửa provider "${escapeHtml(id)}".`;
     $dpEditProviderId = id;
     const elSave = $('dp-save-provider'); if (elSave) elSave.innerText = 'Cập nhật provider';
+    dpToast(`Đang sửa provider "${id}" — xem form phía trên.`, 'info');
+    focusDynamicForm('dp-provider-id');
   }
 
   function saveProviderFromUI() {
@@ -829,13 +862,17 @@
   }
 
   function loadModelIntoForm(compositeKey) {
-    const m = getModelByKey(compositeKey); if (!m) return;
-    $('dp-model-id').value = m.id;
-    $('dp-model-label').value = m.label || '';
-    $('dp-model-provider').value = m.provider || '';
-    $('dp-model-maxin').value = m.contextWindow || '';
-    $('dp-model-maxout').value = m.maxTokens || '';
-    $('dp-model-params').value = JSON.stringify({ temperature: m.temperature, topP: m.topP, topK: m.topK }, null, 2);
+    const m = getModelByKey(compositeKey);
+    if (!m) return dpToast(`Không tìm thấy model "${compositeKey}"`, 'warning');
+    // Ô nào thiếu trong DOM thì bỏ qua (trước đây gán .value vào null -> ném lỗi,
+    // "Sửa" model cũng không phản hồi giống provider).
+    const setVal = (elId, value) => { const el = $(elId); if (el) el.value = value; };
+    setVal('dp-model-id', m.id);
+    setVal('dp-model-label', m.label || '');
+    setVal('dp-model-provider', m.provider || '');
+    setVal('dp-model-maxin', m.contextWindow || '');
+    setVal('dp-model-maxout', m.maxTokens || '');
+    setVal('dp-model-params', JSON.stringify({ temperature: m.temperature, topP: m.topP, topK: m.topK }, null, 2));
     const elBox = $('dp-model-modalities'); if (elBox) {
       elBox.innerHTML = ['text', 'image', 'audio', 'video'].map(mod =>
         `<label style="display:inline-flex;align-items:center;gap:6px;margin-right:10px;font-size:0.8rem;"><input type="checkbox" value="${mod}" ${(m.inputModalities || ['text']).includes(mod) ? 'checked' : ''} style="width:14px;height:14px;">${mod}</label>`).join('');
@@ -847,6 +884,8 @@
     const elMsg = $('dp-model-msg'); if (elMsg) elMsg.innerText = `Chỉnh sửa model "${escapeHtml(compositeKey)}".`;
     $dpEditModelKey = compositeKey;
     const elSave = $('dp-save-model'); if (elSave) elSave.innerText = 'Cập nhật model';
+    dpToast(`Đang sửa model "${m.id}" — xem form phía trên.`, 'info');
+    focusDynamicForm('dp-model-id');
   }
 
   function saveModelFromUI() {
