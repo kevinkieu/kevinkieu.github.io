@@ -246,11 +246,19 @@
     cohere: { label: '🤝 Cohere API Key:', selectId: 'cohere-key-select-settings', hintFn: (v) => slotHint('cohere', v) }
   };
 
-  // Nền tảng của model đang chọn: nvidia/openrouter (registry gateway), explabs, còn lại là Google
+  // Nền tảng của model đang chọn: ưu tiên data-provider của option trong #model-select (optgroup),
+  // fallback resolveCompatProvider cho tương thích ngược / model không có trong select
   function activeKeyPoolKind() {
     const model = ($('model-select')?.value || '').trim();
+    // 1. Ưu tiên provider từ optgroup của option đang chọn (data-provider)
+    if (typeof window.DynamicProviders?.getSelectedModelProvider === 'function') {
+      const providerFromSelect = window.DynamicProviders.getSelectedModelProvider();
+      if (providerFromSelect) return providerFromSelect;
+    }
+    // 2. Fallback: resolveCompatProvider (dựa trên registry)
     const compat = (typeof window.resolveCompatProvider === 'function') ? window.resolveCompatProvider(model) : null;
     if (compat && compat.provider) return compat.provider.id;
+    // 3. Fallback: Explabs / Google
     const expModels = Array.isArray(window.EXPLABS_MODELS) ? window.EXPLABS_MODELS : [];
     return expModels.includes(model) ? 'explabs' : 'google';
   }

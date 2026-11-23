@@ -386,8 +386,13 @@
     }
 
     // Helper to get active key pool kind (mirrors api-keys.js)
+    // Ưu tiên data-provider của option trong #model-select (optgroup), fallback resolveCompatProvider
     function activeKeyPoolKind() {
       const model = (DOM.model?.value || '').trim();
+      if (typeof window.DynamicProviders?.getSelectedModelProvider === 'function') {
+        const providerFromSelect = window.DynamicProviders.getSelectedModelProvider();
+        if (providerFromSelect) return providerFromSelect;
+      }
       const compat = (typeof window.resolveCompatProvider === 'function') ? window.resolveCompatProvider(model) : null;
       if (compat && compat.provider) return compat.provider.id;
       const expModels = Array.isArray(window.EXPLABS_MODELS) ? window.EXPLABS_MODELS : [];
@@ -2608,10 +2613,29 @@
 
       // --- ẢNH: mọi model đều được gửi kèm ảnh; nếu provider/nền tảng từ chối thì báo
       // toast theo đúng TÊN model đang chọn và gửi lại lượt đó không kèm ảnh. ---
+      // Helper: lấy provider cho modelId — ưu tiên data-provider của option trong #model-select (optgroup),
+      // fallback resolveCompatProvider
+      const getModelProvider = (modelId) => {
+        const mid = String(modelId || '').trim();
+        // 1. Check dropdown optgroup via data-provider
+        const opt = Array.from(DOM.model?.options || []).find(o => o.value === mid);
+        if (opt?.dataset?.provider) return opt.dataset.provider;
+        // 2. Fallback to resolveCompatProvider
+        const cp = (typeof resolveCompatProvider === 'function') ? resolveCompatProvider(mid) : null;
+        if (cp?.provider) return cp.provider.id;
+        // 3. Check Explabs
+        const expModels = Array.isArray(window.EXPLABS_MODELS) ? window.EXPLABS_MODELS : [];
+        if (expModels.includes(mid)) return 'explabs';
+        return 'google';
+      };
+
       const modelLabelOf = (id) => {
         const mid = String(id || '').trim();
-        const cp = (typeof resolveCompatProvider === 'function') ? resolveCompatProvider(mid) : null;
-        if (cp) { try { return cp.provider.modelLabel(mid); } catch (_) {} }
+        const providerId = getModelProvider(mid);
+        // Try to get modelLabel from provider if available
+        if (providerId && window.COMPAT_PROVIDERS?.[providerId]?.modelLabel) {
+          try { return window.COMPAT_PROVIDERS[providerId].modelLabel(mid); } catch (_) {}
+        }
         const opt = Array.from(DOM.model?.options || []).find(o => o.value === mid);
         return (opt?.text || mid || 'Model').trim();
       };
@@ -2669,9 +2693,10 @@
       // còn phụ thuộc vào việc ID có nằm trong COMPAT_PROVIDERS hay không.
       const usesExplabs = (window.EXPLABS_MODELS || []).includes(am);
       // Model từ gateway OpenAI-compatible (OpenRouter/NVIDIA/Cohere + dynamic providers) không dùng Google API Key
-      const usesCompatGateway = !usesExplabs && !!resolveCompatProvider(am);
+      const providerId = getModelProvider(am);
+      const usesCompatGateway = !usesExplabs && providerId !== 'google' && !!window.COMPAT_PROVIDERS?.[providerId];
       if (usesCompatGateway) {
-        const compatNow = resolveCompatProvider(am).provider;
+        const compatNow = window.COMPAT_PROVIDERS[providerId];
         // Generic key handling for ALL OpenAI-compatible providers (NVIDIA, Cohere, OpenRouter, dynamic)
         // Use provider's keyStorageMultiple() to get correct localStorage key names
         const keyStorageNames = (typeof compatNow.keyStorageMultiple === 'function')
@@ -2892,7 +2917,11 @@
         const currentKeyBadge = getKeyBadgeHtml(keyIndexNum, am);
         // Nhãn chờ: hiện ngay khi gửi, tự biến mất cùng .typing-bubble khi có chunk đầu tiên.
         // Google thường giữ kết nối 5–17s trước byte đầu nên cần chỉ báo để không tưởng app treo.
-        const waitProviderLabel = usesExplabs ? 'Experiential Labs' : (usesCompatGateway ? resolveCompatProvider(am).provider.label : 'Google');
+        const waitProviderLabel = usesExplabs
+          ? 'Experiential Labs'
+          : usesCompatGateway
+            ? (window.COMPAT_PROVIDERS?.[providerId]?.label || providerId)
+            : 'Google';
         bD = document.createElement('div');
         bD.className = 'message-container';
         bD.innerHTML = `
@@ -3300,10 +3329,10 @@
           }
         }
 
-        // --- ENGINE 0B: GATEWAY OpenAI-COMPATIBLE (OpenRouter) ---
-        const compatProv = resolveCompatProvider(am);
-        if (compatProv) {
-          const prov = compatProv.provider;
+        // --- ENGINE 0B: GATEWAY OpenAI-COMPATIBLE (OpenRouter/NVIDIA/Cohere/dynamic) ---
+        const providerId = getModelProvider(am);
+        const prov = window.COMPAT_PROVIDERS?.[providerId];
+        if (prov) {
           // Key đã được chọn + xoay tua ở đầu sendMessage; đây chỉ là lưới an toàn
           let compatKey = gKey;
           if (!compatKey) {

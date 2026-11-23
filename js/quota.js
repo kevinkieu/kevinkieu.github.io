@@ -263,14 +263,27 @@
   function getKeyBadgeHtml(keyNum, modelName = null) {
     if (!keyNum) return '';
     const isEL = isExplabsModelName(modelName);
-    // Kiểm tra nếu là OpenRouter key: lấy danh sách model từ registry của app.js
-    // (tránh hard-code prefix mỗi lần thêm model mới), fallback cho model :free chưa khai báo.
-    const registryModels = (window.COMPAT_PROVIDERS && typeof window.COMPAT_PROVIDERS === 'object')
-      ? Object.values(window.COMPAT_PROVIDERS).flatMap(p => p.models || [])
-      : [];
-    const compatProv = (!isEL && modelName && window.COMPAT_PROVIDERS && typeof window.COMPAT_PROVIDERS === 'object')
-      ? Object.values(window.COMPAT_PROVIDERS).find(p => Array.isArray(p.models) && p.models.includes(modelName))
-      : null;
+    
+    // Xác định provider cho model này:
+    // 1. Nếu modelName là model đang chọn trong #model-select -> dùng data-provider của option (optgroup)
+    // 2. Fallback: tìm trong COMPAT_PROVIDERS (registry)
+    let compatProv = null;
+    if (!isEL && modelName) {
+      // Check if this model is the currently selected one in dropdown
+      const modelSelect = document.getElementById('model-select');
+      const selectedModel = modelSelect?.value;
+      if (selectedModel === modelName && window.DynamicProviders?.getSelectedModelProvider) {
+        const providerFromSelect = window.DynamicProviders.getSelectedModelProvider();
+        if (providerFromSelect && window.COMPAT_PROVIDERS?.[providerFromSelect]) {
+          compatProv = window.COMPAT_PROVIDERS[providerFromSelect];
+        }
+      }
+      // Fallback: search in registry
+      if (!compatProv && window.COMPAT_PROVIDERS && typeof window.COMPAT_PROVIDERS === 'object') {
+        compatProv = Object.values(window.COMPAT_PROVIDERS).find(p => Array.isArray(p.models) && p.models.includes(modelName));
+      }
+    }
+    
     const isNV = !!compatProv && compatProv.id === 'nvidia';
     const isCO = !!compatProv && compatProv.id === 'cohere';
     const isOR = !!compatProv && compatProv.id === 'openrouter';
@@ -278,6 +291,9 @@
     // không được rơi vào nhánh OpenRouter chỉ vì model kết thúc bằng ':free'.
     const isCustom = !!compatProv && !isNV && !isCO && !isOR;
     // Model ':free' không khai báo trong registry nào -> giữ fallback OpenRouter như trước.
+    const registryModels = (window.COMPAT_PROVIDERS && typeof window.COMPAT_PROVIDERS === 'object')
+      ? Object.values(window.COMPAT_PROVIDERS).flatMap(p => p.models || [])
+      : [];
     const isOrphanCompat = !compatProv && !isEL && !!modelName
       && (registryModels.includes(modelName) || modelName.includes(':free'));
     const isORBadge = isOR || isOrphanCompat;

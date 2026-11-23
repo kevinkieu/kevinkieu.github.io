@@ -571,7 +571,7 @@
       if (!p) return;
       const groupLabel = p.label;
       if (!groups[groupLabel]) groups[groupLabel] = [];
-      groups[groupLabel].push({ id: m.id, label: m.label });
+      groups[groupLabel].push({ id: m.id, label: m.label, providerId: m.provider });
     });
 
     // Google models always first (special handling)
@@ -580,7 +580,7 @@
     if (googleProvider) {
       html += '<optgroup label="🤖 Google Gemini">';
       googleProvider.models.forEach(m => {
-        html += `<option value="${m.id}">${m.label}</option>`;
+        html += `<option value="${m.id}" data-provider="google">${m.label}</option>`;
       });
       html += '</optgroup>';
     }
@@ -591,7 +591,7 @@
       const icon = label.includes('NVIDIA') ? '🟢' : label.includes('OpenRouter') ? '🛰️' : label.includes('Cohere') ? '🤝' : label.includes('Experiential') ? '🌐' : '📦';
       html += `<optgroup label="${icon} ${label}">`;
       list.forEach(m => {
-        html += `<option value="${m.id}">${m.label}</option>`;
+        html += `<option value="${m.id}" data-provider="${m.providerId}">${m.label}</option>`;
       });
       html += '</optgroup>';
     });
@@ -602,6 +602,16 @@
 
     // Trigger key pool menu refresh
     if (window.renderKeyPoolMenu) window.renderKeyPoolMenu();
+  }
+
+  // Lấy provider ID của model đang chọn trong #model-select (dựa trên optgroup/data-provider)
+  // Trả về provider ID string hoặc null nếu không xác định được
+  function getSelectedModelProvider() {
+    const sel = $('model-select');
+    if (!sel) return null;
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt) return null;
+    return opt.dataset.provider || null;
   }
 
   // --- UI QUẢN LÝ PROVIDER / MODEL (trong Settings) ---
@@ -1045,6 +1055,7 @@
     buildRuntimeRegistry,
     init,
     rebuildModelSelect,
+    getSelectedModelProvider,
     // Backup/Sync
     exportConfig,
     importConfig,
