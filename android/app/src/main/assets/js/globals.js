@@ -239,4 +239,70 @@ const GoogleGenAI = new Proxy(function() {}, {
   }
 });
 
+// --- PWA INSTALL PROMPT ---
+let _deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  const btn = $('btn-pwa-install');
+  const txt = $('pwa-install-text');
+  if (btn && !window.matchMedia('(display-mode: standalone)').matches && !window.navigator.standalone) {
+    btn.style.display = 'flex';
+    if (txt) txt.innerText = 'Cài đặt ứng dụng';
+  }
+});
+
+window.addEventListener('appinstalled', function() {
+  const btn = $('btn-pwa-install');
+  if (btn) btn.style.display = 'none';
+  _deferredInstallPrompt = null;
+  console.log('[PWA] Ứng dụng đã được cài đặt');
+});
+
+function installPWA() {
+  if (!_deferredInstallPrompt) return;
+  _deferredInstallPrompt.prompt();
+  _deferredInstallPrompt.userChoice.then(function(choice) {
+    if (choice.outcome === 'accepted') {
+      console.log('[PWA] Người dùng đồng ý cài đặt');
+    } else {
+      console.log('[PWA] Người dùng từ chối cài đặt');
+    }
+    _deferredInstallPrompt = null;
+    const btn = $('btn-pwa-install');
+    if (btn) btn.style.display = 'none';
+  });
+}
+
+const pwaBtn = $('btn-pwa-install');
+if (pwaBtn) {
+  pwaBtn.onclick = installPWA;
+}
+
+// Kiểm tra đã cài PWA chưa (standalone mode)
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+  const btn = $('btn-pwa-install');
+  if (btn) btn.style.display = 'none';
+}
+
+// --- GLOBAL ERROR HANDLERS ---
+window.addEventListener('error', function(e) {
+  const err = e.error || new Error(e.message || 'Unknown error');
+  err.name = err.name || 'UncaughtError';
+  console.error('[GlobalError]', err);
+  // Ghi vào IndexedDB nếu sẵn sàng (async, không chặn)
+  if (typeof window.saveErrorLog === 'function') {
+    window.saveErrorLog(err).catch(function() {});
+  }
+});
+
+window.addEventListener('unhandledrejection', function(e) {
+  const err = e.reason instanceof Error ? e.reason : new Error(String(e.reason));
+  err.name = 'UnhandledRejection';
+  console.error('[GlobalError] Unhandled rejection:', err);
+  if (typeof window.saveErrorLog === 'function') {
+    window.saveErrorLog(err).catch(function() {});
+  }
+});
+
 console.log('[globals.js] Global variables initialized');

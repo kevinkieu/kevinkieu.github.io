@@ -209,6 +209,10 @@
         <button id="btn-sidebar-max-medication" class="btn" onclick="if(window.openMedicationTab) window.openMedicationTab();" style="display:none;width:100%;margin-top:6px;padding:9px;background:linear-gradient(135deg, #ec4899, #f43f5e);color:white;border:none;font-weight:600;align-items:center;justify-content:center;gap:6px;border-radius:var(--radius-md);box-shadow:0 2px 6px rgba(244,63,94,0.35);" title="Nhắc nhở uống thuốc Max Care">
           🐶 💊 Nhắc Uống Thuốc (Max)
         </button>
+        <!-- PWA INSTALL BUTTON (CHỈ HIỂN KHI CHƯA CÀI & CÓ beforeinstallprompt) -->
+        <button id="btn-pwa-install" class="btn" style="display:none;width:100%;margin-top:6px;padding:10px;background:linear-gradient(135deg, #8b5cf6, #6366f1);color:white;border:none;font-weight:600;align-items:center;justify-content:center;gap:8px;border-radius:var(--radius-md);box-shadow:0 2px 8px rgba(139,92,246,0.35);" title="Cài đặt Jarvis AI làm ứng dụng (PWA)">
+          📱 <span id="pwa-install-text">Cài đặt ứng dụng</span>
+        </button>
         <button id="btn-open-settings" class="btn primary" style="width:100%;padding:10px;">
           <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           Hệ thống & Cấu hình
@@ -881,6 +885,10 @@
             <label style="cursor:pointer;font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:8px;">
               <input type="checkbox" id="toggle-auto-cleanup" checked> 🧹 Tự dọn phiên trống (0 tin nhắn) khi mở app
             </label>
+            <label style="cursor:pointer;font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="toggle-auto-cleanup-old" title="Chỉ xoá phiên có tin nhắn cũ hơn số ngày cấu hình, KHÔNG bao giờ xoá phiên đang mở"> 🗑️ Dọn phiên có tin nhắn cũ hơn (ngày):
+            </label>
+            <input type="number" id="auto-cleanup-old-days" class="modern-input" min="1" max="365" step="1" value="30" style="width:80px;display:none;" placeholder="ngày">
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
               <button id="btn-restore-session-backup" class="btn" style="padding:6px 12px;font-size:0.8rem;" title="Khôi phục hội thoại từ bản sao lưu IndexedDB">♻️ Phục hồi từ bản sao lưu</button>
               <span id="session-backup-status" style="font-size:0.78rem;color:var(--text-muted);" role="status" aria-live="polite"></span>

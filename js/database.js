@@ -14,6 +14,8 @@
   const TTS_STORE = "tts_audio_library";
   // Bản sao lưu hội thoại (mirror) để phục hồi khi store chính hỏng/trống.
   const BACKUP_STORE = "session_backup";
+  // Store ghi log lỗi JS (uncaught exception + unhandled rejection)
+  const ERROR_LOG_STORE = "error_log";
   let db;
 
   // --- INITIALIZE DATABASE ---
@@ -26,6 +28,7 @@
         if (!d.objectStoreNames.contains(FILE_STORE)) d.createObjectStore(FILE_STORE, { keyPath: "id" });
         if (!d.objectStoreNames.contains(TTS_STORE)) d.createObjectStore(TTS_STORE, { keyPath: "id", autoIncrement: true });
         if (!d.objectStoreNames.contains(BACKUP_STORE)) d.createObjectStore(BACKUP_STORE, { keyPath: "id" });
+        if (!d.objectStoreNames.contains(ERROR_LOG_STORE)) d.createObjectStore(ERROR_LOG_STORE, { keyPath: "id", autoIncrement: true });
       };
       rq.onblocked = () => console.warn('[DB] Nâng cấp IndexedDB bị chặn bởi một tab khác đang mở. Hãy đóng các tab Jarvis cũ.');
       rq.onsuccess = async e => {
@@ -230,8 +233,78 @@
     });
   }
 
+  // --- ERROR LOG HELPERS ---
+  function saveErrorLog(err) {
+    return new Promise((resolve, reject) => {
+      try {
+        const entry = {
+          timestamp: Date.now(),
+          message: err?.message || String(err),
+          stack: err?.stack || '',
+          name: err?.name || 'Error',
+          url: window.location.href,
+          userAgent: navigator.userAgent
+        };
+        const t = db.transaction(ERROR_LOG_STORE, "readwrite");
+        t.objectStore(ERROR_LOG_STORE).put(entry);
+        // Giới hạn 500 entries mới nhất
+        const countRq = t.objectStore(ERROR_LOG_STORE).count();
+        countRq.onsuccess = () => {
+          if (countRq.result > 500) {
+            const cursorRq = t.objectStore(ERROR_LOG_STORE).openCursor();
+            cursorRq.onsuccess = (e) => {
+              const cursor = e.target.result;
+              if (cursor) {
+                cursor.delete();
+                cursor.continue();
+              }
+            };
+          }
+          resolve();
+        };
+        t.onerror = err => reject(err);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  function getErrorLogs(limit = 100) {
+    return new Promise((resolve, reject) => {
+      try {
+        const t = db.transaction(ERROR_LOG_STORE, "readonly");
+        const store = t.objectStore(ERROR_LOG_STORE);
+        const rq = store.getAll();
+        rq.onsuccess = () => {
+          const logs = (rq.result || []).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, limit);
+          resolve(logs);
+        };
+        rq.onerror = err => reject(err);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  function clearErrorLogs() {
+    return new Promise((resolve, reject) => {
+      try {
+        const t = db.transaction(ERROR_LOG_STORE, "readwrite");
+        t.objectStore(ERROR_LOG_STORE).clear();
+        t.oncomplete = () => resolve();
+        t.onerror = err => reject(err);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
   // --- PUBLIC API ---
   window.initDB = initDB;
+  window.saveErrorLog = saveErrorLog;
+  window.getErrorLogs = getErrorLogs;
+  window.clearErrorLogs = clearErrorLogs;
+  window.ERROR_LOG_STORE = ERROR_LOG_STORE;
   window.saveToDB = saveToDB;
   window.getAllFromDB = getAllFromDB;
   window.clearAllDB = clearAllDB;

@@ -187,12 +187,16 @@
 
     // Helper fetch file content from GitHub Gist (supporting large files with raw_url)
     async function fetchGistData(pat, gistId) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       const res = await fetch("https://api.github.com/gists/" + gistId, {
         headers: {
           'Authorization': "Bearer " + pat,
           'Accept': 'application/vnd.github.v3+json'
-        }
+        },
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw handleGistHttpError(res, errData);
@@ -207,7 +211,10 @@
         if (fileObj.raw_url) {
           try {
             const rawUrlWithBuster = fileObj.raw_url + (fileObj.raw_url.includes('?') ? '&' : '?') + '_t=' + Date.now();
-            let rawRes = await fetch(rawUrlWithBuster, { cache: 'no-store' });
+            const rawController = new AbortController();
+            const rawTimeoutId = setTimeout(() => rawController.abort(), 15000);
+            let rawRes = await fetch(rawUrlWithBuster, { cache: 'no-store', signal: rawController.signal });
+            clearTimeout(rawTimeoutId);
             if (rawRes.ok) contentStr = await rawRes.text();
           } catch (rawErr) {
             console.warn("[Gist] Lỗi fetch raw_url, dùng inline content:", rawErr);
@@ -232,6 +239,8 @@
       const url = gistId ? ("https://api.github.com/gists/" + gistId) : "https://api.github.com/gists";
       const method = gistId ? 'PATCH' : 'POST';
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       const res = await fetch(url, {
         method,
         headers: {
@@ -239,8 +248,10 @@
           'Accept': 'application/vnd.github.v3+json',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw handleGistHttpError(res, errData);
@@ -966,7 +977,11 @@
       } catch (err) {
         console.error("[SmartSync] Lỗi đồng bộ:", err);
         if (!silent) {
-          showToast(`Lỗi đồng bộ 2 chiều: ${err.message}`, "danger");
+          let msg = err.message;
+          if (err.name === 'TimeoutError' || err.name === 'AbortError' || msg?.includes('timeout') || msg?.includes('aborted')) {
+            msg = 'Kết nối GitHub Gist bị timeout (15s). Kiểm tra mạng hoặc thử lại sau.';
+          }
+          showToast(`Lỗi đồng bộ 2 chiều: ${msg}`, "danger");
         }
       } finally {
         _isSyncing = false;
@@ -1150,7 +1165,11 @@
 
         showToast(`Đã ghi đè Cloud thành công! Gist ID: ${gistId}`, "success");
       } catch (err) {
-        showToast(`Lỗi đẩy lên Cloud: ${err.message}`, "danger");
+        let msg = err.message;
+        if (err.name === 'TimeoutError' || err.name === 'AbortError' || msg?.includes('timeout') || msg?.includes('aborted')) {
+          msg = 'Kết nối GitHub Gist bị timeout (15s). Kiểm tra mạng hoặc thử lại sau.';
+        }
+        showToast(`Lỗi đẩy lên Cloud: ${msg}`, "danger");
       } finally {
         btn.innerHTML = `☁️ Ghi đè Cloud (Backup)`;
         btn.disabled = false;
@@ -1299,7 +1318,11 @@
 
         showToast(`Đã khôi phục thành công ${window.sessions.length} phiên${importedKCount ? ' & ' + importedKCount + ' mẩu tri thức' : ''} từ Cloud!`, "success");
       } catch (err) {
-        showToast(`Lỗi tải về từ Cloud: ${err.message}`, "danger");
+        let msg = err.message;
+        if (err.name === 'TimeoutError' || err.name === 'AbortError' || msg?.includes('timeout') || msg?.includes('aborted')) {
+          msg = 'Kết nối GitHub Gist bị timeout (15s). Kiểm tra mạng hoặc thử lại sau.';
+        }
+        showToast(`Lỗi tải về từ Cloud: ${msg}`, "danger");
       } finally {
         btn.innerHTML = `📥 Ghi đè Máy (Restore)`;
         btn.disabled = false;

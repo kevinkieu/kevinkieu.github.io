@@ -84,7 +84,7 @@
     ],
     "service_worker": {
       "file": "sw.js",
-      "cache": "jarvis-ai-pwa-v79",
+      "cache": "jarvis-ai-pwa-v82",
       "precache": "STATIC_ASSETS: index.html, manifest, icons, 5 file CSS, js/{model-registry,chat-render,app,sync,live,tts,translate,rag,search,extract,blob,markdown.worker}.js + toàn bộ CDN_LIBS",
       "html": "network-first (để bản deploy GitHub Pages lên ngay), fallback cache → ./index.html",
       "js_css_cdn": "stale-while-revalidate",
