@@ -513,6 +513,30 @@
               }
             }
 
+            // D3. HỢP NHẤT PROVIDER & MODEL ĐỘNG (Kilo, ...): chỉ nhận từ Cloud những
+            // provider/model máy này CHƯA có, giữ nguyên bản đang dùng/sửa ở máy.
+            const remoteDP = cloudData.settings?.dynamicProviders;
+            if (remoteDP && typeof remoteDP === 'object' && typeof window.DynamicProviders?.importConfig === 'function') {
+              const localDP = (typeof window.DynamicProviders.exportConfig === 'function'
+                ? window.DynamicProviders.exportConfig(false)
+                : null) || {};
+              const localProv = localDP.providers || {};
+              const localModels = localDP.models || {};
+              const missingDP = { providers: {}, models: {} };
+              Object.entries(remoteDP.providers || {}).forEach(([id, p]) => {
+                if (!localProv[id]) missingDP.providers[id] = p;
+              });
+              Object.entries(remoteDP.models || {}).forEach(([id, m]) => {
+                if (!localModels[id]) missingDP.models[id] = m;
+              });
+              const nProv = Object.keys(missingDP.providers).length;
+              const nModel = Object.keys(missingDP.models).length;
+              if (nProv || nModel) {
+                window.DynamicProviders.importConfig(missingDP, { merge: true });
+                hasChanges = true;
+                console.log(`[SmartSync] Nhận từ Cloud ${nProv} provider + ${nModel} model động`);
+              }
+            }
             // E. HỢP NHẤT BỘ ĐẾM HẠN NGẠCH KEY FLASH (DISTRIBUTED G-COUNTER)
             if (cloudData.keyUsageFlash && typeof window.mergeRemoteKeyUsage === 'function') {
               const usageChanged = window.mergeRemoteKeyUsage(cloudData.keyUsageFlash);
@@ -707,6 +731,27 @@
                 }
               }
             }
+          }
+          // 7. Provider/model động (Kilo, ...) vừa thêm HOẶC vừa sửa ở máy này
+          if (!isLocalAhead && typeof window.DynamicProviders?.exportConfig === 'function') {
+            // So sánh phần định nghĩa (bỏ keys/keyNames/usage vì Cloud lưu đã obfuscate)
+            const fingerprint = dp => {
+              const out = { providers: {}, models: {} };
+              const provs = dp.providers || {};
+              const models = dp.models || {};
+              Object.keys(provs).sort().forEach(id => {
+                const pr = provs[id] || {};
+                out.providers[id] = [pr.label, pr.type, pr.baseUrl, pr.keyCount, JSON.stringify(pr.unsupportedParams || [])].join('|');
+              });
+              Object.keys(models).sort().forEach(id => {
+                const m = models[id] || {};
+                out.models[id] = [m.label, m.provider, m.contextWindow, m.maxTokens, m.temperature, m.topP, m.topK].join('|');
+              });
+              return JSON.stringify(out);
+            };
+            const localFP = fingerprint(window.DynamicProviders.exportConfig(false) || {});
+            const cloudFP = fingerprint(cloudData.settings?.dynamicProviders || {});
+            if (localFP !== cloudFP) isLocalAhead = true;
           }
         }
 

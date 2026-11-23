@@ -273,32 +273,46 @@
       : null;
     const isNV = !!compatProv && compatProv.id === 'nvidia';
     const isCO = !!compatProv && compatProv.id === 'cohere';
-    const isOR = !isEL && !isNV && !isCO && !!modelName
+    const isOR = !!compatProv && compatProv.id === 'openrouter';
+    // Provider tự thêm (Kilo, ...) có bể key riêng: nhãn phải theo đúng provider đó,
+    // không được rơi vào nhánh OpenRouter chỉ vì model kết thúc bằng ':free'.
+    const isCustom = !!compatProv && !isNV && !isCO && !isOR;
+    // Model ':free' không khai báo trong registry nào -> giữ fallback OpenRouter như trước.
+    const isOrphanCompat = !compatProv && !isEL && !!modelName
       && (registryModels.includes(modelName) || modelName.includes(':free'));
-    const provLabel = isEL ? 'Experiential Labs' : (isNV ? 'NVIDIA' : (isCO ? 'Cohere' : (isOR ? 'OpenRouter' : 'Google')));
-    const icon = isEL ? '⚡' : (isNV ? '🟢' : (isCO ? '🤝' : (isOR ? '🛰️' : '🔑')));
-    const color = isEL ? '#0ea5e9' : (isNV ? '#76b900' : (isCO ? '#6366f1' : (isOR ? '#f59e0b' : '#3b82f6')));
-    const rgb = isEL ? '14,165,233' : (isNV ? '118,185,0' : (isCO ? '99,102,241' : (isOR ? '245,158,11' : '59,130,246')));
+    const isORBadge = isOR || isOrphanCompat;
+    const provLabel = isEL ? 'Experiential Labs'
+      : (isCustom ? compatProv.label : (isNV ? 'NVIDIA' : (isCO ? 'Cohere' : (isORBadge ? 'OpenRouter' : 'Google'))));
+    const icon = isEL ? '⚡' : (isCustom ? '📦' : (isNV ? '🟢' : (isCO ? '🤝' : (isORBadge ? '🛰️' : '🔑'))));
+    const color = isEL ? '#0ea5e9' : (isCustom ? '#8b5cf6' : (isNV ? '#76b900' : (isCO ? '#6366f1' : (isORBadge ? '#f59e0b' : '#3b82f6'))));
+    const rgb = isEL ? '14,165,233' : (isCustom ? '139,92,246' : (isNV ? '118,185,0' : (isCO ? '99,102,241' : (isORBadge ? '245,158,11' : '59,130,246'))));
     let n, label;
     if (isEL) {
       n = (ls.getItem(`jarvis_explabs_api_name_${keyNum}`) || '').trim();
       label = n ? `EL Key #${keyNum} (${n})` : `EL Key #${keyNum}`;
+    } else if (isCustom) {
+      // Provider động: tên gợi nhớ nằm ở keyNamePrefix riêng của provider
+      const namePrefix = compatProv.keyNamePrefix || `jarvis_provider_${compatProv.id}_name`;
+      n = (ls.getItem(`${namePrefix}_${keyNum}`) || '').trim();
+      label = n ? `${compatProv.label} Key #${keyNum} (${n})` : `${compatProv.label} Key #${keyNum}`;
     } else if (isNV) {
       n = (ls.getItem(`jarvis_nvidia_api_name_${keyNum}`) || '').trim();
       label = n ? `NV Key #${keyNum} (${n})` : `NV Key #${keyNum}`;
     } else if (isCO) {
       n = (ls.getItem(`jarvis_cohere_api_name_${keyNum}`) || '').trim();
       label = n ? `CO Key #${keyNum} (${n})` : `CO Key #${keyNum}`;
-    } else if (isOR) {
+    } else if (isORBadge) {
       n = (ls.getItem(`jarvis_openrouter_api_name_${keyNum}`) || '').trim();
       label = n ? `OR Key #${keyNum} (${n})` : `OR Key #${keyNum}`;
     } else {
       n = (ls.getItem(`jarvis_api_name_${keyNum}`) || ls.getItem(`huanmu_api_name_${keyNum}`) || '').trim();
       label = n ? `Key #${keyNum} (${n})` : `Key #${keyNum}`;
     }
+    // Provider động đã mang tên provider trong label ("Kilo Key #1") -> tooltip không ghép thêm
+    const provTitlePrefix = isCustom ? '' : provLabel + ' ';
     const bucket = modelName ? getFlashModelBucket(modelName) : getSelectedFlashModelBucket();
     const bucketTag = bucket ? (bucket === 'hydrogen' ? ' · H4' : ` · ${bucket}`) : '';
-    return `<span class="key-indicator-badge" title="Tin nhắn này được phản hồi bằng ${provLabel} ${escapeHtml(label)}${bucketTag}" style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:rgba(${rgb},0.12);color:${color};font-weight:600;margin-left:6px;border:1px solid rgba(${rgb},0.3);display:inline-flex;align-items:center;gap:3px;vertical-align:middle;cursor:default;">${icon} ${escapeHtml(label)}${bucketTag}</span>`;
+    return `<span class="key-indicator-badge" title="Tin nhắn này được phản hồi bằng ${provTitlePrefix}${escapeHtml(label)}${bucketTag}" style="font-size:0.68rem;padding:2px 7px;border-radius:10px;background:rgba(${rgb},0.12);color:${color};font-weight:600;margin-left:6px;border:1px solid rgba(${rgb},0.3);display:inline-flex;align-items:center;gap:3px;vertical-align:middle;cursor:default;">${icon} ${escapeHtml(label)}${bucketTag}</span>`;
   }
 
   function renderKeyQuotaPopoverList() {

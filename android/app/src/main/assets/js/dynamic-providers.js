@@ -173,7 +173,25 @@
   function getModels() {
     try {
       const data = ls.getItem(STORAGE_KEYS.MODELS);
-      if (data) return JSON.parse(data);
+      if (data) {
+        const parsed = JSON.parse(data);
+        // Chuẩn hoá dữ liệu model cũ:
+        // - DEFAULT_MODELS seed bằng key CHÍNH LÀ model id (vd "nvidia/nemotron-3.5-bolt-e4b")
+        //   và record không có `id` -> thiếu `id` thì buildRuntimeRegistry trả [null],
+        //   option của select thành "undefined" và badge key không nhận ra provider.
+        // - Chuẩn mới: key = "provider/modelId", record luôn có `id` = model id thật.
+        let repaired = false;
+        const normalized = {};
+        Object.entries(parsed).forEach(([key, m]) => {
+          if (!m || typeof m !== "object") { normalized[key] = m; return; }
+          const id = m.id || key; // dữ liệu cũ: key chính là model id
+          const wantKey = m.provider ? makeModelKey(m.provider, id) : key;
+          if (!m.id || wantKey !== key) repaired = true;
+          normalized[wantKey] = { ...m, id };
+        });
+        if (repaired) setModels(normalized);
+        return normalized;
+      }
     } catch (e) { console.warn('[DynamicProviders] Lỗi đọc models:', e); }
     // Migrate old format (flat modelId keys) to new composite format
     const oldModels = deepClone(DEFAULT_MODELS);
@@ -405,6 +423,7 @@
         label: p.label,
         baseUrl: p.baseUrl,
         keyStorage: keyPrefix + '_1', // legacy compat
+        keyNamePrefix: p.keyNamePrefix, // prefix tên gợi nhớ từng ô key (jarvis_<provider>_api_name)
         // Trả tên các ô localStorage của provider (hoạt động với provider động
         // và cả NVIDIA/OpenRouter/Cohere sẵn có)
         keyStorageMultiple: (function (prefix, count) {
@@ -482,7 +501,14 @@
   function init() {
     // Ensure defaults exist
     if (!ls.getItem(STORAGE_KEYS.PROVIDERS)) setProviders(deepClone(DEFAULT_PROVIDERS));
-    if (!ls.getItem(STORAGE_KEYS.MODELS)) setModels(deepClone(DEFAULT_MODELS));
+    if (!ls.getItem(STORAGE_KEYS.MODELS)) {
+      // DEFAULT_MODELS: key là model id thật -> seed lại theo chuẩn composite key + id
+      const seeded = {};
+      Object.entries(deepClone(DEFAULT_MODELS)).forEach(([mid, m]) => {
+        seeded[makeModelKey(m.provider, mid)] = { ...m, id: mid };
+      });
+      setModels(seeded);
+    }
 
     const registry = buildRuntimeRegistry();
     window.DYNAMIC_PROVIDERS = registry.providers;
