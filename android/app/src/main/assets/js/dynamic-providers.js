@@ -639,7 +639,7 @@
       btn.onclick = e => { const id = e.currentTarget.dataset.id; loadProviderIntoForm(id); };
     });
     box.querySelectorAll('.dp-btn-del').forEach(btn => {
-      btn.onclick = e => { const id = e.currentTarget.dataset.id; if (confirm(`Xoá provider "${escapeHtml(id)}? Các model thuộc provider này cũng sẽ bị xoá.`)) { deleteProvider(id); dpToast('Đã xoá provider ' + escapeHtml(id), 'success'); renderAll(); } };
+      btn.onclick = e => { const id = e.currentTarget.dataset.id; if (confirm(`Xoá provider "${escapeHtml(id)}? Các model thuộc provider này cũng sẽ bị xoá.`)) { deleteProvider(id); dpToast('Đã xoá provider ' + escapeHtml(id), 'success'); renderAll(); window.DynamicProviders.init(); } };
     });
   }
 
@@ -671,7 +671,7 @@
       btn.onclick = e => { const mkey = e.currentTarget.dataset.mkey; loadModelIntoForm(mkey); };
     });
     box.querySelectorAll('.dp-btn-del').forEach(btn => {
-      btn.onclick = e => { const mkey = e.currentTarget.dataset.mkey; if (confirm(`Xoá model "${escapeHtml(mkey)}"?`)) { deleteModel(mkey); dpToast('Đã xoá model ' + escapeHtml(mkey), 'success'); renderAll(); } };
+      btn.onclick = e => { const mkey = e.currentTarget.dataset.mkey; if (confirm(`Xoá model "${escapeHtml(mkey)}"?`)) { deleteModel(mkey); dpToast('Đã xoá model ' + escapeHtml(mkey), 'success'); renderAll(); window.DynamicProviders.init(); } };
     });
   }
 
@@ -750,6 +750,8 @@
       dpToast($dpEditProviderId ? 'Đã cập nhật provider' : 'Đã thêm provider', 'success');
       clearProviderForm();
       renderAll();
+      // Refresh runtime registry so new provider's keys & models are available immediately
+      window.DynamicProviders.init();
     } catch (e) {
       dpToast('Lỗi: ' + e.message, 'danger');
     }
@@ -827,6 +829,8 @@
       clearModelForm();
       renderAll();
       rebuildModelSelect();
+      // Refresh runtime registry so new model is available immediately
+      window.DynamicProviders.init();
     } catch (e) {
       dpToast('Lỗi: ' + e.message, 'danger');
     }
