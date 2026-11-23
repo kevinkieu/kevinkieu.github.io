@@ -3476,16 +3476,15 @@
             let compatErrText = '';
             // Bể key của provider: chỉ xoay sang key khác khi đang để "Tự động xoay tua"
             // (khóa thủ công 1 key thì giữ đúng key đó, giống nhánh Google).
-            const compatPoolSrc = prov.id === 'nvidia' ? window.nvidiaKeys
-              : (prov.id === 'cohere' ? window.cohereKeys : window.openRouterKeys);
+            // Use generic key array for ALL OpenAI-compatible providers (NVIDIA, Cohere, OpenRouter, dynamic)
+            const compatKeysVar = prov.id + 'Keys';
+            const compatPoolSrc = window[compatKeysVar];
             const compatPool = Array.isArray(compatPoolSrc) ? compatPoolSrc.filter(Boolean) : [];
-            const compatSelEl = $(prov.id === 'nvidia' ? 'nvidia-key-select'
-              : (prov.id === 'cohere' ? 'cohere-key-select' : 'openrouter-key-select'));
+            const compatSelEl = $(prov.id + '-key-select');
             const compatAuto = !compatSelEl || compatSelEl.value === 'auto';
             const compatSlotOf = key => {
-              if (prov.id === 'nvidia' && typeof window.findNvidiaSlotIndexForKey === 'function') return window.findNvidiaSlotIndexForKey(key);
-              if (prov.id === 'cohere' && typeof window.findCohereSlotIndexForKey === 'function') return window.findCohereSlotIndexForKey(key);
-              if (prov.id === 'openrouter' && typeof window.findOpenRouterSlotIndexForKey === 'function') return window.findOpenRouterSlotIndexForKey(key);
+              const findSlotFn = window['find' + prov.id.charAt(0).toUpperCase() + prov.id.slice(1) + 'SlotIndexForKey'];
+              if (typeof findSlotFn === 'function') return findSlotFn(key);
               return keyIndexNum;
             };
             let compatKeySwitches = 0;

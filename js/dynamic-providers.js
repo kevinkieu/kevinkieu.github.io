@@ -159,12 +159,30 @@
   }
 
   // --- MODEL MANAGEMENT ---
+  // Internal storage uses composite key: "provider/modelId" to allow same model name across providers
+  function makeModelKey(providerId, modelId) {
+    return providerId + '/' + modelId;
+  }
+
+  function parseModelKey(key) {
+    const idx = key.indexOf('/');
+    if (idx < 0) return { provider: '', modelId: key };
+    return { provider: key.slice(0, idx), modelId: key.slice(idx + 1) };
+  }
+
   function getModels() {
     try {
       const data = ls.getItem(STORAGE_KEYS.MODELS);
       if (data) return JSON.parse(data);
     } catch (e) { console.warn('[DynamicProviders] Lỗi đọc models:', e); }
-    return deepClone(DEFAULT_MODELS);
+    // Migrate old format (flat modelId keys) to new composite format
+    const oldModels = deepClone(DEFAULT_MODELS);
+    const newModels = {};
+    Object.entries(oldModels).forEach(([modelId, m]) => {
+      const key = makeModelKey(m.provider, modelId);
+      newModels[key] = { ...m, id: modelId };
+    });
+    return newModels;
   }
 
   function setModels(models) {
@@ -172,22 +190,38 @@
     window.DYNAMIC_MODELS = models;
   }
 
-  function getModel(id) {
+  function getModelByKey(key) {
     const models = getModels();
-    return models[id] || null;
+    return models[key] || null;
+  }
+
+  function getModel(providerId, modelId) {
+    return getModelByKey(makeModelKey(providerId, modelId));
+  }
+
+  function findModelById(modelId) {
+    // Find model by user-facing ID across all providers (returns first match)
+    const models = getModels();
+    for (const [key, m] of Object.entries(models)) {
+      if (m.id === modelId) return { key, model: m };
+    }
+    return null;
   }
 
   function addModel(model) {
     const models = getModels();
-    const id = model.id;
-    if (!id) throw new Error('Model ID là bắt buộc');
-    if (models[id]) throw new Error('Model ID đã tồn tại: ' + id + '. Hãy dùng ID dạng "provider/model" để tránh trùng lặp.');
-    const provider = getProvider(model.provider);
-    if (!provider) throw new Error('Provider không tồn tại: ' + model.provider);
+    const providerId = model.provider;
+    const modelId = model.id;
+    if (!modelId) throw new Error('Model ID là bắt buộc');
+    if (!providerId) throw new Error('Provider là bắt buộc');
+    const key = makeModelKey(providerId, modelId);
+    if (models[key]) throw new Error('Model đã tồn tại trong provider này: ' + key);
+    const provider = getProvider(providerId);
+    if (!provider) throw new Error('Provider không tồn tại: ' + providerId);
     const newModel = {
-      id,
-      provider: model.provider,
-      label: model.label || id,
+      id: modelId,
+      provider: providerId,
+      label: model.label || modelId,
       maxTokens: model.maxTokens || 65536,
       contextWindow: model.contextWindow || 100000,
       temperature: model.temperature ?? 0.7,
@@ -208,28 +242,37 @@
       apiMaxCompletionTokens: model.apiMaxCompletionTokens || null,
       notes: model.notes || ''
     };
-    models[id] = newModel;
+    models[key] = newModel;
     setModels(models);
     return newModel;
   }
 
-  function updateModel(id, updates) {
+  function updateModel(key, updates) {
     const models = getModels();
-    if (!models[id]) throw new Error('Model không tồn tại: ' + id);
+    if (!models[key]) throw new Error('Model không tồn tại: ' + key);
     const allowed = ['label', 'provider', 'maxTokens', 'contextWindow', 'temperature', 'topP', 'topK', 'inputModalities',
       'noReasoning', 'reasoningToggle', 'reasoningAlwaysOn', 'canDisable', 'reasoningBudgets', 'nvThinking',
       'offEffort', 'efforts', 'levels', 'defaultEffort', 'apiMaxCompletionTokens', 'notes'];
-    allowed.forEach(k => { if (updates[k] !== undefined) models[id][k] = updates[k]; });
+    allowed.forEach(k => { if (updates[k] !== undefined) models[key][k] = updates[k]; });
     // Nếu đổi provider, kiểm tra provider mới tồn tại
     if (updates.provider && !getProvider(updates.provider)) throw new Error('Provider mới không tồn tại: ' + updates.provider);
+    // Nếu đổi model id (id field), cần đổi key storage
+    if (updates.id && updates.id !== models[key].id) {
+      const newKey = makeModelKey(models[key].provider, updates.id);
+      if (models[newKey]) throw new Error('Model ID mới đã tồn tại trong provider này: ' + newKey);
+      models[newKey] = { ...models[key], id: updates.id };
+      delete models[key];
+      setModels(models);
+      return models[newKey];
+    }
     setModels(models);
-    return models[id];
+    return models[key];
   }
 
-  function deleteModel(id) {
+  function deleteModel(key) {
     const models = getModels();
-    if (!models[id]) return false;
-    delete models[id];
+    if (!models[key]) return false;
+    delete models[key];
     setModels(models);
     return true;
   }
@@ -345,7 +388,7 @@
   // --- BUILD RUNTIME REGISTRY (cho model-registry.js / app.js dùng) ---
   function buildRuntimeRegistry() {
     const providers = getProviders();
-    const models = getModels();
+    const models = getModels(); // keyed by composite key "provider/modelId"
 
     // COMPAT_PROVIDERS cho gateway OpenAI-compatible
     const compatProviders = {};
@@ -353,6 +396,10 @@
       if (p.type === 'gemini' || p.id === 'explabs') return; // Google + Experiential Labs không qua gateway OpenAI-compatible
       const keyPrefix = p.keyPrefix;
       const keyCount = p.keyCount;
+      // Get model IDs for this provider (user-facing model IDs)
+      const providerModelIds = Object.values(models)
+        .filter(m => m.provider === p.id)
+        .map(m => m.id);
       compatProviders[p.id] = {
         id: p.id,
         label: p.label,
@@ -369,19 +416,21 @@
         keyIndexVar: `${p.id}KeyIndex`,
         keyLabel: p.label,
         getBaseUrl: typeof p.baseUrl === 'function' ? p.baseUrl : () => p.baseUrl,
-        models: Object.values(models).filter(m => m.provider === p.id).map(m => m.id),
+        models: providerModelIds,
         extraHeaders: p.extraHeaders,
         includeReasoning: p.includeReasoning,
         unsupportedParams: p.unsupportedParams,
         reasoningEffortParam: p.reasoningEffortParam,
         modelLabel: mId => {
-          const m = models[mId];
+          // Find model by user-facing ID in this provider
+          const m = Object.values(models).find(m => m.provider === p.id && m.id === mId);
           return m ? m.label : mId;
         }
       };
     });
 
-    // COMPAT_MODEL_OPTS
+    // COMPAT_MODEL_OPTS - keyed by user-facing model ID
+    // If same model ID exists in multiple providers, last one wins (usually same model)
     const compatModelOpts = {};
     Object.values(models).forEach(m => {
       if (getProvider(m.provider)?.type === 'gemini') return; // Gemini dùng THINKING_LEVELS_BY_MODEL
@@ -412,9 +461,15 @@
     const explabsProvider = providers.explabs;
     const explabsModels = explabsProvider ? Object.values(models).filter(m => m.provider === 'explabs').map(m => m.id) : [];
 
+    // Also expose a map from composite key to model for internal use
+    const modelsByCompositeKey = {};
+    Object.entries(models).forEach(([key, m]) => {
+      modelsByCompositeKey[key] = m;
+    });
+
     return {
       providers,
-      models,
+      models: modelsByCompositeKey, // internal: composite key -> model
       compatProviders,
       compatModelOpts,
       explabsModels,
@@ -437,6 +492,32 @@
     window.EXPLABS_MODELS = registry.explabsModels;
     window.FLASH_LITE_MODEL = registry.flashLiteModel;
     window.AUX_FALLBACK_MODELS = registry.auxFallbackModels;
+
+    // Expose key arrays for ALL OpenAI-compatible providers (static + dynamic)
+    // This enables the generic retry logic in app.js
+    // Use same naming convention as api-keys.js for known static providers
+    const keyVarMap = {
+      nvidia: 'nvidiaKeys',
+      openrouter: 'openRouterKeys',  // api-keys.js uses camelCase with capital R
+      cohere: 'cohereKeys'
+    };
+    const keyIndexVarMap = {
+      nvidia: 'nvidiaKeyIndex',
+      openrouter: 'openRouterKeyIndex',
+      cohere: 'cohereKeyIndex'
+    };
+    Object.values(registry.compatProviders).forEach(p => {
+      const keyNames = p.keyStorageMultiple();
+      const keys = keyNames.map(name => {
+        let v = (ls.getItem(name) || '').trim();
+        if (v.startsWith('JVENC_') || v.startsWith('ENC_')) v = window.deobfuscateKey ? window.deobfuscateKey(v) : v;
+        return v;
+      }).filter(Boolean);
+      const varName = keyVarMap[p.id] || (p.id + 'Keys');
+      const indexVarName = keyIndexVarMap[p.id] || p.keyIndexVar;
+      window[varName] = keys;
+      window[indexVarName] = 0;
+    });
 
     // Rebuild model select options in UI
     rebuildModelSelect();
@@ -566,20 +647,20 @@
     const box = $('dp-model-list');
     if (!box) return;
     const providers = getProviders();
-    const models = getModels();
+    const models = getModels(); // keyed by composite key "provider/modelId"
     let html = '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;"><thead><tr style="text-align:left;"><th style="padding:6px;border-bottom:2px solid var(--border);">ID</th><th style="padding:6px;border-bottom:2px solid var(--border);">Nhãn</th><th style="padding:6px;border-bottom:2px solid var(--border);">Provider</th><th style="padding:6px;border-bottom:2px solid var(--border);">Max input</th><th style="padding:6px;border-bottom:2px solid var(--border);">Max output</th><th style="padding:6px;border-bottom:2px solid var(--border);text-align:center;">Hành động</th></tr></thead><tbody>';
-    Object.values(models).forEach(m => {
+    Object.entries(models).forEach(([compositeKey, m]) => {
       const p = providers[m.provider];
-      // Chỉ coi là built-in nếu model nằm trong DEFAULT_MODELS (không cho xoá model mặc định gốc)
-      const isBuiltInDefault = DEFAULT_MODELS && DEFAULT_MODELS[m.id];
+      // Show composite key in ID column for clarity
+      const displayId = m.id;
       html += `<tr>
-        <td style="padding:6px 4px;border-bottom:1px solid var(--border);font-family:monospace;font-size:0.78rem;">${escapeHtml(m.id)}${isBuiltInDefault ? ' <span style="font-size:0.68rem;color:var(--text-muted);">(built-in)</span>' : ''}</td>
+        <td style="padding:6px 4px;border-bottom:1px solid var(--border);font-family:monospace;font-size:0.78rem;">${escapeHtml(displayId)}<br><span style="font-size:0.65rem;color:var(--text-muted);">(${escapeHtml(compositeKey)})</span></td>
         <td style="padding:6px 4px;border-bottom:1px solid var(--border);">${escapeHtml(m.label || m.id)}</td>
         <td style="padding:6px 4px;border-bottom:1px solid var(--border);">${p ? escapeHtml(p.label) : escapeHtml(m.provider)}</td>
         <td style="padding:6px 4px;border-bottom:1px solid var(--border);">${m.contextWindow || '-'}</td>
         <td style="padding:6px 4px;border-bottom:1px solid var(--border);">${m.maxTokens || '-'}</td>
         <td style="padding:6px 4px;border-bottom:1px solid var(--border);text-align:center;">
-          ${isBuiltInDefault ? '' : `<button class="dp-btn dp-btn-edit" data-mid="${escapeHtmlAttr(m.id)}">Sửa</button> <button class="dp-btn dp-btn-del" data-mid="${escapeHtmlAttr(m.id)}">Xoá</button>`}
+          <button class="dp-btn dp-btn-edit" data-mkey="${escapeHtmlAttr(compositeKey)}">Sửa</button> <button class="dp-btn dp-btn-del" data-mkey="${escapeHtmlAttr(compositeKey)}">Xoá</button>
         </td>
       </tr>`;
     });
@@ -587,15 +668,10 @@
     box.innerHTML = html || '<p style="font-size:0.8rem;color:var(--text-muted);">Chưa có model nào.</p>';
 
     box.querySelectorAll('.dp-btn-edit').forEach(btn => {
-      btn.onclick = e => { const mid = e.currentTarget.dataset.mid; loadModelIntoForm(mid); };
+      btn.onclick = e => { const mkey = e.currentTarget.dataset.mkey; loadModelIntoForm(mkey); };
     });
     box.querySelectorAll('.dp-btn-del').forEach(btn => {
-      btn.onclick = e => { const mid = e.currentTarget.dataset.mid; if (confirm(`Xoá model "${escapeHtml(mid)}"?`)) { deleteModel(mid); dpToast('Đã xoá model ' + escapeHtml(mid), 'success'); renderAll(); } };
-    });
-
-    // Also bind edit buttons (already done above)
-    box.querySelectorAll('.dp-btn-edit').forEach(btn => {
-      btn.onclick = e => { const mid = e.currentTarget.dataset.mid; loadModelIntoForm(mid); };
+      btn.onclick = e => { const mkey = e.currentTarget.dataset.mkey; if (confirm(`Xoá model "${escapeHtml(mkey)}"?`)) { deleteModel(mkey); dpToast('Đã xoá model ' + escapeHtml(mkey), 'success'); renderAll(); } };
     });
   }
 
@@ -617,7 +693,7 @@
   }
 
   let $dpEditProviderId = null;
-  let $dpEditModelId = null;
+  let $dpEditModelKey = null;
 
   function clearProviderForm() {
     ['dp-provider-id','dp-provider-label','dp-provider-baseurl','dp-provider-keyprefix'].forEach(id => { const el = $(id); if (el) el.value = ''; });
@@ -684,12 +760,12 @@
     const elBox = $('dp-model-modalities'); if (elBox) elBox.innerHTML = '';
     const elReasoning = $('dp-model-reasoning'); if (elReasoning) elReasoning.value = '';
     const elMsg = $('dp-model-msg'); if (elMsg) elMsg.innerText = '';
-    $dpEditModelId = null;
+    $dpEditModelKey = null;
     const elSave = $('dp-save-model'); if (elSave) elSave.innerText = 'Lưu model';
   }
 
-  function loadModelIntoForm(mid) {
-    const m = getModel(mid); if (!m) return;
+  function loadModelIntoForm(compositeKey) {
+    const m = getModelByKey(compositeKey); if (!m) return;
     $('dp-model-id').value = m.id;
     $('dp-model-label').value = m.label || '';
     $('dp-model-provider').value = m.provider || '';
@@ -704,8 +780,8 @@
       elReasoning.innerHTML = '<option value="">-- Mặc định --</option><option value="none">Không suy luận (noReasoning)</option><option value="toggle">Bật/tắt suy luận (reasoningToggle)</option><option value="always">Luôn suy luận (reasoningAlwaysOn)</option><option value="budget">Ngân sách suy luận (reasoningBudgets)</option>';
       elReasoning.value = '';
     }
-    const elMsg = $('dp-model-msg'); if (elMsg) elMsg.innerText = `Chỉnh sửa model "${escapeHtml(mid)}".`;
-    $dpEditModelId = mid;
+    const elMsg = $('dp-model-msg'); if (elMsg) elMsg.innerText = `Chỉnh sửa model "${escapeHtml(compositeKey)}".`;
+    $dpEditModelKey = compositeKey;
     const elSave = $('dp-save-model'); if (elSave) elSave.innerText = 'Cập nhật model';
   }
 
@@ -737,15 +813,17 @@
         updates.levels = [['high','Cao'],['medium','Trung bình'],['low','Thấp'],['minimal','Tối thiểu'],['none','Tắt']];
         updates.defaultEffort = 'high';
       }
-      if ($dpEditModelId) {
-        if ($dpEditModelId !== id && getModel(id)) return dpToast(`Model ID "${id}" đã tồn tại`, 'warning');
-        updateModel($dpEditModelId, updates);
-        if ($dpEditModelId !== id) { deleteModel($dpEditModelId); addModel({ id, label, provider, ...updates }); }
+      if ($dpEditModelKey) {
+        const existing = getModelByKey($dpEditModelKey);
+        const currentId = existing ? existing.id : '';
+        if ($dpEditModelKey !== makeModelKey(provider, id) && getModel(provider, id)) return dpToast(`Model ID "${id}" đã tồn tại trong provider này`, 'warning');
+        updateModel($dpEditModelKey, updates);
+        // If model ID or provider changed, the updateModel function handles key change
       } else {
-        if (getModel(id)) return dpToast(`Model ID "${id}" đã tồn tại`, 'warning');
+        if (getModel(provider, id)) return dpToast(`Model ID "${id}" đã tồn tại trong provider này`, 'warning');
         addModel({ id, label, provider, ...updates });
       }
-      dpToast($dpEditModelId ? 'Đã cập nhật model' : 'Đã thêm model', 'success');
+      dpToast($dpEditModelKey ? 'Đã cập nhật model' : 'Đã thêm model', 'success');
       clearModelForm();
       renderAll();
       rebuildModelSelect();
@@ -911,7 +989,11 @@
     deleteProvider,
     // Model
     getModels,
-    getModel,
+    getModel,           // getModel(providerId, modelId) -> model
+    getModelByKey,      // getModelByKey(compositeKey) -> model
+    findModelById,      // findModelById(modelId) -> { key, model } | null
+    makeModelKey,
+    parseModelKey,
     addModel,
     updateModel,
     deleteModel,
