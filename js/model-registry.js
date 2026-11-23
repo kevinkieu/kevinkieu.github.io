@@ -375,21 +375,7 @@
 
     // Một model ID chỉ được thuộc MỘT nền tảng. Bể key Experiential Labs được ưu tiên:
     // nếu ID vô tình nằm cả trong COMPAT_PROVIDERS thì resolveCompatProvider trả null,
-    // để nhánh compat không "nuốt" model Explabs (gửi nhầm API key).
-    const explabsModelSet = new Set(EXPLABS_MODELS);
-    function resolveCompatProvider(modelId) {
-      const m = (modelId || '').trim();
-      if (!m || explabsModelSet.has(m)) return null;
-      // Đọc window.COMPAT_PROVIDERS lúc gọi: DynamicProviders.init() (DOMContentLoaded)
-      // đã ghi đè nó bằng registry động (provider/model do người dùng thêm), nên
-      // hàm này vẫn trả provider/model mới dù app.js giữ hàm snapshot từ lúc load.
-      const providers = (window.COMPAT_PROVIDERS && typeof window.COMPAT_PROVIDERS === 'object')
-        ? window.COMPAT_PROVIDERS : COMPAT_PROVIDERS;
-      for (const p of Object.values(providers)) {
-        if (p.models.includes(m)) return { provider: p, model: m };
-      }
-      return null;
-    }
+    // để nhánh compat không "nuốt" model Explabs (gửi nhầm API key).    const explabsModelSet = new Set(EXPLABS_MODELS);    function resolveCompatProvider(modelId) {      const m = (modelId || '').trim();      if (!m || explabsModelSet.has(m)) return null;      // Đọc window.COMPAT_PROVIDERS lúc gọi: DynamicProviders.init() (DOMContentLoaded)      // đã ghi đè nó bằng registry động (provider/model do người dùng thêm), nên      // hàm này vẫn trả provider/model mới dù app.js giữ hàm snapshot từ lúc load.      const providers = (window.COMPAT_PROVIDERS && typeof window.COMPAT_PROVIDERS === 'object')        ? window.COMPAT_PROVIDERS : COMPAT_PROVIDERS;      // Ưu tiên provider động (do người dùng thêm) hơn provider legacy (nvidia/openrouter/cohere từ DEFAULT_MODELS).      // Lấy danh sách provider ID từ window.DYNAMIC_PROVIDERS, loại trừ built-in (google, explabs).      const dynamicProviderIds = (window.DYNAMIC_PROVIDERS && typeof window.DYNAMIC_PROVIDERS === 'object')        ? Object.keys(window.DYNAMIC_PROVIDERS).filter(id => id !== 'google' && id !== 'explabs')        : [];      // 1. Kiểm tra provider động trước (theo thứ tự thêm)      for (const pid of dynamicProviderIds) {        const p = providers[pid];        if (p && p.models.includes(m)) return { provider: p, model: m };      }      // 2. Fallback: kiểm tra tất cả provider (backwards compatibility)      for (const p of Object.values(providers)) {        if (p.models.includes(m)) return { provider: p, model: m };      }      return null;    }
     window.resolveCompatProvider = resolveCompatProvider;
 
     // Cảnh báo một lần lúc load nếu ID Explabs bị khai trùng trong COMPAT_PROVIDERS.
