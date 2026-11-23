@@ -5,6 +5,8 @@ Bản đồ kiến trúc (dạng máy đọc) nằm ở [`boicanhduan.json`](boi
 
 ## 2026-11-22
 
+- Thêm giao diện quản lý Provider & Model động trong Cài đặt: thêm/sửa/xoá provider (tên, base URL, 1–20 API key) và model (tên, provider, max input/output, tham số sinh), lưu localStorage và đồng bộ Gist/backup, key obfuscate (JVENC_). Giữ Google/Experiential Labs làm built-in; NVIDIA/OpenRouter/Cohere chuyển sang động qua js/dynamic-providers.js (buildRuntimeRegistry, compatProviders dùng keyStorageMultiple). model-registry.js đọc window.COMPAT_PROVIDERS khi gọi resolveCompatProvider; app.js đọc window.COMPAT_MODEL_OPTS / window.EXPLABS_MODELS lúc chạy để thấy provider/model mới. Thêm js/dynamic-providers.js, script trong index.html, sửa js/app.js + js/model-registry.js, mirror android/app/src/main/assets/.
+
 - Nút "🔄 Tóm tắt lại" giờ sao lưu `summaryMemory` + `lastCondensedLength` trước khi xoá, nếu nén thất bại (model không trả nội dung/lỗi API) thì khôi phục bộ nhớ cũ và lưu DB, báo toast "Nén thất bại — đã khôi phục bộ nhớ cũ". Tránh mất mát tóm tắt khi API lỗi. Bump app.js ?v=87, sw cache v79, mirror sang android/app/src/main/assets/.
 
 - Mục Nén ngữ cảnh trong Cài đặt hiển thị nội dung bộ nhớ tóm tắt của phiên đang mở (`sessionObj.summaryMemory`) kèm nút "🔄 Tóm tắt lại" (xoá bộ nhớ cũ rồi nén lại toàn bộ hội thoại) và "🗑️ Xoá bộ nhớ tóm tắt" (xoá `summaryMemory` + `lastCondensedLength`, lưu DB, báo toast). `renderCompactSummary()` cập nhật khung xem trước khi mở Cài đặt và sau mỗi lần nén. Bump app.js ?v=86, sw cache v78, mirror sang android/app/src/main/assets/.

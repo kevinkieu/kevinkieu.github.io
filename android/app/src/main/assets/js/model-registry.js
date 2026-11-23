@@ -380,7 +380,12 @@
     function resolveCompatProvider(modelId) {
       const m = (modelId || '').trim();
       if (!m || explabsModelSet.has(m)) return null;
-      for (const p of Object.values(COMPAT_PROVIDERS)) {
+      // Đọc window.COMPAT_PROVIDERS lúc gọi: DynamicProviders.init() (DOMContentLoaded)
+      // đã ghi đè nó bằng registry động (provider/model do người dùng thêm), nên
+      // hàm này vẫn trả provider/model mới dù app.js giữ hàm snapshot từ lúc load.
+      const providers = (window.COMPAT_PROVIDERS && typeof window.COMPAT_PROVIDERS === 'object')
+        ? window.COMPAT_PROVIDERS : COMPAT_PROVIDERS;
+      for (const p of Object.values(providers)) {
         if (p.models.includes(m)) return { provider: p, model: m };
       }
       return null;
