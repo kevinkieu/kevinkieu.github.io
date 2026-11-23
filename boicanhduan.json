@@ -13,7 +13,7 @@
       "PWA",
       "Android (WebView + native medication alarms)"
     ],
-    "versioning": "Android versionCode 72 / versionName 1.1.72 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=87, dynamic-providers.js ?v=76), sw cache jarvis-ai-pwa-v79"
+    "versioning": "Android versionCode 72 / versionName 1.1.72 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=87, dynamic-providers.js ?v=78, sync.js ?v=77), sw cache jarvis-ai-pwa-v81"
   },
   "runtime_entry": {
     "web": "index.html",
@@ -233,7 +233,7 @@
         "test/refactored-modules.test.js": "Smoke test các module sau tách file (model-registry, chat-render, globals...) còn export đủ API qua window.",
         "test/search.test.js": "Kiểm tra cache tìm kiếm, extractQuotedKeywords, điều phối executeLiveSearch với fetch mock.",
         "test/session-cleanup.test.js": "Kiểm tra auto-cleanup chỉ xoá phiên trống > 1 giờ, không xoá phiên đang mở/có tin nhắn.",
-        "test/dynamic-providers.test.js": "Kiểm tra js/dynamic-providers.js với provider động Kilo: đăng ký provider/model vào runtime registry (baseUrl, COMPAT_MODEL_OPTS), resolveCompatProvider + modelLabel, bể key + obfuscate khi exportConfig, trùng model ID/provider lạ, xoá provider kéo theo model của nó.",
+        "test/dynamic-providers.test.js": "Kiểm tra js/dynamic-providers.js với provider động Kilo: đăng ký provider/model vào runtime registry (baseUrl, COMPAT_MODEL_OPTS), resolveCompatProvider + modelLabel, bể key + obfuscate khi exportConfig, trùng model ID/provider lạ, xoá provider kéo theo model của nó, chuẩn hoá model id (11 test).",
         "scripts/sync-web-assets.js": "Danh sách file duy nhất để mirror web root → android/app/src/main/assets; tự xoá file thừa/thư mục rỗng; --check để so sánh.",
         "scripts/check-project-map.js": "npm run check-map: đối chiếu boicanhduan.json với cây file thật (mọi file trong js/, css/, test/, scripts/, worker/, scratch/ và file gốc phải được mô tả; mọi đường dẫn trong bản đồ phải còn tồn tại), hỗ trợ key dạng 'thư mục/*'.",
         "scratch/check_model_registry.js": "npm run check-models: đối chiếu optgroup trong index.html với COMPAT_PROVIDERS/COMPAT_MODEL_OPTS.",
