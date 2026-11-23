@@ -1,14 +1,21 @@
-/* Jarvis AI - NVIDIA CORS proxy (Cloudflare Worker)
-   NVIDIA integrate.api.nvidia.com không trả Access-Control-Allow-Origin cho origin lạ,
+/* Jarvis AI - CORS proxy cho các gateway không trả CORS (Cloudflare Worker)
+   NVIDIA integrate.api.nvidia.com và Kilo ai-gateway.kilo.ai đều không trả
+   Access-Control-Allow-Origin cho origin lạ (Kilo không trả cả header preflight),
    nên trình duyệt không gọi trực tiếp được. Worker này chuyển tiếp request và thêm CORS.
 
    Deploy: dán file này vào Cloudflare Dashboard → Workers & Pages → Create Worker,
    hoặc `npx wrangler deploy worker/nvidia-proxy.js --name jarvis-nvidia-proxy`.
-   Sau đó nhập URL worker + /v1 vào ô "NVIDIA Proxy URL" trong Cài đặt, ví dụ:
-     https://jarvis-nvidia-proxy.<account>.workers.dev/v1
+
+   Đường dẫn:
+     /v1/...       -> https://integrate.api.nvidia.com/v1/...  (ô "NVIDIA Proxy URL")
+     /kilo/v1/...  -> https://ai-gateway.kilo.ai/v1/...        (Base URL của provider Kilo)
+   Ví dụ:
+     NVIDIA Proxy URL : https://jarvis-nvidia-proxy.<account>.workers.dev/v1
+     Kilo Base URL    : https://jarvis-nvidia-proxy.<account>.workers.dev/kilo/v1
 */
 
-const UPSTREAM = 'https://integrate.api.nvidia.com';
+const UPSTREAM_NVIDIA = 'https://integrate.api.nvidia.com';
+const UPSTREAM_KILO = 'https://ai-gateway.kilo.ai/api';
 const ALLOWED_ORIGINS = [
   'https://kevinkieu.github.io',
   'https://appassets.androidplatform.net',
@@ -36,9 +43,14 @@ export default {
     }
 
     const url = new URL(request.url);
-    const path = url.pathname.startsWith('/v1') ? url.pathname : '/v1' + url.pathname;
+    // Tiền tố /kilo chọn upstream Kilo; mọi đường dẫn khác giữ hành vi cũ (NVIDIA)
+    const isKilo = url.pathname === '/kilo' || url.pathname.startsWith('/kilo/');
+    const upstreamBase = isKilo ? UPSTREAM_KILO : UPSTREAM_NVIDIA;
+    let path = isKilo ? url.pathname.slice('/kilo'.length) : url.pathname;
+    if (!path) path = '/v1';
+    else if (!path.startsWith('/v1')) path = '/v1' + path;
 
-    const upstream = await fetch(UPSTREAM + path + url.search, {
+    const upstream = await fetch(upstreamBase + path + url.search, {
       method: request.method,
       headers: {
         'Authorization': request.headers.get('Authorization') || '',
