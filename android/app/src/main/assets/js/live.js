@@ -1350,13 +1350,13 @@ window.resetWakeWordTraining = function () {
 // ==========================================
 // Register live-call action with GestureManager
 if (window.GestureManager) {
-  window.GestureManager.registerAction('live-call', (data) => {
+  window.GestureManager.registerAction('live-call', data => {
     console.log('[Live] Gesture triggered: live-call');
     if (!window.isLiveActive()) {
       window.startLiveVoiceCall({ miniBar: true });
     }
   });
-  window.GestureManager.registerAction('wake-word', (data) => {
+  window.GestureManager.registerAction('wake-word', data => {
     console.log('[Live] Gesture triggered: wake-word');
     window.toggleWakeWord?.(true);
     setTimeout(() => window.startWakeWordListening?.(), 500);
@@ -1365,13 +1365,13 @@ if (window.GestureManager) {
   // Wait for GestureManager
   document.addEventListener('DOMContentLoaded', () => {
     if (window.GestureManager) {
-      window.GestureManager.registerAction('live-call', (data) => {
+      window.GestureManager.registerAction('live-call', data => {
         console.log('[Live] Gesture triggered: live-call');
         if (!window.isLiveActive()) {
           window.startLiveVoiceCall({ miniBar: true });
         }
       });
-      window.GestureManager.registerAction('wake-word', (data) => {
+      window.GestureManager.registerAction('wake-word', data => {
         console.log('[Live] Gesture triggered: wake-word');
         window.toggleWakeWord?.(true);
         setTimeout(() => window.startWakeWordListening?.(), 500);

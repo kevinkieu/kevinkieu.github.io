@@ -16,6 +16,7 @@
   const STATE = {
     IDLE: 'idle',
     LOADING: 'loading',
+    MODEL_LOADING: 'model_loading',
     READY: 'ready',
     LISTENING: 'listening',
     TRAINING: 'training',
@@ -68,22 +69,7 @@
         throw new Error('TF.js hoặc Speech Commands chưa load được');
       }
 
-      // Wait for speechCommands.create to be available (library might need extra time to initialize)
-      let retries = 0;
-      while (!window.speechCommands || typeof window.speechCommands.create !== 'function') {
-        if (retries++ > 50) {
-          // 5 seconds max
-          throw new Error('Speech Commands library loaded but create() not available');
-        }
-        console.log('[WakeWord-TFJS] Waiting for speechCommands.create...', retries);
-        await new Promise(r => setTimeout(r, 100));
-      }
-
       console.log('[WakeWord-TFJS] Dependencies loaded, TF version:', window.tf.version.tfjs);
-      console.log(
-        '[WakeWord-TFJS] speechCommands.create available:',
-        typeof window.speechCommands.create
-      );
       return true;
     } catch (err) {
       console.error('[WakeWord-TFJS] Load dependencies failed:', err);
@@ -92,31 +78,46 @@
     }
   }
 
-  async function createRecognizer() {
+  async function createRecognizerWithRetry(maxRetries = 3) {
     if (recognizer) return recognizer;
 
-    try {
-      // Tạo recognizer từ built-in model "speech-commands"
-      // modelUrl: có thể dùng model built-in hoặc custom model đã train
-      recognizer = window.speechCommands.create('BROWSER_FFT', undefined, {
-        // Tùy chọn: có thể chỉ định model URL tùy chỉnh
-        // modelUrl: 'https://storage.googleapis.com/tfjs-models/speech-commands/'
-      });
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log('[WakeWord-TFJS] Creating recognizer, attempt', attempt);
 
-      // Khởi tạo recognizer (tải model weights)
-      await recognizer.ensureModelLoaded();
+        // Tạo recognizer từ built-in model "speech-commands"
+        // Sử dụng BROWSER_FFT (nhanh, nhẹ) thay vì BROWSER_FFT_STREAMING
+        recognizer = window.speechCommands.create('BROWSER_FFT', undefined, {
+          // modelUrl: 'https://storage.googleapis.com/tfjs-models/speech-commands/' // có thể override
+        });
 
-      console.log('[WakeWord-TFJS] Recognizer created, built-in labels:', recognizer.wordLabels());
+        // Khởi tạo recognizer (tải model weights) - QUAN TRỌNG: await ensureModelLoaded()
+        await recognizer.ensureModelLoaded();
 
-      // Thêm class custom "hey_jarvis" (transfer learning)
-      // Lưu ý: Speech Commands API cho phép thêm examples cho label mới
-      isModelTrained = false;
-      trainingExamplesCount = 0;
+        console.log(
+          '[WakeWord-TFJS] Recognizer created, built-in labels:',
+          recognizer.wordLabels()
+        );
 
-      return recognizer;
-    } catch (err) {
-      console.error('[WakeWord-TFJS] Create recognizer failed:', err);
-      throw err;
+        // Verify create function exists
+        if (typeof recognizer.collectExample !== 'function') {
+          throw new Error('Recognizer missing collectExample method');
+        }
+
+        // Thêm class custom "hey_jarvis" (transfer learning)
+        isModelTrained = false;
+        trainingExamplesCount = 0;
+
+        setState(STATE.READY);
+        return recognizer;
+      } catch (err) {
+        console.error('[WakeWord-TFJS] Create recognizer failed (attempt', attempt, '):', err);
+        if (attempt === maxRetries) {
+          throw err;
+        }
+        // Wait before retry
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
     }
   }
 
@@ -126,7 +127,7 @@
    * @returns {Promise<boolean>} - true nếu train thành công
    */
   async function trainKeyword(durationMs = 1000) {
-    if (!recognizer) await createRecognizer();
+    if (!recognizer) await createRecognizerWithRetry();
 
     setState(STATE.TRAINING);
 
@@ -143,13 +144,6 @@
           },
         });
       }
-
-      // Debug: log recognizer state
-      console.log('[WakeWord-TFJS] Recognizer state:', {
-        hasRecognizer: !!recognizer,
-        hasCollectExample: recognizer ? typeof recognizer.collectExample : 'no recognizer',
-        wordLabels: recognizer ? recognizer.wordLabels() : 'N/A',
-      });
 
       // Ghi thêm 1 ví dụ cho class custom
       console.log('[WakeWord-TFJS] Recording training example...');
@@ -225,7 +219,7 @@
   async function startListening() {
     if (state === STATE.LISTENING) return;
 
-    if (!recognizer) await createRecognizer();
+    if (!recognizer) await createRecognizerWithRetry();
     if (!isModelTrained) {
       throw new Error('Model chưa được train! Hãy gọi trainKeyword() trước.');
     }
@@ -356,7 +350,7 @@
     // Khởi tạo: tải dependencies + tạo recognizer
     async init() {
       await loadDependencies();
-      await createRecognizer();
+      await createRecognizerWithRetry();
       setState(STATE.READY);
       console.log('[WakeWord-TFJS] Initialized and ready for training');
     },
@@ -450,8 +444,8 @@
 
   // Auto-init nếu setting bật (chỉ init dependencies, không auto-train)
   document.addEventListener('DOMContentLoaded', () => {
-    const autoInit = localStorage.getItem('jarvis_wake_word_enabled') === 'true';
-    if (autoInit && window.WakeWordTFJS.isSupported()) {
+    const autoStart = localStorage.getItem('jarvis_wake_word_enabled') === 'true';
+    if (autoStart && window.WakeWordTFJS.isSupported()) {
       window.WakeWordTFJS.init().catch(console.error);
       // Không auto-start listening vì cần train trước
     }

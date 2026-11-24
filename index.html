@@ -2193,6 +2193,15 @@
               Tham số này chỉ áp dụng cho nhóm NVIDIA/OpenRouter; Google Gemini dùng cấu hình riêng.
             </div>
           </fieldset>
+
+          <!-- GESTURE SETTINGS -->
+          <fieldset class="settings-group" style="border: 2px solid #8b5cf6; background: rgba(139, 92, 246, 0.04)">
+            <legend style="color: #8b5cf6; font-weight: 700">🎮 Gesture Controls (Điều khiển cử chỉ)</legend>
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4">
+              Gán hành động cho từng gesture. <b>Lắc (Shake)</b> là mặc định để tránh conflict chụp màn hình hệ thống.
+            </div>
+            <div id="gesture-settings-container"></div>
+          </fieldset>
         </div>
       </div>
 
@@ -3674,6 +3683,7 @@
     <script type="module" src="./js/database.js?v=76"></script>
     <script type="module" src="./js/session-cleanup.js?v=76"></script>
     <script type="module" src="./js/gesture-manager.js?v=1"></script>
+    <script type="module" src="./js/gesture-settings.js?v=1"></script>
     <script type="module" src="./js/debug-overlay.js?v=1"></script>
     <script type="module" src="./js/provider-registry.js?v=1"></script>
     <script type="module" src="./js/model-registry.js?v=76"></script>

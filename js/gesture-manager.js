@@ -9,10 +9,10 @@
 
   const STORAGE_KEY = 'jarvis_gesture_config';
   const DEFAULT_CONFIG = {
-    '3-finger-hold': 'debug-overlay',
-    shake: 'none',
-    'edge-swipe': 'none',
-    'double-tap': 'none',
+    shake: 'debug-overlay', // Mặc định: lắc để mở Debug Console (tránh conflict screenshot)
+    '3-finger-hold': 'none', // 3 ngón giữ - tắt mặc định vì conflict screenshot hệ thống
+    '2-finger-double-tap': 'none', // 2 ngón double-tap - có thể bật trong Settings
+    'edge-swipe': 'none', // Vuốt từ mép màn hình
   };
 
   // Trạng thái gesture
@@ -169,11 +169,16 @@
   function onTouchStart(e) {
     const touches = e.touches;
     touchState.fingers = touches.length;
+    touchState.startTime = Date.now();
+    touchState.startX = touches[0]?.clientX || 0;
+    touchState.startY = touches[0]?.clientY || 0;
+
+    // Check for 2-finger double-tap
+    if (touches.length === 2) {
+      handleTwoFingerTap(e);
+    }
 
     if (touchState.fingers >= 3) {
-      touchState.startTime = Date.now();
-      touchState.startX = touches[0].clientX;
-      touchState.startY = touches[0].clientY;
       touchState.isHolding = false;
 
       // Clear existing timer
@@ -192,6 +197,24 @@
           showGestureFeedback('3-finger-hold', cfg.action);
         }
       }, 500);
+    }
+  }
+
+  // 2-finger double-tap detection
+  let lastTwoFingerTap = 0;
+  function handleTwoFingerTap(e) {
+    const now = Date.now();
+    if (now - lastTwoFingerTap < 300) {
+      // Double-tap detected!
+      lastTwoFingerTap = 0;
+      const cfg = gestureRegistry.get('2-finger-double-tap');
+      if (cfg && cfg.action !== 'none') {
+        if (navigator.vibrate) navigator.vibrate(50);
+        executeAction(cfg.action, { gesture: '2-finger-double-tap', event: e });
+        showGestureFeedback('2-finger-double-tap', cfg.action);
+      }
+    } else {
+      lastTwoFingerTap = now;
     }
   }
 

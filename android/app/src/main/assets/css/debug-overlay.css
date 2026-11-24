@@ -15,7 +15,7 @@
   background: #0f172a;
   border: 1px solid #1e293b;
   border-radius: 12px;
-  box-shadow: 
+  box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(148, 163, 184, 0.1);
   display: none;
@@ -158,8 +158,14 @@
 }
 
 @keyframes debug-fade-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .debug-log-entry.debug-level-error {
@@ -200,10 +206,22 @@
   letter-spacing: 0.5px;
 }
 
-.debug-level-log { background: #1e293b; color: #94a3b8; }
-.debug-level-info { background: #1e3a5f; color: #93c5fd; }
-.debug-level-warn { background: #452a0a; color: #fcd34d; }
-.debug-level-error { background: #450a0a; color: #fca5a5; }
+.debug-level-log {
+  background: #1e293b;
+  color: #94a3b8;
+}
+.debug-level-info {
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+.debug-level-warn {
+  background: #452a0a;
+  color: #fcd34d;
+}
+.debug-level-error {
+  background: #450a0a;
+  color: #fca5a5;
+}
 
 .debug-message {
   color: #cbd5e1;
@@ -269,11 +287,11 @@
     height: 60vh;
     max-height: 70vh;
   }
-  
+
   .debug-controls {
     justify-content: space-between;
   }
-  
+
   .debug-filters {
     order: 3;
     width: 100%;

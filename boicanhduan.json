@@ -105,7 +105,8 @@
         "js/selection-toolbar.js": "Thanh công cụ nổi khi bôi đen văn bản (copy, hỏi lại, dịch, đọc TTS) + ẩn/hiện theo vùng chọn.",
         "js/web-share-target.js": "Nhận nội dung chia sẻ từ hệ điều hành/PWA share target, mở modal xem trước và đưa URL/nội dung vào chat.",
         "js/storage-manager.js": "Quản lý bộ nhớ & storage: trạng thái lưu trữ, xin persistent storage, thống kê dung lượng, dọn cache tạm.",
-        "js/session-cleanup.js": "Tự dọn phiên TRỐNG (0 tin nhắn) cũ hơn 1 giờ khi mở app; không bao giờ xoá phiên đang mở hay phiên có tin nhắn; công tắc 'Tự dọn phiên trống' (localStorage jarvis_auto_cleanup, mặc định bật)."
+        "js/session-cleanup.js": "Tự dọn phiên TRỐNG (0 tin nhắn) cũ hơn 1 giờ khi mở app; không bao giờ xoá phiên đang mở hay phiên có tin nhắn; công tắc 'Tự dọn phiên trống' (localStorage jarvis_auto_cleanup, mặc định bật).",
+        "js/gesture-settings.js": "Gesture Settings UI: tab trong Settings modal để gán action cho shake, 3-finger-hold, 2-finger-double-tap, edge-swipe. Live preview, reset defaults, test shake."
       }
     },
     {
@@ -136,9 +137,10 @@
       "name": "Multimodal live voice/video call",
       "files": {
         "js/live.js": "Gemini bidirectional live WebSocket (BidiGenerateContent), PCM streaming (16kHz vào, 24kHz phát), stream camera, nhận dạng lời nói, phát hiện tạm biệt/im lặng để cúp máy, tool calls search_web/read_url, xoay key khi mất kết nối, ghi transcript về chat. Tích hợp Wake Word (TF.js) + Barge-in + Gesture actions (live-call, wake-word).",
-        "js/wake-word-tfjs.js": "Wake word detection 'Hey Jarvis' dùng TensorFlow.js Speech Commands + Transfer Learning. Offline, on-device, không cần API key. Train bằng cách ghi 8-10 mẫu giọng nói. Real-time detection qua microphone.",
-        "js/gesture-manager.js": "Gesture Manager trung tâm: detect 3-finger-hold, shake; register gesture/action; persist config; dispatch actions. Dùng cho debug-overlay, live-call, wake-word.",
-        "js/debug-overlay.js": "Debug Console Overlay cho mobile: capture console.log/warn/error, filter, copy, clear, drag, resize. Trigger qua GestureManager (3-finger-hold).",
+        "js/wake-word-tfjs.js": "Wake word detection 'Hey Jarvis' dùng TensorFlow.js Speech Commands + Transfer Learning. Offline, on-device, không cần API key. Train bằng cách ghi 8-10 mẫu giọng nói. Real-time detection qua microphone. Robust loading với retry + wait for model.",
+        "js/gesture-manager.js": "Gesture Manager trung tâm: detect shake (mặc định), 3-finger-hold, 2-finger-double-tap; register gesture/action; persist config; dispatch actions. Mặc định shake tránh conflict screenshot. Dùng cho debug-overlay, live-call, wake-word.",
+        "js/gesture-settings.js": "Gesture Settings UI: tab trong Settings modal để gán action cho shake, 3-finger-hold, 2-finger-double-tap, edge-swipe. Live preview, reset defaults, test shake.",
+        "js/debug-overlay.js": "Debug Console Overlay cho mobile: capture console.log/warn/error, filter, copy, clear, drag, resize. Trigger qua GestureManager (shake mặc định).",
         "css/live.css": "Style modal gọi live.",
         "css/debug-overlay.css": "Style Debug Console Overlay: floating panel, dark theme, filter buttons, log entries, resize handle."
       }

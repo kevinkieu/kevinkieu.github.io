@@ -9,10 +9,10 @@
 
   const STORAGE_KEY = 'jarvis_gesture_config';
   const DEFAULT_CONFIG = {
-    '3-finger-hold': 'debug-overlay',
-    'shake': 'none',
-    'edge-swipe': 'none',
-    'double-tap': 'none'
+    shake: 'debug-overlay',           // Mặc định: lắc để mở Debug Console (tránh conflict screenshot)
+    '3-finger-hold': 'none',          // 3 ngón giữ - tắt mặc định vì conflict screenshot hệ thống
+    '2-finger-double-tap': 'none',    // 2 ngón double-tap - có thể bật trong Settings
+    'edge-swipe': 'none',             // Vuốt từ mép màn hình
   };
 
   // Trạng thái gesture
@@ -22,7 +22,7 @@
     startX: 0,
     startY: 0,
     isHolding: false,
-    holdTimer: null
+    holdTimer: null,
   };
 
   let shakeState = {
@@ -30,7 +30,7 @@
     lastY: 0,
     lastZ: 0,
     lastTime: 0,
-    threshold: 15 // m/s^2
+    threshold: 15, // m/s^2
   };
 
   // Registry: gestureName -> { action, configurable, fallback }
@@ -67,7 +67,9 @@
   // Save config
   function saveConfig() {
     const config = {};
-    gestureRegistry.forEach((v, k) => { config[k] = v.action; });
+    gestureRegistry.forEach((v, k) => {
+      config[k] = v.action;
+    });
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
     } catch (e) {
@@ -81,7 +83,7 @@
       action: options.action || 'none',
       configurable: options.configurable !== false,
       fallback: options.fallback || null,
-      description: options.description || name
+      description: options.description || name,
     };
     gestureRegistry.set(name, cfg);
     console.log('[GestureManager] Registered:', name, cfg);
@@ -150,7 +152,9 @@
   // Lấy config hiện tại
   function getConfig() {
     const config = {};
-    gestureRegistry.forEach((v, k) => { config[k] = v.action; });
+    gestureRegistry.forEach((v, k) => {
+      config[k] = v.action;
+    });
     return config;
   }
 
@@ -165,16 +169,21 @@
   function onTouchStart(e) {
     const touches = e.touches;
     touchState.fingers = touches.length;
-    
+    touchState.startTime = Date.now();
+    touchState.startX = touches[0]?.clientX || 0;
+    touchState.startY = touches[0]?.clientY || 0;
+
+    // Check for 2-finger double-tap
+    if (touches.length === 2) {
+      handleTwoFingerTap(e);
+    }
+
     if (touchState.fingers >= 3) {
-      touchState.startTime = Date.now();
-      touchState.startX = touches[0].clientX;
-      touchState.startY = touches[0].clientY;
       touchState.isHolding = false;
-      
+
       // Clear existing timer
       if (touchState.holdTimer) clearTimeout(touchState.holdTimer);
-      
+
       // Start hold timer (500ms)
       touchState.holdTimer = setTimeout(() => {
         touchState.isHolding = true;
@@ -191,9 +200,27 @@
     }
   }
 
+  // 2-finger double-tap detection
+  let lastTwoFingerTap = 0;
+  function handleTwoFingerTap(e) {
+    const now = Date.now();
+    if (now - lastTwoFingerTap < 300) {
+      // Double-tap detected!
+      lastTwoFingerTap = 0;
+      const cfg = gestureRegistry.get('2-finger-double-tap');
+      if (cfg && cfg.action !== 'none') {
+        if (navigator.vibrate) navigator.vibrate(50);
+        executeAction(cfg.action, { gesture: '2-finger-double-tap', event: e });
+        showGestureFeedback('2-finger-double-tap', cfg.action);
+      }
+    } else {
+      lastTwoFingerTap = now;
+    }
+  }
+
   function onTouchMove(e) {
     if (touchState.fingers < 3) return;
-    
+
     const touches = e.touches;
     if (touches.length < 3) {
       // Fingers released before hold
@@ -203,7 +230,7 @@
       }
       return;
     }
-    
+
     // Check if moved too much (cancel hold)
     const dx = Math.abs(touches[0].clientX - touchState.startX);
     const dy = Math.abs(touches[0].clientY - touchState.startY);
@@ -230,16 +257,16 @@
   function onDeviceMotion(e) {
     const now = Date.now();
     if (now - shakeState.lastTime < 100) return; // throttle
-    
+
     const acc = e.accelerationIncludingGravity;
     if (!acc) return;
-    
+
     const dx = Math.abs(acc.x - shakeState.lastX);
     const dy = Math.abs(acc.y - shakeState.lastY);
     const dz = Math.abs(acc.z - shakeState.lastZ);
-    
+
     const magnitude = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    
+
     if (magnitude > shakeState.threshold) {
       const cfg = gestureRegistry.get('shake');
       if (cfg && cfg.action !== 'none') {
@@ -247,7 +274,7 @@
         showGestureFeedback('shake', cfg.action);
       }
     }
-    
+
     shakeState.lastX = acc.x;
     shakeState.lastY = acc.y;
     shakeState.lastZ = acc.z;
@@ -264,11 +291,11 @@
         'debug-overlay': '🐛 Debug Console',
         'live-call': '📞 Live Call',
         'wake-word': '🎙️ Wake Word',
-        'none': 'Không hành động'
+        none: 'Không hành động',
       };
       showToast(`${labels[action] || action} (${gesture})`, 'info', 1500);
     }
-    
+
     // Visual ripple effect
     const ripple = document.createElement('div');
     ripple.style.cssText = `
@@ -306,18 +333,18 @@
   function init() {
     loadConfig();
     injectRippleCSS();
-    
+
     // Touch events (passive: false để có thể preventDefault nếu cần)
     document.addEventListener('touchstart', onTouchStart, { passive: true });
     document.addEventListener('touchmove', onTouchMove, { passive: true });
     document.addEventListener('touchend', onTouchEnd, { passive: true });
     document.addEventListener('touchcancel', onTouchEnd, { passive: true });
-    
+
     // Device motion for shake
     if (window.DeviceMotionEvent) {
       window.addEventListener('devicemotion', onDeviceMotion, { passive: true });
     }
-    
+
     console.log('[GestureManager] Initialized');
     console.log('[GestureManager] Config:', getConfig());
   }
@@ -339,7 +366,7 @@
     setGestureAction,
     getConfig,
     getAvailableActions,
-    getGestureConfig: (name) => gestureRegistry.get(name),
+    getGestureConfig: name => gestureRegistry.get(name),
     // For Settings UI
     getAllGestures: () => {
       const result = {};
@@ -347,7 +374,6 @@
         result[k] = { ...v };
       });
       return result;
-    }
+    },
   };
-
 })();
