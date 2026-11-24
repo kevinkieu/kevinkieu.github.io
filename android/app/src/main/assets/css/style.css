@@ -2960,7 +2960,11 @@ think {
 }
 
 .collapsible-content {
-  transition: max-height 0.3s ease-out, opacity 0.3s ease-out, padding 0.3s ease-out, margin 0.3s ease-out;
+  transition:
+    max-height 0.3s ease-out,
+    opacity 0.3s ease-out,
+    padding 0.3s ease-out,
+    margin 0.3s ease-out;
   overflow: hidden;
 }
 
@@ -2999,12 +3003,12 @@ think {
   .collapsible-header {
     padding: 8px 4px;
   }
-  
+
   .collapsible-header:hover {
     padding: 8px 4px;
     margin: -8px -4px;
   }
-  
+
   .section-toggle-icon {
     font-size: 1rem;
   }

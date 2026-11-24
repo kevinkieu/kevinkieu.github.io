@@ -388,20 +388,20 @@ window.makeCollapsibleSection = function (sectionId, headerSelector, contentSele
   return { header, content };
 };
 
-// Hàm helper để áp dụng cho tất cả fieldset trong settings modal
-window.initAllCollapsibleSections = function () {
-  // Tìm tất cả fieldset trong settings modal
+// Chỉ init cho fieldset có class "collapsible-section" (opt-in)
+window.initCollapsibleSections = function () {
   const settingsModal = document.getElementById('settings-modal');
   if (!settingsModal) return;
 
-  const fieldsets = settingsModal.querySelectorAll('fieldset.settings-group');
+  // Chỉ áp dụng cho fieldset có class "collapsible-section"
+  const fieldsets = settingsModal.querySelectorAll('fieldset.settings-group.collapsible-section');
   fieldsets.forEach((fieldset, index) => {
     const legend = fieldset.querySelector('legend');
     if (!legend) return;
 
-    // Tạo section ID
-    const sectionId = 'settings_section_' + index;
-    fieldset.id = fieldset.id || sectionId;
+    // Tạo section ID từ id fieldset hoặc tự động
+    const sectionId = fieldset.id || 'settings_section_' + index;
+    fieldset.id = fieldset.id || 'settings_section_' + index;
 
     // Tạo content wrapper cho nội dung fieldset (trừ legend)
     let contentWrapper = fieldset.querySelector('.collapsible-content-wrapper');
@@ -425,7 +425,7 @@ window.initAllCollapsibleSections = function () {
 // Auto-init khi DOM ready
 document.addEventListener('DOMContentLoaded', function () {
   // Delay để các modal đã được render
-  setTimeout(window.initAllCollapsibleSections, 500);
+  setTimeout(window.initCollapsibleSections, 500);
 });
 
 // --- PERSISTENT STORAGE & NATIVE BRIDGE ---
