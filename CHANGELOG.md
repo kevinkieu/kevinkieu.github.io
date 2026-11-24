@@ -5,6 +5,34 @@ Bản đồ kiến trúc (dạng máy đọc) nằm ở [`boicanhduan.json`](boi
 
 ## 2026-11-24
 
+- Gộp mục **Quản lý Provider & Model động** trong Cài đặt thành khu vực có thể ẩn/hiện (collapsible) để rút ngắn độ dài modal Settings: thêm nút bấm tiêu đề "⚙️ Quản lý Provider & Model động (không cần sửa code)" với icon mũi tên ▼, bấm vào sẽ mở rộng/thu gọn nội dung (form thêm/sửa provider, form thêm/sửa model, danh sách provider, danh sách model). Sửa:
+  - `index.html`: bọc nội dung trong `<div id="dp-collapsible-content">`, tiêu đề chuyển thành `<div class="dp-section-header" onclick="toggleDpSection()">` có icon toggle `#dp-toggle-icon`
+  - `js/dynamic-providers.js`: thêm `window.toggleDpSection()` xử lý toggle class `collapsed`, xoay icon, lưu trạng thái vào `localStorage` (key `jarvis_dp_section_collapsed`), khôi phục khi load trang
+  - `css/style.css`: thêm style cho `.dp-section-header:hover`, `.dp-toggle-icon` transition, `.dp-collapsible-content.collapsed` (max-height:0, opacity:0), animation `dpExpand`, responsive mobile
+  - Bảng provider/model giữ nguyên kích thước đẹp như cũ, không thay đổi
+  - Kiểm chứng: `node --check`, `check-models`, `sync-assets`, `check-assets`, `check-map` PASS
+
+- Sửa nút "Kích hoạt" **Bảo vệ vĩnh viễn (Persistent Storage)** trong Cài đặt → Bộ nhớ & Trạng thái Lưu trữ: trên WebView (APK Android) API `navigator.storage.persist()` không khả dụng; WebView đã lưu trữ vĩnh viễn qua IndexedDB + Native Bridge (Android SharedPreferences). Sửa `js/storage-manager.js`:
+  - Phát hiện WebView bằng `JarvisNativeBridge.isNativeApp()` / user-agent / origin `appassets.androidplatform.net`
+  - Ẩn nút Kích hoạt, hiển thị "🟢 Đã bảo vệ bởi WebView + Native Bridge"
+  - Toast thông báo WebView không cần kích hoạt thêm
+  - Trình duyệt thường (Chrome/Firefox): giữ logic Permissions API chuẩn (`query` → `request` → `persist`), toast kèm hướng dẫn bật thủ công
+  - `node --check` OK
+
+- Sửa **build-apk.bat**: trước đây copy ra 2 file APK trùng lặp (`JarvisAI.apk` + `JarvisAI_Offline.apk`), giờ chỉ xuất 1 file `JarvisAI.apk`
+
+- Sửa lỗi **"App Registration Verification failed"** khi cài APK: Digital Asset Links (`assetlinks.json`) trên `kevinkieu.github.io` có package_name `io.github.kevinkieu.twa` (cũ cho TWA) nhưng Android app package là `com.kevinkieu.jarvisai`. Thêm `.well-known/assetlinks.json` mới với `package_name: com.kevinkieu.jarvisai` + `sha256_cert_fingerprints` đúng keystore (`4F:81:80:23:FB:E6:15:6D:F5:7F:0C:8B:35:C0:17:03:78:26:9F:DB:79:F2:43:C4:9B:F4:15:6D:9D:7E:68:75`). Cập nhật `scripts/sync-web-assets.js` mirror file này sang Android assets. Build APK mới sẽ pass verification.
+
+- Sửa tràn ngang toàn bộ mục **API Keys (Google / OpenRouter / Experiential Labs / NVIDIA / Cohere)** trong Cài đặt trên mobile (390px): từng `<fieldset class="settings-group">` có `min-inline-size: min-content` mặc định của trình duyệt → tự phình theo hàng `.api-key-row` (flex không wrap, ô tên gợi nhớ 115px + key + badge ~440px) → fieldset Google rộng **474px** trong khi modal chỉ 357px, nội dung tràn ra ngoài và không cuộn được. Đo bằng CDP headless Chrome trên viewport 390px: trước **81 phần tử tràn**, sau **0 phần tử tràn**. Sửa:
+  - `css/style.css`: `.settings-group` thêm `min-width: 0`; `.api-key-row` thêm `flex-wrap: wrap; min-width: 0` + mobile order/dòng tự xuống (badge hàng 1, tên gợi nhớ hàng 2, key hàng 3); hàng "Key xoay tua" (`.settings-inline-row`) chuyển sang `flex-wrap: wrap` + `min-width: 0`.
+  - `index.html`: các hàng "Key xoay tua" OpenRouter/Experiential Labs/NVIDIA/Cohere đổi inline style `display:flex` → class `.settings-inline-row`.
+  - Bump `css/style.css?v=80`, SW cache `v84`, mirror android assets.
+  - Kiểm chứng: CDP viewport 390px (mobile) & 1280px (desktop) — không còn phần tử nào tràn, bảng mô hình động tự cuộn ngang trong khối, modal bám đúng bề rộng màn hình; `npm test` 93/93, `check-*` PASS.
+
+- Sửa dứt điểm lỗi mục "Quản lý Provider & Model động" trong Cài đặt bị chồng chéo trên mobile/APK: khung ngoài là `<fieldset class="settings-group dp-section">` mà CSS lại đặt `display:flex` — Chromium/Android WebView không tính chiều cao fieldset theo flex children nên fieldset co lại còn **38px** trong khi nội dung thật ~1290px, phần tràn ra đè lên các mục bên dưới (đo bằng headless Chrome: `top=1504 h=38` trước, `top=1610 h=1288` sau khi sửa). Đổi khung ngoài sang `<div class="settings-group dp-section">` + `<div class="dp-section-title">` (giữ nguyên 100% id mà `js/dynamic-providers.js` dùng), bỏ `<legend>`; `.dp-section`/`.dp-block` chuyển về `display:block` + margin thay vì flex/grid, thêm `box-sizing:border-box`, `min-width:0`, `overflow:hidden` để không tràn ngang. Bảng danh sách provider/model do JS render là bảng 6 cột (inline `width:100%`) trước đây ép modal rộng 470px trên màn 390px, nay đặt trong `.dp-list-scroll` (`max-height:300px; overflow:auto`) với `table{min-width:560px}`, `th/td{padding:6px 8px; white-space:nowrap; text-overflow:ellipsis}`, cột Base URL cắt ở 220px → bảng tự cuộn ngang trong khối, không kéo giãn modal; `.modal-scroll-body` thêm `min-width:0; min-height:0; overflow-x:hidden` để bám đúng bề rộng modal. Nút Lưu/Nhập lại bo tròn `--radius-md`, cao 42px (44px trên mobile), chữ tự xuống dòng. Bump `css/style.css?v=79`, sw cache v83, mirror android assets. Kiểm chứng: chụp màn hình headless Chrome ở 480px (mobile) và 1100px (desktop) — tiêu đề, mô tả, ô nhập, nút và 2 bảng danh sách đều xếp dọc đúng thứ tự, không còn ô nào đè lên nhau, không tràn ngang; `npm test` 93/93, `node --check`, `check-models`, `sync-assets`, `check-assets`, `check-map` đều PASS.
+
+## 2026-11-24
+
 - Sửa nút "Kích hoạt" **Bảo vệ vĩnh viễn (Persistent Storage)** trong Cài đặt → Bộ nhớ & Trạng thái Lưu trữ: trên WebView (APK Android) API `navigator.storage.persist()` không khả dụng; WebView đã lưu trữ vĩnh viễn qua IndexedDB + Native Bridge (Android SharedPreferences). Sửa `js/storage-manager.js`:
   - Phát hiện WebView bằng `JarvisNativeBridge.isNativeApp()` / user-agent / origin `appassets.androidplatform.net`
   - Ẩn nút Kích hoạt, hiển thị "🟢 Đã bảo vệ bởi WebView + Native Bridge"

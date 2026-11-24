@@ -13,7 +13,7 @@
       "PWA",
       "Android (WebView + native medication alarms)"
     ],
-    "versioning": "Android versionCode 73 / versionName 1.1.73 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=92, dynamic-providers.js ?v=81, sync.js ?v=79, storage-manager.js ?v=80), sw cache jarvis-ai-pwa-v84"
+    "versioning": "Android versionCode 74 / versionName 1.1.74 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=92, dynamic-providers.js ?v=82, sync.js ?v=79, storage-manager.js ?v=80), sw cache jarvis-ai-pwa-v85"
   },
   "runtime_entry": {
     "web": "index.html",
@@ -84,7 +84,7 @@
     ],
     "service_worker": {
       "file": "sw.js",
-      "cache": "jarvis-ai-pwa-v84",
+      "cache": "jarvis-ai-pwa-v85",
       "precache": "STATIC_ASSETS: index.html, manifest, icons, 5 file CSS, js/{model-registry,chat-render,app,sync,live,tts,translate,rag,search,extract,blob,markdown.worker}.js + toàn bộ CDN_LIBS",
       "html": "network-first (để bản deploy GitHub Pages lên ngay), fallback cache → ./index.html",
       "js_css_cdn": "stale-while-revalidate",
@@ -306,8 +306,8 @@
   "changelog": {
     "file": "CHANGELOG.md",
     "note": "Lịch sử thay đổi chi tiết đã chuyển từ recent_changes sang CHANGELOG.md để boicanhduan.json chỉ còn mô tả kiến trúc.",
-    "entries": 43,
+    "entries": 44,
     "last_change_date": "2026-11-24",
-    "latest_summary": "Sửa Persistent Storage trên WebView (APK Android): phát hiện môi trường WebView (JarvisNativeBridge.isNativeApp / ua / origin) → ẩn nút Kích hoạt, hiển thị '🟢 Đã bảo vệ bởi WebView + Native Bridge' (IndexedDB + SharedPreferences đã persistent). Trình duyệt thường giữ logic Permissions API chuẩn. Sửa build-apk.bat chỉ xuất 1 file APK (JarvisAI.apk). Sửa lỗi 'App Registration Verification failed' khi cài APK: assetlinks.json cập nhật package_name com.kevinkieu.jarvisai + SHA256 đúng keystore. Sửa tràn ngang mục API Keys (min-width:0 + flex-wrap) và chồng chéo Provider/Model Management (fieldset→div, display:block). Bump versionCode 73, sw cache v84, sync assets."
+    "latest_summary": "Gộp mục Quản lý Provider & Model động thành collapsible (ẩn/hiện bằng nút bấm tiêu đề) để rút ngắn modal Settings; Persistent Storage WebView fix; build-apk single file; assetlinks.json package fix; API Keys overflow + Provider/Model overlap fix. Bump versionCode 74, sw cache v85, sync assets."
   }
 }

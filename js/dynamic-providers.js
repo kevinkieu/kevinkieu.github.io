@@ -1140,6 +1140,40 @@
     saveModelFromUI
   };
 
+  // Toggle collapsible section for Dynamic Provider/Model Management
+  window.toggleDpSection = function() {
+    const content = document.getElementById('dp-collapsible-content');
+    const header = document.querySelector('.dp-section-header');
+    const icon = document.getElementById('dp-toggle-icon');
+    if (!content || !header) return;
+    
+    const isCollapsed = content.classList.toggle('collapsed');
+    header.setAttribute('aria-expanded', !isCollapsed);
+    if (icon) {
+      icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+    }
+    
+    // Lưu trạng thái vào localStorage
+    try {
+      localStorage.setItem('jarvis_dp_section_collapsed', isCollapsed ? '1' : '0');
+    } catch (_) {}
+  };
+
+  // Khôi phục trạng thái collapse khi load trang
+  document.addEventListener('DOMContentLoaded', () => {
+    try {
+      const saved = localStorage.getItem('jarvis_dp_section_collapsed');
+      const content = document.getElementById('dp-collapsible-content');
+      const header = document.querySelector('.dp-section-header');
+      const icon = document.getElementById('dp-toggle-icon');
+      if (content && header && saved === '1') {
+        content.classList.add('collapsed');
+        header.setAttribute('aria-expanded', 'false');
+        if (icon) icon.style.transform = 'rotate(-90deg)';
+      }
+    } catch (_) {}
+  });
+
   // Auto-init khi DOM ready (luôn chờ DOMContentLoaded: phải chạy SAU khi TẤT CẢ
   // module scripts — kể cả model-registry.js — đã xuất config tĩnh ra window,
   // tránh việc init() ghi đè registry tĩnh trước khi nó được sử dụng)

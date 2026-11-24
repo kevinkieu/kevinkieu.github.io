@@ -31,7 +31,7 @@
   </script>
 
   <!-- MODULAR STYLESHEETS -->
-  <link rel="stylesheet" href="./css/style.css?v=80">
+  <link rel="stylesheet" href="./css/style.css?v=81">
   <link rel="stylesheet" href="./css/live.css">
   <link rel="stylesheet" href="./css/tts.css">
   <link rel="stylesheet" href="./css/translate.css">
@@ -760,114 +760,121 @@
 
         <!-- DYNAMIC PROVIDER / MODEL MANAGEMENT -->
         <div class="settings-group dp-section" style="border: 2px solid #6366f1; background: rgba(99,102,241,0.04);">
-          <div class="dp-section-title">⚙️ Quản lý Provider & Model động (không cần sửa code)</div>
-          <div class="dp-section-desc">
-            Thêm/sửa/xoá provider (NVIDIA, OpenRouter, Cohere, ...) và model tương ứng. Dữ liệu lưu localStorage, đồng bộ qua Gist/backup. Google và Experiential Labs là built-in, không được xoá.
-          </div>
-
-          <div id="dp-status-msg" class="dp-status" role="status" aria-live="polite"></div>
-
-          <!-- ============ PROVIDER FORM ============ -->
-          <div class="dp-block">
-            <div class="dp-block-header">
-              <span class="dp-block-title">🔧 Thêm / Sửa Provider</span>
-            </div>
-            <div class="dp-form-group">
-              <label class="dp-label">ID provider <span class="dp-hint">(ví dụ: openrouter)</span></label>
-              <input type="text" id="dp-provider-id" class="modern-input" placeholder="openrouter">
-            </div>
-            <div class="dp-form-group">
-              <label class="dp-label">Nhãn hiển thị</label>
-              <input type="text" id="dp-provider-label" class="modern-input" placeholder="OpenRouter">
-            </div>
-            <div class="dp-form-group">
-              <label class="dp-label">Base URL</label>
-              <input type="text" id="dp-provider-baseurl" class="modern-input" placeholder="https://openrouter.ai/api/v1">
-            </div>
-            <div class="dp-form-group dp-row-inline">
-              <div class="dp-form-half">
-                <label class="dp-label">Số API Key (1-20)</label>
-                <input type="number" id="dp-provider-keycount" class="modern-input" value="5" min="1" max="20">
-              </div>
-              <div class="dp-form-half">
-                <label class="dp-label">Key prefix</label>
-                <input type="text" id="dp-provider-keyprefix" class="modern-input" placeholder="jarvis_provider_openrouter_api">
+          <div class="dp-section-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;" onclick="toggleDpSection()">
+            <div>
+              <div class="dp-section-title">⚙️ Quản lý Provider & Model động (không cần sửa code)</div>
+              <div class="dp-section-desc">
+                Thêm/sửa/xoá provider (NVIDIA, OpenRouter, Cohere, ...) và model tương ứng. Dữ liệu lưu localStorage, đồng bộ qua Gist/backup. Google và Experiential Labs là built-in, không được xoá.
               </div>
             </div>
-            <div class="dp-form-group">
-              <label class="dp-label">Danh sách Key</label>
-              <div id="dp-provider-keys" class="dp-key-inputs"></div>
-              <div id="dp-provider-msg" class="dp-msg"></div>
-            </div>
-            <div class="dp-actions dp-actions-stack">
-              <button id="dp-save-provider" class="btn dp-btn-primary">Lưu provider</button>
-              <button id="dp-clear-provider" class="btn dp-btn-secondary">Nhập lại</button>
-            </div>
+            <span id="dp-toggle-icon" class="dp-toggle-icon" style="font-size:1.2rem;color:var(--text-muted);transition:transform 0.2s ease;flex-shrink:0;">▼</span>
           </div>
 
-          <!-- ============ MODEL FORM ============ -->
-          <div class="dp-block">
-            <div class="dp-block-header">
-              <span class="dp-block-title">🤖 Thêm / Sửa Model</span>
-            </div>
-            <div class="dp-form-group">
-              <label class="dp-label">ID model</label>
-              <input type="text" id="dp-model-id" class="modern-input" placeholder="nvidia/nemotron-3.5-lightning">
-            </div>
-            <div class="dp-form-group">
-              <label class="dp-label">Nhãn model</label>
-              <input type="text" id="dp-model-label" class="modern-input" placeholder="Nemotron Lightning">
-            </div>
-            <div class="dp-form-group">
-              <label class="dp-label">Provider</label>
-              <select id="dp-model-provider" class="modern-select"></select>
-            </div>
-            <div class="dp-form-group dp-row-inline">
-              <div class="dp-form-half">
-                <label class="dp-label">Max input (context)</label>
-                <input type="number" id="dp-model-maxin" class="modern-input" placeholder="ví dụ: 128000">
+          <div id="dp-collapsible-content" class="dp-collapsible-content" style="overflow:hidden;transition:max-height 0.3s ease-out;max-height:2000px;opacity:1;">
+
+            <div id="dp-status-msg" class="dp-status" role="status" aria-live="polite"></div>
+
+            <!-- ============ PROVIDER FORM ============ -->
+            <div class="dp-block">
+              <div class="dp-block-header">
+                <span class="dp-block-title">🔧 Thêm / Sửa Provider</span>
               </div>
-              <div class="dp-form-half">
-                <label class="dp-label">Max output</label>
-                <input type="number" id="dp-model-maxout" class="modern-input" placeholder="ví dụ: 8192">
+              <div class="dp-form-group">
+                <label class="dp-label">ID provider <span class="dp-hint">(ví dụ: openrouter)</span></label>
+                <input type="text" id="dp-provider-id" class="modern-input" placeholder="openrouter">
+              </div>
+              <div class="dp-form-group">
+                <label class="dp-label">Nhãn hiển thị</label>
+                <input type="text" id="dp-provider-label" class="modern-input" placeholder="OpenRouter">
+              </div>
+              <div class="dp-form-group">
+                <label class="dp-label">Base URL</label>
+                <input type="text" id="dp-provider-baseurl" class="modern-input" placeholder="https://openrouter.ai/api/v1">
+              </div>
+              <div class="dp-form-group dp-row-inline">
+                <div class="dp-form-half">
+                  <label class="dp-label">Số API Key (1-20)</label>
+                  <input type="number" id="dp-provider-keycount" class="modern-input" value="5" min="1" max="20">
+                </div>
+                <div class="dp-form-half">
+                  <label class="dp-label">Key prefix</label>
+                  <input type="text" id="dp-provider-keyprefix" class="modern-input" placeholder="jarvis_provider_openrouter_api">
+                </div>
+              </div>
+              <div class="dp-form-group">
+                <label class="dp-label">Danh sách Key</label>
+                <div id="dp-provider-keys" class="dp-key-inputs"></div>
+                <div id="dp-provider-msg" class="dp-msg"></div>
+              </div>
+              <div class="dp-actions dp-actions-stack">
+                <button id="dp-save-provider" class="btn dp-btn-primary">Lưu provider</button>
+                <button id="dp-clear-provider" class="btn dp-btn-secondary">Nhập lại</button>
               </div>
             </div>
-            <div class="dp-form-group">
-              <label class="dp-label">Tham số sinh (JSON)</label>
-              <textarea id="dp-model-params" class="modern-input modern-textarea" rows="2" placeholder="{&quot;temperature&quot;:0.7,&quot;topP&quot;:0.9,&quot;topK&quot;:40}"></textarea>
-            </div>
-            <div id="dp-model-msg" class="dp-msg"></div>
-            <div class="dp-actions dp-actions-stack">
-              <button id="dp-save-model" class="btn dp-btn-primary">Lưu model</button>
-              <button id="dp-clear-model" class="btn dp-btn-secondary">Nhập lại</button>
-            </div>
-          </div>
 
-          <!-- ============ PROVIDER LIST ============ -->
-          <div class="dp-block dp-list-block">
-            <div class="dp-block-header">
-              <span class="dp-block-title">📋 Danh sách provider</span>
+            <!-- ============ MODEL FORM ============ -->
+            <div class="dp-block">
+              <div class="dp-block-header">
+                <span class="dp-block-title">🤖 Thêm / Sửa Model</span>
+              </div>
+              <div class="dp-form-group">
+                <label class="dp-label">ID model</label>
+                <input type="text" id="dp-model-id" class="modern-input" placeholder="nvidia/nemotron-3.5-lightning">
+              </div>
+              <div class="dp-form-group">
+                <label class="dp-label">Nhãn model</label>
+                <input type="text" id="dp-model-label" class="modern-input" placeholder="Nemotron Lightning">
+              </div>
+              <div class="dp-form-group">
+                <label class="dp-label">Provider</label>
+                <select id="dp-model-provider" class="modern-select"></select>
+              </div>
+              <div class="dp-form-group dp-row-inline">
+                <div class="dp-form-half">
+                  <label class="dp-label">Max input (context)</label>
+                  <input type="number" id="dp-model-maxin" class="modern-input" placeholder="ví dụ: 128000">
+                </div>
+                <div class="dp-form-half">
+                  <label class="dp-label">Max output</label>
+                  <input type="number" id="dp-model-maxout" class="modern-input" placeholder="ví dụ: 8192">
+                </div>
+              </div>
+              <div class="dp-form-group">
+                <label class="dp-label">Tham số sinh (JSON)</label>
+                <textarea id="dp-model-params" class="modern-input modern-textarea" rows="2" placeholder="{"temperature":0.7,"topP":0.9,"topK":40}"></textarea>
+              </div>
+              <div id="dp-model-msg" class="dp-msg"></div>
+              <div class="dp-actions dp-actions-stack">
+                <button id="dp-save-model" class="btn dp-btn-primary">Lưu model</button>
+                <button id="dp-clear-model" class="btn dp-btn-secondary">Nhập lại</button>
+              </div>
             </div>
-            <div class="dp-list-scroll" id="dp-provider-list-wrapper">
-              <div id="dp-provider-list" class="dp-list"></div>
-            </div>
-          </div>
 
-          <!-- ============ MODEL LIST ============ -->
-          <div class="dp-block dp-list-block">
-            <div class="dp-block-header">
-              <span class="dp-block-title">📋 Danh sách model</span>
+            <!-- ============ PROVIDER LIST ============ -->
+            <div class="dp-block dp-list-block">
+              <div class="dp-block-header">
+                <span class="dp-block-title">📋 Danh sách provider</span>
+              </div>
+              <div class="dp-list-scroll" id="dp-provider-list-wrapper">
+                <div id="dp-provider-list" class="dp-list"></div>
+              </div>
             </div>
-            <div class="dp-list-scroll" id="dp-model-list-wrapper">
-              <div id="dp-model-list" class="dp-list"></div>
-            </div>
-            <div class="dp-list-footer">
-              <button id="dp-rebuild-select" class="btn dp-btn-outline">🔄 Cập nhật dropdown model trong chat</button>
-            </div>
-          </div>
-        </div>
 
-        <!-- STORAGE & MEMORY MANAGEMENT -->
+            <!-- ============ MODEL LIST ============ -->
+            <div class="dp-block dp-list-block">
+              <div class="dp-block-header">
+                <span class="dp-block-title">📋 Danh sách model</span>
+              </div>
+              <div class="dp-list-scroll" id="dp-model-list-wrapper">
+                <div id="dp-model-list" class="dp-list"></div>
+              </div>
+              <div class="dp-list-footer">
+                <button id="dp-rebuild-select" class="btn dp-btn-outline">🔄 Cập nhật dropdown model trong chat</button>
+              </div>
+            </div>
+
+          </div>
+        </div>        <!-- STORAGE & MEMORY MANAGEMENT -->
         <fieldset class="settings-group" style="border: 2px solid #10b981; background: rgba(16,185,129,0.04);">
           <legend style="color:#10b981; font-weight:700;">💾 Bộ nhớ & Trạng thái Lưu trữ (IndexedDB)</legend>
           <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:10px;line-height:1.4;">
@@ -1971,7 +1978,7 @@
   <script type="module" src="./js/blob.js?v=76"></script>
   <script type="module" src="./js/export.js?v=77"></script>
   <script type="module" src="./js/quota.js?v=78"></script>
-  <script type="module" src="./js/storage-manager.js?v=76"></script>
+  <script type="module" src="./js/storage-manager.js?v=80"></script>
   <script type="module" src="./js/color-tags.js?v=76"></script>
   <script type="module" src="./js/follow-up-chips.js?v=76"></script>
   <script type="module" src="./js/selection-toolbar.js?v=76"></script>
@@ -1984,7 +1991,7 @@
   <script type="module" src="./js/database.js?v=76"></script>
   <script type="module" src="./js/session-cleanup.js?v=76"></script>
   <script type="module" src="./js/model-registry.js?v=76"></script>
-  <script type="module" src="./js/dynamic-providers.js?v=81"></script>
+  <script type="module" src="./js/dynamic-providers.js?v=82"></script>
   <script type="module" src="./js/chat-render.js?v=76"></script>
   <script type="module" src="./js/app.js?v=92"></script>
     <script type="module" src="./js/api-keys.js?v=77"></script>

@@ -2738,3 +2738,64 @@
     max-height: 46vh;
   }
 }
+
+/* ==========================================================================
+   Collapsible Dynamic Provider & Model Section
+   ========================================================================== */
+
+.dp-section-header:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  margin: -4px -8px;
+}
+
+.dp-toggle-icon {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.dp-section-header[aria-expanded="true"] .dp-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.dp-collapsible-content.collapsed {
+  max-height: 0 !important;
+  opacity: 0;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  border-top: none !important;
+}
+
+.dp-collapsible-content:not(.collapsed) {
+  animation: dpExpand 0.3s ease-out;
+}
+
+@keyframes dpExpand {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 2000px;
+  }
+}
+
+/* Mobile adjustments for collapsible section */
+@media (max-width: 640px) {
+  .dp-section-header {
+    padding: 8px 4px;
+  }
+  
+  .dp-section-header:hover {
+    padding: 8px 4px;
+    margin: -8px -4px;
+  }
+  
+  .dp-toggle-icon {
+    font-size: 1rem;
+  }
+}
