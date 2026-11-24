@@ -2330,25 +2330,28 @@
 .key-validate-hint { transition: color 0.2s ease; }
 
 /* ==========================================================================
-   Dynamic Provider & Model Management UI - Responsive
-   Suitable for both mobile and PC browsers
+   Dynamic Provider & Model Management UI - Mobile-first, no horizontal scroll
    ========================================================================== */
 
 .dp-section {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  /* Ngăn mọi phần tử con tràn ngang ra ngoài modal trên điện thoại */
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 .dp-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 14px;
+  padding: 12px;
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  overflow: hidden;
 }
 
 .dp-card-header {
@@ -2356,8 +2359,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 4px;
-  padding-bottom: 8px;
+  margin-bottom: 2px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -2376,28 +2379,22 @@
   white-space: nowrap;
 }
 
-.dp-form-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-
-@media (min-width: 640px) {
-  .dp-form-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+.dp-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
 }
 
 .dp-form-col {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .dp-form-group {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .dp-label {
@@ -2413,6 +2410,7 @@
   margin-left: 4px;
 }
 
+/* Hai ô nhỏ bên nhau trên desktop, ngăn cách trên mobile */
 .dp-row-inline {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2428,7 +2426,7 @@
 .dp-form-half {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .dp-msg {
@@ -2445,15 +2443,21 @@
   margin-top: 4px;
 }
 
+/* Nút bấm: full width trên mobile, hai cột trên desktop */
 .dp-actions {
   display: flex;
   gap: 8px;
   margin-top: 8px;
 }
 
-@media (max-width: 480px) {
+.dp-actions-stack {
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (min-width: 481px) {
   .dp-actions {
-    flex-direction: column;
+    flex-direction: row;
   }
 }
 
@@ -2461,16 +2465,20 @@
   background: var(--accent, #6366f1);
   color: #fff;
   border: none;
-  flex: 1;
-  min-height: 40px;
+  width: 100%;
+  min-height: 44px;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .dp-btn-secondary {
   background: var(--bg-card);
   color: var(--text-main);
   border: 1px solid var(--border);
-  flex: 1;
-  min-height: 40px;
+  width: 100%;
+  min-height: 44px;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .dp-btn-secondary:hover {
@@ -2482,17 +2490,23 @@
   color: var(--primary);
   border: 1px solid var(--primary);
   width: 100%;
-  min-height: 40px;
+  min-height: 44px;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
+.dp-btn-outline:hover {
+  background: var(--primary-container);
+}
+
+/* Danh sách provider / model - không bị lệch ngang */
 .dp-list-card {
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 200px;
+  overflow: hidden;
 }
 
 .dp-list-header {
@@ -2508,6 +2522,7 @@
   flex: 1;
   overflow: auto;
   min-height: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 .dp-list {
@@ -2525,6 +2540,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  overflow: hidden;
 }
 
 .dp-list-item-main {
@@ -2532,27 +2548,34 @@
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .dp-list-item-id {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--text-main);
+  /* Ngắt từ và bỏ qua nếu quá dài, không kéo ngang */
+  overflow-wrap: break-word;
   word-break: break-all;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  min-width: 0;
 }
 
 .dp-list-item-label {
   font-size: 0.72rem;
   color: var(--text-muted);
+  overflow-wrap: break-word;
   word-break: break-all;
+  min-width: 0;
 }
 
 .dp-list-item-meta {
   font-size: 0.68rem;
   color: var(--text-muted);
+  overflow-wrap: break-word;
   word-break: break-all;
+  min-width: 0;
 }
 
 .dp-list-item-actions {
@@ -2594,10 +2617,10 @@
   background: var(--bg-main);
 }
 
-/* Mobile-specific adjustments */
+/* Input trên mobile: font 16px tránh iOS auto-zoom, full width không tràn */
 @media (max-width: 640px) {
   .dp-card {
-    padding: 12px;
+    padding: 10px;
   }
   .dp-list {
     gap: 5px;
@@ -2606,7 +2629,12 @@
     padding: 7px 9px;
   }
   .modern-input, .modern-select {
-    font-size: 16px !important; /* Prevent iOS zoom on focus */
+    font-size: 16px !important;
+    max-width: 100%;
+  }
+  .modal-box {
+    width: 94%;
+    max-width: none;
   }
 }
 
@@ -2614,8 +2642,5 @@
 @media (hover: hover) and (pointer: fine) {
   .dp-btn-primary:hover {
     filter: brightness(1.05);
-  }
-  .dp-btn-outline:hover {
-    background: var(--primary-container);
   }
 }
