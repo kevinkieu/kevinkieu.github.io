@@ -328,7 +328,6 @@ window.makeCollapsibleSection = function (sectionId, headerSelector, contentSele
   content.style.overflow = 'hidden';
 
   // Khôi phục trạng thái từ localStorage
-  const storageKey = 'jarvis_section_collapsed_' + sectionId;
   const saved = localStorage.getItem('jarvis_section_collapsed_' + sectionId);
   if (saved === '1') {
     content.classList.add('collapsed');
@@ -414,7 +413,11 @@ window.initCollapsibleSections = function () {
       fieldset.appendChild(contentWrapper);
     }
 
-    window.makeCollapsibleSection(sectionId, '#' + sectionId + ' legend', '#' + sectionId + ' .collapsible-content-wrapper');
+    window.makeCollapsibleSection(
+      sectionId,
+      '#' + sectionId + ' legend',
+      '#' + sectionId + ' .collapsible-content-wrapper'
+    );
   });
 };
 
