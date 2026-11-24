@@ -64,8 +64,24 @@
               statusEl.style.color = "var(--success)";
               if (btnPersist) btnPersist.style.display = "none";
             } else {
-              statusEl.innerText = "⚪ Chưa bật";
-              statusEl.style.color = "var(--warning)";
+              // Kiểm tra trạng thái permission để gợi ý tốt hơn
+              let permState = 'unknown';
+              try {
+                if (navigator.permissions && navigator.permissions.query) {
+                  const perm = await navigator.permissions.query({ name: 'persistent-storage' });
+                  permState = perm.state; // 'granted' | 'denied' | 'prompt'
+                }
+              } catch (_) {}
+              if (permState === 'denied') {
+                statusEl.innerText = "🔴 Bị chặn (cần bật thủ công)";
+                statusEl.style.color = "var(--danger)";
+              } else if (permState === 'granted') {
+                statusEl.innerText = "🟡 Quyền đã cho, chưa kích hoạt";
+                statusEl.style.color = "var(--warning)";
+              } else {
+                statusEl.innerText = "⚪ Chưa bật";
+                statusEl.style.color = "var(--warning)";
+              }
               if (btnPersist) btnPersist.style.display = "inline-block";
             }
           }
@@ -83,15 +99,56 @@
       });
 
       $('btn-request-persist')?.addEventListener('click', async () => {
-        if (navigator.storage && navigator.storage.persist) {
-          const ok = await navigator.storage.persist();
-          if (ok) {
-            showToast("🛡️ Đã kích hoạt Lưu trữ Vĩnh viễn (Persistent Storage)!", "success");
-          } else {
-            showToast("Trình duyệt chưa cho phép cấp quyền vĩnh viễn.", "warning");
-          }
-          updateStorageStatus();
+        if (!navigator.storage || !navigator.storage.persist) {
+          showToast("Trình duyệt không hỗ trợ Persistent Storage.", "warning");
+          return;
         }
+
+        let ok = false;
+        try {
+          // Trên Chrome Android: permissions.request() KHÔNG hỗ trợ 'persistent-storage'
+          // Chỉ dùng query() để đọc trạng thái, persist() cần user gesture (đã có vì trong click handler)
+          // Nếu permission state là 'granted' hoặc 'prompt' thì persist() có thể thành công
+          let permState = 'unknown';
+          try {
+            if (navigator.permissions && navigator.permissions.query) {
+              const perm = await navigator.permissions.query({ name: 'persistent-storage' });
+              permState = perm.state; // 'granted' | 'denied' | 'prompt'
+            }
+          } catch (_) {}
+
+          // Chỉ request() nếu trình duyệt hỗ trợ (desktop Chrome/Firefox), Android sẽ throw
+          if (permState !== 'granted' && permState !== 'denied') {
+            try {
+              if (navigator.permissions && navigator.permissions.request) {
+                await navigator.permissions.request({ name: 'persistent-storage' });
+              }
+            } catch (_) {
+              // Android Chrome không hỗ trợ request() cho persistent-storage - bỏ qua
+            }
+          }
+
+          ok = await navigator.storage.persist();
+        } catch (e) {
+          console.warn('Lỗi khi kích hoạt persistent storage:', e);
+        }
+
+        if (ok) {
+          showToast("🛡️ Đã kích hoạt Lưu trữ Vĩnh viễn (Persistent Storage)!", "success");
+        } else {
+          // Hướng dẫn tùy platform
+          const ua = navigator.userAgent.toLowerCase();
+          let hint = "Trình duyệt chưa cho phép cấp quyền vĩnh viễn.";
+          if (/android.*chrome/i.test(ua) || /android.*crios/i.test(ua)) {
+            hint += " Trên Chrome Android: vào ⋮ Menu → Cài đặt → Quyền riêng tư & bảo mật → Cài đặt trang web → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn' cho trang này.";
+          } else if (ua.includes('chrome') || ua.includes('edg')) {
+            hint += " Hãy vào chrome://site-settings → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
+          } else if (ua.includes('firefox')) {
+            hint += " Hãy vào about:preferences#privacy → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
+          }
+          showToast(hint, "warning");
+        }
+        updateStorageStatus();
       });
 
       $('btn-restore-session-backup')?.addEventListener('click', async () => {
