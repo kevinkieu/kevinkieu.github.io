@@ -13,7 +13,7 @@
       "PWA",
       "Android (WebView + native medication alarms)"
     ],
-    "versioning": "Android versionCode 72 / versionName 1.1.72 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=92, dynamic-providers.js ?v=81, sync.js ?v=79), sw cache jarvis-ai-pwa-v82"
+    "versioning": "Android versionCode 73 / versionName 1.1.73 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=92, dynamic-providers.js ?v=81, sync.js ?v=79, storage-manager.js ?v=80), sw cache jarvis-ai-pwa-v84"
   },
   "runtime_entry": {
     "web": "index.html",
@@ -84,7 +84,7 @@
     ],
     "service_worker": {
       "file": "sw.js",
-      "cache": "jarvis-ai-pwa-v82",
+      "cache": "jarvis-ai-pwa-v84",
       "precache": "STATIC_ASSETS: index.html, manifest, icons, 5 file CSS, js/{model-registry,chat-render,app,sync,live,tts,translate,rag,search,extract,blob,markdown.worker}.js + toàn bộ CDN_LIBS",
       "html": "network-first (để bản deploy GitHub Pages lên ngay), fallback cache → ./index.html",
       "js_css_cdn": "stale-while-revalidate",
@@ -306,8 +306,8 @@
   "changelog": {
     "file": "CHANGELOG.md",
     "note": "Lịch sử thay đổi chi tiết đã chuyển từ recent_changes sang CHANGELOG.md để boicanhduan.json chỉ còn mô tả kiến trúc.",
-    "entries": 42,
-    "last_change_date": "2026-11-22",
-    "latest_summary": "Sửa lỗi TDZ 'Cannot access providerId before initialization' khi gửi tin bằng model gateway (Kilo/Particle-1, OpenRouter/NVIDIA/Cohere): đổi khai báo trùng tên trong khối ENGINE 0B thành compatProviderId. Chọn & khôi phục model theo cả provider: DynamicProviders.selectModelOption(modelId, providerId) khớp value + data-provider, dùng trong rebuildModelSelect/switchSess/restore Gist và getModelProvider ưu tiên option đang chọn (model id trùng giữa OpenRouter và Kilo); phiên lưu modProvider, giữ nguyên khi rẽ nhánh, đẩy lên Gist qua settings.modelProvider. Backup/Gist phủ đủ provider tự thêm: export.js xuất key + tên + usage của từng provider động dạng JVENC_, import backup gọi DynamicProviders.init(), smart sync so cả bể key/tên/usage, lưu/xoá provider-model tự scheduleAutoSync. Bump app.js ?v=91, dynamic-providers.js ?v=80, sync.js ?v=79, export.js ?v=77. Sau đó: sửa Kilo \"Failed to fetch\" trên APK bằng normalizeCompatBaseUrl() (base URL trỏ thẳng ai-gateway.kilo.ai tự chuyển sang proxy /kilo/v1 lúc gọi request, vì merge Gist chỉ nhận provider máy chưa có nên base URL cũ trên máy không bị ghi đè), toast lỗi mạng in thêm endpoint; sửa nút Sửa provider/model không phản hồi do gán .value vào ô không tồn tại (#dp-provider-type, #dp-model-reasoning) gây TypeError — giờ bỏ qua ô thiếu, toast + cuộn/tô sáng form. Bump app.js ?v=92, dynamic-providers.js ?v=81, sw cache v82."
+    "entries": 43,
+    "last_change_date": "2026-11-24",
+    "latest_summary": "Sửa Persistent Storage trên WebView (APK Android): phát hiện môi trường WebView (JarvisNativeBridge.isNativeApp / ua / origin) → ẩn nút Kích hoạt, hiển thị '🟢 Đã bảo vệ bởi WebView + Native Bridge' (IndexedDB + SharedPreferences đã persistent). Trình duyệt thường giữ logic Permissions API chuẩn. Sửa build-apk.bat chỉ xuất 1 file APK (JarvisAI.apk). Sửa lỗi 'App Registration Verification failed' khi cài APK: assetlinks.json cập nhật package_name com.kevinkieu.jarvisai + SHA256 đúng keystore. Sửa tràn ngang mục API Keys (min-width:0 + flex-wrap) và chồng chéo Provider/Model Management (fieldset→div, display:block). Bump versionCode 73, sw cache v84, sync assets."
   }
 }
