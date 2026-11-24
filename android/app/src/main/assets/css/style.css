@@ -2337,88 +2337,123 @@
 .key-validate-hint { transition: color 0.2s ease; }
 
 /* ==========================================================================
-   Dynamic Provider & Model Management UI - Mobile-safe, no overlap, no cut-off
+   Dynamic Provider & Model Management UI - TRIỆT ĐỂ fix overlap/cut-off
    ========================================================================== */
+
+/* Reset fieldset & legend - eliminación hoàn toàn style mặc định của trình duyệt */
+.dp-section fieldset {
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-width: 0 !important;
+  display: block !important;
+  background: transparent !important;
+  box-sizing: border-box !important;
+}
+.dp-section legend {
+  display: block !important;
+  padding: 0 !important;
+  margin: 0 0 8px 0 !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
 
 .dp-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   max-width: 100%;
   overflow-x: hidden;
   min-width: 0;
+  box-sizing: border-box;
 }
 
-/* Mỗi block (form provider, form model, danh sách...) cách nhau rõ ràng, không đè chồng */
+/* Mỗi block (form provider, form model, danh sách...) cách nhau rõ ràng */
 .dp-block {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 12px;
+  padding: 10px;
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 10px;
-  overflow: visible;
+  gap: 6px;
+  margin-bottom: 8px;
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden;
 }
 
-/* Block dạng danh sách (provider list, model list) */
 .dp-list-block {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .dp-block-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 2px;
-  padding-bottom: 6px;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding-bottom: 5px;
   border-bottom: 1px solid var(--border);
+  box-sizing: border-box;
 }
 
 .dp-block-title {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--text-main);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
+  min-width: 0;
 }
 
 /* --- Form fields --- */
 .dp-form-group {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .dp-label {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-muted);
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .dp-hint {
   font-weight: 400;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
-  margin-left: 4px;
+  margin-left: 3px;
 }
 
 .dp-msg {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
-  margin-top: 4px;
-  min-height: 1.2em;
+  margin-top: 3px;
+  min-height: 1.1em;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
-/* Hai ô nhỏ bên nhau trên desktop; trên mobile xếp thành 1 cột để không bị cắt */
+/* Hai ô nhỏ bên nhau trên desktop; trên mobile xếp thành 1 cột */
 .dp-row-inline {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 6px;
+  box-sizing: border-box;
 }
 
 @media (max-width: 480px) {
@@ -2430,28 +2465,26 @@
 .dp-form-half {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
+  min-width: 0;
 }
 
 /* Danh sách key input bên trong provider form */
 .dp-key-inputs {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  margin-top: 4px;
+  gap: 4px;
+  margin-top: 3px;
 }
 
-/* --- Buttons --- */
+/* --- Buttons - full width, không bị cắt chữ --- */
 .dp-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
-  width: 100%;
-}
-
-.dp-actions-stack {
   flex-direction: column;
   gap: 6px;
+  margin-top: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (min-width: 481px) {
@@ -2460,22 +2493,26 @@
   }
 }
 
+.dp-actions-stack {
+  flex-direction: column;
+  gap: 6px;
+}
+
 .dp-btn-primary,
 .dp-btn-secondary,
 .dp-btn-outline {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   width: 100%;
   min-height: 44px;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  padding: 0 14px;
+  padding: 0 12px;
   box-sizing: border-box;
   white-space: normal;
   word-break: break-word;
   overflow-wrap: break-word;
   text-align: center;
+  line-height: 1.25;
 }
 
 .dp-btn-primary {
@@ -2490,18 +2527,10 @@
   border: 1px solid var(--border);
 }
 
-.dp-btn-secondary:hover {
-  background: var(--bg-sidebar);
-}
-
 .dp-btn-outline {
   background: transparent;
   color: var(--primary);
   border: 1px solid var(--primary);
-}
-
-.dp-btn-outline:hover {
-  background: var(--primary-container);
 }
 
 /* --- Lists (provider list & model list) --- */
@@ -2511,16 +2540,18 @@
   min-height: 0;
   -webkit-overflow-scrolling: touch;
   margin-top: 4px;
+  box-sizing: border-box;
 }
 
 .dp-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   padding: 0;
+  box-sizing: border-box;
 }
 
-/* Mỗi item trong danh sách: ID/label bên trái (xuống dòng nếu dài), hành động bên phải */
+/* Mỗi item trong danh sách - ngăn chặn chồng chéo */
 .dp-list-item {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -2528,113 +2559,114 @@
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  overflow: visible;
+  gap: 5px;
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .dp-list-item-main {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .dp-list-item-id {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-main);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  /* Cho phép xuống dòng nếu ID quá dài, không kéo ngang */
   overflow-wrap: break-word;
   word-break: break-all;
+  white-space: pre-wrap;
+  min-width: 0;
 }
 
 .dp-list-item-label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
   overflow-wrap: break-word;
   word-break: break-all;
+  white-space: pre-wrap;
+  min-width: 0;
 }
 
 .dp-list-item-meta {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   color: var(--text-muted);
   overflow-wrap: break-word;
   word-break: break-all;
+  white-space: pre-wrap;
+  min-width: 0;
 }
 
 .dp-list-item-actions {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
   align-self: flex-start;
+  min-width: 0;
 }
 
-.dp-btn {
-  font-size: 0.72rem;
-  padding: 4px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-main);
-  cursor: pointer;
-  min-height: 32px;
+/* Nút nhỏ trong danh sách item */
+.dp-list-item-actions .dp-btn {
+  font-size: 0.68rem;
+  padding: 3px 7px;
+  min-height: 30px;
   white-space: nowrap;
 }
 
-.dp-btn:hover {
-  background: var(--primary-container);
-  color: var(--primary);
-  border-color: var(--primary);
+/* --- Inputs & Selects - bắt buộc full width, không bị cắt --- */
+.dp-section input,
+.dp-section select,
+.dp-section textarea {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
 }
 
-.dp-btn.danger {
-  color: var(--danger);
-  border-color: transparent;
+.dp-section .modern-input,
+.dp-section .modern-select,
+.dp-section .modern-textarea {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
-.dp-btn.danger:hover {
-  background: var(--danger-bg);
-}
-
-.dp-list-footer {
-  padding: 8px 10px;
-  border-top: 1px solid var(--border);
-  background: var(--bg-main);
-  margin-top: 6px;
-}
-
-/* Input trên mobile: font 16px tránh iOS auto-zoom, full width không bị cắt */
+/* Mobile-specific adjustments */
 @media (max-width: 640px) {
   .dp-block {
-    padding: 10px;
+    padding: 8px;
   }
   .dp-list {
-    gap: 5px;
+    gap: 4px;
   }
   .dp-list-item {
-    padding: 7px 9px;
+    padding: 6px 8px;
   }
   .modern-input, .modern-select {
     font-size: 16px !important;
-    max-width: 100%;
+    max-width: 100% !important;
   }
   .modal-box {
-    width: 96%;
+    width: 98%;
     max-width: none !important;
   }
   .modal-scroll-body {
-    padding: 10px 12px !important;
+    padding: 8px 10px !important;
   }
   .settings-group {
-    padding: 8px !important;
+    padding: 6px !important;
   }
   .dp-btn-primary,
   .dp-btn-secondary,
   .dp-btn-outline {
     padding: 0 10px !important;
     min-height: 44px;
-    font-size: 0.85rem;
-    line-height: 1.2;
+    font-size: 0.82rem;
+    line-height: 1.25;
     white-space: normal;
     word-break: break-word;
   }
@@ -2642,7 +2674,7 @@
     padding-bottom: 4px;
   }
   .dp-form-group {
-    gap: 4px;
+    gap: 3px;
   }
 }
 
