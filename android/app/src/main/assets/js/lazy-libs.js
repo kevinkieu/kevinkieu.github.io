@@ -68,7 +68,7 @@
   window.ensureLib = async function ensureLib(name) {
     const lib = LIBS[name];
     if (!lib) return Promise.reject(new Error('Thư viện không được hỗ trợ: ' + name));
-    
+
     // Check if already ready (using custom readyCheck or default get)
     const isReady = lib.readyCheck ? lib.readyCheck() : !!lib.get();
     if (isReady) return lib.get();
@@ -93,7 +93,10 @@
             };
             checkReady();
             // Timeout after 10 seconds
-            setTimeout(() => reject(new Error('Timeout waiting for ' + lib.label + ' to be ready')), 10000);
+            setTimeout(
+              () => reject(new Error('Timeout waiting for ' + lib.label + ' to be ready')),
+              10000
+            );
           });
         } else {
           const value = lib.get();

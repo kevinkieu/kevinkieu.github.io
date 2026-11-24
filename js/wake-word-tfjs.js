@@ -68,7 +68,22 @@
         throw new Error('TF.js hoặc Speech Commands chưa load được');
       }
 
+      // Wait for speechCommands.create to be available (library might need extra time to initialize)
+      let retries = 0;
+      while (!window.speechCommands || typeof window.speechCommands.create !== 'function') {
+        if (retries++ > 50) {
+          // 5 seconds max
+          throw new Error('Speech Commands library loaded but create() not available');
+        }
+        console.log('[WakeWord-TFJS] Waiting for speechCommands.create...', retries);
+        await new Promise(r => setTimeout(r, 100));
+      }
+
       console.log('[WakeWord-TFJS] Dependencies loaded, TF version:', window.tf.version.tfjs);
+      console.log(
+        '[WakeWord-TFJS] speechCommands.create available:',
+        typeof window.speechCommands.create
+      );
       return true;
     } catch (err) {
       console.error('[WakeWord-TFJS] Load dependencies failed:', err);
@@ -128,6 +143,13 @@
           },
         });
       }
+
+      // Debug: log recognizer state
+      console.log('[WakeWord-TFJS] Recognizer state:', {
+        hasRecognizer: !!recognizer,
+        hasCollectExample: recognizer ? typeof recognizer.collectExample : 'no recognizer',
+        wordLabels: recognizer ? recognizer.wordLabels() : 'N/A',
+      });
 
       // Ghi thêm 1 ví dụ cho class custom
       console.log('[WakeWord-TFJS] Recording training example...');
