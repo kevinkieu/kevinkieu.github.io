@@ -2330,19 +2330,19 @@
 .key-validate-hint { transition: color 0.2s ease; }
 
 /* ==========================================================================
-   Dynamic Provider & Model Management UI - Mobile-first, no horizontal scroll
+   Dynamic Provider & Model Management UI - Mobile-safe, no overlap, no cut-off
    ========================================================================== */
 
 .dp-section {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  /* Ngăn mọi phần tử con tràn ngang ra ngoài modal trên điện thoại */
-  overflow-x: hidden;
+  gap: 12px;
+  /* Không dùng overflow: hidden trên section cha — làm bị cắt nội dung con */
   max-width: 100%;
 }
 
-.dp-card {
+/* Mỗi block (form provider, form model, danh sách...) cách nhau rõ ràng, không đè chồng */
+.dp-block {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -2350,51 +2350,40 @@
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  overflow: hidden;
+  gap: 8px;
+  margin-bottom: 10px;
+  overflow: visible;
 }
 
-.dp-card-header {
+/* Block dạng danh sách (provider list, model list) */
+.dp-list-block {
+  margin-bottom: 12px;
+}
+
+.dp-block-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   margin-bottom: 2px;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
 }
 
-.dp-card-title {
+.dp-block-title {
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-main);
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
-.dp-card-subtitle {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-.dp-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 4px 0;
-}
-
-.dp-form-col {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
+/* --- Form fields --- */
 .dp-form-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .dp-label {
@@ -2410,7 +2399,14 @@
   margin-left: 4px;
 }
 
-/* Hai ô nhỏ bên nhau trên desktop, ngăn cách trên mobile */
+.dp-msg {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  min-height: 1.2em;
+}
+
+/* Hai ô nhỏ bên nhau trên desktop; trên mobile xếp thành 1 cột để không bị cắt */
 .dp-row-inline {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2426,16 +2422,10 @@
 .dp-form-half {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
-.dp-msg {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  margin-top: 4px;
-  min-height: 1.2em;
-}
-
+/* Danh sách key input bên trong provider form */
 .dp-key-inputs {
   display: flex;
   flex-direction: column;
@@ -2443,7 +2433,7 @@
   margin-top: 4px;
 }
 
-/* Nút bấm: full width trên mobile, hai cột trên desktop */
+/* --- Buttons --- */
 .dp-actions {
   display: flex;
   gap: 8px;
@@ -2499,39 +2489,23 @@
   background: var(--primary-container);
 }
 
-/* Danh sách provider / model - không bị lệch ngang */
-.dp-list-card {
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.dp-list-header {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-main);
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-main);
-}
-
+/* --- Lists (provider list & model list) --- */
 .dp-list-scroll {
   flex: 1;
   overflow: auto;
   min-height: 0;
   -webkit-overflow-scrolling: touch;
+  margin-top: 4px;
 }
 
 .dp-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 6px;
+  padding: 0;
 }
 
+/* Mỗi item trong danh sách: ID/label bên trái (xuống dòng nếu dài), hành động bên phải */
 .dp-list-item {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -2539,27 +2513,24 @@
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  overflow: hidden;
+  gap: 6px;
+  overflow: visible;
 }
 
 .dp-list-item-main {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .dp-list-item-id {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--text-main);
-  /* Ngắt từ và bỏ qua nếu quá dài, không kéo ngang */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* Cho phép xuống dòng nếu ID quá dài, không kéo ngang */
   overflow-wrap: break-word;
   word-break: break-all;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  min-width: 0;
 }
 
 .dp-list-item-label {
@@ -2567,7 +2538,6 @@
   color: var(--text-muted);
   overflow-wrap: break-word;
   word-break: break-all;
-  min-width: 0;
 }
 
 .dp-list-item-meta {
@@ -2575,13 +2545,13 @@
   color: var(--text-muted);
   overflow-wrap: break-word;
   word-break: break-all;
-  min-width: 0;
 }
 
 .dp-list-item-actions {
   display: flex;
   gap: 6px;
   flex-shrink: 0;
+  align-self: flex-start;
 }
 
 .dp-btn {
@@ -2615,11 +2585,12 @@
   padding: 8px 10px;
   border-top: 1px solid var(--border);
   background: var(--bg-main);
+  margin-top: 6px;
 }
 
-/* Input trên mobile: font 16px tránh iOS auto-zoom, full width không tràn */
+/* Input trên mobile: font 16px tránh iOS auto-zoom, full width không bị cắt */
 @media (max-width: 640px) {
-  .dp-card {
+  .dp-block {
     padding: 10px;
   }
   .dp-list {
