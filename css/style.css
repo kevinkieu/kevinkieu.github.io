@@ -1163,6 +1163,9 @@
       padding: 14px;
       background: var(--bg-main);
       box-sizing: border-box;
+      /* fieldset mặc định có min-inline-size: min-content -> tự phình rộng hơn
+         modal khi bên trong có hàng flex/bảng rộng, gây tràn ngang, không cuộn được */
+      min-width: 0;
     }
     .settings-group legend {
       font-weight: 700;
@@ -2648,5 +2651,90 @@
   }
   .dp-btn-outline:hover {
     background: var(--primary-container);
+  }
+}
+
+/* ==========================================================================
+   Hàng API Key & hàng "Key xoay tua" - không tràn ngang trên mobile
+   ========================================================================== */
+
+/* Hàng key: #N + tên gợi nhớ + key + badge.
+   Trước đây là flex không wrap với ô tên gợi nhớ flex:0 0 115px nên cần ~440px,
+   vượt bề rộng modal -> tràn ra ngoài và bị cắt (không cuộn ngang được). */
+.api-key-row {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.api-key-row > span:first-child {
+  flex-shrink: 0;
+}
+
+.api-key-row > input {
+  min-width: 0;
+}
+
+/* Hàng "nhãn + select" ở đầu mỗi mục API Keys */
+.settings-inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.settings-inline-row > .field-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.settings-inline-row > .modern-select,
+.settings-inline-row > .modern-input {
+  flex: 1 1 180px;
+  min-width: 0;
+  width: auto;
+}
+
+@media (max-width: 640px) {
+  .api-key-row {
+    gap: 6px;
+  }
+
+  /* Dòng 1: #N + badge hạn ngạch | Dòng 2: tên gợi nhớ | Dòng 3: key */
+  .api-key-row > span:first-child {
+    order: 1;
+  }
+
+  .api-key-row > span:last-child {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .api-key-row > input[type="text"] {
+    order: 3;
+    flex: 1 1 100% !important;
+    width: 100% !important;
+  }
+
+  .api-key-row > input[type="password"] {
+    order: 4;
+    flex: 1 1 100% !important;
+    width: 100% !important;
+  }
+
+  .api-key-row > input {
+    min-width: 0 !important;
+  }
+
+  .settings-inline-row > .field-label,
+  .settings-inline-row > .modern-select,
+  .settings-inline-row > .modern-input {
+    flex: 1 1 100%;
+  }
+
+  /* Mỗi key cao hơn nên nới vùng cuộn cho dễ nhìn */
+  .api-keys-grid {
+    max-height: 46vh;
   }
 }
