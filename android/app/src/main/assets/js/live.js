@@ -1034,7 +1034,7 @@ async function initWakeWordIntegration() {
     }
   });
 
-  window.WakeWordTFJS.onStateChange((state) => {
+  window.WakeWordTFJS.onStateChange(state => {
     console.log('[Live] WakeWordTFJS state:', state);
     const indicator = $('wake-word-indicator');
     if (indicator) {
@@ -1055,7 +1055,9 @@ async function initWakeWordIntegration() {
     }
     if (phase === 'done') {
       wakeWordTrained = true;
-      setTimeout(() => { progressEl.style.display = 'none'; }, 3000);
+      setTimeout(() => {
+        progressEl.style.display = 'none';
+      }, 3000);
     }
   });
 
@@ -1066,7 +1068,8 @@ async function initWakeWordIntegration() {
       await window.WakeWordTFJS.init();
       wakeWordActive = true;
       console.log('[Live] Wake word TFJS initialized');
-      if (typeof showToast === 'function') showToast('🎙️ Wake word ready. Hãy train "Hey Jarvis" trong Settings.', 'info');
+      if (typeof showToast === 'function')
+        showToast('🎙️ Wake word ready. Hãy train "Hey Jarvis" trong Settings.', 'info');
     } catch (e) {
       console.warn('[Live] Wake word init failed:', e);
     }
@@ -1078,7 +1081,7 @@ function updateWakeWordTrainingUI(state) {
   const trainBtn = $('btn-train-wake-word');
   const startBtn = $('btn-start-wake-word');
   const remainingEl = $('wake-word-remaining');
-  
+
   if (statusEl) {
     const labels = {
       idle: '⏸️ Chưa khởi tạo',
@@ -1087,21 +1090,22 @@ function updateWakeWordTrainingUI(state) {
       training: '🎙️ Đang train...',
       listening: '🟢 Đang lắng nghe "Hey Jarvis"',
       detected: '🎉 Phát hiện!',
-      error: '❌ Lỗi'
+      error: '❌ Lỗi',
     };
     statusEl.innerText = labels[state] || state;
   }
-  
+
   if (trainBtn && window.WakeWordTFJS) {
     const remaining = window.WakeWordTFJS.getRemainingExamples();
     trainBtn.disabled = state === 'training' || state === 'listening';
-    trainBtn.innerText = remaining > 0 ? `🎙️ Ghi mẫu (còn ${remaining})` : '✅ Đủ mẫu - Train model';
+    trainBtn.innerText =
+      remaining > 0 ? `🎙️ Ghi mẫu (còn ${remaining})` : '✅ Đủ mẫu - Train model';
   }
-  
+
   if (startBtn) {
     startBtn.disabled = !window.WakeWordTFJS?.isTrained() || state === 'listening';
   }
-  
+
   if (remainingEl && window.WakeWordTFJS) {
     remainingEl.innerText = `Cần thêm ${window.WakeWordTFJS.getRemainingExamples()} mẫu nữa`;
   }
@@ -1111,12 +1115,15 @@ function updateWakeWordTrainingUI(state) {
 function enableBargeIn() {
   // Interrupt live audio playback
   const originalAppendLiveUserText = window.appendLiveUserText;
-  window.appendLiveUserText = function(delta) {
+  window.appendLiveUserText = function (delta) {
     if (livePlaybackState && livePlaybackState.activeSources.length > 0) {
       // User nói trong lúc Jarvis đang nói -> barge-in
       console.log('[Live] Barge-in detected, interrupting AI speech');
       livePlaybackState.activeSources.forEach(s => {
-        try { s.stop(); s.disconnect(); } catch {}
+        try {
+          s.stop();
+          s.disconnect();
+        } catch {}
       });
       livePlaybackState = { nextPlayTime: liveAudioCtx?.currentTime || 0, activeSources: [] };
       const orb = $('live-orb');
@@ -1142,14 +1149,15 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // UI Helper: Toggle wake word từ settings
-window.toggleWakeWord = async function(enabled) {
+window.toggleWakeWord = async function (enabled) {
   localStorage.setItem('jarvis_wake_word_enabled', enabled ? 'true' : 'false');
   if (enabled) {
     if (!wakeWordActive && window.WakeWordTFJS) {
       try {
         await window.WakeWordTFJS.init();
         wakeWordActive = true;
-        if (typeof showToast === 'function') showToast('🎙️ Wake word initialized. Hãy train "Hey Jarvis" trong Settings.', 'success');
+        if (typeof showToast === 'function')
+          showToast('🎙️ Wake word initialized. Hãy train "Hey Jarvis" trong Settings.', 'success');
       } catch (e) {
         console.error('[Live] Wake word init failed:', e);
         if (typeof showToast === 'function') showToast('Wake word failed: ' + e.message, 'danger');
@@ -1167,12 +1175,13 @@ window.toggleWakeWord = async function(enabled) {
 };
 
 // Train wake word: thêm 1 mẫu giọng nói
-window.trainWakeWord = async function() {
+window.trainWakeWord = async function () {
   if (!window.WakeWordTFJS) return;
   try {
     const done = await window.WakeWordTFJS.trainKeyword(1500); // 1.5s mỗi mẫu
     if (done) {
-      if (typeof showToast === 'function') showToast('🎉 Train xong! Sẵn sàng phát hiện "Hey Jarvis"', 'success');
+      if (typeof showToast === 'function')
+        showToast('🎉 Train xong! Sẵn sàng phát hiện "Hey Jarvis"', 'success');
     }
   } catch (e) {
     console.error('[Live] Train wake word failed:', e);
@@ -1181,10 +1190,11 @@ window.trainWakeWord = async function() {
 };
 
 // Bắt đầu lắng nghe wake word (phải train xong trước)
-window.startWakeWordListening = async function() {
+window.startWakeWordListening = async function () {
   if (!window.WakeWordTFJS) return;
   if (!window.WakeWordTFJS.isTrained()) {
-    if (typeof showToast === 'function') showToast('⚠️ Chưa train model! Hãy ghi âm trước.', 'warning');
+    if (typeof showToast === 'function')
+      showToast('⚠️ Chưa train model! Hãy ghi âm trước.', 'warning');
     return;
   }
   try {
@@ -1197,7 +1207,7 @@ window.startWakeWordListening = async function() {
 };
 
 // Dừng lắng nghe wake word
-window.stopWakeWordListening = function() {
+window.stopWakeWordListening = function () {
   if (window.WakeWordTFJS) {
     window.WakeWordTFJS.stop();
     if (typeof showToast === 'function') showToast('⏸️ Đã dừng lắng nghe', 'info');
@@ -1205,7 +1215,7 @@ window.stopWakeWordListening = function() {
 };
 
 // Reset training data
-window.resetWakeWordTraining = function() {
+window.resetWakeWordTraining = function () {
   if (window.WakeWordTFJS) {
     window.WakeWordTFJS.resetTraining();
     wakeWordTrained = false;

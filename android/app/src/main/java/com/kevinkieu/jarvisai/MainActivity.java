@@ -154,6 +154,10 @@ public class MainActivity extends AppCompatActivity {
                         webView.evaluateJavascript("if (window.openMedicationTab) window.openMedicationTab();", null);
                     }
                 }
+                // Trigger auto-start wake word nếu có pending từ Quick Settings Tile
+                if (pendingAutoStartWakeWord) {
+                    triggerAutoStartWakeWord(pendingAutoStartWakeWord);
+                }
             });
         }
 
@@ -387,6 +391,18 @@ public class MainActivity extends AppCompatActivity {
 
     private void handleOpenTabIntent(Intent intent) {
         if (intent == null) return;
+        
+        // Xử lý intent từ Quick Settings Tile: auto-start wake word
+        // Constants từ JarvisTileService (Kotlin): ACTION_AUTO_START_WAKEWORD, EXTRA_START_LISTENING
+        if ("com.kevinkieu.jarvisai.ACTION_AUTO_START_WAKEWORD".equals(intent.getAction())) {
+            boolean startListening = intent.getBooleanExtra("start_listening", true);
+            pendingAutoStartWakeWord = startListening;
+            if (webView != null && isPageLoaded) {
+                triggerAutoStartWakeWord(startListening);
+            }
+            return;
+        }
+        
         String openTab = intent.getStringExtra("OPEN_TAB");
         if ("medication".equals(openTab)) {
             pendingOpenTab = "medication";
@@ -397,6 +413,19 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         }
+    }
+    
+    // Flag để auto-start wake word khi page đã load xong
+    private boolean pendingAutoStartWakeWord = false;
+    
+    private void triggerAutoStartWakeWord(boolean startListening) {
+        if (webView == null) return;
+        String js = String.format(
+            "if (window.toggleWakeWord) window.toggleWakeWord(%b); if (%b && window.startWakeWordListening) window.startWakeWordListening();",
+            startListening, startListening
+        );
+        webView.evaluateJavascript(js, null);
+        pendingAutoStartWakeWord = false;
     }
 
     @SuppressLint("SetJavaScriptEnabled")

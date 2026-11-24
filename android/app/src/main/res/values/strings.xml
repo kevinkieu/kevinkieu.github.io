@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Jarvis AI</string>
+
+    <!-- Quick Settings Tile -->
+    <string name="tile_label">Hey Jarvis</string>
+    <string name="tile_label_listening">Hey Jarvis (Đang nghe)</string>
+    <string name="tile_subtitle_off">Chạm để bật lắng nghe</string>
+    <string name="tile_subtitle_on">Đang lắng nghe... Chạm để tắt</string>
 </resources>
