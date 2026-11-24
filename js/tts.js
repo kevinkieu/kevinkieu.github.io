@@ -1246,3 +1246,52 @@ function initTTSStudio() {
 
 window.initTTSStudio = initTTSStudio;
 initTTSStudio();
+
+// ==========================================
+// BARGE-IN SUPPORT: Dừng TTS ngay lập tức
+// ==========================================
+function stopSpeaking() {
+  const audioEl = $('tts-audio-element');
+  if (audioEl) {
+    try {
+      audioEl.pause();
+      audioEl.currentTime = 0;
+    } catch (_) {}
+  }
+  if (ttsAudioCtx && ttsAudioCtx.state === 'running') {
+    ttsAudioCtx.suspend().catch(() => {});
+  }
+  if (ttsAnimId) {
+    cancelAnimationFrame(ttsAnimId);
+    ttsAnimId = null;
+  }
+  const canvas = $('tts-visualizer-canvas');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  console.log('[TTS] Stopped (barge-in)');
+}
+window.stopSpeaking = stopSpeaking;
+
+// Pause/Resume helpers
+function pauseSpeaking() {
+  const audioEl = $('tts-audio-element');
+  if (audioEl && !audioEl.paused) {
+    audioEl.pause();
+    if (ttsAnimId) {
+      cancelAnimationFrame(ttsAnimId);
+      ttsAnimId = null;
+    }
+  }
+}
+window.pauseSpeaking = pauseSpeaking;
+
+function resumeSpeaking() {
+  const audioEl = $('tts-audio-element');
+  if (audioEl && audioEl.paused) {
+    resumeTTSAudioContext();
+    audioEl.play().catch(() => {});
+  }
+}
+window.resumeSpeaking = resumeSpeaking;

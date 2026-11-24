@@ -19,6 +19,19 @@
       url: 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
       get: () => window.html2pdf,
     },
+    // TensorFlow.js + Speech Commands cho Wake Word "Hey Jarvis"
+    // TF.js core (cần tải trước Speech Commands)
+    tfjs: {
+      label: 'TensorFlow.js Core',
+      url: 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js',
+      get: () => window.tf,
+    },
+    speechCommands: {
+      label: 'Speech Commands (Transfer Learning)',
+      url: 'https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.2/dist/speech-commands.min.js',
+      get: () => window.speechCommands,
+      dependsOn: 'tfjs', // Phải tải tfjs trước
+    },
   };
 
   const pending = Object.create(null);
@@ -48,12 +61,19 @@
   }
 
   // Trả về thư viện đã tải (hoặc tải mới). Không bao giờ gọi 2 lần song song.
-  window.ensureLib = function ensureLib(name) {
+  // Hỗ trợ dependsOn: tự tải thư viện phụ thuộc trước.
+  window.ensureLib = async function ensureLib(name) {
     const lib = LIBS[name];
     if (!lib) return Promise.reject(new Error('Thư viện không được hỗ trợ: ' + name));
     const ready = lib.get();
-    if (ready) return Promise.resolve(ready);
+    if (ready) return ready;
     if (pending[name]) return pending[name];
+
+    // Tải dependency trước nếu có
+    if (lib.dependsOn) {
+      await ensureLib(lib.dependsOn);
+    }
+
     pending[name] = injectScript(lib.url)
       .then(() => {
         const value = lib.get();
