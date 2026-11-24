@@ -4,12 +4,21 @@
    Chỉ kích hoạt giao diện khi chạy trong Native Android App (hoặc khi bật thủ công)
    ========================================================================== */
 
-(function() {
+(function () {
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const showToast = (msg, type) => (typeof window.showToast === 'function') ? window.showToast(msg, type) : console.log(`[${type}] ${msg}`);
-  const escapeHtml = str => (typeof window.escapeHtml === 'function') ? window.escapeHtml(str) : String(str || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+  const showToast = (msg, type) =>
+    typeof window.showToast === 'function'
+      ? window.showToast(msg, type)
+      : console.log(`[${type}] ${msg}`);
+  const escapeHtml = str =>
+    typeof window.escapeHtml === 'function'
+      ? window.escapeHtml(str)
+      : String(str || '').replace(
+          /[&<>"']/g,
+          m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]
+        );
 
   var maxMedications = [];
   var maxMedHistory = [];
@@ -17,7 +26,10 @@
   var maxEditingMedId = null;
 
   function isNativeAndroidApp() {
-    return Boolean(window.JarvisNativeBridge && (window.JarvisNativeBridge.isNativeApp || window.JarvisNativeBridge.getItem));
+    return Boolean(
+      window.JarvisNativeBridge &&
+      (window.JarvisNativeBridge.isNativeApp || window.JarvisNativeBridge.getItem)
+    );
   }
 
   function getTodayDateStr() {
@@ -66,7 +78,7 @@
             meal: 'Sau bữa ăn (30 phút) 🍽️',
             notes: 'Uống nhiều nước để hấp thu tốt',
             active: true,
-            createdAt: Date.now()
+            createdAt: Date.now(),
           },
           {
             id: 'med_sample_2',
@@ -78,8 +90,8 @@
             meal: 'Trong bữa ăn 🥗',
             notes: 'Tốt cho mắt và trí nhớ',
             active: true,
-            createdAt: Date.now()
-          }
+            createdAt: Date.now(),
+          },
         ];
         saveMedicationData(false);
       }
@@ -101,7 +113,10 @@
         if (typeof window.JarvisNativeBridge.commit === 'function') {
           window.JarvisNativeBridge.commit();
         }
-        if (syncAlarms && typeof window.JarvisNativeBridge.rescheduleAllMedications === 'function') {
+        if (
+          syncAlarms &&
+          typeof window.JarvisNativeBridge.rescheduleAllMedications === 'function'
+        ) {
           window.JarvisNativeBridge.rescheduleAllMedications();
         }
       } else {
@@ -121,13 +136,17 @@
     let totalDosesToday = 0;
     let takenDosesToday = 0;
 
-    maxMedications.filter(m => m.active).forEach(med => {
-      (med.times || []).forEach(t => {
-        totalDosesToday++;
-        const isTaken = maxMedHistory.some(h => h.medId === med.id && h.timeStr === t && h.date === todayStr);
-        if (isTaken) takenDosesToday++;
+    maxMedications
+      .filter(m => m.active)
+      .forEach(med => {
+        (med.times || []).forEach(t => {
+          totalDosesToday++;
+          const isTaken = maxMedHistory.some(
+            h => h.medId === med.id && h.timeStr === t && h.date === todayStr
+          );
+          if (isTaken) takenDosesToday++;
+        });
       });
-    });
 
     const pending = Math.max(0, totalDosesToday - takenDosesToday);
     if (pending > 0) {
@@ -180,13 +199,17 @@
     const allDoses = [];
     activeMeds.forEach(med => {
       (med.times || []).forEach(timeStr => {
-        const isTaken = maxMedHistory.some(h => h.medId === med.id && h.timeStr === timeStr && h.date === todayStr);
-        const historyRecord = maxMedHistory.find(h => h.medId === med.id && h.timeStr === timeStr && h.date === todayStr);
+        const isTaken = maxMedHistory.some(
+          h => h.medId === med.id && h.timeStr === timeStr && h.date === todayStr
+        );
+        const historyRecord = maxMedHistory.find(
+          h => h.medId === med.id && h.timeStr === timeStr && h.date === todayStr
+        );
         allDoses.push({
           med,
           timeStr,
           isTaken,
-          takenRecord: historyRecord
+          takenRecord: historyRecord,
         });
       });
     });
@@ -211,16 +234,21 @@
     if (speechEl) {
       function getMaxGreeting() {
         const h = new Date().getHours();
-        if (h >= 5 && h < 11) return "Gâu Gâu! Chào buổi sáng! Hãy khởi đầu ngày mới tràn đầy năng lượng và nhớ uống thuốc đầy đủ nhé!";
-        if (h >= 11 && h < 14) return "Gâu Gâu! Chúc bạn bữa trưa ngon miệng! Nhớ kiểm tra cữ thuốc buổi trưa nha!";
-        if (h >= 14 && h < 18) return "Gâu Gâu! Buổi chiều an lành! Đừng quên uống đủ nước và cữ thuốc buổi chiều nhé!";
-        return "Gâu Gâu! Buổi tối thư giãn! Nhớ cữ thuốc buổi tối trước khi nghỉ ngơi để ngủ thật ngon nhé!";
+        if (h >= 5 && h < 11)
+          return 'Gâu Gâu! Chào buổi sáng! Hãy khởi đầu ngày mới tràn đầy năng lượng và nhớ uống thuốc đầy đủ nhé!';
+        if (h >= 11 && h < 14)
+          return 'Gâu Gâu! Chúc bạn bữa trưa ngon miệng! Nhớ kiểm tra cữ thuốc buổi trưa nha!';
+        if (h >= 14 && h < 18)
+          return 'Gâu Gâu! Buổi chiều an lành! Đừng quên uống đủ nước và cữ thuốc buổi chiều nhé!';
+        return 'Gâu Gâu! Buổi tối thư giãn! Nhớ cữ thuốc buổi tối trước khi nghỉ ngơi để ngủ thật ngon nhé!';
       }
 
       if (total === 0) {
-        speechEl.innerText = "Gâu Gâu! Chưa có lịch uống thuốc nào hôm nay. Hãy thêm thuốc vào Tủ nhé!";
+        speechEl.innerText =
+          'Gâu Gâu! Chưa có lịch uống thuốc nào hôm nay. Hãy thêm thuốc vào Tủ nhé!';
       } else if (takenCount === total) {
-        speechEl.innerText = "Gâu Gâu! Tuyệt vời lắm! Bạn đã hoàn thành tất cả các cữ thuốc hôm nay rồi!";
+        speechEl.innerText =
+          'Gâu Gâu! Tuyệt vời lắm! Bạn đã hoàn thành tất cả các cữ thuốc hôm nay rồi!';
       } else if (takenCount > 0) {
         speechEl.innerText = `Gâu Gâu! Đã uống ${takenCount}/${total} cữ rồi! Còn ${total - takenCount} cữ nữa thôi, cố lên nhé!`;
       } else {
@@ -244,7 +272,7 @@
       morning: { label: '🌅 Buổi Sáng (06:00 - 11:00)', items: [] },
       noon: { label: '☀️ Buổi Trưa (11:00 - 14:00)', items: [] },
       afternoon: { label: '🌇 Buổi Chiều (14:00 - 18:00)', items: [] },
-      evening: { label: '🌙 Buổi Tối (18:00 - 23:59)', items: [] }
+      evening: { label: '🌙 Buổi Tối (18:00 - 23:59)', items: [] },
     };
 
     allDoses.forEach(dose => {
@@ -269,7 +297,12 @@
         const m = item.med;
         const cardClass = item.isTaken ? 'max-med-card is-taken' : 'max-med-card';
         const icon = m.icon || '💊';
-        const takenTimeDisplay = item.takenRecord ? new Date(item.takenRecord.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : item.timeStr;
+        const takenTimeDisplay = item.takenRecord
+          ? new Date(item.takenRecord.timestamp).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : item.timeStr;
 
         html += `
           <div class="${cardClass}" data-id="${m.id}" data-time="${item.timeStr}">
@@ -334,7 +367,9 @@
     let html = '';
     maxMedications.forEach(m => {
       const icon = m.icon || '💊';
-      const timesPills = (m.times || []).map(t => `<span class="max-cab-time-tag">⏰ ${t}</span>`).join(' ');
+      const timesPills = (m.times || [])
+        .map(t => `<span class="max-cab-time-tag">⏰ ${t}</span>`)
+        .join(' ');
 
       html += `
         <div class="max-cabinet-item" data-id="${m.id}">
@@ -393,10 +428,15 @@
 
     let html = '';
     sorted.slice(0, 50).forEach(h => {
-      const timeStr = h.timestamp ? new Date(h.timestamp).toLocaleString('vi-VN', {
-        day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-      }) : `${h.date} ${h.timeStr}`;
+      const timeStr = h.timestamp
+        ? new Date(h.timestamp).toLocaleString('vi-VN', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : `${h.date} ${h.timeStr}`;
 
       html += `
         <div class="max-history-row" data-id="${h.id || ''}">
@@ -429,18 +469,19 @@
     const notesInput = $('max-input-notes');
 
     if (nameInput) nameInput.value = editMed ? editMed.name : '';
-    if (dosageInput) dosageInput.value = editMed ? (editMed.dosage || '1 viên') : '1 viên';
+    if (dosageInput) dosageInput.value = editMed ? editMed.dosage || '1 viên' : '1 viên';
     if (mealSelect && editMed && editMed.meal) mealSelect.value = editMed.meal;
-    if (notesInput) notesInput.value = editMed ? (editMed.notes || '') : '';
+    if (notesInput) notesInput.value = editMed ? editMed.notes || '' : '';
 
     // Type & Icon selector
-    const currentType = editMed ? (editMed.type || 'pill') : 'pill';
+    const currentType = editMed ? editMed.type || 'pill' : 'pill';
     document.querySelectorAll('.max-type-opt').forEach(opt => {
       opt.classList.toggle('active', opt.getAttribute('data-type') === currentType);
     });
 
     // Times list
-    maxFormSelectedTimes = editMed && editMed.times && editMed.times.length ? [...editMed.times] : ['08:00'];
+    maxFormSelectedTimes =
+      editMed && editMed.times && editMed.times.length ? [...editMed.times] : ['08:00'];
     renderFormSelectedTimes();
 
     formModal.style.display = 'flex';
@@ -494,21 +535,26 @@
       return;
     }
 
-    const dosage = dosageInput ? (dosageInput.value.trim() || '1 liều') : '1 liều';
+    const dosage = dosageInput ? dosageInput.value.trim() || '1 liều' : '1 liều';
     const meal = mealSelect ? mealSelect.value : 'Sau bữa ăn (30 phút) 🍽️';
     const notes = notesInput ? notesInput.value.trim() : '';
 
     const activeTypeOpt = document.querySelector('.max-type-opt.active');
     const type = activeTypeOpt ? activeTypeOpt.getAttribute('data-type') : 'pill';
-    const icon = activeTypeOpt ? (activeTypeOpt.getAttribute('data-icon') || '💊') : '💊';
+    const icon = activeTypeOpt ? activeTypeOpt.getAttribute('data-icon') || '💊' : '💊';
 
     if (maxEditingMedId) {
       // Cập nhật thuốc cũ
       const med = maxMedications.find(m => m.id === maxEditingMedId);
       if (med) {
         // Hủy các alarm cũ
-        if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.cancelMedicationAlarm === 'function') {
-          (med.times || []).forEach(t => window.JarvisNativeBridge.cancelMedicationAlarm(med.id, t));
+        if (
+          window.JarvisNativeBridge &&
+          typeof window.JarvisNativeBridge.cancelMedicationAlarm === 'function'
+        ) {
+          (med.times || []).forEach(t =>
+            window.JarvisNativeBridge.cancelMedicationAlarm(med.id, t)
+          );
         }
         med.name = name;
         med.dosage = dosage;
@@ -530,7 +576,7 @@
         meal: meal,
         notes: notes,
         active: true,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       };
       maxMedications.push(newMed);
     }
@@ -545,11 +591,11 @@
 
   function setupMaxEventListeners() {
     // Mở modal từ nút Header và Sidebar
-    $('btn-open-max-medication')?.addEventListener('click', (e) => {
+    $('btn-open-max-medication')?.addEventListener('click', e => {
       e.preventDefault();
       openMedicationModal();
     });
-    $('btn-sidebar-max-medication')?.addEventListener('click', (e) => {
+    $('btn-sidebar-max-medication')?.addEventListener('click', e => {
       e.preventDefault();
       openMedicationModal();
     });
@@ -572,8 +618,15 @@
 
     // Thử chuông thông báo Max (3 giây sau reo)
     $('btn-test-notification')?.addEventListener('click', () => {
-      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.testMedicationReminder === 'function') {
-        window.JarvisNativeBridge.testMedicationReminder('Panadol Extra', '1 viên', 'Sau bữa ăn 🍽️');
+      if (
+        window.JarvisNativeBridge &&
+        typeof window.JarvisNativeBridge.testMedicationReminder === 'function'
+      ) {
+        window.JarvisNativeBridge.testMedicationReminder(
+          'Panadol Extra',
+          '1 viên',
+          'Sau bữa ăn 🍽️'
+        );
         showToast('🐶 Max: Chuông thông báo mẫu sẽ reo sau 3 giây trên điện thoại...', 'info');
       } else {
         showToast('🐶 Max: Tính năng thử chuông chỉ hoạt động trên ứng dụng Android.', 'info');
@@ -675,7 +728,7 @@
     updateMedicationBadge();
     setupMaxEventListeners();
 
-    window.onMedicationStatusChanged = function(medId, timeStr, status) {
+    window.onMedicationStatusChanged = function (medId, timeStr, status) {
       loadMedicationData();
       renderMaxTodaySchedule();
       renderMaxCabinetList();
@@ -683,14 +736,19 @@
       updateMedicationBadge();
     };
 
-    window.reloadMaxMedicationsFromStorage = function() {
+    window.reloadMaxMedicationsFromStorage = function () {
       loadMedicationData();
       renderMaxTodaySchedule();
       renderMaxCabinetList();
       renderMaxHistoryList();
       updateMedicationBadge();
-      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.rescheduleAllMedications === 'function') {
-        try { window.JarvisNativeBridge.rescheduleAllMedications(); } catch (e) {}
+      if (
+        window.JarvisNativeBridge &&
+        typeof window.JarvisNativeBridge.rescheduleAllMedications === 'function'
+      ) {
+        try {
+          window.JarvisNativeBridge.rescheduleAllMedications();
+        } catch (e) {}
       }
     };
   }
@@ -704,12 +762,14 @@
   window.switchMaxTab = switchMaxTab;
   window.initMaxMedicationReminder = initMaxMedicationReminder;
 
-  window.maxMarkTaken = function(medId, timeStr) {
+  window.maxMarkTaken = function (medId, timeStr) {
     const med = maxMedications.find(m => m.id === medId);
     if (!med) return;
 
     const todayStr = getTodayDateStr();
-    const existing = maxMedHistory.find(h => h.medId === medId && h.timeStr === timeStr && h.date === todayStr);
+    const existing = maxMedHistory.find(
+      h => h.medId === medId && h.timeStr === timeStr && h.date === todayStr
+    );
     if (existing) return;
 
     const record = {
@@ -718,13 +778,16 @@
       medName: med.name,
       timeStr: timeStr,
       date: todayStr,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     maxMedHistory.push(record);
     saveMedicationData(false);
 
-    if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.markMedicationTakenNative === 'function') {
+    if (
+      window.JarvisNativeBridge &&
+      typeof window.JarvisNativeBridge.markMedicationTakenNative === 'function'
+    ) {
       window.JarvisNativeBridge.markMedicationTakenNative(medId, med.name, timeStr);
     }
 
@@ -733,9 +796,11 @@
     showToast(`🐶 Max: Giỏi lắm! Đã ghi nhận bạn uống ${med.name}`, 'success');
   };
 
-  window.maxUndoTaken = function(medId, timeStr) {
+  window.maxUndoTaken = function (medId, timeStr) {
     const todayStr = getTodayDateStr();
-    const idx = maxMedHistory.findIndex(h => h.medId === medId && h.timeStr === timeStr && h.date === todayStr);
+    const idx = maxMedHistory.findIndex(
+      h => h.medId === medId && h.timeStr === timeStr && h.date === todayStr
+    );
     if (idx !== -1) {
       maxMedHistory.splice(idx, 1);
       saveMedicationData(false);
@@ -745,23 +810,29 @@
     }
   };
 
-  window.maxToggleActive = function(medId, active) {
+  window.maxToggleActive = function (medId, active) {
     const med = maxMedications.find(m => m.id === medId);
     if (!med) return;
     med.active = active;
     saveMedicationData(true);
     renderMaxTodaySchedule();
     updateMedicationBadge();
-    showToast(active ? `Đã bật chuông nhắc cho ${med.name}` : `Đã tạm tắt nhắc nhở cho ${med.name}`, 'info');
+    showToast(
+      active ? `Đã bật chuông nhắc cho ${med.name}` : `Đã tạm tắt nhắc nhở cho ${med.name}`,
+      'info'
+    );
   };
 
-  window.maxDeleteMedicine = function(medId) {
+  window.maxDeleteMedicine = function (medId) {
     const med = maxMedications.find(m => m.id === medId);
     if (!med) return;
     if (!confirm(`Bạn có chắc muốn xóa "${med.name}" khỏi Tủ thuốc không?`)) return;
 
     // Hủy toàn bộ alarm trên Android native
-    if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.cancelMedicationAlarm === 'function') {
+    if (
+      window.JarvisNativeBridge &&
+      typeof window.JarvisNativeBridge.cancelMedicationAlarm === 'function'
+    ) {
       (med.times || []).forEach(t => {
         window.JarvisNativeBridge.cancelMedicationAlarm(med.id, t);
       });
@@ -775,13 +846,13 @@
     showToast(`Đã xóa "${med.name}" khỏi tủ thuốc.`, 'info');
   };
 
-  window.maxEditMedicine = function(medId) {
+  window.maxEditMedicine = function (medId) {
     const med = maxMedications.find(m => m.id === medId);
     if (!med) return;
     openMaxFormModal(med);
   };
 
-  window.maxRemoveFormTime = function(index) {
+  window.maxRemoveFormTime = function (index) {
     if (maxFormSelectedTimes.length <= 1) {
       showToast('Cần ít nhất 1 khung giờ uống thuốc trong ngày.', 'warning');
       return;
@@ -790,7 +861,7 @@
     renderFormSelectedTimes();
   };
 
-  window.maxDeleteHistoryItem = function(histId, medId, timestamp) {
+  window.maxDeleteHistoryItem = function (histId, medId, timestamp) {
     let idx = -1;
     if (histId) {
       idx = maxMedHistory.findIndex(h => h.id === histId);
@@ -819,5 +890,4 @@
   } else {
     setTimeout(initMaxMedicationReminder, 80);
   }
-
 })();

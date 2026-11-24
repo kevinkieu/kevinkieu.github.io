@@ -101,7 +101,7 @@
       let n = 0;
       for (const [, s] of listeners) n += s.size;
       return n;
-    }
+    },
   };
 
   // Lifecycle: signal that initial bootstrap has completed.
@@ -115,12 +115,15 @@
   }
 
   // Kick off empty bootstrap signal immediately (safe no-op if nobody listens)
-  if (typeof window !== 'undefined' && typeof document !== 'undefined' && document.readyState !== 'loading') {
+  if (
+    typeof window !== 'undefined' &&
+    typeof document !== 'undefined' &&
+    document.readyState !== 'loading'
+  ) {
     setTimeout(() => bus.markReady(), 0);
   } else if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => bus.markReady(), 0);
     });
   }
-
 })();

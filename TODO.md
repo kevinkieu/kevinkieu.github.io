@@ -1,6 +1,7 @@
 # TODO: Remove Experiential Labs Models & All Gemma Models
 
 ## Tasks
+
 - [x] 1. Remove GPT-6.2 Astra and Clef from Experiential Labs group in index.html
 - [x] 2. Remove Gemma 4 optgroup (Google AI Studio) from index.html
 - [x] 3. Remove Gemma 4 31B from NVIDIA optgroup in index.html

@@ -8,7 +8,8 @@
 
   const ls = window.ls || localStorage;
   const ss = window.sessionStorage;
-  const deobfuscateKey = k => (typeof window.deobfuscateKey === 'function') ? window.deobfuscateKey(k) : k;
+  const deobfuscateKey = k =>
+    typeof window.deobfuscateKey === 'function' ? window.deobfuscateKey(k) : k;
 
   // --- SEARCH CACHE ENGINE (1 HOUR TTL) ---
   const SEARCH_CACHE_TTL = 3600000;
@@ -33,7 +34,9 @@
   }
 
   function extractQuotedKeywords(t) {
-    const m = Array.from((t || '').matchAll(/[\"“«]([^\"”»]+)[\"”»]/g)).map(x => x[1].trim()).filter(Boolean);
+    const m = Array.from((t || '').matchAll(/[\"“«]([^\"”»]+)[\"”»]/g))
+      .map(x => x[1].trim())
+      .filter(Boolean);
     return m.length ? m.join(' ') : null;
   }
 
@@ -43,21 +46,26 @@
     if (cached) return cached;
     let k = (ls.getItem('tavily_api_key') || '').trim();
     if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
-    if (!k) throw new Error("Chưa nhập Tavily API Key trong cài đặt!");
-    const r = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key: k, query: q, max_results: 5, include_answer: true })
+    if (!k) throw new Error('Chưa nhập Tavily API Key trong cài đặt!');
+    const r = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: k, query: q, max_results: 5, include_answer: true }),
     });
     if (!r.ok) {
-      let errDetail = "";
-      try { const errJson = await r.json(); errDetail = errJson.message || errJson.error || ""; } catch {}
+      let errDetail = '';
+      try {
+        const errJson = await r.json();
+        errDetail = errJson.message || errJson.error || '';
+      } catch {}
       throw new Error(`Tavily HTTP ${r.status}${errDetail ? ': ' + errDetail : ''}`);
     }
     const d = await r.json();
     const res = [
       ...(d.answer ? [`💡 **Tóm tắt Tavily**: ${d.answer}`] : []),
-      ...(d.results || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.content}\n  *Nguồn*: ${x.url}`)
+      ...(d.results || []).map(
+        x => `- **${x.title}**\n  *Nội dung*: ${x.content}\n  *Nguồn*: ${x.url}`
+      ),
     ].join('\n\n');
     setSearchCache(q, 'tavily', res);
     return res;
@@ -69,17 +77,19 @@
     if (cached) return cached;
     let k = (ls.getItem('serper_api_key') || '').trim();
     if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
-    if (!k) throw new Error("Chưa có Serper API Key trong Cài đặt!");
-    const r = await fetch("https://google.serper.dev/search", {
-      method: "POST",
-      headers: { "X-API-KEY": k, "Content-Type": "application/json" },
-      body: JSON.stringify({ q, gl: "vn", hl: "vi", num: 5 })
+    if (!k) throw new Error('Chưa có Serper API Key trong Cài đặt!');
+    const r = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: { 'X-API-KEY': k, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q, gl: 'vn', hl: 'vi', num: 5 }),
     });
     if (!r.ok) throw new Error(`Serper HTTP ${r.status}`);
     const d = await r.json();
     const res = [
       ...(d.answerBox?.snippet ? [`💡 **Google**: ${d.answerBox.snippet}`] : []),
-      ...(d.organic || []).map(x => `- **${x.title}**\n  *Nội dung*: ${x.snippet}\n  *Nguồn*: ${x.link}`)
+      ...(d.organic || []).map(
+        x => `- **${x.title}**\n  *Nội dung*: ${x.snippet}\n  *Nguồn*: ${x.link}`
+      ),
     ].join('\n\n');
     setSearchCache(q, 'serper', res);
     return res;
@@ -92,7 +102,10 @@
     if (quoted) q = quoted;
     const now = new Date();
     const dateStr = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
-    if (/(^|\s)(hôm nay|mới nhất|hôm qua)(\s|$)/i.test(q) && !q.includes(String(now.getFullYear()))) {
+    if (
+      /(^|\s)(hôm nay|mới nhất|hôm qua)(\s|$)/i.test(q) &&
+      !q.includes(String(now.getFullYear()))
+    ) {
       q = `${q} ${dateStr}`;
     }
     if (preferredEngine === 'serper') {
@@ -100,20 +113,20 @@
         return await fetchSerperSearch(q);
       } catch (serpErr) {
         try {
-        return await fetchTavilySearch(q);
-      } catch (fbErr) {
-        return `Không thể lấy dữ liệu tìm kiếm`;
-      }
+          return await fetchTavilySearch(q);
+        } catch (fbErr) {
+          return `Không thể lấy dữ liệu tìm kiếm`;
+        }
       }
     } else {
       try {
         return await fetchTavilySearch(q);
       } catch (tavErr) {
         try {
-        return await fetchSerperSearch(q);
-      } catch (fbErr) {
-        return `Không thể lấy dữ liệu tìm kiếm`;
-      }
+          return await fetchSerperSearch(q);
+        } catch (fbErr) {
+          return `Không thể lấy dữ liệu tìm kiếm`;
+        }
       }
     }
   }
@@ -125,5 +138,4 @@
   window.fetchSerperSearch = fetchSerperSearch;
   window.executeLiveSearch = executeLiveSearch;
   window.extractQuotedKeywords = extractQuotedKeywords;
-
 })();

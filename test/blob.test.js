@@ -96,7 +96,7 @@ describe('blob.js', () => {
     blob = loadBlobModule();
     vi.clearAllMocks();
     document.body.innerHTML = '';
-    
+
     // Mock document.execCommand
     document.execCommand = vi.fn().mockReturnValue(true);
   });
@@ -116,7 +116,7 @@ describe('blob.js', () => {
           setTimeout(() => this.onerror?.({ target: this }), 0);
         }
       };
-      
+
       await expect(blob.blobToBase64(testBlob)).rejects.toBeDefined();
       global.FileReader = OriginalFileReader;
     });
@@ -140,9 +140,9 @@ describe('blob.js', () => {
   describe('downloadBlob', () => {
     it('creates object URL', () => {
       const testBlob = new Blob(['content'], { type: 'text/plain' });
-      
+
       blob.downloadBlob(testBlob, 'test.txt');
-      
+
       expect(URL.createObjectURL).toHaveBeenCalledWith(testBlob);
     });
   });
@@ -151,18 +151,18 @@ describe('blob.js', () => {
     it('uses Android bridge when available', async () => {
       window.Android = { saveFile: vi.fn().mockResolvedValue(true) };
       const testBlob = new Blob(['content'], { type: 'text/plain' });
-      
+
       await blob.saveBlobViaNative(testBlob, 'test.txt', 'text/plain');
-      
+
       expect(window.Android.saveFile).toHaveBeenCalledWith('dGVzdA==', 'test.txt', 'text/plain');
     });
 
     it('falls back to downloadBlob when no Android bridge', async () => {
       delete window.Android;
       const testBlob = new Blob(['content'], { type: 'text/plain' });
-      
+
       await blob.saveBlobViaNative(testBlob, 'test.txt', 'text/plain');
-      
+
       expect(URL.createObjectURL).toHaveBeenCalled();
     });
   });
@@ -178,7 +178,7 @@ describe('blob.js', () => {
     it('falls back to clipboard when share fails with AbortError', async () => {
       navigator.share.mockRejectedValue({ name: 'AbortError' });
       navigator.clipboard.writeText.mockResolvedValue(undefined);
-      
+
       const result = await blob.shareContent({ text: 'Fallback text' });
       expect(result).toBe(true);
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Fallback text');
@@ -187,7 +187,7 @@ describe('blob.js', () => {
     it('falls back to clipboard when share fails with other error', async () => {
       navigator.share.mockRejectedValue(new Error('Not supported'));
       navigator.clipboard.writeText.mockResolvedValue(undefined);
-      
+
       const result = await blob.shareContent({ text: 'Fallback text' });
       expect(result).toBe(true);
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Fallback text');
@@ -196,7 +196,7 @@ describe('blob.js', () => {
     it('returns false when both share and clipboard unavailable', async () => {
       navigator.share.mockRejectedValue(new Error('Not supported'));
       navigator.clipboard.writeText.mockRejectedValue(new Error('Not supported'));
-      
+
       const result = await blob.shareContent({ text: 'Test' });
       expect(result).toBe(false);
     });
@@ -213,7 +213,7 @@ describe('blob.js', () => {
 
     it('falls back to execCommand when clipboard API fails', async () => {
       navigator.clipboard.writeText.mockRejectedValue(new Error('Not allowed'));
-      
+
       const result = await blob.copyToClipboard('Fallback copy');
       expect(result).toBe(true);
       expect(document.execCommand).toHaveBeenCalledWith('copy');

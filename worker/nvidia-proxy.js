@@ -20,16 +20,18 @@ const ALLOWED_ORIGINS = [
   'https://kevinkieu.github.io',
   'https://appassets.androidplatform.net',
   'http://127.0.0.1:8137',
-  'http://localhost:8137'
+  'http://localhost:8137',
 ];
 
 function corsHeaders(origin) {
-  const allowed = origin && (ALLOWED_ORIGINS.includes(origin) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(origin));
+  const allowed =
+    origin &&
+    (ALLOWED_ORIGINS.includes(origin) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(origin));
   return {
     'Access-Control-Allow-Origin': allowed ? origin : ALLOWED_ORIGINS[0],
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'authorization, content-type, accept',
-    'Vary': 'Origin'
+    Vary: 'Origin',
   };
 }
 
@@ -53,15 +55,15 @@ export default {
     const upstream = await fetch(upstreamBase + path + url.search, {
       method: request.method,
       headers: {
-        'Authorization': request.headers.get('Authorization') || '',
+        Authorization: request.headers.get('Authorization') || '',
         'Content-Type': request.headers.get('Content-Type') || 'application/json',
-        'Accept': request.headers.get('Accept') || '*/*'
+        Accept: request.headers.get('Accept') || '*/*',
       },
-      body: (request.method === 'GET' || request.method === 'HEAD') ? undefined : request.body
+      body: request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body,
     });
 
     const headers = new Headers(upstream.headers);
     Object.entries(cors).forEach(([k, v]) => headers.set(k, v));
     return new Response(upstream.body, { status: upstream.status, headers });
-  }
+  },
 };

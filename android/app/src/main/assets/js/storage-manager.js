@@ -2,14 +2,21 @@
    Jarvis AI - Storage & Memory Management Controller
    ========================================================================== */
 
-(function() {
+(function () {
   'use strict';
 
   // Wait for dependencies to be available
   function waitForDependencies() {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const check = () => {
-        if (window.$ && window.ls && window.showToast && window.DOM && window.oLay && window.updateKeyQuotaUI) {
+        if (
+          window.$ &&
+          window.ls &&
+          window.showToast &&
+          window.DOM &&
+          window.oLay &&
+          window.updateKeyQuotaUI
+        ) {
           resolve();
         } else {
           setTimeout(check, 50);
@@ -21,7 +28,7 @@
 
   async function init() {
     await waitForDependencies();
-    
+
     const $ = window.$;
     const ls = window.ls;
     const showToast = window.showToast;
@@ -48,8 +55,10 @@
           if (quotaEl) quotaEl.innerText = `Khả dụng: ${quotaGB} GB`;
           if (barEl) {
             barEl.style.width = `${Math.min(Math.max(parseFloat(pct), 1), 100)}%`;
-            if (parseFloat(pct) > 80) barEl.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
-            else if (parseFloat(pct) > 50) barEl.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
+            if (parseFloat(pct) > 80)
+              barEl.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
+            else if (parseFloat(pct) > 50)
+              barEl.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
             else barEl.style.background = 'linear-gradient(90deg, #10b981, #059669)';
           }
         }
@@ -60,20 +69,22 @@
           const btnPersist = $('btn-request-persist');
           if (statusEl) {
             if (isPersisted) {
-              statusEl.innerText = "🟢 Đã kích hoạt (Vĩnh viễn)";
-              statusEl.style.color = "var(--success)";
-              if (btnPersist) btnPersist.style.display = "none";
+              statusEl.innerText = '🟢 Đã kích hoạt (Vĩnh viễn)';
+              statusEl.style.color = 'var(--success)';
+              if (btnPersist) btnPersist.style.display = 'none';
             } else {
               // Phát hiện WebView (APK Android)
-              const isWebView = (typeof JarvisNativeBridge !== 'undefined' && JarvisNativeBridge.isNativeApp === true) ||
-                                /wv\)/.test(navigator.userAgent.toLowerCase()) ||
-                                location.origin === 'https://appassets.androidplatform.net';
-              
+              const isWebView =
+                (typeof JarvisNativeBridge !== 'undefined' &&
+                  JarvisNativeBridge.isNativeApp === true) ||
+                /wv\)/.test(navigator.userAgent.toLowerCase()) ||
+                location.origin === 'https://appassets.androidplatform.net';
+
               if (isWebView) {
                 // WebView: IndexedDB + Native Bridge (SharedPreferences) đã luôn persistent
-                statusEl.innerText = "🟢 Đã bảo vệ bởi WebView + Native Bridge";
-                statusEl.style.color = "var(--success)";
-                if (btnPersist) btnPersist.style.display = "none";
+                statusEl.innerText = '🟢 Đã bảo vệ bởi WebView + Native Bridge';
+                statusEl.style.color = 'var(--success)';
+                if (btnPersist) btnPersist.style.display = 'none';
               } else {
                 // Kiểm tra trạng thái permission cho trình duyệt thường
                 let permState = 'unknown';
@@ -84,22 +95,22 @@
                   }
                 } catch (_) {}
                 if (permState === 'denied') {
-                  statusEl.innerText = "🔴 Bị chặn (cần bật thủ công)";
-                  statusEl.style.color = "var(--danger)";
+                  statusEl.innerText = '🔴 Bị chặn (cần bật thủ công)';
+                  statusEl.style.color = 'var(--danger)';
                 } else if (permState === 'granted') {
-                  statusEl.innerText = "🟡 Quyền đã cho, chưa kích hoạt";
-                  statusEl.style.color = "var(--warning)";
+                  statusEl.innerText = '🟡 Quyền đã cho, chưa kích hoạt';
+                  statusEl.style.color = 'var(--warning)';
                 } else {
-                  statusEl.innerText = "⚪ Chưa bật";
-                  statusEl.style.color = "var(--warning)";
+                  statusEl.innerText = '⚪ Chưa bật';
+                  statusEl.style.color = 'var(--warning)';
                 }
-                if (btnPersist) btnPersist.style.display = "inline-block";
+                if (btnPersist) btnPersist.style.display = 'inline-block';
               }
             }
           }
         }
       } catch (e) {
-        console.warn("Lỗi kiểm tra bộ nhớ:", e);
+        console.warn('Lỗi kiểm tra bộ nhớ:', e);
       }
     }
 
@@ -111,28 +122,34 @@
         const origin = location.origin;
         // TWA dùng origin https://appassets.androidplatform.net
         // WebView thường có user agent chứa 'wv' hoặc 'android' nhưng không phải Chrome app
-        return origin === 'https://appassets.androidplatform.net' ||
-               /wv\)/.test(ua) ||
-               (ua.includes('android') && !ua.includes('chrome'));
+        return (
+          origin === 'https://appassets.androidplatform.net' ||
+          /wv\)/.test(ua) ||
+          (ua.includes('android') && !ua.includes('chrome'))
+        );
       }
 
       $('btn-refresh-storage')?.addEventListener('click', () => {
         updateStorageStatus();
-        showToast("🔄 Đã cập nhật trạng thái bộ nhớ!", "success");
+        showToast('🔄 Đã cập nhật trạng thái bộ nhớ!', 'success');
       });
 
       $('btn-request-persist')?.addEventListener('click', async () => {
         if (!navigator.storage || !navigator.storage.persist) {
-          showToast("Trình duyệt không hỗ trợ Persistent Storage.", "warning");
+          showToast('Trình duyệt không hỗ trợ Persistent Storage.', 'warning');
           return;
         }
 
-        const isWebView = (typeof JarvisNativeBridge !== 'undefined' && JarvisNativeBridge.isNativeApp === true) ||
-                          /wv\)/.test(navigator.userAgent.toLowerCase()) ||
-                          location.origin === 'https://appassets.androidplatform.net';
-        
+        const isWebView =
+          (typeof JarvisNativeBridge !== 'undefined' && JarvisNativeBridge.isNativeApp === true) ||
+          /wv\)/.test(navigator.userAgent.toLowerCase()) ||
+          location.origin === 'https://appassets.androidplatform.net';
+
         if (isWebView) {
-          showToast("🟢 WebView (APK) đã luôn lưu trữ vĩnh viễn qua IndexedDB + Native Bridge (SharedPreferences). Không cần kích hoạt thêm.", "success");
+          showToast(
+            '🟢 WebView (APK) đã luôn lưu trữ vĩnh viễn qua IndexedDB + Native Bridge (SharedPreferences). Không cần kích hoạt thêm.',
+            'success'
+          );
           updateStorageStatus();
           return;
         }
@@ -163,18 +180,21 @@
         }
 
         if (ok) {
-          showToast("🛡️ Đã kích hoạt Lưu trữ Vĩnh viễn (Persistent Storage)!", "success");
+          showToast('🛡️ Đã kích hoạt Lưu trữ Vĩnh viễn (Persistent Storage)!', 'success');
         } else {
           const ua = navigator.userAgent.toLowerCase();
-          let hint = "Trình duyệt chưa cho phép cấp quyền vĩnh viễn.";
+          let hint = 'Trình duyệt chưa cho phép cấp quyền vĩnh viễn.';
           if (/android.*chrome/i.test(ua) || /android.*crios/i.test(ua)) {
-            hint += " Trên Chrome Android: ⋮ Menu → Cài đặt → Quyền riêng tư & bảo mật → Cài đặt trang web → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
+            hint +=
+              " Trên Chrome Android: ⋮ Menu → Cài đặt → Quyền riêng tư & bảo mật → Cài đặt trang web → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
           } else if (ua.includes('chrome') || ua.includes('edg')) {
-            hint += " Hãy vào chrome://site-settings → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
+            hint +=
+              " Hãy vào chrome://site-settings → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
           } else if (ua.includes('firefox')) {
-            hint += " Hãy vào about:preferences#privacy → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
+            hint +=
+              " Hãy vào about:preferences#privacy → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
           }
-          showToast(hint, "warning");
+          showToast(hint, 'warning');
         }
         updateStorageStatus();
       });
@@ -195,7 +215,11 @@
           }
           if (statusEl) statusEl.innerText = `✅ Đã phục hồi ${res.restored} phiên.`;
           showToast(`♻️ Đã phục hồi ${res.restored} phiên từ bản sao lưu!`, 'success');
-          if (confirm(`Đã phục hồi ${res.restored} phiên từ bản sao lưu IndexedDB.\nTải lại trang để thấy đầy đủ?`)) {
+          if (
+            confirm(
+              `Đã phục hồi ${res.restored} phiên từ bản sao lưu IndexedDB.\nTải lại trang để thấy đầy đủ?`
+            )
+          ) {
             location.reload();
           }
         } catch (e) {
@@ -205,7 +229,11 @@
       });
 
       $('btn-clear-temp-cache')?.addEventListener('click', () => {
-        if (confirm("Bạn có muốn dọn sạch bộ nhớ đệm tìm kiếm (search cache) và dữ liệu tạm thời không?\n(Toàn bộ Lịch sử chat và API keys sẽ được BẢO TỒN NGUYÊN VẸN 100%)")) {
+        if (
+          confirm(
+            'Bạn có muốn dọn sạch bộ nhớ đệm tìm kiếm (search cache) và dữ liệu tạm thời không?\n(Toàn bộ Lịch sử chat và API keys sẽ được BẢO TỒN NGUYÊN VẸN 100%)'
+          )
+        ) {
           try {
             const keys = [];
             for (let i = 0; i < sessionStorage.length; i++) {
@@ -214,9 +242,9 @@
             }
             keys.forEach(k => sessionStorage.removeItem(k));
             updateStorageStatus();
-            showToast(`🧹 Đã dọn sạch ${keys.length} mục bộ đệm tạm thời!`, "success");
+            showToast(`🧹 Đã dọn sạch ${keys.length} mục bộ đệm tạm thời!`, 'success');
           } catch (e) {
-            showToast(`Lỗi dọn cache: ${e.message}`, "danger");
+            showToast(`Lỗi dọn cache: ${e.message}`, 'danger');
           }
         }
       });
@@ -233,7 +261,7 @@
 
     // Expose for external access
     window.updateStorageStatus = updateStorageStatus;
-    window.initStorageManager = function() {
+    window.initStorageManager = function () {
       return { updateStorageStatus };
     };
   }

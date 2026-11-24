@@ -66,7 +66,7 @@
       now: Date.now(),
       minAgeMs: EMPTY_MIN_AGE_MS,
       cleanupOldEnabled,
-      cleanupOldDays
+      cleanupOldDays,
     });
 
     const removedIds = [];
@@ -83,9 +83,16 @@
     }
 
     if (removedIds.length) {
-      try { if (typeof window.renderSel === 'function') window.renderSel(); } catch (_) {}
-      try { if (typeof window.renderTabs === 'function') window.renderTabs(); } catch (_) {}
-      console.log('[Auto-Cleanup] Đã dọn ' + removedIds.length + ' phiên trống:', removedIds.join(', '));
+      try {
+        if (typeof window.renderSel === 'function') window.renderSel();
+      } catch (_) {}
+      try {
+        if (typeof window.renderTabs === 'function') window.renderTabs();
+      } catch (_) {}
+      console.log(
+        '[Auto-Cleanup] Đã dọn ' + removedIds.length + ' phiên trống:',
+        removedIds.join(', ')
+      );
     }
     return { removed: removedIds.length, ids: removedIds };
   }
@@ -101,7 +108,10 @@
     box.addEventListener('change', () => {
       store.setItem('jarvis_auto_cleanup', box.checked ? 'true' : 'false');
       if (typeof window.showToast === 'function') {
-        window.showToast(box.checked ? '🧹 Đã bật tự dọn phiên trống' : '⏸️ Đã tắt tự dọn phiên trống', 'info');
+        window.showToast(
+          box.checked ? '🧹 Đã bật tự dọn phiên trống' : '⏸️ Đã tắt tự dọn phiên trống',
+          'info'
+        );
       }
     });
 
@@ -113,7 +123,10 @@
         store.setItem('jarvis_auto_cleanup_old', boxOld.checked ? 'true' : 'false');
         if (daysInput) daysInput.style.display = boxOld.checked ? 'inline-block' : 'none';
         if (typeof window.showToast === 'function') {
-          window.showToast(boxOld.checked ? '🗑️ Đã bật dọn phiên cũ' : '⏸️ Đã tắt dọn phiên cũ', 'info');
+          window.showToast(
+            boxOld.checked ? '🗑️ Đã bật dọn phiên cũ' : '⏸️ Đã tắt dọn phiên cũ',
+            'info'
+          );
         }
       });
     }

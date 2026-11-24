@@ -4,12 +4,14 @@
 const createStorage = () => {
   const store = new Map();
   return {
-    getItem: (k) => store.get(k) ?? null,
+    getItem: k => store.get(k) ?? null,
     setItem: (k, v) => store.set(k, String(v)),
-    removeItem: (k) => store.delete(k),
+    removeItem: k => store.delete(k),
     clear: () => store.clear(),
-    get length() { return store.size; },
-    key: (i) => Array.from(store.keys())[i] ?? null,
+    get length() {
+      return store.size;
+    },
+    key: i => Array.from(store.keys())[i] ?? null,
   };
 };
 
@@ -25,7 +27,7 @@ Object.defineProperty(global, 'sessionStorage', {
 });
 
 // Mock window.deobfuscateKey (used by search.js/extract.js)
-global.deobfuscateKey = (k) => k.replace(/^JVENC_|^ENC_/, 'DEOBF_');
+global.deobfuscateKey = k => k.replace(/^JVENC_|^ENC_/, 'DEOBF_');
 
 // Mock navigator.clipboard
 global.navigator.clipboard = {
@@ -79,27 +81,33 @@ global.Blob = class Blob {
     this.type = options.type || '';
     this.size = parts.reduce((sum, p) => sum + (p?.length || p?.byteLength || 0), 0);
   }
-  slice() { return new Blob([], { type: this.type }); }
+  slice() {
+    return new Blob([], { type: this.type });
+  }
 };
 
-global.atob = (str) => Buffer.from(str, 'base64').toString('binary');
-global.btoa = (str) => Buffer.from(str, 'binary').toString('base64');
+global.atob = str => Buffer.from(str, 'base64').toString('binary');
+global.btoa = str => Buffer.from(str, 'binary').toString('base64');
 
 // Mock highlight.js (hljs)
 global.hljs = {
-  highlight: vi.fn((code, opts) => ({ value: `<span class="hljs">${code}</span>`, language: opts.language })),
+  highlight: vi.fn((code, opts) => ({
+    value: `<span class="hljs">${code}</span>`,
+    language: opts.language,
+  })),
   getLanguage: vi.fn(() => true),
   listLanguages: vi.fn(() => ['javascript', 'python', 'html', 'css']),
 };
 
 // Mock marked
 global.marked = {
-  parse: vi.fn((md) => md
-    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-    .replace(/^\*\* (.*$)/gim, '<ul><li>$1</li></ul>')
-    .replace(/`(.*?)`/g, '<code>$1</code>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n\n/g, '</p><p>')
+  parse: vi.fn(md =>
+    md
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^\*\* (.*$)/gim, '<ul><li>$1</li></ul>')
+      .replace(/`(.*?)`/g, '<code>$1</code>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n\n/g, '</p><p>')
   ),
   setOptions: vi.fn(),
 };

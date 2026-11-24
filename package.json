@@ -10,7 +10,13 @@
     "smoke:openrouter": "node scratch/openrouter_nemotron_smoke.js",
     "sync-assets": "node scripts/sync-web-assets.js",
     "check-assets": "node scripts/sync-web-assets.js --check",
-    "check-map": "node scripts/check-project-map.js"
+    "check-map": "node scripts/check-project-map.js",
+    "lint": "eslint . --ext .js,.mjs,.cjs",
+    "lint:fix": "eslint . --ext .js,.mjs,.cjs --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit || true",
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
@@ -19,7 +25,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/kevinkieu/kevinkieu.github.io/issues"
   },
@@ -27,6 +33,24 @@
   "devDependencies": {
     "@vitest/coverage-v8": "^5.1.1",
     "jsdom": "^31.0.1",
-    "vitest": "^5.1.1"
+    "vitest": "^5.1.1",
+    "eslint": "^9.0.0",
+    "@eslint/js": "^9.0.0",
+    "globals": "^15.0.0",
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.0.0",
+    "prettier": "^3.2.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.2.0"
+  },
+  "lint-staged": {
+    "*.{js,mjs,cjs,json,md,html,css}": [
+      "prettier --write"
+    ],
+    "*.{js,mjs,cjs}": [
+      "eslint --fix"
+    ]
   }
 }

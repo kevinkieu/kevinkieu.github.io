@@ -12,7 +12,9 @@
   // --- COSINE SIMILARITY ---
   function cosineSimilarity(vecA, vecB) {
     if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
-    let dot = 0, normA = 0, normB = 0;
+    let dot = 0,
+      normA = 0,
+      normB = 0;
     for (let i = 0; i < vecA.length; i++) {
       dot += vecA[i] * vecB[i];
       normA += vecA[i] * vecA[i];
@@ -26,7 +28,9 @@
   function computeHybridScore(queryVector, item, qLower, qTokens, cosineFn = cosineSimilarity) {
     if (!item.vector || !Array.isArray(item.vector)) return { rawSimilarity: 0, similarity: 0 };
 
-    let dot = 0, normA = 0, normB = 0;
+    let dot = 0,
+      normA = 0,
+      normB = 0;
     for (let i = 0; i < queryVector.length; i++) {
       dot += queryVector[i] * item.vector[i];
       normA += queryVector[i] * queryVector[i];
@@ -55,7 +59,7 @@
       }
       const titleOverlap = titleTokenMatches / qTokens.length;
       const textOverlap = textTokenMatches / qTokens.length;
-      boost += (titleOverlap * 0.15) + (textOverlap * 0.08);
+      boost += titleOverlap * 0.15 + textOverlap * 0.08;
     }
 
     return { rawSimilarity: rawSimilarity, similarity: Math.min(1.0, rawSimilarity + boost) };
@@ -64,19 +68,53 @@
   // --- QUERY TOKENIZER (VIETNAMESE + ENGLISH STOPWORDS) ---
   function tokenizeQuery(cleanQuery) {
     const stopWords = new Set([
-      'và', 'là', 'của', 'có', 'cho', 'với', 'nhé', 'nha', 'ạ', 'ơi', 'hãy',
-      'các', 'những', 'được', 'trong', 'về', 'khi', 'nào', 'gì', 'sao', 'thế',
-      'thì', 'ở', 'tại', 'the', 'a', 'an', 'is', 'of', 'in', 'and', 'to',
-      'for', 'with', 'on', 'at'
+      'và',
+      'là',
+      'của',
+      'có',
+      'cho',
+      'với',
+      'nhé',
+      'nha',
+      'ạ',
+      'ơi',
+      'hãy',
+      'các',
+      'những',
+      'được',
+      'trong',
+      'về',
+      'khi',
+      'nào',
+      'gì',
+      'sao',
+      'thế',
+      'thì',
+      'ở',
+      'tại',
+      'the',
+      'a',
+      'an',
+      'is',
+      'of',
+      'in',
+      'and',
+      'to',
+      'for',
+      'with',
+      'on',
+      'at',
     ]);
-    return cleanQuery.split(/[\s,.;:!?\-\+\(\)\[\]{}'"]+/).filter(t => t.length >= 2 && !stopWords.has(t));
+    return cleanQuery
+      .split(/[\s,.;:!?\-\+\(\)\[\]{}'"]+/)
+      .filter(t => t.length >= 2 && !stopWords.has(t));
   }
 
   // Export for both environments
   const exports = {
     cosineSimilarity,
     computeHybridScore,
-    tokenizeQuery
+    tokenizeQuery,
   };
 
   // Main thread (ES module / window)
@@ -88,5 +126,4 @@
   if (typeof self !== 'undefined' && !self.window) {
     self.RagCore = exports;
   }
-
 })(typeof globalThis !== 'undefined' ? globalThis : this);

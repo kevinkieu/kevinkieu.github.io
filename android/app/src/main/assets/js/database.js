@@ -4,18 +4,18 @@
    Tự contained, ít dependency ngoài app.js.
    ========================================================================== */
 
-(function() {
+(function () {
   'use strict';
 
   const ls = window.ls || localStorage;
-  const DB_NAME = "JavissUltimateOS_DB";
-  const STORE_NAME = "chat_sessions";
-  const FILE_STORE = "file_library";
-  const TTS_STORE = "tts_audio_library";
+  const DB_NAME = 'JavissUltimateOS_DB';
+  const STORE_NAME = 'chat_sessions';
+  const FILE_STORE = 'file_library';
+  const TTS_STORE = 'tts_audio_library';
   // Bản sao lưu hội thoại (mirror) để phục hồi khi store chính hỏng/trống.
-  const BACKUP_STORE = "session_backup";
+  const BACKUP_STORE = 'session_backup';
   // Store ghi log lỗi JS (uncaught exception + unhandled rejection)
-  const ERROR_LOG_STORE = "error_log";
+  const ERROR_LOG_STORE = 'error_log';
   let db;
 
   // --- INITIALIZE DATABASE ---
@@ -24,28 +24,39 @@
       const rq = indexedDB.open(DB_NAME, 8);
       rq.onupgradeneeded = e => {
         let d = e.target.result;
-        if (!d.objectStoreNames.contains(STORE_NAME)) d.createObjectStore(STORE_NAME, { keyPath: "id" });
-        if (!d.objectStoreNames.contains(FILE_STORE)) d.createObjectStore(FILE_STORE, { keyPath: "id" });
-        if (!d.objectStoreNames.contains(TTS_STORE)) d.createObjectStore(TTS_STORE, { keyPath: "id", autoIncrement: true });
-        if (!d.objectStoreNames.contains(BACKUP_STORE)) d.createObjectStore(BACKUP_STORE, { keyPath: "id" });
-        if (!d.objectStoreNames.contains(ERROR_LOG_STORE)) d.createObjectStore(ERROR_LOG_STORE, { keyPath: "id", autoIncrement: true });
+        if (!d.objectStoreNames.contains(STORE_NAME))
+          d.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        if (!d.objectStoreNames.contains(FILE_STORE))
+          d.createObjectStore(FILE_STORE, { keyPath: 'id' });
+        if (!d.objectStoreNames.contains(TTS_STORE))
+          d.createObjectStore(TTS_STORE, { keyPath: 'id', autoIncrement: true });
+        if (!d.objectStoreNames.contains(BACKUP_STORE))
+          d.createObjectStore(BACKUP_STORE, { keyPath: 'id' });
+        if (!d.objectStoreNames.contains(ERROR_LOG_STORE))
+          d.createObjectStore(ERROR_LOG_STORE, { keyPath: 'id', autoIncrement: true });
       };
-      rq.onblocked = () => console.warn('[DB] Nâng cấp IndexedDB bị chặn bởi một tab khác đang mở. Hãy đóng các tab Jarvis cũ.');
+      rq.onblocked = () =>
+        console.warn(
+          '[DB] Nâng cấp IndexedDB bị chặn bởi một tab khác đang mở. Hãy đóng các tab Jarvis cũ.'
+        );
       rq.onsuccess = async e => {
         db = e.target.result;
         window.db = db;
         window.getDB = () => db;
         // Cross-DB migration: HuanMU_DB -> JavissUltimateOS_DB
         try {
-          const checkHuan = indexedDB.open("HuanMU_DB", 6);
+          const checkHuan = indexedDB.open('HuanMU_DB', 6);
           checkHuan.onsuccess = () => {
             const hDb = checkHuan.result;
             if (hDb && hDb.objectStoreNames.contains(STORE_NAME)) {
-              const getItems = hDb.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll();
+              const getItems = hDb
+                .transaction(STORE_NAME, 'readonly')
+                .objectStore(STORE_NAME)
+                .getAll();
               getItems.onsuccess = () => {
                 const hSessions = getItems.result || [];
                 if (hSessions.length) {
-                  const wrTrans = db.transaction(STORE_NAME, "readwrite");
+                  const wrTrans = db.transaction(STORE_NAME, 'readwrite');
                   hSessions.forEach(hs => {
                     if (hs.his && hs.his.length > 0) wrTrans.objectStore(STORE_NAME).put(hs);
                   });
@@ -53,7 +64,7 @@
               };
             }
           };
-        } catch { }
+        } catch {}
         syncBackupFromMain();
         res();
       };
@@ -68,7 +79,7 @@
   function syncBackupFromMain() {
     try {
       if (!db || !db.objectStoreNames.contains(BACKUP_STORE)) return;
-      const t = db.transaction([STORE_NAME, BACKUP_STORE], "readwrite");
+      const t = db.transaction([STORE_NAME, BACKUP_STORE], 'readwrite');
       const backup = t.objectStore(BACKUP_STORE);
       const rq = t.objectStore(STORE_NAME).getAll();
       rq.onsuccess = () => {
@@ -88,7 +99,7 @@
         if (s && typeof s === 'object') {
           s.updatedAt = Date.now();
         }
-        const t = db.transaction([STORE_NAME, BACKUP_STORE], "readwrite");
+        const t = db.transaction([STORE_NAME, BACKUP_STORE], 'readwrite');
         t.objectStore(STORE_NAME).put(s);
         t.objectStore(BACKUP_STORE).put(s);
         t.oncomplete = () => {
@@ -112,7 +123,7 @@
   function getAllFromDB() {
     return new Promise((resolve, reject) => {
       try {
-        const rq = db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll();
+        const rq = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).getAll();
         rq.onsuccess = () => resolve(rq.result || []);
         rq.onerror = err => reject(err);
       } catch (err) {
@@ -125,7 +136,7 @@
   function clearAllDB() {
     return new Promise((resolve, reject) => {
       try {
-        const t = db.transaction([STORE_NAME, BACKUP_STORE], "readwrite");
+        const t = db.transaction([STORE_NAME, BACKUP_STORE], 'readwrite');
         t.objectStore(STORE_NAME).clear();
         t.objectStore(BACKUP_STORE).clear();
         t.oncomplete = () => {
@@ -145,10 +156,12 @@
   function saveFileToLib(f) {
     return new Promise(r => {
       try {
-        const t = db.transaction(FILE_STORE, "readwrite");
+        const t = db.transaction(FILE_STORE, 'readwrite');
         t.objectStore(FILE_STORE).put(f);
         t.oncomplete = () => r();
-      } catch { r(); }
+      } catch {
+        r();
+      }
     });
   }
 
@@ -156,9 +169,11 @@
   function getAllFilesFromLib() {
     return new Promise(r => {
       try {
-        const rq = db.transaction(FILE_STORE, "readonly").objectStore(FILE_STORE).getAll();
+        const rq = db.transaction(FILE_STORE, 'readonly').objectStore(FILE_STORE).getAll();
         rq.onsuccess = () => r(rq.result);
-      } catch { r([]); }
+      } catch {
+        r([]);
+      }
     });
   }
 
@@ -166,7 +181,7 @@
   function deleteFromDB(i) {
     return new Promise((resolve, reject) => {
       try {
-        const t = db.transaction([STORE_NAME, BACKUP_STORE], "readwrite");
+        const t = db.transaction([STORE_NAME, BACKUP_STORE], 'readwrite');
         t.objectStore(STORE_NAME).delete(i);
         t.objectStore(BACKUP_STORE).delete(i);
         t.oncomplete = () => {
@@ -178,7 +193,7 @@
               if (list.length > 200) list.shift();
               ls.setItem('jarvis_deleted_session_ids', JSON.stringify(list));
             }
-          } catch { }
+          } catch {}
           if (typeof window.syncSessionsToNative === 'function') {
             window.syncSessionsToNative();
           }
@@ -204,7 +219,7 @@
         if (list.length > 200) list.shift();
         ls.setItem('jarvis_deleted_session_ids', JSON.stringify(list));
       }
-    } catch (e) { }
+    } catch (e) {}
   }
 
   // --- RESTORE SESSIONS FROM MIRROR BACKUP ---
@@ -213,12 +228,12 @@
   function restoreSessionsFromBackup() {
     return new Promise((resolve, reject) => {
       try {
-        const rq = db.transaction(BACKUP_STORE, "readonly").objectStore(BACKUP_STORE).getAll();
+        const rq = db.transaction(BACKUP_STORE, 'readonly').objectStore(BACKUP_STORE).getAll();
         rq.onsuccess = () => {
           const items = (rq.result || []).filter(s => s && s.id);
           if (!items.length) return resolve({ restored: 0, sessions: [] });
           try {
-            const t = db.transaction([STORE_NAME, BACKUP_STORE], "readwrite");
+            const t = db.transaction([STORE_NAME, BACKUP_STORE], 'readwrite');
             items.forEach(s => t.objectStore(STORE_NAME).put(s));
             t.oncomplete = () => resolve({ restored: items.length, sessions: items });
             t.onerror = err => reject(err);
@@ -243,16 +258,16 @@
           stack: err?.stack || '',
           name: err?.name || 'Error',
           url: window.location.href,
-          userAgent: navigator.userAgent
+          userAgent: navigator.userAgent,
         };
-        const t = db.transaction(ERROR_LOG_STORE, "readwrite");
+        const t = db.transaction(ERROR_LOG_STORE, 'readwrite');
         t.objectStore(ERROR_LOG_STORE).put(entry);
         // Giới hạn 500 entries mới nhất
         const countRq = t.objectStore(ERROR_LOG_STORE).count();
         countRq.onsuccess = () => {
           if (countRq.result > 500) {
             const cursorRq = t.objectStore(ERROR_LOG_STORE).openCursor();
-            cursorRq.onsuccess = (e) => {
+            cursorRq.onsuccess = e => {
               const cursor = e.target.result;
               if (cursor) {
                 cursor.delete();
@@ -272,11 +287,13 @@
   function getErrorLogs(limit = 100) {
     return new Promise((resolve, reject) => {
       try {
-        const t = db.transaction(ERROR_LOG_STORE, "readonly");
+        const t = db.transaction(ERROR_LOG_STORE, 'readonly');
         const store = t.objectStore(ERROR_LOG_STORE);
         const rq = store.getAll();
         rq.onsuccess = () => {
-          const logs = (rq.result || []).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, limit);
+          const logs = (rq.result || [])
+            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+            .slice(0, limit);
           resolve(logs);
         };
         rq.onerror = err => reject(err);
@@ -289,7 +306,7 @@
   function clearErrorLogs() {
     return new Promise((resolve, reject) => {
       try {
-        const t = db.transaction(ERROR_LOG_STORE, "readwrite");
+        const t = db.transaction(ERROR_LOG_STORE, 'readwrite');
         t.objectStore(ERROR_LOG_STORE).clear();
         t.oncomplete = () => resolve();
         t.onerror = err => reject(err);
@@ -318,5 +335,4 @@
   window.TTS_STORE = TTS_STORE;
   window.BACKUP_STORE = BACKUP_STORE;
   window.restoreSessionsFromBackup = restoreSessionsFromBackup;
-
 })();

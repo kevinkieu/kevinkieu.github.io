@@ -3,7 +3,7 @@ const fs = require('fs');
 const vm = require('vm');
 
 const domElements = {};
-const getOrCreateElement = (id) => {
+const getOrCreateElement = id => {
   if (!domElements[id]) {
     domElements[id] = {
       id,
@@ -15,26 +15,26 @@ const getOrCreateElement = (id) => {
         add: () => {},
         remove: () => {},
         contains: () => false,
-        toggle: () => {}
+        toggle: () => {},
       },
       setTimeout,
-  clearTimeout,
-  setInterval,
-  clearInterval,
-  addEventListener: () => {},
+      clearTimeout,
+      setInterval,
+      clearInterval,
+      addEventListener: () => {},
       removeEventListener: () => {},
       dispatchEvent: () => {},
       setAttribute: () => {},
       getAttribute: () => null,
       removeAttribute: () => {},
-      appendChild: (c) => c,
-      removeChild: (c) => c,
+      appendChild: c => c,
+      removeChild: c => c,
       querySelector: () => null,
       querySelectorAll: () => [],
       focus: () => {},
       blur: () => {},
       click: () => {},
-      options: []
+      options: [],
     };
   }
   return domElements[id];
@@ -42,18 +42,30 @@ const getOrCreateElement = (id) => {
 
 const localStorageData = {};
 const localStorage = {
-  getItem: (k) => localStorageData[k] || null,
-  setItem: (k, v) => { localStorageData[k] = String(v); },
-  removeItem: (k) => { delete localStorageData[k]; },
-  clear: () => { Object.keys(localStorageData).forEach(k => delete localStorageData[k]); }
+  getItem: k => localStorageData[k] || null,
+  setItem: (k, v) => {
+    localStorageData[k] = String(v);
+  },
+  removeItem: k => {
+    delete localStorageData[k];
+  },
+  clear: () => {
+    Object.keys(localStorageData).forEach(k => delete localStorageData[k]);
+  },
 };
 
 const sessionStorageData = {};
 const sessionStorage = {
-  getItem: (k) => sessionStorageData[k] || null,
-  setItem: (k, v) => { sessionStorageData[k] = String(v); },
-  removeItem: (k) => { delete sessionStorageData[k]; },
-  clear: () => { Object.keys(sessionStorageData).forEach(k => delete sessionStorageData[k]); }
+  getItem: k => sessionStorageData[k] || null,
+  setItem: (k, v) => {
+    sessionStorageData[k] = String(v);
+  },
+  removeItem: k => {
+    delete sessionStorageData[k];
+  },
+  clear: () => {
+    Object.keys(sessionStorageData).forEach(k => delete sessionStorageData[k]);
+  },
 };
 
 const sandbox = {
@@ -66,17 +78,20 @@ const sandbox = {
   removeEventListener: () => {},
   document: {
     getElementById: getOrCreateElement,
-    querySelector: (sel) => getOrCreateElement(sel.replace(/^[#.]/, '')),
+    querySelector: sel => getOrCreateElement(sel.replace(/^[#.]/, '')),
     querySelectorAll: () => [],
-    createElement: (tag) => getOrCreateElement(tag),
+    createElement: tag => getOrCreateElement(tag),
     documentElement: { style: { setProperty: () => {} } },
     body: getOrCreateElement('body'),
-    addEventListener: () => {}
+    addEventListener: () => {},
   },
   navigator: {
-    storage: { persist: () => Promise.resolve(true), estimate: () => Promise.resolve({ quota: 1000000, usage: 1000 }) },
+    storage: {
+      persist: () => Promise.resolve(true),
+      estimate: () => Promise.resolve({ quota: 1000000, usage: 1000 }),
+    },
     clipboard: { writeText: () => Promise.resolve() },
-    mediaDevices: { getUserMedia: () => Promise.resolve() }
+    mediaDevices: { getUserMedia: () => Promise.resolve() },
   },
   localStorage,
   sessionStorage,
@@ -93,33 +108,50 @@ const sandbox = {
             objectStore: () => ({
               getAll: () => {
                 const r = { onsuccess: null, onerror: null, result: [] };
-                setTimeout(() => { if (r.onsuccess) r.onsuccess({ target: r }); }, 10);
+                setTimeout(() => {
+                  if (r.onsuccess) r.onsuccess({ target: r });
+                }, 10);
                 return r;
               },
               put: () => ({ onsuccess: null, onerror: null }),
               get: () => ({ onsuccess: null, onerror: null }),
               delete: () => ({ onsuccess: null, onerror: null }),
-              clear: () => ({ onsuccess: null, onerror: null })
-            })
-          })
-        }
+              clear: () => ({ onsuccess: null, onerror: null }),
+            }),
+          }),
+        },
       };
-      setTimeout(() => { if (req.onsuccess) req.onsuccess({ target: req }); }, 10);
+      setTimeout(() => {
+        if (req.onsuccess) req.onsuccess({ target: req });
+      }, 10);
       return req;
-    }
+    },
   },
   performance: { now: () => Date.now() },
-  requestAnimationFrame: (cb) => setTimeout(cb, 16),
-  cancelAnimationFrame: (id) => clearTimeout(id),
-  marked: { parse: (s) => s, use: () => {} },
+  requestAnimationFrame: cb => setTimeout(cb, 16),
+  cancelAnimationFrame: id => clearTimeout(id),
+  marked: { parse: s => s, use: () => {} },
   mermaid: { initialize: () => {} },
   URL: { createObjectURL: () => 'blob:mock', revokeObjectURL: () => {} },
-  Blob: class { constructor(parts, opts) { this.parts = parts; this.opts = opts; } },
-  FileReader: class {
-    readAsText() { setTimeout(() => { if (this.onload) this.onload({ target: { result: '{}' } }); }, 10); }
-    readAsDataURL() { setTimeout(() => { if (this.onloadend) this.onloadend(); }, 10); }
+  Blob: class {
+    constructor(parts, opts) {
+      this.parts = parts;
+      this.opts = opts;
+    }
   },
-  console
+  FileReader: class {
+    readAsText() {
+      setTimeout(() => {
+        if (this.onload) this.onload({ target: { result: '{}' } });
+      }, 10);
+    }
+    readAsDataURL() {
+      setTimeout(() => {
+        if (this.onloadend) this.onloadend();
+      }, 10);
+    }
+  },
+  console,
 };
 
 sandbox.window = sandbox;
@@ -133,7 +165,7 @@ const files = [
   'js/medication.js',
   'js/commands.js',
   'js/briefing.js',
-  'js/app.js'
+  'js/app.js',
 ];
 
 for (const file of files) {

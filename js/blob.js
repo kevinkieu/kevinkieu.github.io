@@ -93,5 +93,4 @@
   window.saveBlobViaNative = saveBlobViaNative;
   window.shareContent = shareContent;
   window.copyToClipboard = copyToClipboard;
-
 })();

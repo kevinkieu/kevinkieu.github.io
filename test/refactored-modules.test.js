@@ -39,12 +39,13 @@ describe('color-tags.js', () => {
 describe('follow-up-chips.js', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
-    window.escapeHtml = (str) => String(str || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+    window.escapeHtml = str =>
+      String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     loadModule('js/follow-up-chips.js');
   });
 

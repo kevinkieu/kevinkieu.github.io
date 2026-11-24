@@ -236,7 +236,9 @@ describe('search.js', () => {
         status: 401,
         json: async () => ({ message: 'Invalid API key' }),
       });
-      await expect(search.fetchTavilySearch('test')).rejects.toThrow('Tavily HTTP 401: Invalid API key');
+      await expect(search.fetchTavilySearch('test')).rejects.toThrow(
+        'Tavily HTTP 401: Invalid API key'
+      );
     });
   });
 
@@ -299,24 +301,20 @@ describe('search.js', () => {
     });
 
     it('falls back to Serper when Tavily fails', async () => {
-      fetch
-        .mockRejectedValueOnce(new Error('Tavily failed'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ organic: [{ title: 'Fallback', snippet: 'OK', link: 'url' }] }),
-        });
+      fetch.mockRejectedValueOnce(new Error('Tavily failed')).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ organic: [{ title: 'Fallback', snippet: 'OK', link: 'url' }] }),
+      });
       const result = await search.executeLiveSearch('test', 'tavily');
       expect(result).toContain('Fallback');
       expect(fetch).toHaveBeenCalledTimes(2);
     });
 
     it('falls back to Tavily when Serper fails (preferredEngine=serper)', async () => {
-      fetch
-        .mockRejectedValueOnce(new Error('Serper failed'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ answer: 'Tavily fallback', results: [] }),
-        });
+      fetch.mockRejectedValueOnce(new Error('Serper failed')).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ answer: 'Tavily fallback', results: [] }),
+      });
       const result = await search.executeLiveSearch('test', 'serper');
       expect(result).toContain('Tavily fallback');
     });

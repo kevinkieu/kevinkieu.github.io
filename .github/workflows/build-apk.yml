@@ -3,7 +3,7 @@ name: Build Jarvis AI Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
       - 'android/**'
       - 'js/**'
@@ -22,118 +22,118 @@ jobs:
       contents: write
 
     steps:
-    - name: 📥 Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: 🟢 Cài đặt Node.js (cho scripts/sync-web-assets.js)
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22'
+      - name: 🟢 Cài đặt Node.js (cho scripts/sync-web-assets.js)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
-    - name: ☕ Cài đặt JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - name: ☕ Cài đặt JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: 🐘 Cài đặt Gradle Runner
-      uses: gradle/actions/setup-gradle@v3
-      with:
-        cache-disabled: true
+      - name: 🐘 Cài đặt Gradle Runner
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-disabled: true
 
-    - name: 🔄 Đồng bộ mã nguồn Web mới nhất vào Android Assets
-      run: |
-        # Dùng script đồng bộ dùng chung thay cho cp thủ công (tránh lệch file)
-        node scripts/sync-web-assets.js
-        node scripts/sync-web-assets.js --check
+      - name: 🔄 Đồng bộ mã nguồn Web mới nhất vào Android Assets
+        run: |
+          # Dùng script đồng bộ dùng chung thay cho cp thủ công (tránh lệch file)
+          node scripts/sync-web-assets.js
+          node scripts/sync-web-assets.js --check
 
-    - name: ⚙️ Khởi tạo Gradle Wrapper & Cấp quyền thực thi
-      run: |
-        cd android
-        gradle wrapper --gradle-version 8.2
-        chmod +x gradlew
+      - name: ⚙️ Khởi tạo Gradle Wrapper & Cấp quyền thực thi
+        run: |
+          cd android
+          gradle wrapper --gradle-version 8.2
+          chmod +x gradlew
 
-    - name: 🏷️ Bump Version Code & Version Name (không trùng tag release cũ)
-      id: version
-      run: |
-        GRADLE_FILE="android/app/build.gradle"
-        CURRENT_CODE=$(awk '/^[[:space:]]*versionCode[[:space:]]+/ {print $2; exit}' "$GRADLE_FILE")
-        CURRENT_CODE=${CURRENT_CODE:-0}
-        if ! [[ "$CURRENT_CODE" =~ ^[0-9]+$ ]]; then
-          echo "Không đọc được versionCode hiện tại từ $GRADLE_FILE"
-          exit 1
-        fi
-        # Lấy số build LỚN NHẤT từ các tag release đã tồn tại (v1.1.X).
-        # Nếu chỉ dựa vào versionCode trong repo (bị kẹt lại phía sau), mỗi lần chạy sẽ
-        # tạo lại đúng một tag cũ và ghi đè release đó -> release "Latest" không bao giờ nhảy.
-        git fetch --tags --force --quiet || true
-        LATEST_TAG_CODE=$(git tag -l 'v1.1.*' | sed -E 's#^v1\.1\.([0-9]+)$#\1#' | grep -E '^[0-9]+$' | sort -n | tail -n1)
-        LATEST_TAG_CODE=${LATEST_TAG_CODE:-0}
-        if [ "$LATEST_TAG_CODE" -gt "$CURRENT_CODE" ]; then
-          BASE_CODE=$LATEST_TAG_CODE
-        else
-          BASE_CODE=$CURRENT_CODE
-        fi
-        NEW_CODE=$((BASE_CODE + 1))
-        echo "versionCode trong repo: $CURRENT_CODE | tag cao nhất: v1.1.$LATEST_TAG_CODE -> build mới: v1.1.$NEW_CODE"
-        sed -i "s/versionCode [0-9]*/versionCode $NEW_CODE/g" "$GRADLE_FILE"
-        sed -i "s/versionName \"[^\"]*\"/versionName \"1.1.$NEW_CODE\"/g" "$GRADLE_FILE"
-        echo "NEW_CODE=$NEW_CODE" >> "$GITHUB_ENV"
-        echo "TARGET_VERSION_NAME=1.1.$NEW_CODE" >> "$GITHUB_ENV"
-        echo "versionCode=$CURRENT_CODE -> $NEW_CODE | versionName=1.1.$NEW_CODE"
-        grep -E "versionCode|versionName" "$GRADLE_FILE"
+      - name: 🏷️ Bump Version Code & Version Name (không trùng tag release cũ)
+        id: version
+        run: |
+          GRADLE_FILE="android/app/build.gradle"
+          CURRENT_CODE=$(awk '/^[[:space:]]*versionCode[[:space:]]+/ {print $2; exit}' "$GRADLE_FILE")
+          CURRENT_CODE=${CURRENT_CODE:-0}
+          if ! [[ "$CURRENT_CODE" =~ ^[0-9]+$ ]]; then
+            echo "Không đọc được versionCode hiện tại từ $GRADLE_FILE"
+            exit 1
+          fi
+          # Lấy số build LỚN NHẤT từ các tag release đã tồn tại (v1.1.X).
+          # Nếu chỉ dựa vào versionCode trong repo (bị kẹt lại phía sau), mỗi lần chạy sẽ
+          # tạo lại đúng một tag cũ và ghi đè release đó -> release "Latest" không bao giờ nhảy.
+          git fetch --tags --force --quiet || true
+          LATEST_TAG_CODE=$(git tag -l 'v1.1.*' | sed -E 's#^v1\.1\.([0-9]+)$#\1#' | grep -E '^[0-9]+$' | sort -n | tail -n1)
+          LATEST_TAG_CODE=${LATEST_TAG_CODE:-0}
+          if [ "$LATEST_TAG_CODE" -gt "$CURRENT_CODE" ]; then
+            BASE_CODE=$LATEST_TAG_CODE
+          else
+            BASE_CODE=$CURRENT_CODE
+          fi
+          NEW_CODE=$((BASE_CODE + 1))
+          echo "versionCode trong repo: $CURRENT_CODE | tag cao nhất: v1.1.$LATEST_TAG_CODE -> build mới: v1.1.$NEW_CODE"
+          sed -i "s/versionCode [0-9]*/versionCode $NEW_CODE/g" "$GRADLE_FILE"
+          sed -i "s/versionName \"[^\"]*\"/versionName \"1.1.$NEW_CODE\"/g" "$GRADLE_FILE"
+          echo "NEW_CODE=$NEW_CODE" >> "$GITHUB_ENV"
+          echo "TARGET_VERSION_NAME=1.1.$NEW_CODE" >> "$GITHUB_ENV"
+          echo "versionCode=$CURRENT_CODE -> $NEW_CODE | versionName=1.1.$NEW_CODE"
+          grep -E "versionCode|versionName" "$GRADLE_FILE"
 
-    - name: 🚀 Biên dịch file Android APK (ưu tiên release, fallback debug nếu cần)
-      id: build
-      run: |
-        cd android
-        if ./gradlew assembleRelease --stacktrace; then
-          echo "BUILD_RELEASE=true" >> "$GITHUB_ENV"
-        else
-          echo "BUILD_RELEASE=false" >> "$GITHUB_ENV"
-          echo "Release build failed, will try debug build and publish debug APK separately." >&2
-          ./gradlew assembleDebug --stacktrace
-        fi
+      - name: 🚀 Biên dịch file Android APK (ưu tiên release, fallback debug nếu cần)
+        id: build
+        run: |
+          cd android
+          if ./gradlew assembleRelease --stacktrace; then
+            echo "BUILD_RELEASE=true" >> "$GITHUB_ENV"
+          else
+            echo "BUILD_RELEASE=false" >> "$GITHUB_ENV"
+            echo "Release build failed, will try debug build and publish debug APK separately." >&2
+            ./gradlew assembleDebug --stacktrace
+          fi
 
-    - name: 📦 Đổi tên APK chính thức + APK fallback debug biệt danh
-      run: |
-        if [ "$BUILD_RELEASE" = "true" ]; then
-          cp android/app/build/outputs/apk/release/app-release.apk JarvisAI.apk
-          cp android/app/build/outputs/apk/release/app-release.apk JarvisAI-release.apk || true
-        else
-          cp android/app/build/outputs/apk/debug/app-debug.apk JarvisAI.apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk JarvisAI-debug.apk || true
-        fi
-        ls -la JarvisAI*.apk || true
+      - name: 📦 Đổi tên APK chính thức + APK fallback debug biệt danh
+        run: |
+          if [ "$BUILD_RELEASE" = "true" ]; then
+            cp android/app/build/outputs/apk/release/app-release.apk JarvisAI.apk
+            cp android/app/build/outputs/apk/release/app-release.apk JarvisAI-release.apk || true
+          else
+            cp android/app/build/outputs/apk/debug/app-debug.apk JarvisAI.apk
+            cp android/app/build/outputs/apk/debug/app-debug.apk JarvisAI-debug.apk || true
+          fi
+          ls -la JarvisAI*.apk || true
 
-    - name: 📤 Tải APK lên Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: JarvisAI-Android-App
-        path: |
-          JarvisAI.apk
-          JarvisAI-release.apk
-          JarvisAI-debug.apk
-        retention-days: 30
+      - name: 📤 Tải APK lên Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: JarvisAI-Android-App
+          path: |
+            JarvisAI.apk
+            JarvisAI-release.apk
+            JarvisAI-debug.apk
+          retention-days: 30
 
-    - name: Chỉ tạo GitHub Release khi release build thành công
-      if: env.BUILD_RELEASE == 'true'
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: v${{ env.TARGET_VERSION_NAME }}
-        name: "Jarvis AI APK v${{ env.TARGET_VERSION_NAME }}"
-        make_latest: true
-        body: |
-          Jarvis AI APK v${{ env.TARGET_VERSION_NAME }}
+      - name: Chỉ tạo GitHub Release khi release build thành công
+        if: env.BUILD_RELEASE == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.TARGET_VERSION_NAME }}
+          name: 'Jarvis AI APK v${{ env.TARGET_VERSION_NAME }}'
+          make_latest: true
+          body: |
+            Jarvis AI APK v${{ env.TARGET_VERSION_NAME }}
 
-          - Build từ branch ${{ github.ref_name }} commít ${{ github.sha }}
-          - Commit range: ${{ github.event.compare }} (nếu có)
-          - Runtime: ubuntu-latest
-        files: |
-          JarvisAI.apk
-          JarvisAI-release.apk
-        generate_release_notes: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - Build từ branch ${{ github.ref_name }} commít ${{ github.sha }}
+            - Commit range: ${{ github.event.compare }} (nếu có)
+            - Runtime: ubuntu-latest
+          files: |
+            JarvisAI.apk
+            JarvisAI-release.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

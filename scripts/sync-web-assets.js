@@ -12,9 +12,12 @@
  *   node scripts/sync-web-assets.js --quiet   # đồng bộ, chỉ in lỗi
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const ROOT = path.join(__dirname, '..');
 const DEST = path.join(ROOT, 'android', 'app', 'src', 'main', 'assets');
 
@@ -29,11 +32,17 @@ const argv = process.argv.slice(2);
 const CHECK_ONLY = argv.includes('--check');
 const QUIET = argv.includes('--quiet');
 
-const log = msg => { if (!QUIET) console.log(msg); };
+const log = msg => {
+  if (!QUIET) console.log(msg);
+};
 
 // Giữ CRLF/LF nguyên bản: so sánh theo Buffer để không báo lệch do newline
 function readIfExists(p) {
-  try { return fs.readFileSync(p); } catch { return null; }
+  try {
+    return fs.readFileSync(p);
+  } catch {
+    return null;
+  }
 }
 
 function listFiles(dir, base = '') {
@@ -85,7 +94,10 @@ const differing = [];
 for (const [destRel, srcAbs] of expected) {
   const destAbs = path.join(DEST, destRel);
   const srcBuf = readIfExists(srcAbs);
-  if (!srcBuf) { missing.push(`${destRel} (thiếu file nguồn)`); continue; }
+  if (!srcBuf) {
+    missing.push(`${destRel} (thiếu file nguồn)`);
+    continue;
+  }
   const destBuf = readIfExists(destAbs);
   if (!destBuf) missing.push(destRel);
   else if (!srcBuf.equals(destBuf)) differing.push(destRel);
@@ -99,8 +111,10 @@ if (CHECK_ONLY) {
     process.exit(0);
   }
   if (missing.length) console.error('✗ Thiếu trong android assets:\n  - ' + missing.join('\n  - '));
-  if (differing.length) console.error('✗ Nội dung lệch (android assets cũ hơn):\n  - ' + differing.join('\n  - '));
-  if (orphan.length) console.error('✗ File thừa trong android assets:\n  - ' + orphan.join('\n  - '));
+  if (differing.length)
+    console.error('✗ Nội dung lệch (android assets cũ hơn):\n  - ' + differing.join('\n  - '));
+  if (orphan.length)
+    console.error('✗ File thừa trong android assets:\n  - ' + orphan.join('\n  - '));
   console.error('\nChạy: node scripts/sync-web-assets.js');
   process.exit(1);
 }
@@ -134,4 +148,6 @@ for (const dir of DIRS) {
   }
 }
 
-log(`✓ Đồng bộ android assets: ${copied} file cập nhật, ${orphan.length} file thừa đã xoá (tổng ${expected.size} file).`);
+log(
+  `✓ Đồng bộ android assets: ${copied} file cập nhật, ${orphan.length} file thừa đã xoá (tổng ${expected.size} file).`
+);

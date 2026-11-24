@@ -219,9 +219,18 @@
 }
 
 @keyframes pulseTranslateMic {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
-  50% { transform: scale(1.08); box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 16px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
 }
 
 /* DIVIDER STRIP IN THE CENTER */
@@ -269,8 +278,18 @@
 
 /* RESPONSIVE TWEAKS */
 @media (max-width: 480px) {
-  .translate-text-main { font-size: 1.25rem; }
-  .translate-text-sub { font-size: 0.88rem; }
-  .translate-mic-btn { width: 60px; height: 60px; font-size: 1.4rem; }
-  .translate-half { padding: 12px 16px; }
+  .translate-text-main {
+    font-size: 1.25rem;
+  }
+  .translate-text-sub {
+    font-size: 0.88rem;
+  }
+  .translate-mic-btn {
+    width: 60px;
+    height: 60px;
+    font-size: 1.4rem;
+  }
+  .translate-half {
+    padding: 12px 16px;
+  }
 }

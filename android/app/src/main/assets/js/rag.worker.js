@@ -12,7 +12,7 @@ self.addEventListener('message', function (e) {
   const { token, type, queryVector, allItems, options } = e.data || {};
   if (type === 'SEARCH') {
     try {
-      const { topK = 4, threshold = 0.40, query = '' } = options || {};
+      const { topK = 4, threshold = 0.4, query = '' } = options || {};
       const cleanQuery = (query || '').trim().toLowerCase();
       const qTokens = self.RagCore.tokenizeQuery(cleanQuery);
 
@@ -20,7 +20,12 @@ self.addEventListener('message', function (e) {
       if (allItems && Array.isArray(allItems) && queryVector) {
         for (const item of allItems) {
           if (!item.vector || !Array.isArray(item.vector)) continue;
-          const { rawSimilarity, similarity } = self.RagCore.computeHybridScore(queryVector, item, cleanQuery, qTokens);
+          const { rawSimilarity, similarity } = self.RagCore.computeHybridScore(
+            queryVector,
+            item,
+            cleanQuery,
+            qTokens
+          );
           if (similarity >= threshold) {
             results.push({ item, similarity, rawSimilarity });
           }

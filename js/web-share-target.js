@@ -2,7 +2,7 @@
    Jarvis AI - Web Share Target & Shortcuts Controller
    ========================================================================== */
 
-(function() {
+(function () {
   'use strict';
 
   const $ = id => document.getElementById(id);
@@ -43,7 +43,7 @@
         input.value = (input.value ? input.value + '\n\n' : '') + content;
         input.focus();
       }
-      if (showToast) showToast("💬 Đã đưa nội dung vào ô nhập liệu!");
+      if (showToast) showToast('💬 Đã đưa nội dung vào ô nhập liệu!');
     };
 
     modal.style.display = 'block';
@@ -53,9 +53,9 @@
   // --- PROCESS SHARED URL ---
   async function processSharedUrl(url) {
     const showToast = window.showToast;
-    if (showToast) showToast("⏳ Đang bóc tách nội dung liên kết...", "warning");
+    if (showToast) showToast('⏳ Đang bóc tách nội dung liên kết...', 'warning');
     try {
-      if (url.includes("youtube.com") || url.includes("youtu.be")) {
+      if (url.includes('youtube.com') || url.includes('youtu.be')) {
         const yt = await window.extractYouTubeContent(url);
         const sessions = window.sessions || [];
         const activeId = window.activeId;
@@ -68,36 +68,51 @@
         const updateTokenCount = window.updateTokenCount;
 
         const cs = sessions.find(x => x.id === activeId);
-        const k = (typeof getSessionApiKey === 'function' ? getSessionApiKey(cs) : null);
-        let summary = "";
+        const k = typeof getSessionApiKey === 'function' ? getSessionApiKey(cs) : null;
+        let summary = '';
         if (k && window.GoogleGenAI) {
           try {
             const res = await new window.GoogleGenAI({ apiKey: k }).models.generateContent({
               model: FLASH_LITE_MODEL,
-              contents: 'Phân tích và tóm tắt chi tiết video YouTube sau:\n- Tiêu đề: ' + yt.title + '\n- Kênh: ' + yt.author + '\n- Link: ' + url + '\n' + (yt.content ? yt.content : '') + '\nHãy nêu rõ chủ đề chính, các luận điểm nổi bật và ý nghĩa của video. Tuyệt đối KHÔNG từ chối là không xem được video.',
-              config: { safetySettings: SAFETY, maxOutputTokens: 700 }
+              contents:
+                'Phân tích và tóm tắt chi tiết video YouTube sau:\n- Tiêu đề: ' +
+                yt.title +
+                '\n- Kênh: ' +
+                yt.author +
+                '\n- Link: ' +
+                url +
+                '\n' +
+                (yt.content ? yt.content : '') +
+                '\nHãy nêu rõ chủ đề chính, các luận điểm nổi bật và ý nghĩa của video. Tuyệt đối KHÔNG từ chối là không xem được video.',
+              config: { safetySettings: SAFETY, maxOutputTokens: 700 },
             });
             summary = res.text;
-          } catch(e) {
+          } catch (e) {
             summary = 'Tiêu đề: ' + yt.title + ' (Kênh: ' + yt.author + ')';
           }
         } else {
           summary = 'Tiêu đề: ' + yt.title + ' (Kênh: ' + yt.author + ')';
         }
-        window.txtContent += '\n[YouTube: ' + yt.title + ' - ' + yt.author + ' (' + url + ')]:\n' + summary + '\n';
-        if (DOM.textFileList) DOM.textFileList.innerHTML += '📺 YouTube: ' + escapeHtml(yt.title.substring(0, 24)) + '...<br>';
+        window.txtContent +=
+          '\n[YouTube: ' + yt.title + ' - ' + yt.author + ' (' + url + ')]:\n' + summary + '\n';
+        if (DOM.textFileList)
+          DOM.textFileList.innerHTML +=
+            '📺 YouTube: ' + escapeHtml(yt.title.substring(0, 24)) + '...<br>';
       } else {
         const ext = await window.extractWebPageContent(url);
-        window.txtContent += '\n[Nội dung ' + url + ' qua ' + ext.source + ']:\n' + ext.content + '\n';
+        window.txtContent +=
+          '\n[Nội dung ' + url + ' qua ' + ext.source + ']:\n' + ext.content + '\n';
         const DOM = window.DOM;
-        if (DOM.textFileList) DOM.textFileList.innerHTML += '🌐 ' + ext.source + ' (' + url.substring(0, 30) + '...)<br>';
+        if (DOM.textFileList)
+          DOM.textFileList.innerHTML +=
+            '🌐 ' + ext.source + ' (' + url.substring(0, 30) + '...)<br>';
       }
       const DOM = window.DOM;
       const filesData = window.filesData || [];
       if (DOM.previewBox) DOM.previewBox.style.display = 'block';
       if (DOM.fileCount) DOM.fileCount.innerText = filesData.length + (window.txtContent ? 1 : 0);
       if (typeof updateTokenCount === 'function') updateTokenCount();
-      if (showToast) showToast("✅ Đã bóc tách nội dung liên kết chia sẻ!", "success");
+      if (showToast) showToast('✅ Đã bóc tách nội dung liên kết chia sẻ!', 'success');
     } catch (e) {
       if (showToast) showToast('Lỗi bóc tách: ' + e.message, 'danger');
     }
@@ -137,7 +152,7 @@
       const full = parts.join('\n\n').trim();
 
       const match = full.match(/https?:\/\/[^\s]+/i);
-      const detUrl = match ? match[0] : (shareUrl ? shareUrl.trim() : '');
+      const detUrl = match ? match[0] : shareUrl ? shareUrl.trim() : '';
 
       setTimeout(() => openShareTargetModal(full, detUrl), 400);
     }

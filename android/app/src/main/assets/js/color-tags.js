@@ -2,7 +2,7 @@
    Jarvis AI - Color Tags Controller
    ========================================================================== */
 
-(function() {
+(function () {
   'use strict';
 
   const $ = id => document.getElementById(id);

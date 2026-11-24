@@ -12,13 +12,13 @@
     pdfjs: {
       label: 'PDF.js',
       url: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js',
-      get: () => window.pdfjsLib
+      get: () => window.pdfjsLib,
     },
     html2pdf: {
       label: 'html2pdf',
       url: 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
-      get: () => window.html2pdf
-    }
+      get: () => window.html2pdf,
+    },
   };
 
   const pending = Object.create(null);
@@ -29,14 +29,19 @@
       if (existing) {
         if (existing.dataset.loaded === '1') return resolve();
         existing.addEventListener('load', () => resolve(), { once: true });
-        existing.addEventListener('error', () => reject(new Error('Không tải được ' + url)), { once: true });
+        existing.addEventListener('error', () => reject(new Error('Không tải được ' + url)), {
+          once: true,
+        });
         return;
       }
       const s = document.createElement('script');
       s.src = url;
       s.async = true;
       s.dataset.lazySrc = url;
-      s.onload = () => { s.dataset.loaded = '1'; resolve(); };
+      s.onload = () => {
+        s.dataset.loaded = '1';
+        resolve();
+      };
       s.onerror = () => reject(new Error('Không tải được ' + url));
       document.head.appendChild(s);
     });

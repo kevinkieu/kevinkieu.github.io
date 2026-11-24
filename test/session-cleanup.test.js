@@ -30,17 +30,17 @@ describe('session-cleanup.js', () => {
       { id: 'active', his: [], updatedAt: now - 10 * HOUR },
       { id: 'empty-old', his: [], updatedAt: now - 2 * HOUR },
       { id: 'empty-new', his: [], updatedAt: now - 5 * 60 * 1000 },
-      { id: 'has-messages', his: [{ text: 'hi' }], updatedAt: now - 5 * HOUR }
+      { id: 'has-messages', his: [{ text: 'hi' }], updatedAt: now - 5 * HOUR },
     ];
     const plan = core.planCleanup(sessions, { keepId: 'active', now });
     expect(plan.removeIds).toEqual(['empty-old']);
   });
 
   it('không bao giờ xoá phiên đang mở', () => {
-    const plan = core.planCleanup(
-      [{ id: 'open', his: [], updatedAt: now - 99 * HOUR }],
-      { keepId: 'open', now }
-    );
+    const plan = core.planCleanup([{ id: 'open', his: [], updatedAt: now - 99 * HOUR }], {
+      keepId: 'open',
+      now,
+    });
     expect(plan.removeIds).toEqual([]);
   });
 
@@ -48,7 +48,7 @@ describe('session-cleanup.js', () => {
     const plan = core.planCleanup(
       [
         { id: 'a', his: [], updatedAt: now - 5 * HOUR },
-        { id: 'b', his: [], updatedAt: now - 6 * HOUR }
+        { id: 'b', his: [], updatedAt: now - 6 * HOUR },
       ],
       { now, minAgeMs: HOUR }
     );

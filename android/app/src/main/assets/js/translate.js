@@ -3,12 +3,12 @@
    Powered by Gemini 3.8 Bilateral Real-Time Voice Interpreter
    ========================================================================== */
 
-(function() {
+(function () {
   'use strict';
 
   // --- SUPPORTED MODELS ---
-  const MODEL_38_LIVE = "models/gemini-3.8-live";
-  const MODEL_35_TRANSLATE = "models/gemini-3.5-live-translate-preview";
+  const MODEL_38_LIVE = 'models/gemini-3.8-live';
+  const MODEL_35_TRANSLATE = 'models/gemini-3.5-live-translate-preview';
 
   // --- STATE ---
   let translateWs = null;
@@ -51,7 +51,7 @@
     { code: 'ar', flag: '🇸🇦', name: 'العربية (Ả Rập)', recLang: 'ar-SA' },
     { code: 'tr', flag: '🇹🇷', name: 'Türkçe (Thổ Nhĩ Kỳ)', recLang: 'tr-TR' },
     { code: 'nl', flag: '🇳🇱', name: 'Nederlands (Hà Lan)', recLang: 'nl-NL' },
-    { code: 'pl', flag: '🇵🇱', name: 'Polski (Ba Lan)', recLang: 'pl-PL' }
+    { code: 'pl', flag: '🇵🇱', name: 'Polski (Ba Lan)', recLang: 'pl-PL' },
   ];
 
   function $(id) {
@@ -62,7 +62,14 @@
     if (code === 'vi' || code === 'vi-VN') {
       return { code: 'vi', flag: '🇻🇳', name: 'Tiếng Việt', recLang: 'vi-VN' };
     }
-    return SUPPORTED_LANGS.find(l => l.code === code) || { code, name: code, flag: '🌐', recLang: 'en-US' };
+    return (
+      SUPPORTED_LANGS.find(l => l.code === code) || {
+        code,
+        name: code,
+        flag: '🌐',
+        recLang: 'en-US',
+      }
+    );
   }
 
   // Lấy danh sách API Key hợp lệ và giải mã an toàn
@@ -76,7 +83,12 @@
     if (!keys.length) {
       const ls = window.ls || localStorage;
       for (let i = 1; i <= 10; i++) {
-        let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || ls.getItem(`javiss_api_${i}`) || '').trim();
+        let k = (
+          ls.getItem(`jarvis_api_${i}`) ||
+          ls.getItem(`huanmu_api_${i}`) ||
+          ls.getItem(`javiss_api_${i}`) ||
+          ''
+        ).trim();
         if (k) {
           if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
             if (typeof window.deobfuscateKey === 'function') k = window.deobfuscateKey(k);
@@ -109,13 +121,13 @@
     const badge = $('translate-active-model-tag');
     if (!badge) return;
     if (modelName === MODEL_38_LIVE) {
-      badge.innerHTML = "⚡ Gemini 3.8 Live (Song song)";
-      badge.style.color = "#38bdf8";
-      badge.style.borderColor = "rgba(56, 189, 248, 0.35)";
+      badge.innerHTML = '⚡ Gemini 3.8 Live (Song song)';
+      badge.style.color = '#38bdf8';
+      badge.style.borderColor = 'rgba(56, 189, 248, 0.35)';
     } else {
-      badge.innerHTML = "🧪 Gemini 3.5 Translate";
-      badge.style.color = "#a78bfa";
-      badge.style.borderColor = "rgba(167, 139, 250, 0.35)";
+      badge.innerHTML = '🧪 Gemini 3.5 Translate';
+      badge.style.color = '#a78bfa';
+      badge.style.borderColor = 'rgba(167, 139, 250, 0.35)';
     }
   }
 
@@ -142,7 +154,7 @@
     for (let i = 0; i < length; i++) {
       const originalIndex = Math.floor(i * ratio);
       let s = Math.max(-1, Math.min(1, inputData[originalIndex]));
-      result[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      result[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
     }
     return new Uint8Array(result.buffer);
   }
@@ -173,25 +185,37 @@
       src.buffer = ab;
       src.connect(translateAudioCtx.destination);
 
-      translatePlaybackState.nextPlayTime = Math.max(translatePlaybackState.nextPlayTime, translateAudioCtx.currentTime);
+      translatePlaybackState.nextPlayTime = Math.max(
+        translatePlaybackState.nextPlayTime,
+        translateAudioCtx.currentTime
+      );
       src.start(translatePlaybackState.nextPlayTime);
       translatePlaybackState.nextPlayTime += ab.duration;
       translatePlaybackState.activeSources.push(src);
 
       // Animation phát âm thanh
-      const activeMicBtn = currentSpeaker === 'user' ? $('btn-translate-user-mic') : $('btn-translate-guest-mic');
+      const activeMicBtn =
+        currentSpeaker === 'user' ? $('btn-translate-user-mic') : $('btn-translate-guest-mic');
       if (activeMicBtn) activeMicBtn.className = 'translate-mic-btn speaking';
-      updateStatusPill("🔊 Đang phát bản dịch giọng nói...");
+      updateStatusPill('🔊 Đang phát bản dịch giọng nói...');
 
       src.onended = () => {
-        translatePlaybackState.activeSources = translatePlaybackState.activeSources.filter(s => s !== src);
+        translatePlaybackState.activeSources = translatePlaybackState.activeSources.filter(
+          s => s !== src
+        );
         if (!translatePlaybackState.activeSources.length && activeMicBtn) {
-          activeMicBtn.className = currentSpeaker ? 'translate-mic-btn listening' : 'translate-mic-btn';
-          updateStatusPill(currentSpeaker === 'user' ? "🎙️ Đang nghe Bạn (Tiếng Việt)..." : `🎙️ Đang nghe Khách (${getLangObj(currentGuestLangCode).name})...`);
+          activeMicBtn.className = currentSpeaker
+            ? 'translate-mic-btn listening'
+            : 'translate-mic-btn';
+          updateStatusPill(
+            currentSpeaker === 'user'
+              ? '🎙️ Đang nghe Bạn (Tiếng Việt)...'
+              : `🎙️ Đang nghe Khách (${getLangObj(currentGuestLangCode).name})...`
+          );
         }
       };
     } catch (e) {
-      console.warn("Lỗi phát audio pcm:", e);
+      console.warn('Lỗi phát audio pcm:', e);
     }
   }
 
@@ -200,21 +224,27 @@
     currentGuestLangCode = guestLangCode || currentGuestLangCode || 'en';
     const { key, index } = getCurrentApiKey();
     if (!key) {
-      if (window.showToast) window.showToast("Cần ít nhất 1 Google API Key trong Cài đặt!", "danger");
-      updateStatusPill("❌ Thiếu Google API Key");
+      if (window.showToast)
+        window.showToast('Cần ít nhất 1 Google API Key trong Cài đặt!', 'danger');
+      updateStatusPill('❌ Thiếu Google API Key');
       return false;
     }
 
     if (forceModel) {
       activeEngineModel = forceModel;
     } else {
-      const selPref = $('translate-model-select')?.value || localStorage.getItem('jarvis_translate_model_pref') || MODEL_38_LIVE;
+      const selPref =
+        $('translate-model-select')?.value ||
+        localStorage.getItem('jarvis_translate_model_pref') ||
+        MODEL_38_LIVE;
       activeEngineModel = selPref;
     }
 
     try {
       if (translateWs) {
-        try { translateWs.close(); } catch {}
+        try {
+          translateWs.close();
+        } catch {}
         translateWs = null;
       }
       isTranslateWsReady = false;
@@ -239,13 +269,13 @@
             setup: {
               model: MODEL_35_TRANSLATE,
               generationConfig: {
-                responseModalities: ["AUDIO"],
+                responseModalities: ['AUDIO'],
                 translationConfig: {
                   targetLanguageCode: guestCode,
-                  echoTargetLanguage: false
-                }
-              }
-            }
+                  echoTargetLanguage: false,
+                },
+              },
+            },
           };
         } else {
           // Gemini 3.8 Live: THÔNG DỊCH VIÊN 2 CHIỀU SONG SONG (TIẾNG VIỆT ⇄ TIẾNG KHÁCH)
@@ -253,29 +283,31 @@
             setup: {
               model: MODEL_38_LIVE,
               generationConfig: {
-                responseModalities: ["AUDIO"],
-                temperature: 0.1
+                responseModalities: ['AUDIO'],
+                temperature: 0.1,
               },
               inputAudioTranscription: {},
               outputAudioTranscription: {},
               systemInstruction: {
-                parts: [{
-                  text: `You are an expert real-time bilateral voice interpreter between Vietnamese and ${guestName} (${guestCode}).
+                parts: [
+                  {
+                    text: `You are an expert real-time bilateral voice interpreter between Vietnamese and ${guestName} (${guestCode}).
 YOUR STRICT RULES:
 1. When you hear Vietnamese spoken: translate it directly into natural ${guestName} and speak ONLY the translation in ${guestName}.
 2. When you hear ${guestName} (or foreign language) spoken: translate it directly into Vietnamese and speak ONLY the translation in Vietnamese.
 3. Output ONLY the translated speech. NEVER add conversational filler, greetings, comments, or explanations.
-4. Speak fluently, clearly, and with authentic pronunciation.`
-                }]
-              }
-            }
+4. Speak fluently, clearly, and with authentic pronunciation.`,
+                  },
+                ],
+              },
+            },
           };
         }
 
         translateWs.send(JSON.stringify(setupMsg));
       };
 
-      translateWs.onmessage = async (event) => {
+      translateWs.onmessage = async event => {
         try {
           let rawData = event.data;
           if (rawData instanceof Blob) rawData = await rawData.text();
@@ -284,30 +316,44 @@ YOUR STRICT RULES:
           if (resp.setupComplete || resp.serverContent?.setupComplete) {
             isTranslateWsReady = true;
             isConnecting = false;
-            console.log("Translate WS setupComplete received successfully!");
+            console.log('Translate WS setupComplete received successfully!');
             updateModelBadge(activeEngineModel);
-            updateStatusPill("🟢 Đã sẵn sàng. Bấm micro để trò chuyện 2 chiều.");
+            updateStatusPill('🟢 Đã sẵn sàng. Bấm micro để trò chuyện 2 chiều.');
             return;
           }
 
           const sc = resp.serverContent;
           if (sc) {
             if (sc.interrupted) {
-              translatePlaybackState.activeSources.forEach(s => { try { s.stop(); } catch {} });
-              translatePlaybackState = { nextPlayTime: translateAudioCtx?.currentTime || 0, activeSources: [] };
+              translatePlaybackState.activeSources.forEach(s => {
+                try {
+                  s.stop();
+                } catch {}
+              });
+              translatePlaybackState = {
+                nextPlayTime: translateAudioCtx?.currentTime || 0,
+                activeSources: [],
+              };
             }
 
             // Nhận diện lời người nói từ máy chủ
-            const inputTxt = sc.inputTranscription?.text || sc.input_transcription?.text ||
-                             sc.inputAudioTranscription?.text || sc.input_audio_transcription?.text ||
-                             sc.interimInputTranscription?.text || sc.interim_input_transcription?.text;
+            const inputTxt =
+              sc.inputTranscription?.text ||
+              sc.input_transcription?.text ||
+              sc.inputAudioTranscription?.text ||
+              sc.input_audio_transcription?.text ||
+              sc.interimInputTranscription?.text ||
+              sc.interim_input_transcription?.text;
             if (inputTxt && inputTxt.trim()) {
               renderInputTranscript(inputTxt.trim());
             }
 
             // Bản dịch văn bản
-            const outputTxt = sc.outputTranscription?.text || sc.output_transcription?.text ||
-                              sc.outputAudioTranscription?.text || sc.output_audio_transcription?.text;
+            const outputTxt =
+              sc.outputTranscription?.text ||
+              sc.output_transcription?.text ||
+              sc.outputAudioTranscription?.text ||
+              sc.output_audio_transcription?.text;
             if (outputTxt && outputTxt.trim()) {
               renderOutputTranscript(outputTxt.trim());
             }
@@ -325,16 +371,16 @@ YOUR STRICT RULES:
             }
           }
         } catch (e) {
-          console.warn("Lỗi nhận gói tin translate:", e);
+          console.warn('Lỗi nhận gói tin translate:', e);
         }
       };
 
-      translateWs.onerror = (e) => {
-        console.warn("Translate WS error:", e);
+      translateWs.onerror = e => {
+        console.warn('Translate WS error:', e);
       };
 
-      translateWs.onclose = async (e) => {
-        console.warn("Translate WS closed:", e.code, e.reason);
+      translateWs.onclose = async e => {
+        console.warn('Translate WS closed:', e.code, e.reason);
         const wasReady = isTranslateWsReady;
         isTranslateWsReady = false;
         isConnecting = false;
@@ -343,8 +389,12 @@ YOUR STRICT RULES:
 
         // NẾU Gemini 3.5 đóng trước khi sẵn sàng -> Lập tức tự chuyển sang Gemini 3.8 Live
         if (!wasReady && activeEngineModel === MODEL_35_TRANSLATE) {
-          console.log(`[Live Translate] Gemini 3.5 closed (code ${e.code}), falling back to Gemini 3.8 Live...`);
-          updateStatusPill(`🔄 Gemini 3.5 ngắt (Mã ${e.code}) ➔ Tự động chuyển sang Gemini 3.8 Live...`);
+          console.log(
+            `[Live Translate] Gemini 3.5 closed (code ${e.code}), falling back to Gemini 3.8 Live...`
+          );
+          updateStatusPill(
+            `🔄 Gemini 3.5 ngắt (Mã ${e.code}) ➔ Tự động chuyển sang Gemini 3.8 Live...`
+          );
           activeEngineModel = MODEL_38_LIVE;
           const modelSel = $('translate-model-select');
           if (modelSel) modelSel.value = MODEL_38_LIVE;
@@ -367,10 +417,10 @@ YOUR STRICT RULES:
 
       return true;
     } catch (err) {
-      console.error("connectTranslateWs failed:", err);
+      console.error('connectTranslateWs failed:', err);
       isConnecting = false;
       isTranslateWsReady = false;
-      updateStatusPill("❌ Không thể kết nối dịch");
+      updateStatusPill('❌ Không thể kết nối dịch');
       return false;
     }
   }
@@ -411,9 +461,9 @@ YOUR STRICT RULES:
       localSpeechRec.continuous = true;
       localSpeechRec.interimResults = true;
       const langObj = getLangObj(langCode);
-      localSpeechRec.lang = speaker === 'user' ? 'vi-VN' : (langObj.recLang || 'en-US');
+      localSpeechRec.lang = speaker === 'user' ? 'vi-VN' : langObj.recLang || 'en-US';
 
-      localSpeechRec.onresult = (event) => {
+      localSpeechRec.onresult = event => {
         let finalTxt = '';
         let interimTxt = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -429,12 +479,14 @@ YOUR STRICT RULES:
       localSpeechRec.onerror = () => {};
       localSpeechRec.onend = () => {
         if (currentSpeaker === speaker && isTranslateWsReady) {
-          try { localSpeechRec.start(); } catch {}
+          try {
+            localSpeechRec.start();
+          } catch {}
         }
       };
       localSpeechRec.start();
     } catch (e) {
-      console.warn("SpeechRec error:", e);
+      console.warn('SpeechRec error:', e);
     }
   }
 
@@ -459,7 +511,12 @@ YOUR STRICT RULES:
 
     if (!translateMediaStream) {
       translateMediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 }
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
       });
     }
 
@@ -472,14 +529,16 @@ YOUR STRICT RULES:
     sentPacketCount = 0;
 
     translateScriptProcessor.onaudioprocess = e => {
-      if (!isTranslateWsReady || !currentSpeaker || translateWs?.readyState !== WebSocket.OPEN) return;
+      if (!isTranslateWsReady || !currentSpeaker || translateWs?.readyState !== WebSocket.OPEN)
+        return;
       const floatData = e.inputBuffer.getChannelData(0);
 
       // Tính mức độ âm lượng (RMS)
       let sum = 0;
       for (let i = 0; i < floatData.length; i++) sum += floatData[i] * floatData[i];
       const rms = Math.sqrt(sum / floatData.length);
-      const activeBtn = currentSpeaker === 'user' ? $('btn-translate-user-mic') : $('btn-translate-guest-mic');
+      const activeBtn =
+        currentSpeaker === 'user' ? $('btn-translate-user-mic') : $('btn-translate-guest-mic');
 
       // Visual VU Meter
       const meterPercent = Math.min(100, Math.round(rms * 450));
@@ -497,15 +556,21 @@ YOUR STRICT RULES:
       let bin = '';
       for (let i = 0; i < pcm16k.length; i++) bin += String.fromCharCode(pcm16k[i]);
 
-      translateWs.send(JSON.stringify({
-        realtimeInput: {
-          audio: { mimeType: "audio/pcm;rate=16000", data: btoa(bin) }
-        }
-      }));
+      translateWs.send(
+        JSON.stringify({
+          realtimeInput: {
+            audio: { mimeType: 'audio/pcm;rate=16000', data: btoa(bin) },
+          },
+        })
+      );
 
       sentPacketCount++;
       if (sentPacketCount % 20 === 0 && activeBtn?.classList.contains('listening')) {
-        updateStatusPill(currentSpeaker === 'user' ? `🎙️ Đang nghe Bạn (Đã gửi ${sentPacketCount} gói âm thanh)...` : `🎙️ Đang nghe Khách...`);
+        updateStatusPill(
+          currentSpeaker === 'user'
+            ? `🎙️ Đang nghe Bạn (Đã gửi ${sentPacketCount} gói âm thanh)...`
+            : `🎙️ Đang nghe Khách...`
+        );
       }
     };
 
@@ -518,9 +583,18 @@ YOUR STRICT RULES:
     stopLocalSpeechRec();
     updateAudioMeters(0);
 
-    try { translateScriptProcessor?.disconnect(); translateScriptProcessor = null; } catch {}
-    try { translateMicSource?.disconnect(); translateMicSource = null; } catch {}
-    try { translateSilentGain?.disconnect(); translateSilentGain = null; } catch {}
+    try {
+      translateScriptProcessor?.disconnect();
+      translateScriptProcessor = null;
+    } catch {}
+    try {
+      translateMicSource?.disconnect();
+      translateMicSource = null;
+    } catch {}
+    try {
+      translateSilentGain?.disconnect();
+      translateSilentGain = null;
+    } catch {}
 
     const b1 = $('btn-translate-user-mic');
     const b2 = $('btn-translate-guest-mic');
@@ -535,7 +609,7 @@ YOUR STRICT RULES:
       currentSpeaker = null;
       stopRecording();
       updateMicButtons();
-      updateStatusPill("⏸️ Đã ngắt micro. Bấm lại để tiếp tục nói.");
+      updateStatusPill('⏸️ Đã ngắt micro. Bấm lại để tiếp tục nói.');
       return;
     }
 
@@ -571,7 +645,7 @@ YOUR STRICT RULES:
       updateMicButtons();
       const errReason = lastCloseInfo.code ? ` (Mã ${lastCloseInfo.code})` : '';
       updateStatusPill(`❌ Chưa kết nối được máy chủ dịch${errReason}. Hãy bấm thử lại!`);
-      if (window.showToast) window.showToast(`Lỗi kết nối phiên dịch${errReason}!`, "warning");
+      if (window.showToast) window.showToast(`Lỗi kết nối phiên dịch${errReason}!`, 'warning');
       return;
     }
 
@@ -580,7 +654,7 @@ YOUR STRICT RULES:
     startLocalSpeechRec(speaker, speaker === 'user' ? 'vi' : guestLangCode);
 
     if (speaker === 'user') {
-      updateStatusPill("🎙️ Đang nghe Bạn... Hãy nói tiếng Việt!");
+      updateStatusPill('🎙️ Đang nghe Bạn... Hãy nói tiếng Việt!');
     } else {
       updateStatusPill(`🎙️ Listening to Guest... Please speak ${getLangObj(guestLangCode).name}!`);
     }
@@ -590,10 +664,12 @@ YOUR STRICT RULES:
     const userBtn = $('btn-translate-user-mic');
     const guestBtn = $('btn-translate-guest-mic');
     if (userBtn) {
-      userBtn.className = currentSpeaker === 'user' ? 'translate-mic-btn listening' : 'translate-mic-btn';
+      userBtn.className =
+        currentSpeaker === 'user' ? 'translate-mic-btn listening' : 'translate-mic-btn';
     }
     if (guestBtn) {
-      guestBtn.className = currentSpeaker === 'guest' ? 'translate-mic-btn listening' : 'translate-mic-btn';
+      guestBtn.className =
+        currentSpeaker === 'guest' ? 'translate-mic-btn listening' : 'translate-mic-btn';
     }
   }
 
@@ -604,10 +680,14 @@ YOUR STRICT RULES:
     stopRecording();
     translateMediaStream?.getTracks().forEach(t => t.stop());
     translateMediaStream = null;
-    try { translateAudioCtx?.close(); } catch {}
+    try {
+      translateAudioCtx?.close();
+    } catch {}
     translateAudioCtx = null;
     if (translateWs) {
-      try { translateWs.close(); } catch {}
+      try {
+        translateWs.close();
+      } catch {}
       translateWs = null;
     }
     updateMicButtons();
@@ -623,12 +703,15 @@ YOUR STRICT RULES:
     // Populate guest language select nếu chưa có
     const sel = $('translate-guest-lang-select');
     if (sel && sel.options.length <= 1) {
-      sel.innerHTML = SUPPORTED_LANGS.map(l => `<option value="${l.code}" ${l.code === 'en' ? 'selected' : ''}>${l.flag} ${l.name}</option>`).join('');
+      sel.innerHTML = SUPPORTED_LANGS.map(
+        l =>
+          `<option value="${l.code}" ${l.code === 'en' ? 'selected' : ''}>${l.flag} ${l.name}</option>`
+      ).join('');
     }
 
     const currentTarget = sel?.value || 'en';
     updateModelBadge(activeEngineModel);
-    updateStatusPill("⏳ Đang chuẩn bị phiên dịch...");
+    updateStatusPill('⏳ Đang chuẩn bị phiên dịch...');
 
     // Tự động kết nối sẵn sàng trước
     connectTranslateWs(currentTarget);

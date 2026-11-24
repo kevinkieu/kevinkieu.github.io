@@ -104,7 +104,7 @@ describe('markdown.worker.js', () => {
     });
 
     it('escapes single quotes', () => {
-      expect(worker.escapeHtml("'single'")).toBe("\u0027single\u0027");
+      expect(worker.escapeHtml("'single'")).toBe('\u0027single\u0027');
     });
   });
 
@@ -112,7 +112,7 @@ describe('markdown.worker.js', () => {
     it('wraps code blocks with syntax highlighting', () => {
       const html = '<pre><code class="language-javascript">const x = 1;</code></pre>';
       const result = worker.processCodeBlocks(html);
-      
+
       expect(result).toContain('code-block-wrapper');
       expect(result).toContain('code-block-header');
       expect(result).toContain('📋 Copy Code');
@@ -127,7 +127,8 @@ describe('markdown.worker.js', () => {
     });
 
     it('handles multiple code blocks', () => {
-      const html = '<pre><code class="language-js">1</code></pre><pre><code class="language-py">2</code></pre>';
+      const html =
+        '<pre><code class="language-js">1</code></pre><pre><code class="language-py">2</code></pre>';
       const result = worker.processCodeBlocks(html);
       expect(result.split('code-block-wrapper').length).toBe(3); // 2 blocks + 1
     });
@@ -139,7 +140,9 @@ describe('markdown.worker.js', () => {
     });
 
     it('falls back to escaped HTML when hljs fails', () => {
-      hljs.highlight.mockImplementationOnce(() => { throw new Error('hljs error'); });
+      hljs.highlight.mockImplementationOnce(() => {
+        throw new Error('hljs error');
+      });
       const html = '<pre><code class="language-unknown">const x = < 1;</code></pre>';
       const result = worker.processCodeBlocks(html);
       // Should contain escaped HTML entities
@@ -161,11 +164,11 @@ describe('markdown.worker.js', () => {
 
     it('returns highlighted HTML for valid markdown', async () => {
       marked.parse.mockReturnValue('<p>Hello <strong>world</strong></p>');
-      
-      await worker.handleMessage({ 
-        data: { type: 'RENDER', token: 'abc123', markdown: 'Hello **world**' } 
+
+      await worker.handleMessage({
+        data: { type: 'RENDER', token: 'abc123', markdown: 'Hello **world**' },
       });
-      
+
       expect(self.postMessage).toHaveBeenCalledWith({
         token: 'abc123',
         success: true,
@@ -175,11 +178,11 @@ describe('markdown.worker.js', () => {
 
     it('processes code blocks in markdown', async () => {
       marked.parse.mockReturnValue('<pre><code class="language-js">const x = 1;</code></pre>');
-      
-      await worker.handleMessage({ 
-        data: { type: 'RENDER', token: 'token1', markdown: '\`\`\`js\nconst x = 1;\n\`\`\`' } 
+
+      await worker.handleMessage({
+        data: { type: 'RENDER', token: 'token1', markdown: '\`\`\`js\nconst x = 1;\n\`\`\`' },
       });
-      
+
       expect(self.postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           token: 'token1',
@@ -191,11 +194,11 @@ describe('markdown.worker.js', () => {
 
     it('converts URL placeholders to links', async () => {
       marked.parse.mockReturnValue('[URL: https://example.com]');
-      
-      await worker.handleMessage({ 
-        data: { type: 'RENDER', token: 'url1', markdown: '[URL: https://example.com]' } 
+
+      await worker.handleMessage({
+        data: { type: 'RENDER', token: 'url1', markdown: '[URL: https://example.com]' },
       });
-      
+
       expect(self.postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           html: expect.stringContaining('<a href="https://example.com"'),
@@ -204,12 +207,14 @@ describe('markdown.worker.js', () => {
     });
 
     it('returns error response on exception', async () => {
-      marked.parse.mockImplementationOnce(() => { throw new Error('Parse error'); });
-      
-      await worker.handleMessage({ 
-        data: { type: 'RENDER', token: 'err1', markdown: 'test' } 
+      marked.parse.mockImplementationOnce(() => {
+        throw new Error('Parse error');
       });
-      
+
+      await worker.handleMessage({
+        data: { type: 'RENDER', token: 'err1', markdown: 'test' },
+      });
+
       expect(self.postMessage).toHaveBeenCalledWith({
         token: 'err1',
         success: false,
@@ -219,11 +224,11 @@ describe('markdown.worker.js', () => {
 
     it('handles empty markdown', async () => {
       marked.parse.mockReturnValue('');
-      
-      await worker.handleMessage({ 
-        data: { type: 'RENDER', token: 'empty', markdown: '' } 
+
+      await worker.handleMessage({
+        data: { type: 'RENDER', token: 'empty', markdown: '' },
       });
-      
+
       expect(self.postMessage).toHaveBeenCalledWith({
         token: 'empty',
         success: true,

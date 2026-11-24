@@ -13,7 +13,9 @@ if (fs.existsSync(gradlePath)) {
       .replace(/versionCode\s+\d+/, `versionCode ${newCode}`)
       .replace(/versionName\s+["'][^"']+["']/, `versionName "${newVersionName}"`);
     fs.writeFileSync(gradlePath, content, 'utf8');
-    console.log(`[TĂNG PHIÊN BẢN] versionCode: ${oldCode} -> ${newCode} (versionName: "${newVersionName}")`);
+    console.log(
+      `[TĂNG PHIÊN BẢN] versionCode: ${oldCode} -> ${newCode} (versionName: "${newVersionName}")`
+    );
 
     // Đồng bộ cache buster trong index.html
     const indexPath = path.join(__dirname, 'index.html');
@@ -28,7 +30,10 @@ if (fs.existsSync(gradlePath)) {
     const swPath = path.join(__dirname, 'sw.js');
     if (fs.existsSync(swPath)) {
       let swContent = fs.readFileSync(swPath, 'utf8');
-      swContent = swContent.replace(/CACHE_NAME\s*=\s*['"]jarvis-ai-pwa-v\d+['"]/, `CACHE_NAME = 'jarvis-ai-pwa-v${newCode}'`);
+      swContent = swContent.replace(
+        /CACHE_NAME\s*=\s*['"]jarvis-ai-pwa-v\d+['"]/,
+        `CACHE_NAME = 'jarvis-ai-pwa-v${newCode}'`
+      );
       fs.writeFileSync(swPath, swContent, 'utf8');
       console.log(`[ĐỒNG BỘ SW] Đã cập nhật CACHE_NAME jarvis-ai-pwa-v${newCode} trong sw.js`);
     }

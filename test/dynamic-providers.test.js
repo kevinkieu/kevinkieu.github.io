@@ -53,7 +53,9 @@ describe('dynamic-providers.js — provider/model động (Kilo)', () => {
     expect(kilo.baseUrl).toBe('https://ai-gateway.kilo.ai/api/v1');
     // ...nhưng lúc gọi request phải đổi sang proxy: ai-gateway.kilo.ai không trả CORS
     // nên gọi thẳng từ WebView/trình duyệt luôn "Failed to fetch".
-    expect(kilo.getBaseUrl()).toBe('https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/kilo/v1');
+    expect(kilo.getBaseUrl()).toBe(
+      'https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/kilo/v1'
+    );
     expect(kilo.models).toContain(MODEL_ID);
     expect(window.COMPAT_PROVIDERS.kilo).toBeTruthy();
     expect(window.COMPAT_MODEL_OPTS[MODEL_ID]).toMatchObject({
@@ -74,11 +76,14 @@ describe('dynamic-providers.js — provider/model động (Kilo)', () => {
 
   it('bể key của provider động đọc đúng ô và obfuscate khi xuất backup', () => {
     addKilo();
-    expect(window.DynamicProviders.getProviderKeysList('kilo')).toEqual(['kilo-key-1', 'kilo-key-2']);
+    expect(window.DynamicProviders.getProviderKeysList('kilo')).toEqual([
+      'kilo-key-1',
+      'kilo-key-2',
+    ]);
     expect(window.DynamicProviders.getProviderKeyNamesList('kilo')).toEqual(['Kilo #1', 'Kilo #2']);
     expect(window.DynamicProviders.getProviderKeyCount('kilo')).toBe(2);
 
-    window.obfuscateKey = (k) => 'JVENC_' + k;
+    window.obfuscateKey = k => 'JVENC_' + k;
     const exported = window.DynamicProviders.exportConfig(true);
     expect(exported.providers.kilo.keys).toEqual(['JVENC_kilo-key-1', 'JVENC_kilo-key-2']);
     expect(exported.models['kilo/' + MODEL_ID]).toMatchObject({ provider: 'kilo' });
@@ -86,10 +91,12 @@ describe('dynamic-providers.js — provider/model động (Kilo)', () => {
 
   it('model ID trùng trong cùng provider bị từ chối, provider lạ bị từ chối', () => {
     addKilo();
-    expect(() => window.DynamicProviders.addModel({ id: MODEL_ID, provider: 'kilo' }))
-      .toThrow(/đã tồn tại/);
-    expect(() => window.DynamicProviders.addModel({ id: 'x/y', provider: 'khong-co' }))
-      .toThrow(/Provider không tồn tại/);
+    expect(() => window.DynamicProviders.addModel({ id: MODEL_ID, provider: 'kilo' })).toThrow(
+      /đã tồn tại/
+    );
+    expect(() => window.DynamicProviders.addModel({ id: 'x/y', provider: 'khong-co' })).toThrow(
+      /Provider không tồn tại/
+    );
   });
 
   it('xoá provider Kilo kéo theo model của nó, không đụng provider khác', () => {
@@ -125,7 +132,7 @@ describe('dynamic-providers.js — provider/model động (Kilo)', () => {
         topP: 0.9,
         topK: 40,
         inputModalities: ['text'],
-        noReasoning: true
+        noReasoning: true,
         // KHÔNG có trường id
       };
       localStorage.setItem(MODELS_KEY, JSON.stringify({ [oldKey]: oldModel }));
@@ -164,7 +171,7 @@ describe('dynamic-providers.js — provider/model động (Kilo)', () => {
         provider: 'nvidia',
         label: 'Nemotron 3.5 Bolt E4B',
         maxTokens: 65536,
-        contextWindow: 1000000
+        contextWindow: 1000000,
       };
       localStorage.setItem(MODELS_KEY, JSON.stringify({ [compositeKey]: normalizedModel }));
 
@@ -197,9 +204,12 @@ describe('dynamic-providers.js — provider/model động (Kilo)', () => {
 
     it('findModelById tìm thấy model qua id user-facing sau khi chuẩn hoá', () => {
       const oldKey = 'nvidia/nemotron-3.5-bolt-e4b';
-      localStorage.setItem(MODELS_KEY, JSON.stringify({
-        [oldKey]: { provider: 'nvidia', label: 'Test', maxTokens: 1000 }
-      }));
+      localStorage.setItem(
+        MODELS_KEY,
+        JSON.stringify({
+          [oldKey]: { provider: 'nvidia', label: 'Test', maxTokens: 1000 },
+        })
+      );
 
       window.DynamicProviders.getModels(); // trigger normalize
       const found = window.DynamicProviders.findModelById(oldKey);

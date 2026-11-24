@@ -3,20 +3,31 @@
    Quản lý hạn ngạch 20 RPD cho Gemini 4 Hydrogen, 3.6 Flash & 3.8 Flash trên 10 Key
    ========================================================================== */
 
-(function() {
+(function () {
   'use strict';
 
   const $ = id => document.getElementById(id);
   const ls = window.ls || localStorage;
-  const showToast = (msg, type) => (typeof window.showToast === 'function') ? window.showToast(msg, type) : console.log(`[${type}] ${msg}`);
-  const escapeHtml = str => (typeof window.escapeHtml === 'function') ? window.escapeHtml(str) : String(str || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
-  const deobfuscateKey = k => (typeof window.deobfuscateKey === 'function') ? window.deobfuscateKey(k) : k;
-  const saveToDB = s => (typeof window.saveToDB === 'function') ? window.saveToDB(s) : Promise.resolve();
+  const showToast = (msg, type) =>
+    typeof window.showToast === 'function'
+      ? window.showToast(msg, type)
+      : console.log(`[${type}] ${msg}`);
+  const escapeHtml = str =>
+    typeof window.escapeHtml === 'function'
+      ? window.escapeHtml(str)
+      : String(str || '').replace(
+          /[&<>"']/g,
+          m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]
+        );
+  const deobfuscateKey = k =>
+    typeof window.deobfuscateKey === 'function' ? window.deobfuscateKey(k) : k;
+  const saveToDB = s =>
+    typeof window.saveToDB === 'function' ? window.saveToDB(s) : Promise.resolve();
 
   function getMyDeviceId() {
     let devId = ls.getItem('jarvis_device_id');
     if (!devId) {
-      const prefix = ('ontouchstart' in window) ? 'mob_' : 'pc_';
+      const prefix = 'ontouchstart' in window ? 'mob_' : 'pc_';
       devId = prefix + Math.random().toString(36).substring(2, 8);
       ls.setItem('jarvis_device_id', devId);
     }
@@ -26,7 +37,7 @@
   // 14:00 giờ Việt Nam (UTC+7) làm mốc chuyển giao chu kỳ 24h của Google AI Studio (00:00 Pacific Time)
   function getCurrentQuotaCycle() {
     const now = new Date();
-    const vnTimeMs = now.getTime() + (now.getTimezoneOffset() * 60000) + (7 * 3600000);
+    const vnTimeMs = now.getTime() + now.getTimezoneOffset() * 60000 + 7 * 3600000;
     const shifted = new Date(vnTimeMs - 14 * 3600000);
     const y = shifted.getFullYear();
     const m = String(shifted.getMonth() + 1).padStart(2, '0');
@@ -53,12 +64,13 @@
   }
 
   function normalizeSlotData(slotObj) {
-    if (!slotObj || typeof slotObj !== 'object') return { 'hydrogen': {}, '3.6': {}, '3.8': {} };
+    if (!slotObj || typeof slotObj !== 'object') return { hydrogen: {}, 3.6: {}, 3.8: {} };
     if (slotObj['hydrogen'] || slotObj['3.6'] || slotObj['3.8']) {
       return {
-        'hydrogen': (typeof slotObj['hydrogen'] === 'object' && slotObj['hydrogen']) ? slotObj['hydrogen'] : {},
-        '3.6': (typeof slotObj['3.6'] === 'object' && slotObj['3.6']) ? slotObj['3.6'] : {},
-        '3.8': (typeof slotObj['3.8'] === 'object' && slotObj['3.8']) ? slotObj['3.8'] : {}
+        hydrogen:
+          typeof slotObj['hydrogen'] === 'object' && slotObj['hydrogen'] ? slotObj['hydrogen'] : {},
+        3.6: typeof slotObj['3.6'] === 'object' && slotObj['3.6'] ? slotObj['3.6'] : {},
+        3.8: typeof slotObj['3.8'] === 'object' && slotObj['3.8'] ? slotObj['3.8'] : {},
       };
     }
     // Khả năng tương thích ngược (legacy flat structure): gán về 3.8
@@ -66,7 +78,7 @@
     for (const [k, v] of Object.entries(slotObj)) {
       if (typeof v === 'number') legacyMap[k] = v;
     }
-    return { 'hydrogen': {}, '3.6': {}, '3.8': legacyMap };
+    return { hydrogen: {}, 3.6: {}, 3.8: legacyMap };
   }
 
   function loadKeyUsageData() {
@@ -134,7 +146,7 @@
 
     if (remoteUsage.cycle === curCycle) {
       for (const [slotKey, remoteSlotRaw] of Object.entries(remoteUsage.keys)) {
-        if (!localData.keys[slotKey]) localData.keys[slotKey] = { 'hydrogen': {}, '3.6': {}, '3.8': {} };
+        if (!localData.keys[slotKey]) localData.keys[slotKey] = { hydrogen: {}, 3.6: {}, 3.8: {} };
         else localData.keys[slotKey] = normalizeSlotData(localData.keys[slotKey]);
 
         const remoteNorm = normalizeSlotData(remoteSlotRaw);
@@ -164,7 +176,7 @@
     const data = loadKeyUsageData();
     const devId = getMyDeviceId();
     const slotKey = String(slotIndex);
-    if (!data.keys[slotKey]) data.keys[slotKey] = { 'hydrogen': {}, '3.6': {}, '3.8': {} };
+    if (!data.keys[slotKey]) data.keys[slotKey] = { hydrogen: {}, 3.6: {}, 3.8: {} };
     else data.keys[slotKey] = normalizeSlotData(data.keys[slotKey]);
 
     if (!data.keys[slotKey][bucket]) data.keys[slotKey][bucket] = {};
@@ -191,7 +203,7 @@
   function findSlotIndexForKey(key) {
     if (!key) return 1;
     for (let i = 1; i <= 10; i++) {
-      let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || "").trim();
+      let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || '').trim();
       if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
       if (k === key) return i;
     }
@@ -200,11 +212,16 @@
 
   function getActiveKeySlot() {
     try {
-      const sel = (typeof window.getGoogleKeySlot === 'function') ? window.getGoogleKeySlot() : 'auto';
+      const sel =
+        typeof window.getGoogleKeySlot === 'function' ? window.getGoogleKeySlot() : 'auto';
       if (sel !== 'auto') {
         return parseInt(sel, 10) + 1;
       }
-      if (typeof window.sessions !== 'undefined' && Array.isArray(window.sessions) && typeof window.activeId !== 'undefined') {
+      if (
+        typeof window.sessions !== 'undefined' &&
+        Array.isArray(window.sessions) &&
+        typeof window.activeId !== 'undefined'
+      ) {
         const cs = window.sessions.find(x => x.id === window.activeId);
         if (cs?.assignedApiKey) {
           return findSlotIndexForKey(cs.assignedApiKey);
@@ -218,7 +235,11 @@
     const curSlot = getActiveKeySlot();
     const curBucket = getSelectedFlashModelBucket(); // 'hydrogen' | '3.8' | '3.6'
     const count = getKeyUsageCount(curSlot, curBucket);
-    const name = (ls.getItem(`jarvis_api_name_${curSlot}`) || ls.getItem(`huanmu_api_name_${curSlot}`) || `Key ${curSlot}`).trim();
+    const name = (
+      ls.getItem(`jarvis_api_name_${curSlot}`) ||
+      ls.getItem(`huanmu_api_name_${curSlot}`) ||
+      `Key ${curSlot}`
+    ).trim();
 
     // 1. Cập nhật Chip trên Header: Hiển thị rõ model đang active (H4, 3.6 hay 3.8)
     const quotaLabel = $('key-quota-label');
@@ -258,12 +279,51 @@
 
   // Model của Experiential Labs (dùng bộ đếm + key pool 5 ô riêng, không phải Google/OpenRouter)
   // Danh sách model EXPLABS đọc live từ window.EXPLABS_MODELS (dynamic-providers.js gán vào window sau khi DOM sẵn sàng)
-  const isExplabsModelName = m => (Array.isArray(window.EXPLABS_MODELS) ? window.EXPLABS_MODELS : ['gpt-6-luna', 'deepseek-v4.1-flash', 'qwen4-max:free']).includes((m || '').trim());
+  const isExplabsModelName = m =>
+    (Array.isArray(window.EXPLABS_MODELS)
+      ? window.EXPLABS_MODELS
+      : ['gpt-6-luna', 'deepseek-v4.1-flash', 'qwen4-max:free']
+    ).includes((m || '').trim());
+
+  // Helper: lấy metadata provider từ registry
+  function getProviderMeta(providerId) {
+    if (typeof window.getProvider === 'function') return window.getProvider(providerId);
+    return null;
+  }
+  function getProviderKeyNamePrefix(providerId) {
+    const p = getProviderMeta(providerId);
+    return p ? p.keyNamePrefix : `jarvis_provider_${providerId}_name`;
+  }
+  function getProviderIcon(providerId) {
+    if (typeof window.getProviderIcon === 'function') return window.getProviderIcon(providerId);
+    const icons = { google: '🤖', nvidia: '🟢', openrouter: '🛰️', cohere: '🤝', explabs: '🌐' };
+    return icons[providerId] || '📦';
+  }
+  function getProviderColor(providerId) {
+    const colors = {
+      google: '#3b82f6',
+      nvidia: '#76b900',
+      openrouter: '#f59e0b',
+      cohere: '#6366f1',
+      explabs: '#0ea5e9',
+    };
+    return colors[providerId] || '#8b5cf6';
+  }
+  function getProviderRgb(providerId) {
+    const rgbs = {
+      google: '59,130,246',
+      nvidia: '118,185,0',
+      openrouter: '245,158,11',
+      cohere: '99,102,241',
+      explabs: '14,165,233',
+    };
+    return rgbs[providerId] || '139,92,246';
+  }
 
   function getKeyBadgeHtml(keyNum, modelName = null) {
     if (!keyNum) return '';
     const isEL = isExplabsModelName(modelName);
-    
+
     // Xác định provider cho model này:
     // 1. Nếu modelName là model đang chọn trong #model-select -> dùng data-provider của option (optgroup)
     // 2. Fallback: tìm trong COMPAT_PROVIDERS (registry)
@@ -280,10 +340,12 @@
       }
       // Fallback: search in registry
       if (!compatProv && window.COMPAT_PROVIDERS && typeof window.COMPAT_PROVIDERS === 'object') {
-        compatProv = Object.values(window.COMPAT_PROVIDERS).find(p => Array.isArray(p.models) && p.models.includes(modelName));
+        compatProv = Object.values(window.COMPAT_PROVIDERS).find(
+          p => Array.isArray(p.models) && p.models.includes(modelName)
+        );
       }
     }
-    
+
     const isNV = !!compatProv && compatProv.id === 'nvidia';
     const isCO = !!compatProv && compatProv.id === 'cohere';
     const isOR = !!compatProv && compatProv.id === 'openrouter';
@@ -291,37 +353,64 @@
     // không được rơi vào nhánh OpenRouter chỉ vì model kết thúc bằng ':free'.
     const isCustom = !!compatProv && !isNV && !isCO && !isOR;
     // Model ':free' không khai báo trong registry nào -> giữ fallback OpenRouter như trước.
-    const registryModels = (window.COMPAT_PROVIDERS && typeof window.COMPAT_PROVIDERS === 'object')
-      ? Object.values(window.COMPAT_PROVIDERS).flatMap(p => p.models || [])
-      : [];
-    const isOrphanCompat = !compatProv && !isEL && !!modelName
-      && (registryModels.includes(modelName) || modelName.includes(':free'));
+    const registryModels =
+      window.COMPAT_PROVIDERS && typeof window.COMPAT_PROVIDERS === 'object'
+        ? Object.values(window.COMPAT_PROVIDERS).flatMap(p => p.models || [])
+        : [];
+    const isOrphanCompat =
+      !compatProv &&
+      !isEL &&
+      !!modelName &&
+      (registryModels.includes(modelName) || modelName.includes(':free'));
     const isORBadge = isOR || isOrphanCompat;
-    const provLabel = isEL ? 'Experiential Labs'
-      : (isCustom ? compatProv.label : (isNV ? 'NVIDIA' : (isCO ? 'Cohere' : (isORBadge ? 'OpenRouter' : 'Google'))));
-    const icon = isEL ? '⚡' : (isCustom ? '📦' : (isNV ? '🟢' : (isCO ? '🤝' : (isORBadge ? '🛰️' : '🔑'))));
-    const color = isEL ? '#0ea5e9' : (isCustom ? '#8b5cf6' : (isNV ? '#76b900' : (isCO ? '#6366f1' : (isORBadge ? '#f59e0b' : '#3b82f6'))));
-    const rgb = isEL ? '14,165,233' : (isCustom ? '139,92,246' : (isNV ? '118,185,0' : (isCO ? '99,102,241' : (isORBadge ? '245,158,11' : '59,130,246'))));
-    let n, label;
+
+    // Lấy thông tin từ registry (dynamic)
+    const provId = isEL
+      ? 'explabs'
+      : isCustom
+        ? compatProv.id
+        : isNV
+          ? 'nvidia'
+          : isCO
+            ? 'cohere'
+            : isORBadge
+              ? 'openrouter'
+              : 'google';
+    const icon = getProviderIcon(provId);
+    const color = getProviderColor(provId);
+    const rgb = getProviderRgb(provId);
+
+    let n, label, provLabel;
     if (isEL) {
+      provLabel = 'Experiential Labs';
       n = (ls.getItem(`jarvis_explabs_api_name_${keyNum}`) || '').trim();
       label = n ? `EL Key #${keyNum} (${n})` : `EL Key #${keyNum}`;
     } else if (isCustom) {
-      // Provider động: tên gợi nhớ nằm ở keyNamePrefix riêng của provider
-      const namePrefix = compatProv.keyNamePrefix || `jarvis_provider_${compatProv.id}_name`;
+      provLabel = compatProv.label;
+      const namePrefix = getProviderKeyNamePrefix(compatProv.id);
       n = (ls.getItem(`${namePrefix}_${keyNum}`) || '').trim();
-      label = n ? `${compatProv.label} Key #${keyNum} (${n})` : `${compatProv.label} Key #${keyNum}`;
+      label = n
+        ? `${compatProv.label} Key #${keyNum} (${n})`
+        : `${compatProv.label} Key #${keyNum}`;
     } else if (isNV) {
+      provLabel = 'NVIDIA';
       n = (ls.getItem(`jarvis_nvidia_api_name_${keyNum}`) || '').trim();
       label = n ? `NV Key #${keyNum} (${n})` : `NV Key #${keyNum}`;
     } else if (isCO) {
+      provLabel = 'Cohere';
       n = (ls.getItem(`jarvis_cohere_api_name_${keyNum}`) || '').trim();
       label = n ? `CO Key #${keyNum} (${n})` : `CO Key #${keyNum}`;
     } else if (isORBadge) {
+      provLabel = 'OpenRouter';
       n = (ls.getItem(`jarvis_openrouter_api_name_${keyNum}`) || '').trim();
       label = n ? `OR Key #${keyNum} (${n})` : `OR Key #${keyNum}`;
     } else {
-      n = (ls.getItem(`jarvis_api_name_${keyNum}`) || ls.getItem(`huanmu_api_name_${keyNum}`) || '').trim();
+      provLabel = 'Google';
+      n = (
+        ls.getItem(`jarvis_api_name_${keyNum}`) ||
+        ls.getItem(`huanmu_api_name_${keyNum}`) ||
+        ''
+      ).trim();
       label = n ? `Key #${keyNum} (${n})` : `Key #${keyNum}`;
     }
     // Provider động đã mang tên provider trong label ("Kilo Key #1") -> tooltip không ghép thêm
@@ -341,31 +430,40 @@
     let hasAnyKey = false;
 
     for (let i = 1; i <= 10; i++) {
-      let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || "").trim();
+      let k = (ls.getItem(`jarvis_api_${i}`) || ls.getItem(`huanmu_api_${i}`) || '').trim();
       if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
-      const n = (ls.getItem(`jarvis_api_name_${i}`) || ls.getItem(`huanmu_api_name_${i}`) || `Key ${i}`).trim();
+      const n = (
+        ls.getItem(`jarvis_api_name_${i}`) ||
+        ls.getItem(`huanmu_api_name_${i}`) ||
+        `Key ${i}`
+      ).trim();
       if (!k) continue;
 
       hasAnyKey = true;
       const uH = getKeyUsageCount(i, 'hydrogen');
       const u36 = getKeyUsageCount(i, '3.6');
       const u38 = getKeyUsageCount(i, '3.8');
-      const isCurrent = (i === curSlot);
+      const isCurrent = i === curSlot;
 
       // Highlight badge của model đang chọn
-      const badgeHStyle = curBucket === 'hydrogen'
-        ? `background:${uH >= 20 ? 'rgba(239,68,68,0.2)' : 'rgba(168,85,247,0.2)'};color:${uH >= 20 ? '#ef4444' : '#a855f7'};font-weight:800;border:1.5px solid ${uH >= 20 ? '#ef4444' : '#a855f7'}`
-        : `background:rgba(255,255,255,0.06);color:var(--text-muted);border:1px solid var(--border)`;
+      const badgeHStyle =
+        curBucket === 'hydrogen'
+          ? `background:${uH >= 20 ? 'rgba(239,68,68,0.2)' : 'rgba(168,85,247,0.2)'};color:${uH >= 20 ? '#ef4444' : '#a855f7'};font-weight:800;border:1.5px solid ${uH >= 20 ? '#ef4444' : '#a855f7'}`
+          : `background:rgba(255,255,255,0.06);color:var(--text-muted);border:1px solid var(--border)`;
 
-      const badge36Style = curBucket === '3.6' 
-        ? `background:${u36 >= 20 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)'};color:${u36 >= 20 ? '#ef4444' : '#10b981'};font-weight:800;border:1.5px solid ${u36 >= 20 ? '#ef4444' : '#10b981'}`
-        : `background:rgba(255,255,255,0.06);color:var(--text-muted);border:1px solid var(--border)`;
+      const badge36Style =
+        curBucket === '3.6'
+          ? `background:${u36 >= 20 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)'};color:${u36 >= 20 ? '#ef4444' : '#10b981'};font-weight:800;border:1.5px solid ${u36 >= 20 ? '#ef4444' : '#10b981'}`
+          : `background:rgba(255,255,255,0.06);color:var(--text-muted);border:1px solid var(--border)`;
 
-      const badge38Style = curBucket === '3.8'
-        ? `background:${u38 >= 20 ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.2)'};color:${u38 >= 20 ? '#ef4444' : '#3b82f6'};font-weight:800;border:1.5px solid ${u38 >= 20 ? '#ef4444' : '#3b82f6'}`
-        : `background:rgba(255,255,255,0.06);color:var(--text-muted);border:1px solid var(--border)`;
+      const badge38Style =
+        curBucket === '3.8'
+          ? `background:${u38 >= 20 ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.2)'};color:${u38 >= 20 ? '#ef4444' : '#3b82f6'};font-weight:800;border:1.5px solid ${u38 >= 20 ? '#ef4444' : '#3b82f6'}`
+          : `background:rgba(255,255,255,0.06);color:var(--text-muted);border:1px solid var(--border)`;
 
-      const activeBorder = isCurrent ? 'border:1.5px solid var(--primary);background:rgba(59,130,246,0.08);' : 'border:1px solid var(--border);background:var(--bg-card);';
+      const activeBorder = isCurrent
+        ? 'border:1.5px solid var(--primary);background:rgba(59,130,246,0.08);'
+        : 'border:1px solid var(--border);background:var(--bg-card);';
 
       html += `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border-radius:var(--radius-sm);${activeBorder}font-size:0.78rem;">
@@ -393,7 +491,8 @@
     }
 
     if (!hasAnyKey) {
-      html = '<div style="font-size:0.75rem;color:var(--text-muted);text-align:center;padding:12px;">Chưa có Google API Key nào được cấu hình.</div>';
+      html =
+        '<div style="font-size:0.75rem;color:var(--text-muted);text-align:center;padding:12px;">Chưa có Google API Key nào được cấu hình.</div>';
     }
 
     listEl.innerHTML = html;
@@ -406,18 +505,27 @@
     } else {
       ls.setItem('jarvis_selected_google_slot', val);
     }
-    if (typeof window.sessions !== 'undefined' && Array.isArray(window.sessions) && typeof window.activeId !== 'undefined') {
+    if (
+      typeof window.sessions !== 'undefined' &&
+      Array.isArray(window.sessions) &&
+      typeof window.activeId !== 'undefined'
+    ) {
       const cs = window.sessions.find(x => x.id === window.activeId);
       if (cs) {
-        let manualKey = (ls.getItem(`jarvis_api_${slotIndex}`) || ls.getItem(`huanmu_api_${slotIndex}`) || "").trim();
-        if (manualKey.startsWith('JVENC_') || manualKey.startsWith('ENC_')) manualKey = deobfuscateKey(manualKey);
+        let manualKey = (
+          ls.getItem(`jarvis_api_${slotIndex}`) ||
+          ls.getItem(`huanmu_api_${slotIndex}`) ||
+          ''
+        ).trim();
+        if (manualKey.startsWith('JVENC_') || manualKey.startsWith('ENC_'))
+          manualKey = deobfuscateKey(manualKey);
         cs.assignedApiKey = manualKey;
         cs.keySel = val;
         saveToDB(cs);
       }
     }
     updateKeyQuotaUI();
-    showToast(`🔑 Đã chuyển sang Key #${slotIndex}!`, "info");
+    showToast(`🔑 Đã chuyển sang Key #${slotIndex}!`, 'info');
   }
 
   function openKeyQuotaModal() {
@@ -438,16 +546,16 @@
   function initQuotaEvents() {
     const quotaBtn = $('btn-key-quota-header');
     if (quotaBtn) {
-      quotaBtn.onclick = (e) => {
+      quotaBtn.onclick = e => {
         e.stopPropagation();
         openKeyQuotaModal();
       };
     }
-    $('btn-close-quota-modal')?.addEventListener('click', (e) => {
+    $('btn-close-quota-modal')?.addEventListener('click', e => {
       e.stopPropagation();
       closeKeyQuotaModal();
     });
-    $('btn-close-quota-popover')?.addEventListener('click', (e) => {
+    $('btn-close-quota-popover')?.addEventListener('click', e => {
       e.stopPropagation();
       closeKeyQuotaModal();
     });
@@ -457,15 +565,20 @@
       toggleSkipExhausted.checked = ls.getItem('jarvis_skip_exhausted_keys') !== 'false';
       toggleSkipExhausted.onchange = () => {
         ls.setItem('jarvis_skip_exhausted_keys', toggleSkipExhausted.checked ? 'true' : 'false');
-        showToast(toggleSkipExhausted.checked ? "Đã bật tự động né key đạt 20/20 RPD!" : "Đã tắt tự động né key", "info");
+        showToast(
+          toggleSkipExhausted.checked
+            ? 'Đã bật tự động né key đạt 20/20 RPD!'
+            : 'Đã tắt tự động né key',
+          'info'
+        );
       };
     }
 
     $('btn-reset-quota-manual')?.addEventListener('click', () => {
-      if (confirm("Bạn có chắc chắn muốn reset bộ đếm hôm nay của tất cả các key về 0/20 không?")) {
+      if (confirm('Bạn có chắc chắn muốn reset bộ đếm hôm nay của tất cả các key về 0/20 không?')) {
         resetKeyUsageToday();
         updateKeyQuotaUI();
-        showToast("🔄 Đã reset bộ đếm hôm nay về 0/20!", "success");
+        showToast('🔄 Đã reset bộ đếm hôm nay về 0/20!', 'success');
       }
     });
 
@@ -523,7 +636,11 @@
       if (!slot || typeof slot !== 'object') continue;
       normalized.keys[slotKey] = {};
       for (const [model, countOrDevices] of Object.entries(slot)) {
-        if (countOrDevices && typeof countOrDevices === 'object' && !Array.isArray(countOrDevices)) {
+        if (
+          countOrDevices &&
+          typeof countOrDevices === 'object' &&
+          !Array.isArray(countOrDevices)
+        ) {
           normalized.keys[slotKey][model] = {};
           for (const [deviceId, count] of Object.entries(countOrDevices)) {
             normalized.keys[slotKey][model][deviceId] = Number(count) || 0;
@@ -541,13 +658,18 @@
     let data = { cycle: getCurrentQuotaCycle(), keys: {} };
 
     const save = () => {
-      try { ls.setItem(storageKey, JSON.stringify(data)); } catch (_) {}
+      try {
+        ls.setItem(storageKey, JSON.stringify(data));
+      } catch (_) {}
     };
 
     const ensureCycle = () => {
       const curCycle = getCurrentQuotaCycle();
       // Sang chu kỳ mới (14:00 giờ VN) thì bộ đếm tự về 0 như bên Google
-      if (data.cycle !== curCycle) { data = { cycle: curCycle, keys: {} }; save(); }
+      if (data.cycle !== curCycle) {
+        data = { cycle: curCycle, keys: {} };
+        save();
+      }
       if (!data.keys || typeof data.keys !== 'object') data.keys = {};
     };
 
@@ -566,19 +688,24 @@
     const set = incoming => {
       if (!incoming || typeof incoming !== 'object' || !incoming.keys) return;
       const curCycle = getCurrentQuotaCycle();
-      data = incoming.cycle === curCycle ? normalizeSlotUsageData(incoming) : { cycle: curCycle, keys: {} };
+      data =
+        incoming.cycle === curCycle
+          ? normalizeSlotUsageData(incoming)
+          : { cycle: curCycle, keys: {} };
       save();
       onChanged();
     };
 
     const merge = remoteUsage => {
-      if (!remoteUsage || remoteUsage.cycle !== getCurrentQuotaCycle() || !remoteUsage.keys) return false;
+      if (!remoteUsage || remoteUsage.cycle !== getCurrentQuotaCycle() || !remoteUsage.keys)
+        return false;
       ensureCycle();
       let changed = false;
       for (const [slotKey, remoteSlot] of Object.entries(remoteUsage.keys)) {
         if (!remoteSlot || typeof remoteSlot !== 'object') continue;
         if (!data.keys[slotKey]) data.keys[slotKey] = {};
-        const normalizedRemoteSlot = normalizeSlotUsageData({ keys: { [slotKey]: remoteSlot } }).keys[slotKey];
+        const normalizedRemoteSlot = normalizeSlotUsageData({ keys: { [slotKey]: remoteSlot } })
+          .keys[slotKey];
         for (const [model, remoteDevices] of Object.entries(normalizedRemoteSlot)) {
           if (!data.keys[slotKey][model]) data.keys[slotKey][model] = {};
           for (const [deviceId, count] of Object.entries(remoteDevices)) {
@@ -591,17 +718,24 @@
           }
         }
       }
-      if (changed) { save(); onChanged(); }
+      if (changed) {
+        save();
+        onChanged();
+      }
       return changed;
     };
 
     const isAhead = remoteUsage => {
-      if (!remoteUsage || remoteUsage.cycle !== getCurrentQuotaCycle() || !remoteUsage.keys) return false;
+      if (!remoteUsage || remoteUsage.cycle !== getCurrentQuotaCycle() || !remoteUsage.keys)
+        return false;
       const local = load();
       for (const [slotKey, localSlot] of Object.entries(local.keys)) {
         for (const [model, devices] of Object.entries(localSlot || {})) {
           for (const [deviceId, count] of Object.entries(devices || {})) {
-            if ((Number(count) || 0) > (Number(remoteUsage.keys?.[slotKey]?.[model]?.[deviceId]) || 0)) return true;
+            if (
+              (Number(count) || 0) > (Number(remoteUsage.keys?.[slotKey]?.[model]?.[deviceId]) || 0)
+            )
+              return true;
           }
         }
       }
@@ -611,7 +745,12 @@
     const count = slotIndex => {
       const slot = data.keys[String(slotIndex)];
       if (!slot) return 0;
-      return Object.values(slot).reduce((sum, devices) => sum + Object.values(devices || {}).reduce((modelSum, c) => modelSum + (Number(c) || 0), 0), 0);
+      return Object.values(slot).reduce(
+        (sum, devices) =>
+          sum +
+          Object.values(devices || {}).reduce((modelSum, c) => modelSum + (Number(c) || 0), 0),
+        0
+      );
     };
 
     const record = (slotIndex, model) => {
@@ -638,7 +777,9 @@
     return { load, set, merge, isAhead, count, record, reset };
   }
 
-  const openRouterUsage = createSlotUsageTracker('jarvis_openrouter_usage', () => updateOpenRouterQuotaUI());
+  const openRouterUsage = createSlotUsageTracker('jarvis_openrouter_usage', () =>
+    updateOpenRouterQuotaUI()
+  );
   const explabsUsage = createSlotUsageTracker('jarvis_explabs_usage', () => updateExplabsQuotaUI());
   const nvidiaUsage = createSlotUsageTracker('jarvis_nvidia_usage', () => updateNvidiaQuotaUI());
   const cohereUsage = createSlotUsageTracker('jarvis_cohere_usage', () => updateCohereQuotaUI());
@@ -671,21 +812,33 @@
   const getCohereUsageCount = i => cohereUsage.count(i);
   const recordCohereRequest = (i, m) => cohereUsage.record(i, m);
 
-  function updateOpenRouterQuotaUI() {
-    // Cập nhật badge trong ô nhập OpenRouter
-    for (let i = 1; i <= 5; i++) {
-      const badge = $(`openrouter-key-badge-${i}`);
-      if (badge) {
-        const u = getOpenRouterUsageCount(i);
-        badge.innerHTML = `OR: ${u} req`;
-      }
+  // Helper: lấy key count từ registry
+  function getProviderKeyCount(providerId) {
+    if (typeof window.getProviderKeyCount === 'function')
+      return window.getProviderKeyCount(providerId);
+    const p = typeof window.getProvider === 'function' ? window.getProvider(providerId) : null;
+    return p ? p.keyCount : 5;
+  }
+
+  function updateProviderQuotaUI(providerId, badgePrefix, usageFn) {
+    const count = getProviderKeyCount(providerId);
+    for (let i = 1; i <= count; i++) {
+      const badge = $(`${badgePrefix}-key-badge-${i}`);
+      if (badge) badge.innerHTML = `${providerId.toUpperCase()}: ${usageFn(i)} req`;
     }
+    if (typeof window.refreshSlotKeySelects === 'function')
+      window.refreshSlotKeySelects(providerId);
+  }
+
+  function updateOpenRouterQuotaUI() {
+    updateProviderQuotaUI('openrouter', 'openrouter', getOpenRouterUsageCount);
     // Popover OpenRouter (nếu có)
     const listEl = $('openrouter-key-quota-list');
     if (listEl) {
       let html = '';
       let hasAnyKey = false;
-      for (let i = 1; i <= 5; i++) {
+      const count = getProviderKeyCount('openrouter');
+      for (let i = 1; i <= count; i++) {
         let k = (ls.getItem(`jarvis_openrouter_api_${i}`) || '').trim();
         if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
         const n = (ls.getItem(`jarvis_openrouter_api_name_${i}`) || `OR Key ${i}`).trim();
@@ -702,37 +855,22 @@
           </div>
         `;
       }
-      listEl.innerHTML = hasAnyKey ? html : '<div style="font-size:0.75rem;color:var(--text-muted);text-align:center;padding:12px;">Chưa có OpenRouter key nào.</div>';
+      listEl.innerHTML = hasAnyKey
+        ? html
+        : '<div style="font-size:0.75rem;color:var(--text-muted);text-align:center;padding:12px;">Chưa có OpenRouter key nào.</div>';
     }
-    // Cập nhật nhãn + bộ đếm trong dropdown chọn key (sidebar & Cài đặt)
-    if (typeof window.refreshSlotKeySelects === 'function') window.refreshSlotKeySelects('openrouter');
   }
 
   function updateExplabsQuotaUI() {
-    for (let i = 1; i <= 5; i++) {
-      const badge = $(`explabs-key-badge-${i}`);
-      if (badge) badge.innerHTML = `EL: ${getExplabsUsageCount(i)} req`;
-    }
-    // Cập nhật nhãn + bộ đếm trong dropdown chọn key (sidebar & Cài đặt)
-    if (typeof window.refreshSlotKeySelects === 'function') window.refreshSlotKeySelects('explabs');
+    updateProviderQuotaUI('explabs', 'explabs', getExplabsUsageCount);
   }
 
   function updateNvidiaQuotaUI() {
-    for (let i = 1; i <= 3; i++) {
-      const badge = $(`nvidia-key-badge-${i}`);
-      if (badge) badge.innerHTML = `NV: ${getNvidiaUsageCount(i)} req`;
-    }
-    // Cập nhật nhãn + bộ đếm trong dropdown chọn key (sidebar & Cài đặt)
-    if (typeof window.refreshSlotKeySelects === 'function') window.refreshSlotKeySelects('nvidia');
+    updateProviderQuotaUI('nvidia', 'nvidia', getNvidiaUsageCount);
   }
 
   function updateCohereQuotaUI() {
-    for (let i = 1; i <= 3; i++) {
-      const badge = $(`cohere-key-badge-${i}`);
-      if (badge) badge.innerHTML = `CO: ${getCohereUsageCount(i)} req`;
-    }
-    // Cập nhật nhãn + bộ đếm trong dropdown chọn key (sidebar & Cài đặt)
-    if (typeof window.refreshSlotKeySelects === 'function') window.refreshSlotKeySelects('cohere');
+    updateProviderQuotaUI('cohere', 'cohere', getCohereUsageCount);
   }
 
   window.getNvidiaUsageCount = getNvidiaUsageCount;
@@ -766,5 +904,4 @@
   window.setExplabsUsageData = setExplabsUsageData;
   window.mergeRemoteExplabsUsage = mergeRemoteExplabsUsage;
   window.isLocalExplabsUsageAhead = isLocalExplabsUsageAhead;
-
 })();

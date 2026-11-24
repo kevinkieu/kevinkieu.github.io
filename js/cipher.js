@@ -7,7 +7,7 @@
    Real key security requires server-side protection - see README for details.
    ========================================================================== */
 
-(function() {
+(function () {
   'use strict';
 
   const ls = window.ls || localStorage;
@@ -115,5 +115,4 @@
     window.deobfuscateKey = deobfuscateKey;
     window.sanitizeSessionForBackup = sanitizeSessionForBackup;
   }
-
 })();

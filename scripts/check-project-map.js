@@ -11,9 +11,12 @@
  *   node scripts/check-project-map.js --quiet   # chỉ in lỗi
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const ROOT = path.join(__dirname, '..');
 const MAP_FILE = path.join(ROOT, 'boicanhduan.json');
 
@@ -21,13 +24,21 @@ const MAP_FILE = path.join(ROOT, 'boicanhduan.json');
 const MANAGED_DIRS = ['js', 'css', 'test', 'scripts', 'worker', 'scratch'];
 // File ở gốc dự án phải được mô tả trong bản đồ
 const ROOT_FILES = [
-  'index.html', 'manifest.json', 'sw.js', 'package.json',
-  'build.js', 'build-apk.bat', 'bump-version.js', 'CHANGELOG.md',
+  'index.html',
+  'manifest.json',
+  'sw.js',
+  'package.json',
+  'build.js',
+  'build-apk.bat',
+  'bump-version.js',
+  'CHANGELOG.md',
 ];
 
 const argv = process.argv.slice(2);
 const QUIET = argv.includes('--quiet');
-const log = msg => { if (!QUIET) console.log(msg); };
+const log = msg => {
+  if (!QUIET) console.log(msg);
+};
 
 const norm = p => p.replace(/\\/g, '/');
 
@@ -55,7 +66,10 @@ try {
 // 2. Gom mọi key trong các object "files" ở bất kỳ độ sâu nào
 const mapKeys = new Set();
 (function collect(node) {
-  if (Array.isArray(node)) { node.forEach(collect); return; }
+  if (Array.isArray(node)) {
+    node.forEach(collect);
+    return;
+  }
   if (!node || typeof node !== 'object') return;
   if (node.files && typeof node.files === 'object') {
     for (const key of Object.keys(node.files)) mapKeys.add(norm(key));
@@ -95,7 +109,9 @@ for (const file of ROOT_FILES) {
 const drift = stalePaths.length + undescribed.length;
 
 if (!drift) {
-  log(`✓ boicanhduan.json khớp cây file thật (${exactKeys.size} đường dẫn, ${globDirs.length} nhóm glob).`);
+  log(
+    `✓ boicanhduan.json khớp cây file thật (${exactKeys.size} đường dẫn, ${globDirs.length} nhóm glob).`
+  );
   process.exit(0);
 }
 
@@ -103,7 +119,9 @@ if (stalePaths.length) {
   console.error('✗ Bản đồ trỏ tới đường dẫn không còn tồn tại:\n  - ' + stalePaths.join('\n  - '));
 }
 if (undescribed.length) {
-  console.error('✗ File có thật nhưng chưa được mô tả trong bản đồ:\n  - ' + undescribed.join('\n  - '));
+  console.error(
+    '✗ File có thật nhưng chưa được mô tả trong bản đồ:\n  - ' + undescribed.join('\n  - ')
+  );
 }
 console.error('\nCập nhật boicanhduan.json rồi chạy lại: node scripts/check-project-map.js');
 process.exit(1);

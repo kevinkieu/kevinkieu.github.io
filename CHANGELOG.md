@@ -1,171 +1,754 @@
 # Changelog — Jarvis AI
 
-Lịch sử thay đổi của dự án, mới nhất ở trên cùng.
-Bản đồ kiến trúc (dạng máy đọc) nằm ở [`boicanhduan.json`](boicanhduan.json).
+Lịch sử thay đổi của dự án, mới nhất ở trên cùng. Bản đồ kiến trúc (dạng máy đọc) nằm ở
+[`boicanhduan.json`](boicanhduan.json).
 
 ## 2026-11-24
 
-- Gộp mục **Quản lý Provider & Model động** trong Cài đặt thành khu vực có thể ẩn/hiện (collapsible) để rút ngắn độ dài modal Settings: thêm nút bấm tiêu đề "⚙️ Quản lý Provider & Model động (không cần sửa code)" với icon mũi tên ▼, bấm vào sẽ mở rộng/thu gọn nội dung (form thêm/sửa provider, form thêm/sửa model, danh sách provider, danh sách model). Sửa:
-  - `index.html`: bọc nội dung trong `<div id="dp-collapsible-content">`, tiêu đề chuyển thành `<div class="dp-section-header" onclick="toggleDpSection()">` có icon toggle `#dp-toggle-icon`
-  - `js/dynamic-providers.js`: thêm `window.toggleDpSection()` xử lý toggle class `collapsed`, xoay icon, lưu trạng thái vào `localStorage` (key `jarvis_dp_section_collapsed`), khôi phục khi load trang
-  - `css/style.css`: thêm style cho `.dp-section-header:hover`, `.dp-toggle-icon` transition, `.dp-collapsible-content.collapsed` (max-height:0, opacity:0), animation `dpExpand`, responsive mobile
+- **Single Provider Config Source (gộp cấu hình provider thành một nguồn duy nhất)**: Tạo
+  `js/provider-registry.js` làm **Single Source of Truth** cho toàn bộ metadata provider (Google,
+  NVIDIA, OpenRouter, Cohere, Experiential Labs, provider động). Export `window.PROVIDER_REGISTRY`,
+  `PROVIDER_TYPE` và helper: `getProvider`, `buildCompatProviders`, `buildCompatModelOpts`,
+  `getExplabsModels`, `buildCfgMap`, `getProviderKeyStorageNames`, `getProviderUsagePrefix`,
+  `isBuiltInProvider`, `getProviderIcon`. Refactor 8 file đọc từ registry thay vì hardcode:
+  `js/model-registry.js`, `js/dynamic-providers.js`, `js/api-keys.js`, `js/sync.js`, `js/export.js`,
+  `js/key-config-sync.js`, `js/quota.js`, `scratch/check_model_registry.js`. Cập nhật module load
+  order trong `index.html` và Android mirror (nạp `provider-registry.js` TRƯỚC `model-registry.js`).
+  Cập nhật `boicanhduan.json`: module_load_order, architecture.model_layer, feature.chat_and_core,
+  feature.bootstrap_and_ui_helpers. Kiểm chứng: `npm test` 93/93, `check-models`, `check-assets` (46
+  file), `check-map` (90 paths) — tất cả PASS.
+
+- Gộp mục **Quản lý Provider & Model động** trong Cài đặt thành khu vực có thể ẩn/hiện (collapsible)
+  để rút ngắn độ dài modal Settings: thêm nút bấm tiêu đề "⚙️ Quản lý Provider & Model động (không
+  cần sửa code)" với icon mũi tên ▼, bấm vào sẽ mở rộng/thu gọn nội dung (form thêm/sửa provider,
+  form thêm/sửa model, danh sách provider, danh sách model). Sửa:
+  - `index.html`: bọc nội dung trong `<div id="dp-collapsible-content">`, tiêu đề chuyển thành
+    `<div class="dp-section-header" onclick="toggleDpSection()">` có icon toggle `#dp-toggle-icon`
+  - `js/dynamic-providers.js`: thêm `window.toggleDpSection()` xử lý toggle class `collapsed`, xoay
+    icon, lưu trạng thái vào `localStorage` (key `jarvis_dp_section_collapsed`), khôi phục khi load
+    trang
+  - `css/style.css`: thêm style cho `.dp-section-header:hover`, `.dp-toggle-icon` transition,
+    `.dp-collapsible-content.collapsed` (max-height:0, opacity:0), animation `dpExpand`, responsive
+    mobile
   - Bảng provider/model giữ nguyên kích thước đẹp như cũ, không thay đổi
   - Kiểm chứng: `node --check`, `check-models`, `sync-assets`, `check-assets`, `check-map` PASS
 
-- Sửa nút "Kích hoạt" **Bảo vệ vĩnh viễn (Persistent Storage)** trong Cài đặt → Bộ nhớ & Trạng thái Lưu trữ: trên WebView (APK Android) API `navigator.storage.persist()` không khả dụng; WebView đã lưu trữ vĩnh viễn qua IndexedDB + Native Bridge (Android SharedPreferences). Sửa `js/storage-manager.js`:
-  - Phát hiện WebView bằng `JarvisNativeBridge.isNativeApp()` / user-agent / origin `appassets.androidplatform.net`
+- Sửa nút "Kích hoạt" **Bảo vệ vĩnh viễn (Persistent Storage)** trong Cài đặt → Bộ nhớ & Trạng thái
+  Lưu trữ: trên WebView (APK Android) API `navigator.storage.persist()` không khả dụng; WebView đã
+  lưu trữ vĩnh viễn qua IndexedDB + Native Bridge (Android SharedPreferences). Sửa
+  `js/storage-manager.js`:
+  - Phát hiện WebView bằng `JarvisNativeBridge.isNativeApp()` / user-agent / origin
+    `appassets.androidplatform.net`
   - Ẩn nút Kích hoạt, hiển thị "🟢 Đã bảo vệ bởi WebView + Native Bridge"
   - Toast thông báo WebView không cần kích hoạt thêm
-  - Trình duyệt thường (Chrome/Firefox): giữ logic Permissions API chuẩn (`query` → `request` → `persist`), toast kèm hướng dẫn bật thủ công
+  - Trình duyệt thường (Chrome/Firefox): giữ logic Permissions API chuẩn (`query` → `request` →
+    `persist`), toast kèm hướng dẫn bật thủ công
   - `node --check` OK
 
-- Sửa **build-apk.bat**: trước đây copy ra 2 file APK trùng lặp (`JarvisAI.apk` + `JarvisAI_Offline.apk`), giờ chỉ xuất 1 file `JarvisAI.apk`
+- Sửa **build-apk.bat**: trước đây copy ra 2 file APK trùng lặp (`JarvisAI.apk` +
+  `JarvisAI_Offline.apk`), giờ chỉ xuất 1 file `JarvisAI.apk`
 
-- Sửa lỗi **"App Registration Verification failed"** khi cài APK: Digital Asset Links (`assetlinks.json`) trên `kevinkieu.github.io` có package_name `io.github.kevinkieu.twa` (cũ cho TWA) nhưng Android app package là `com.kevinkieu.jarvisai`. Thêm `.well-known/assetlinks.json` mới với `package_name: com.kevinkieu.jarvisai` + `sha256_cert_fingerprints` đúng keystore (`4F:81:80:23:FB:E6:15:6D:F5:7F:0C:8B:35:C0:17:03:78:26:9F:DB:79:F2:43:C4:9B:F4:15:6D:9D:7E:68:75`). Cập nhật `scripts/sync-web-assets.js` mirror file này sang Android assets. Build APK mới sẽ pass verification.
+- Sửa lỗi **"App Registration Verification failed"** khi cài APK: Digital Asset Links
+  (`assetlinks.json`) trên `kevinkieu.github.io` có package_name `io.github.kevinkieu.twa` (cũ cho
+  TWA) nhưng Android app package là `com.kevinkieu.jarvisai`. Thêm `.well-known/assetlinks.json` mới
+  với `package_name: com.kevinkieu.jarvisai` + `sha256_cert_fingerprints` đúng keystore
+  (`4F:81:80:23:FB:E6:15:6D:F5:7F:0C:8B:35:C0:17:03:78:26:9F:DB:79:F2:43:C4:9B:F4:15:6D:9D:7E:68:75`).
+  Cập nhật `scripts/sync-web-assets.js` mirror file này sang Android assets. Build APK mới sẽ pass
+  verification.
 
-- Sửa tràn ngang toàn bộ mục **API Keys (Google / OpenRouter / Experiential Labs / NVIDIA / Cohere)** trong Cài đặt trên mobile (390px): từng `<fieldset class="settings-group">` có `min-inline-size: min-content` mặc định của trình duyệt → tự phình theo hàng `.api-key-row` (flex không wrap, ô tên gợi nhớ 115px + key + badge ~440px) → fieldset Google rộng **474px** trong khi modal chỉ 357px, nội dung tràn ra ngoài và không cuộn được. Đo bằng CDP headless Chrome trên viewport 390px: trước **81 phần tử tràn**, sau **0 phần tử tràn**. Sửa:
-  - `css/style.css`: `.settings-group` thêm `min-width: 0`; `.api-key-row` thêm `flex-wrap: wrap; min-width: 0` + mobile order/dòng tự xuống (badge hàng 1, tên gợi nhớ hàng 2, key hàng 3); hàng "Key xoay tua" (`.settings-inline-row`) chuyển sang `flex-wrap: wrap` + `min-width: 0`.
-  - `index.html`: các hàng "Key xoay tua" OpenRouter/Experiential Labs/NVIDIA/Cohere đổi inline style `display:flex` → class `.settings-inline-row`.
+- Sửa tràn ngang toàn bộ mục **API Keys (Google / OpenRouter / Experiential Labs / NVIDIA /
+  Cohere)** trong Cài đặt trên mobile (390px): từng `<fieldset class="settings-group">` có
+  `min-inline-size: min-content` mặc định của trình duyệt → tự phình theo hàng `.api-key-row` (flex
+  không wrap, ô tên gợi nhớ 115px + key + badge ~440px) → fieldset Google rộng **474px** trong khi
+  modal chỉ 357px, nội dung tràn ra ngoài và không cuộn được. Đo bằng CDP headless Chrome trên
+  viewport 390px: trước **81 phần tử tràn**, sau **0 phần tử tràn**. Sửa:
+  - `css/style.css`: `.settings-group` thêm `min-width: 0`; `.api-key-row` thêm
+    `flex-wrap: wrap; min-width: 0` + mobile order/dòng tự xuống (badge hàng 1, tên gợi nhớ hàng 2,
+    key hàng 3); hàng "Key xoay tua" (`.settings-inline-row`) chuyển sang `flex-wrap: wrap` +
+    `min-width: 0`.
+  - `index.html`: các hàng "Key xoay tua" OpenRouter/Experiential Labs/NVIDIA/Cohere đổi inline
+    style `display:flex` → class `.settings-inline-row`.
   - Bump `css/style.css?v=80`, SW cache `v84`, mirror android assets.
-  - Kiểm chứng: CDP viewport 390px (mobile) & 1280px (desktop) — không còn phần tử nào tràn, bảng mô hình động tự cuộn ngang trong khối, modal bám đúng bề rộng màn hình; `npm test` 93/93, `check-*` PASS.
+  - Kiểm chứng: CDP viewport 390px (mobile) & 1280px (desktop) — không còn phần tử nào tràn, bảng mô
+    hình động tự cuộn ngang trong khối, modal bám đúng bề rộng màn hình; `npm test` 93/93, `check-*`
+    PASS.
 
-- Sửa dứt điểm lỗi mục "Quản lý Provider & Model động" trong Cài đặt bị chồng chéo trên mobile/APK: khung ngoài là `<fieldset class="settings-group dp-section">` mà CSS lại đặt `display:flex` — Chromium/Android WebView không tính chiều cao fieldset theo flex children nên fieldset co lại còn **38px** trong khi nội dung thật ~1290px, phần tràn ra đè lên các mục bên dưới (đo bằng headless Chrome: `top=1504 h=38` trước, `top=1610 h=1288` sau khi sửa). Đổi khung ngoài sang `<div class="settings-group dp-section">` + `<div class="dp-section-title">` (giữ nguyên 100% id mà `js/dynamic-providers.js` dùng), bỏ `<legend>`; `.dp-section`/`.dp-block` chuyển về `display:block` + margin thay vì flex/grid, thêm `box-sizing:border-box`, `min-width:0`, `overflow:hidden` để không tràn ngang. Bảng danh sách provider/model do JS render là bảng 6 cột (inline `width:100%`) trước đây ép modal rộng 470px trên màn 390px, nay đặt trong `.dp-list-scroll` (`max-height:300px; overflow:auto`) với `table{min-width:560px}`, `th/td{padding:6px 8px; white-space:nowrap; text-overflow:ellipsis}`, cột Base URL cắt ở 220px → bảng tự cuộn ngang trong khối, không kéo giãn modal; `.modal-scroll-body` thêm `min-width:0; min-height:0; overflow-x:hidden` để bám đúng bề rộng modal. Nút Lưu/Nhập lại bo tròn `--radius-md`, cao 42px (44px trên mobile), chữ tự xuống dòng. Bump `css/style.css?v=79`, sw cache v83, mirror android assets. Kiểm chứng: chụp màn hình headless Chrome ở 480px (mobile) và 1100px (desktop) — tiêu đề, mô tả, ô nhập, nút và 2 bảng danh sách đều xếp dọc đúng thứ tự, không còn ô nào đè lên nhau, không tràn ngang; `npm test` 93/93, `node --check`, `check-models`, `sync-assets`, `check-assets`, `check-map` đều PASS.
+- Sửa dứt điểm lỗi mục "Quản lý Provider & Model động" trong Cài đặt bị chồng chéo trên mobile/APK:
+  khung ngoài là `<fieldset class="settings-group dp-section">` mà CSS lại đặt `display:flex` —
+  Chromium/Android WebView không tính chiều cao fieldset theo flex children nên fieldset co lại còn
+  **38px** trong khi nội dung thật ~1290px, phần tràn ra đè lên các mục bên dưới (đo bằng headless
+  Chrome: `top=1504 h=38` trước, `top=1610 h=1288` sau khi sửa). Đổi khung ngoài sang
+  `<div class="settings-group dp-section">` + `<div class="dp-section-title">` (giữ nguyên 100% id
+  mà `js/dynamic-providers.js` dùng), bỏ `<legend>`; `.dp-section`/`.dp-block` chuyển về
+  `display:block` + margin thay vì flex/grid, thêm `box-sizing:border-box`, `min-width:0`,
+  `overflow:hidden` để không tràn ngang. Bảng danh sách provider/model do JS render là bảng 6 cột
+  (inline `width:100%`) trước đây ép modal rộng 470px trên màn 390px, nay đặt trong
+  `.dp-list-scroll` (`max-height:300px; overflow:auto`) với `table{min-width:560px}`,
+  `th/td{padding:6px 8px; white-space:nowrap; text-overflow:ellipsis}`, cột Base URL cắt ở 220px →
+  bảng tự cuộn ngang trong khối, không kéo giãn modal; `.modal-scroll-body` thêm
+  `min-width:0; min-height:0; overflow-x:hidden` để bám đúng bề rộng modal. Nút Lưu/Nhập lại bo tròn
+  `--radius-md`, cao 42px (44px trên mobile), chữ tự xuống dòng. Bump `css/style.css?v=79`, sw cache
+  v83, mirror android assets. Kiểm chứng: chụp màn hình headless Chrome ở 480px (mobile) và 1100px
+  (desktop) — tiêu đề, mô tả, ô nhập, nút và 2 bảng danh sách đều xếp dọc đúng thứ tự, không còn ô
+  nào đè lên nhau, không tràn ngang; `npm test` 93/93, `node --check`, `check-models`,
+  `sync-assets`, `check-assets`, `check-map` đều PASS.
 
 ## 2026-11-24
 
-- Sửa nút "Kích hoạt" **Bảo vệ vĩnh viễn (Persistent Storage)** trong Cài đặt → Bộ nhớ & Trạng thái Lưu trữ: trên WebView (APK Android) API `navigator.storage.persist()` không khả dụng; WebView đã lưu trữ vĩnh viễn qua IndexedDB + Native Bridge (Android SharedPreferences). Sửa `js/storage-manager.js`:
-  - Phát hiện WebView bằng `JarvisNativeBridge.isNativeApp()` / user-agent / origin `appassets.androidplatform.net`
+- Sửa nút "Kích hoạt" **Bảo vệ vĩnh viễn (Persistent Storage)** trong Cài đặt → Bộ nhớ & Trạng thái
+  Lưu trữ: trên WebView (APK Android) API `navigator.storage.persist()` không khả dụng; WebView đã
+  lưu trữ vĩnh viễn qua IndexedDB + Native Bridge (Android SharedPreferences). Sửa
+  `js/storage-manager.js`:
+  - Phát hiện WebView bằng `JarvisNativeBridge.isNativeApp()` / user-agent / origin
+    `appassets.androidplatform.net`
   - Ẩn nút Kích hoạt, hiển thị "🟢 Đã bảo vệ bởi WebView + Native Bridge"
   - Toast thông báo WebView không cần kích hoạt thêm
-  - Trình duyệt thường (Chrome/Firefox): giữ logic Permissions API chuẩn (`query` → `request` → `persist`), toast kèm hướng dẫn bật thủ công
+  - Trình duyệt thường (Chrome/Firefox): giữ logic Permissions API chuẩn (`query` → `request` →
+    `persist`), toast kèm hướng dẫn bật thủ công
   - `node --check` OK
 
-- Sửa **build-apk.bat**: trước đây copy ra 2 file APK trùng lặp (`JarvisAI.apk` + `JarvisAI_Offline.apk`), giờ chỉ xuất 1 file `JarvisAI.apk`
+- Sửa **build-apk.bat**: trước đây copy ra 2 file APK trùng lặp (`JarvisAI.apk` +
+  `JarvisAI_Offline.apk`), giờ chỉ xuất 1 file `JarvisAI.apk`
 
-- Sửa lỗi **"App Registration Verification failed"** khi cài APK: Digital Asset Links (`assetlinks.json`) trên `kevinkieu.github.io` có package_name `io.github.kevinkieu.twa` (cũ cho TWA) nhưng Android app package là `com.kevinkieu.jarvisai`. Thêm `.well-known/assetlinks.json` mới với `package_name: com.kevinkieu.jarvisai` + `sha256_cert_fingerprints` đúng keystore (`4F:81:80:23:FB:E6:15:6D:F5:7F:0C:8B:35:C0:17:03:78:26:9F:DB:79:F2:43:C4:9B:F4:15:6D:9D:7E:68:75`). Cập nhật `scripts/sync-web-assets.js` mirror file này sang Android assets. Build APK mới sẽ pass verification.
+- Sửa lỗi **"App Registration Verification failed"** khi cài APK: Digital Asset Links
+  (`assetlinks.json`) trên `kevinkieu.github.io` có package_name `io.github.kevinkieu.twa` (cũ cho
+  TWA) nhưng Android app package là `com.kevinkieu.jarvisai`. Thêm `.well-known/assetlinks.json` mới
+  với `package_name: com.kevinkieu.jarvisai` + `sha256_cert_fingerprints` đúng keystore
+  (`4F:81:80:23:FB:E6:15:6D:F5:7F:0C:8B:35:C0:17:03:78:26:9F:DB:79:F2:43:C4:9B:F4:15:6D:9D:7E:68:75`).
+  Cập nhật `scripts/sync-web-assets.js` mirror file này sang Android assets. Build APK mới sẽ pass
+  verification.
 
-- Sửa tràn ngang toàn bộ mục **API Keys (Google / OpenRouter / Experiential Labs / NVIDIA / Cohere)** trong Cài đặt trên mobile (390px): từng `<fieldset class="settings-group">` có `min-inline-size: min-content` mặc định của trình duyệt → tự phình theo hàng `.api-key-row` (flex không wrap, ô tên gợi nhớ 115px + key + badge ~440px) → fieldset Google rộng **474px** trong khi modal chỉ 357px, nội dung tràn ra ngoài và không cuộn được. Đo bằng CDP headless Chrome trên viewport 390px: trước **81 phần tử tràn**, sau **0 phần tử tràn**. Sửa:
-  - `css/style.css`: `.settings-group` thêm `min-width: 0`; `.api-key-row` thêm `flex-wrap: wrap; min-width: 0` + mobile order/dòng tự xuống (badge hàng 1, tên gợi nhớ hàng 2, key hàng 3); hàng "Key xoay tua" (`.settings-inline-row`) chuyển sang `flex-wrap: wrap` + `min-width: 0`.
-  - `index.html`: các hàng "Key xoay tua" OpenRouter/Experiential Labs/NVIDIA/Cohere đổi inline style `display:flex` → class `.settings-inline-row`.
+- Sửa tràn ngang toàn bộ mục **API Keys (Google / OpenRouter / Experiential Labs / NVIDIA /
+  Cohere)** trong Cài đặt trên mobile (390px): từng `<fieldset class="settings-group">` có
+  `min-inline-size: min-content` mặc định của trình duyệt → tự phình theo hàng `.api-key-row` (flex
+  không wrap, ô tên gợi nhớ 115px + key + badge ~440px) → fieldset Google rộng **474px** trong khi
+  modal chỉ 357px, nội dung tràn ra ngoài và không cuộn được. Đo bằng CDP headless Chrome trên
+  viewport 390px: trước **81 phần tử tràn**, sau **0 phần tử tràn**. Sửa:
+  - `css/style.css`: `.settings-group` thêm `min-width: 0`; `.api-key-row` thêm
+    `flex-wrap: wrap; min-width: 0` + mobile order/dòng tự xuống (badge hàng 1, tên gợi nhớ hàng 2,
+    key hàng 3); hàng "Key xoay tua" (`.settings-inline-row`) chuyển sang `flex-wrap: wrap` +
+    `min-width: 0`.
+  - `index.html`: các hàng "Key xoay tua" OpenRouter/Experiential Labs/NVIDIA/Cohere đổi inline
+    style `display:flex` → class `.settings-inline-row`.
   - Bump `css/style.css?v=80`, SW cache `v84`, mirror android assets.
-  - Kiểm chứng: CDP viewport 390px (mobile) & 1280px (desktop) — không còn phần tử nào tràn, bảng mô hình động tự cuộn ngang trong khối, modal bám đúng bề rộng màn hình; `npm test` 93/93, `check-*` PASS.
+  - Kiểm chứng: CDP viewport 390px (mobile) & 1280px (desktop) — không còn phần tử nào tràn, bảng mô
+    hình động tự cuộn ngang trong khối, modal bám đúng bề rộng màn hình; `npm test` 93/93, `check-*`
+    PASS.
 
-- Sửa dứt điểm lỗi mục "Quản lý Provider & Model động" trong Cài đặt bị chồng chéo trên mobile/APK: khung ngoài là `<fieldset class="settings-group dp-section">` mà CSS lại đặt `display:flex` — Chromium/Android WebView không tính chiều cao fieldset theo flex children nên fieldset co lại còn **38px** trong khi nội dung thật ~1290px, phần tràn ra đè lên các mục bên dưới (đo bằng headless Chrome: `top=1504 h=38` trước, `top=1610 h=1288` sau khi sửa). Đổi khung ngoài sang `<div class="settings-group dp-section">` + `<div class="dp-section-title">` (giữ nguyên 100% id mà `js/dynamic-providers.js` dùng), bỏ `<legend>`; `.dp-section`/`.dp-block` chuyển về `display:block` + margin thay vì flex/grid, thêm `box-sizing:border-box`, `min-width:0`, `overflow:hidden` để không tràn ngang. Bảng danh sách provider/model do JS render là bảng 6 cột (inline `width:100%`) trước đây ép modal rộng 470px trên màn 390px, nay đặt trong `.dp-list-scroll` (`max-height:300px; overflow:auto`) với `table{min-width:560px}`, `th/td{padding:6px 8px; white-space:nowrap; text-overflow:ellipsis}`, cột Base URL cắt ở 220px → bảng tự cuộn ngang trong khối, không kéo giãn modal; `.modal-scroll-body` thêm `min-width:0; min-height:0; overflow-x:hidden` để bám đúng bề rộng modal. Nút Lưu/Nhập lại bo tròn `--radius-md`, cao 42px (44px trên mobile), chữ tự xuống dòng. Bump `css/style.css?v=79`, sw cache v83, mirror android assets. Kiểm chứng: chụp màn hình headless Chrome ở 480px (mobile) và 1100px (desktop) — tiêu đề, mô tả, ô nhập, nút và 2 bảng danh sách đều xếp dọc đúng thứ tự, không còn ô nào đè lên nhau, không tràn ngang; `npm test` 93/93, `node --check`, `check-models`, `sync-assets`, `check-assets`, `check-map` đều PASS.
+- Sửa dứt điểm lỗi mục "Quản lý Provider & Model động" trong Cài đặt bị chồng chéo trên mobile/APK:
+  khung ngoài là `<fieldset class="settings-group dp-section">` mà CSS lại đặt `display:flex` —
+  Chromium/Android WebView không tính chiều cao fieldset theo flex children nên fieldset co lại còn
+  **38px** trong khi nội dung thật ~1290px, phần tràn ra đè lên các mục bên dưới (đo bằng headless
+  Chrome: `top=1504 h=38` trước, `top=1610 h=1288` sau khi sửa). Đổi khung ngoài sang
+  `<div class="settings-group dp-section">` + `<div class="dp-section-title">` (giữ nguyên 100% id
+  mà `js/dynamic-providers.js` dùng), bỏ `<legend>`; `.dp-section`/`.dp-block` chuyển về
+  `display:block` + margin thay vì flex/grid, thêm `box-sizing:border-box`, `min-width:0`,
+  `overflow:hidden` để không tràn ngang. Bảng danh sách provider/model do JS render là bảng 6 cột
+  (inline `width:100%`) trước đây ép modal rộng 470px trên màn 390px, nay đặt trong
+  `.dp-list-scroll` (`max-height:300px; overflow:auto`) với `table{min-width:560px}`,
+  `th/td{padding:6px 8px; white-space:nowrap; text-overflow:ellipsis}`, cột Base URL cắt ở 220px →
+  bảng tự cuộn ngang trong khối, không kéo giãn modal; `.modal-scroll-body` thêm
+  `min-width:0; min-height:0; overflow-x:hidden` để bám đúng bề rộng modal. Nút Lưu/Nhập lại bo tròn
+  `--radius-md`, cao 42px (44px trên mobile), chữ tự xuống dòng. Bump `css/style.css?v=79`, sw cache
+  v83, mirror android assets. Kiểm chứng: chụp màn hình headless Chrome ở 480px (mobile) và 1100px
+  (desktop) — tiêu đề, mô tả, ô nhập, nút và 2 bảng danh sách đều xếp dọc đúng thứ tự, không còn ô
+  nào đè lên nhau, không tràn ngang; `npm test` 93/93, `node --check`, `check-models`,
+  `sync-assets`, `check-assets`, `check-map` đều PASS.
 
 ## 2026-11-23
 
-- Sửa "Kilo Failed to fetch" riêng trên APK/WebView: gateway Kilo (`ai-gateway.kilo.ai`) không trả CORS, mà provider lưu trên máy có thể vẫn trỏ thẳng gateway (merge Gist ở `js/sync.js` chỉ nhận provider máy chưa có nên không ghi đè base URL cũ) → mọi fetch từ `https://appassets.androidplatform.net` bị chặn, trong khi PC dùng proxy nên vẫn chạy. `buildRuntimeRegistry()` (js/dynamic-providers.js) giờ chuẩn hoá base URL **lúc gọi request**: host `ai-gateway.kilo.ai` tự chuyển sang proxy `/kilo/v1` đã deploy (`https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/kilo/v1`), giá trị lưu trong provider vẫn nguyên như người dùng nhập; toast lỗi mạng của nhánh gateway in thêm endpoint đang gọi để soi nhanh Base URL. Sửa luôn lỗi bấm nút "Sửa" provider/model không có gì xảy ra: `loadProviderIntoForm()` / `loadModelIntoForm()` gán `.value` vào các ô không tồn tại trong Settings (`#dp-provider-type`, `#dp-model-reasoning`) nên ném `TypeError: Cannot set properties of null` và dừng trước khi điền form, cũng không đặt `$dpEditProviderId`; giờ bỏ qua ô thiếu, hiện toast và cuộn/tô sáng form (trên điện thoại form nằm phía trên bảng danh sách nên trước đây trông như không phản hồi). Cập nhật `test/dynamic-providers.test.js` theo hành vi mới (base URL lưu nguyên, `getBaseUrl()` trả proxy). Bump app.js ?v=92, dynamic-providers.js ?v=81, sw cache v82, mirror android assets. Kiểm chứng: `node --check` 2 file, `npm run check-models`, `sync-assets`, `check-assets` đều PASS, `npm test` 93/93; bấm thử trong trình duyệt: nút Sửa provider điền đúng ID/nhãn/base URL + nút đổi thành "Cập nhật provider", nút Sửa model điền đúng form + "Cập nhật model", không còn exception trong console; provider có base URL `https://ai-gateway.kilo.ai/api/v1` resolve thành `.../kilo/v1`.
+- Sửa "Kilo Failed to fetch" riêng trên APK/WebView: gateway Kilo (`ai-gateway.kilo.ai`) không trả
+  CORS, mà provider lưu trên máy có thể vẫn trỏ thẳng gateway (merge Gist ở `js/sync.js` chỉ nhận
+  provider máy chưa có nên không ghi đè base URL cũ) → mọi fetch từ
+  `https://appassets.androidplatform.net` bị chặn, trong khi PC dùng proxy nên vẫn chạy.
+  `buildRuntimeRegistry()` (js/dynamic-providers.js) giờ chuẩn hoá base URL **lúc gọi request**:
+  host `ai-gateway.kilo.ai` tự chuyển sang proxy `/kilo/v1` đã deploy
+  (`https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/kilo/v1`), giá trị lưu trong provider
+  vẫn nguyên như người dùng nhập; toast lỗi mạng của nhánh gateway in thêm endpoint đang gọi để soi
+  nhanh Base URL. Sửa luôn lỗi bấm nút "Sửa" provider/model không có gì xảy ra:
+  `loadProviderIntoForm()` / `loadModelIntoForm()` gán `.value` vào các ô không tồn tại trong
+  Settings (`#dp-provider-type`, `#dp-model-reasoning`) nên ném
+  `TypeError: Cannot set properties of null` và dừng trước khi điền form, cũng không đặt
+  `$dpEditProviderId`; giờ bỏ qua ô thiếu, hiện toast và cuộn/tô sáng form (trên điện thoại form nằm
+  phía trên bảng danh sách nên trước đây trông như không phản hồi). Cập nhật
+  `test/dynamic-providers.test.js` theo hành vi mới (base URL lưu nguyên, `getBaseUrl()` trả proxy).
+  Bump app.js ?v=92, dynamic-providers.js ?v=81, sw cache v82, mirror android assets. Kiểm chứng:
+  `node --check` 2 file, `npm run check-models`, `sync-assets`, `check-assets` đều PASS, `npm test`
+  93/93; bấm thử trong trình duyệt: nút Sửa provider điền đúng ID/nhãn/base URL + nút đổi thành "Cập
+  nhật provider", nút Sửa model điền đúng form + "Cập nhật model", không còn exception trong
+  console; provider có base URL `https://ai-gateway.kilo.ai/api/v1` resolve thành `.../kilo/v1`.
 
-- Sửa lỗi `Cannot access 'providerId' before initialization` khi gửi tin bằng model gateway (Kilo/Particle-1, OpenRouter/NVIDIA/Cohere): khối ENGINE 0B trong `sendMessage` (js/app.js) khai báo lại `const providerId` cùng khối `try`, shadow biến ngoài và đẩy dòng nhãn "Đang chờ <provider>…" vào TDZ; đổi thành `compatProviderId`. Nhân tiện sửa lỗi chọn nhầm provider khi model id trùng giữa nhiều provider (`particle-ai/particle-1:free` có ở OpenRouter và Kilo): thêm `DynamicProviders.selectModelOption(modelId, providerId)` khớp cả `value` + `data-provider` và dùng ở `rebuildModelSelect()`, `switchSess()`, restore Gist; `getModelProvider()` ưu tiên option đang chọn thay vì `.find()` theo value. Lưu `modProvider` vào phiên (`updateConfig`), vào `settings` khi push Gist (cả 2 luồng) và giữ nguyên khi rẽ nhánh (spread phiên). Bổ sung backup/restore cho provider tự thêm: js/export.js xuất bể key + tên + usage của từng provider động dạng `JVENC_`, js/app.js gọi `DynamicProviders.init()` sau khi import backup JSON, js/sync.js so sánh cả key/tên/usage provider động khi quyết định "máy này mới hơn", js/dynamic-providers.js gọi `scheduleAutoSync(3000)` sau khi lưu/xoá provider & model để lên Gist ngay. Bump app.js ?v=91, dynamic-providers.js ?v=80, sync.js ?v=79, export.js ?v=77, mirror android/app/src/main/assets/. Kiểm chứng: `node --check` 4 file, `npm run check-models`, `sync-assets`, `check-assets`, `check-map`, `npm test` (93/93) đều pass; test trình duyệt với Kilo thật qua proxy `https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/kilo/v1`: chọn Particle-1 → trả lời stream bình thường, badge `📦 Kilo Key #1`, reload vẫn khôi phục đúng option Kilo; xuất backup JSON → xoá provider Kilo → import lại: provider/base URL/model/key (268 ký tự, khớp gốc)/tên gợi nhớ khôi phục đầy đủ, select đúng provider Kilo; rẽ nhánh giữ `modProvider="kilo"`.
+- Sửa lỗi `Cannot access 'providerId' before initialization` khi gửi tin bằng model gateway
+  (Kilo/Particle-1, OpenRouter/NVIDIA/Cohere): khối ENGINE 0B trong `sendMessage` (js/app.js) khai
+  báo lại `const providerId` cùng khối `try`, shadow biến ngoài và đẩy dòng nhãn "Đang chờ
+  <provider>…" vào TDZ; đổi thành `compatProviderId`. Nhân tiện sửa lỗi chọn nhầm provider khi model
+  id trùng giữa nhiều provider (`particle-ai/particle-1:free` có ở OpenRouter và Kilo): thêm
+  `DynamicProviders.selectModelOption(modelId, providerId)` khớp cả `value` + `data-provider` và
+  dùng ở `rebuildModelSelect()`, `switchSess()`, restore Gist; `getModelProvider()` ưu tiên option
+  đang chọn thay vì `.find()` theo value. Lưu `modProvider` vào phiên (`updateConfig`), vào
+  `settings` khi push Gist (cả 2 luồng) và giữ nguyên khi rẽ nhánh (spread phiên). Bổ sung
+  backup/restore cho provider tự thêm: js/export.js xuất bể key + tên + usage của từng provider động
+  dạng `JVENC_`, js/app.js gọi `DynamicProviders.init()` sau khi import backup JSON, js/sync.js so
+  sánh cả key/tên/usage provider động khi quyết định "máy này mới hơn", js/dynamic-providers.js gọi
+  `scheduleAutoSync(3000)` sau khi lưu/xoá provider & model để lên Gist ngay. Bump app.js ?v=91,
+  dynamic-providers.js ?v=80, sync.js ?v=79, export.js ?v=77, mirror android/app/src/main/assets/.
+  Kiểm chứng: `node --check` 4 file, `npm run check-models`, `sync-assets`, `check-assets`,
+  `check-map`, `npm test` (93/93) đều pass; test trình duyệt với Kilo thật qua proxy
+  `https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/kilo/v1`: chọn Particle-1 → trả lời
+  stream bình thường, badge `📦 Kilo Key #1`, reload vẫn khôi phục đúng option Kilo; xuất backup
+  JSON → xoá provider Kilo → import lại: provider/base URL/model/key (268 ký tự, khớp gốc)/tên gợi
+  nhớ khôi phục đầy đủ, select đúng provider Kilo; rẽ nhánh giữ `modProvider="kilo"`.
 
-- Badge key: tooltip bị lặp tên provider ("Kilo Kilo Key #1") vì title ghép `provLabel` với label đã chứa sẵn tên provider; nay chỉ ghép tên provider cho các provider built-in (NVIDIA/Cohere/OpenRouter/Google), provider động dùng nguyên label. Kiểm tra khi render badge trong app: Kilo → "📦 Kilo Key #1 (Kilo #1)" / tooltip "Tin nhắn này được phản hồi bằng Kilo Key #1 (Kilo #1)". Nhân tiện phát hiện & sửa lỗi dữ liệu model: `DEFAULT_MODELS` seed bằng key CHÍNH LÀ model id và record thiếu `id` → `buildRuntimeRegistry()` trả `models: [null,…]` nên option của `#model-select` có value `"undefined"`, `resolveCompatProvider()` trả null và badge của model NVIDIA/OpenRouter/Cohere rơi về nhãn Google. Nay `getModels()` chuẩn hoá khi đọc (bổ sung `id` = model id thật lấy từ key cũ, đổi key sang dạng `provider/modelId`) và `init()` seed lại `DEFAULT_MODELS` theo đúng chuẩn kèm `id`; bump quota.js + dynamic-providers.js `?v=78`, sw cache v81, mirror android. Kiểm chứng trong app: registry hết phần tử null (nvidia 5, openrouter 5, cohere 2, kilo 3), 0 option "undefined", badge đúng provider (🟢 NV / 🛰️ OR / 🤝 CO / 📦 Kilo / 🔑 Google), `resolveCompatProvider("nvidia/nemotron-3.5-bolt-e4b")` → nvidia.
+- Badge key: tooltip bị lặp tên provider ("Kilo Kilo Key #1") vì title ghép `provLabel` với label đã
+  chứa sẵn tên provider; nay chỉ ghép tên provider cho các provider built-in
+  (NVIDIA/Cohere/OpenRouter/Google), provider động dùng nguyên label. Kiểm tra khi render badge
+  trong app: Kilo → "📦 Kilo Key #1 (Kilo #1)" / tooltip "Tin nhắn này được phản hồi bằng Kilo Key
+  #1 (Kilo #1)". Nhân tiện phát hiện & sửa lỗi dữ liệu model: `DEFAULT_MODELS` seed bằng key CHÍNH
+  LÀ model id và record thiếu `id` → `buildRuntimeRegistry()` trả `models: [null,…]` nên option của
+  `#model-select` có value `"undefined"`, `resolveCompatProvider()` trả null và badge của model
+  NVIDIA/OpenRouter/Cohere rơi về nhãn Google. Nay `getModels()` chuẩn hoá khi đọc (bổ sung `id` =
+  model id thật lấy từ key cũ, đổi key sang dạng `provider/modelId`) và `init()` seed lại
+  `DEFAULT_MODELS` theo đúng chuẩn kèm `id`; bump quota.js + dynamic-providers.js `?v=78`, sw cache
+  v81, mirror android. Kiểm chứng trong app: registry hết phần tử null (nvidia 5, openrouter 5,
+  cohere 2, kilo 3), 0 option "undefined", badge đúng provider (🟢 NV / 🛰️ OR / 🤝 CO / 📦 Kilo / 🔑
+  Google), `resolveCompatProvider("nvidia/nemotron-3.5-bolt-e4b")` → nvidia.
 
-- Đồng bộ 2 chiều trước đây KHÔNG mang Provider/Model động qua Gist: `performSmartSync()` chỉ đẩy `settings.dynamicProviders` lên Cloud mà không hề merge nó về, và `isLocalAhead` không xét provider/model nên máy thêm provider mới (Kilo + 3 model) mà chưa chat thêm thì cũng không được đẩy lên — máy Android sync xong vẫn không thấy. Nay thêm bước D3 trong js/sync.js: nhận từ Cloud những provider/model máy này chưa có (giữ nguyên bản đang dùng, kèm key đã obfuscate + tên gợi nhớ + bộ đếm usage qua `DynamicProviders.importConfig(missing, {merge:true})`, tự `init()` để dựng lại registry và select model); đồng thời mục 7 so sánh "dấu vân tay" (label/type/baseUrl/keyCount/tham số model) giữa máy và Cloud để lần sync sau khi thêm/sửa provider vẫn đẩy lên. Bump sync.js `?v=77`, mirror android. Kiểm chứng: test trong app với GitHub API giả lập (chặn `api.github.com/gists`): xoá sạch Kilo ở máy (còn google/explabs/nvidia/openrouter/cohere) rồi chạy `JarvisSync.performSmartSync({silent:true})` → nhận lại provider Kilo + đúng 3 model + key + tên key, select hiện model; lần 2 Cloud đổi label + thêm 1 model → label máy giữ nguyên "Kilo", model mới được thêm, không nhân đôi; cả hai lần đều có GET + PATCH Gist.
+- Đồng bộ 2 chiều trước đây KHÔNG mang Provider/Model động qua Gist: `performSmartSync()` chỉ đẩy
+  `settings.dynamicProviders` lên Cloud mà không hề merge nó về, và `isLocalAhead` không xét
+  provider/model nên máy thêm provider mới (Kilo + 3 model) mà chưa chat thêm thì cũng không được
+  đẩy lên — máy Android sync xong vẫn không thấy. Nay thêm bước D3 trong js/sync.js: nhận từ Cloud
+  những provider/model máy này chưa có (giữ nguyên bản đang dùng, kèm key đã obfuscate + tên gợi
+  nhớ + bộ đếm usage qua `DynamicProviders.importConfig(missing, {merge:true})`, tự `init()` để dựng
+  lại registry và select model); đồng thời mục 7 so sánh "dấu vân tay"
+  (label/type/baseUrl/keyCount/tham số model) giữa máy và Cloud để lần sync sau khi thêm/sửa
+  provider vẫn đẩy lên. Bump sync.js `?v=77`, mirror android. Kiểm chứng: test trong app với GitHub
+  API giả lập (chặn `api.github.com/gists`): xoá sạch Kilo ở máy (còn
+  google/explabs/nvidia/openrouter/cohere) rồi chạy `JarvisSync.performSmartSync({silent:true})` →
+  nhận lại provider Kilo + đúng 3 model + key + tên key, select hiện model; lần 2 Cloud đổi label +
+  thêm 1 model → label máy giữ nguyên "Kilo", model mới được thêm, không nhân đôi; cả hai lần đều có
+  GET + PATCH Gist.
 
-- Sửa nhãn key hiện sai provider trên bong bóng tin nhắn: `getKeyBadgeHtml()` (js/quota.js) chỉ nhận diện nvidia/cohere, mọi model còn lại hễ kết thúc bằng `:free` đều bị gán nhãn "OR Key …" (OpenRouter) — vì vậy model `dots-studio/dots-3-note-preview:free` thêm từ provider Kilo hiện "OR Key #1 (…) dù câu trả lời vẫn đến từ Kilo. Nay badge lấy provider thật của model từ `window.COMPAT_PROVIDERS` (thêm `keyNamePrefix` vào runtime registry ở js/dynamic-providers.js) và đọc tên gợi nhớ đúng bể key của provider động, nhãn thành `Kilo Key #1 (…)`; chỉ model `:free` không có trong registry nào mới còn fallback OpenRouter như cũ. Bump quota.js + dynamic-providers.js `?v=77`, sw cache v80, mirror android/app/src/main/assets/.
+- Sửa nhãn key hiện sai provider trên bong bóng tin nhắn: `getKeyBadgeHtml()` (js/quota.js) chỉ nhận
+  diện nvidia/cohere, mọi model còn lại hễ kết thúc bằng `:free` đều bị gán nhãn "OR Key …"
+  (OpenRouter) — vì vậy model `dots-studio/dots-3-note-preview:free` thêm từ provider Kilo hiện "OR
+  Key #1 (…) dù câu trả lời vẫn đến từ Kilo. Nay badge lấy provider thật của model từ
+  `window.COMPAT_PROVIDERS` (thêm `keyNamePrefix` vào runtime registry ở js/dynamic-providers.js) và
+  đọc tên gợi nhớ đúng bể key của provider động, nhãn thành `Kilo Key #1 (…)`; chỉ model `:free`
+  không có trong registry nào mới còn fallback OpenRouter như cũ. Bump quota.js +
+  dynamic-providers.js `?v=77`, sw cache v80, mirror android/app/src/main/assets/.
 
-- Chẩn đoán lỗi "Failed to fetch" khi chat bằng model động thêm từ Kilo (`inclusionai/ling-3.2-flash:free`, base URL https://ai-gateway.kilo.ai/api/v1): gateway Kilo trả `204` cho preflight nhưng KHÔNG có header `Access-Control-Allow-Origin` ở cả OPTIONS lẫn POST (`/v1/models` cũng vậy), nên mọi fetch từ trình duyệt/WebView bị chặn — không thể sửa phía client (giống NVIDIA trước đây). Cùng lúc, gọi trực tiếp từ shell với đúng key: `/v1/models` trả 200 và có model, các model free khác (liquid/lfm-3-1.7b, nemotron-3.5-lightning) trả 200, riêng `inclusionai/ling-3.2-flash:free` trả 429 `rpm_limit_exceeded` (`upstream_provider_shared_pool`, provider Ant Digital) — lỗi phía provider, app chỉ hiện toast 429 chứ không phải lỗi mạng; model trả phí trả 402 vì tài khoản Kilo 0 credit. Thêm route `/kilo` vào worker/nvidia-proxy.js (giữ `/v1` cho NVIDIA) để một worker phục vụ cả hai gateway — nhập `https://<worker>/kilo/v1` vào Base URL của provider Kilo; thêm scratch/kilo-proxy.js (proxy Node local, cổng 8141) cho test trên máy. Thêm test/dynamic-providers.test.js (5 test: đăng ký provider/model động, resolveCompatProvider, bể key + obfuscate khi export, trùng ID/provider lạ, xoá provider kéo theo model). Đã deploy worker lên site 'Jarvis NVIDIA Proxy' (preview): `https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site` — `/kilo/v1` trả preflight 204 kèm ACAO đúng origin, POST stream 200 `text/event-stream`, `/v1` (NVIDIA) vẫn 200. Test trong app thật (static server local + provider Kilo base URL `/kilo/v1`): model chọn được trong select, console ghi `[Gateway Kilo] Endpoint: .../kilo/v1/chat/completions`, request OPTIONS 204 + POST 200, câu trả lời stream về sau 1818ms. Quét 10 model free của Kilo: 9/10 trả 200 (baidu/ernie-5.5-flash-preview, dots-studio/dots-3-note-preview, liquid/lfm-3-1.7b, nvidia/nemotron-3.5-lightning, nvidia/nemotron-3.5-super-vl, nvidia/nemotron-3-nano-omni-30b-a3b-reasoning, particle-ai/particle-1, recursive/flint-v1.0), riêng inclusionai/ling-3.2-fl... (truncated)
+- Chẩn đoán lỗi "Failed to fetch" khi chat bằng model động thêm từ Kilo
+  (`inclusionai/ling-3.2-flash:free`, base URL https://ai-gateway.kilo.ai/api/v1): gateway Kilo trả
+  `204` cho preflight nhưng KHÔNG có header `Access-Control-Allow-Origin` ở cả OPTIONS lẫn POST
+  (`/v1/models` cũng vậy), nên mọi fetch từ trình duyệt/WebView bị chặn — không thể sửa phía client
+  (giống NVIDIA trước đây). Cùng lúc, gọi trực tiếp từ shell với đúng key: `/v1/models` trả 200 và
+  có model, các model free khác (liquid/lfm-3-1.7b, nemotron-3.5-lightning) trả 200, riêng
+  `inclusionai/ling-3.2-flash:free` trả 429 `rpm_limit_exceeded` (`upstream_provider_shared_pool`,
+  provider Ant Digital) — lỗi phía provider, app chỉ hiện toast 429 chứ không phải lỗi mạng; model
+  trả phí trả 402 vì tài khoản Kilo 0 credit. Thêm route `/kilo` vào worker/nvidia-proxy.js (giữ
+  `/v1` cho NVIDIA) để một worker phục vụ cả hai gateway — nhập `https://<worker>/kilo/v1` vào Base
+  URL của provider Kilo; thêm scratch/kilo-proxy.js (proxy Node local, cổng 8141) cho test trên máy.
+  Thêm test/dynamic-providers.test.js (5 test: đăng ký provider/model động, resolveCompatProvider,
+  bể key + obfuscate khi export, trùng ID/provider lạ, xoá provider kéo theo model). Đã deploy
+  worker lên site 'Jarvis NVIDIA Proxy' (preview):
+  `https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site` — `/kilo/v1` trả preflight 204 kèm ACAO
+  đúng origin, POST stream 200 `text/event-stream`, `/v1` (NVIDIA) vẫn 200. Test trong app thật
+  (static server local + provider Kilo base URL `/kilo/v1`): model chọn được trong select, console
+  ghi `[Gateway Kilo] Endpoint: .../kilo/v1/chat/completions`, request OPTIONS 204 + POST 200, câu
+  trả lời stream về sau 1818ms. Quét 10 model free của Kilo: 9/10 trả 200
+  (baidu/ernie-5.5-flash-preview, dots-studio/dots-3-note-preview, liquid/lfm-3-1.7b,
+  nvidia/nemotron-3.5-lightning, nvidia/nemotron-3.5-super-vl,
+  nvidia/nemotron-3-nano-omni-30b-a3b-reasoning, particle-ai/particle-1, recursive/flint-v1.0),
+  riêng inclusionai/ling-3.2-fl... (truncated)
 
 ## 2026-11-22
 
-- Thêm giao diện quản lý Provider & Model động trong Cài đặt: thêm/sửa/xoá provider (tên, base URL, 1–20 API key) và model (tên, provider, max input/output, tham số sinh), lưu localStorage và đồng bộ Gist/backup, key obfuscate (JVENC_). Giữ Google/Experiential Labs làm built-in; NVIDIA/OpenRouter/Cohere chuyển sang động qua js/dynamic-providers.js (buildRuntimeRegistry, compatProviders dùng keyStorageMultiple). model-registry.js đọc window.COMPAT_PROVIDERS khi gọi resolveCompatProvider; app.js đọc window.COMPAT_MODEL_OPTS / window.EXPLABS_MODELS lúc chạy để thấy provider/model mới. Thêm js/dynamic-providers.js, script trong index.html, sửa js/app.js + js/model-registry.js, mirror android/app/src/main/assets/.
+- Thêm giao diện quản lý Provider & Model động trong Cài đặt: thêm/sửa/xoá provider (tên, base URL,
+  1–20 API key) và model (tên, provider, max input/output, tham số sinh), lưu localStorage và đồng
+  bộ Gist/backup, key obfuscate (JVENC_). Giữ Google/Experiential Labs làm built-in;
+  NVIDIA/OpenRouter/Cohere chuyển sang động qua js/dynamic-providers.js (buildRuntimeRegistry,
+  compatProviders dùng keyStorageMultiple). model-registry.js đọc window.COMPAT_PROVIDERS khi gọi
+  resolveCompatProvider; app.js đọc window.COMPAT_MODEL_OPTS / window.EXPLABS_MODELS lúc chạy để
+  thấy provider/model mới. Thêm js/dynamic-providers.js, script trong index.html, sửa js/app.js +
+  js/model-registry.js, mirror android/app/src/main/assets/.
 
-- Nút "🔄 Tóm tắt lại" giờ sao lưu `summaryMemory` + `lastCondensedLength` trước khi xoá, nếu nén thất bại (model không trả nội dung/lỗi API) thì khôi phục bộ nhớ cũ và lưu DB, báo toast "Nén thất bại — đã khôi phục bộ nhớ cũ". Tránh mất mát tóm tắt khi API lỗi. Bump app.js ?v=87, sw cache v79, mirror sang android/app/src/main/assets/.
+- Nút "🔄 Tóm tắt lại" giờ sao lưu `summaryMemory` + `lastCondensedLength` trước khi xoá, nếu nén
+  thất bại (model không trả nội dung/lỗi API) thì khôi phục bộ nhớ cũ và lưu DB, báo toast "Nén thất
+  bại — đã khôi phục bộ nhớ cũ". Tránh mất mát tóm tắt khi API lỗi. Bump app.js ?v=87, sw cache v79,
+  mirror sang android/app/src/main/assets/.
 
-- Mục Nén ngữ cảnh trong Cài đặt hiển thị nội dung bộ nhớ tóm tắt của phiên đang mở (`sessionObj.summaryMemory`) kèm nút "🔄 Tóm tắt lại" (xoá bộ nhớ cũ rồi nén lại toàn bộ hội thoại) và "🗑️ Xoá bộ nhớ tóm tắt" (xoá `summaryMemory` + `lastCondensedLength`, lưu DB, báo toast). `renderCompactSummary()` cập nhật khung xem trước khi mở Cài đặt và sau mỗi lần nén. Bump app.js ?v=86, sw cache v78, mirror sang android/app/src/main/assets/.
+- Mục Nén ngữ cảnh trong Cài đặt hiển thị nội dung bộ nhớ tóm tắt của phiên đang mở
+  (`sessionObj.summaryMemory`) kèm nút "🔄 Tóm tắt lại" (xoá bộ nhớ cũ rồi nén lại toàn bộ hội
+  thoại) và "🗑️ Xoá bộ nhớ tóm tắt" (xoá `summaryMemory` + `lastCondensedLength`, lưu DB, báo
+  toast). `renderCompactSummary()` cập nhật khung xem trước khi mở Cài đặt và sau mỗi lần nén. Bump
+  app.js ?v=86, sw cache v78, mirror sang android/app/src/main/assets/.
 
-- Nén ngữ cảnh dài hạn chạy tay được + chỉnh ngưỡng tự động: thêm trong Cài đặt Hệ thống ô "🧬 Số tin nhắn trong phiên để tự động nén" (6–200, mặc định 16, lưu `jarvis_auto_summary_threshold`) và nút "🗜️ Nén ngữ cảnh ngay (Manual Compact)" kèm dòng trạng thái. `condenseSessionMemory(sessionObj, force)` nhận cờ `force` để bỏ qua ngưỡng/checkbox khi bấm tay, đọc ngưỡng từ `autoSummaryThreshold` thay cho số 16 hard-code, chừa tối đa 10 tin gần nhất khỏi phần tóm tắt và báo toast thành công/lỗi. Giữ nguyên tên hiển thị "Trí nhớ Vector RAG" ở checkbox, nút sidebar, chip header và toast bật/tắt phiên (không đổi sang TAG). Bump app.js ?v=85, sw cache v77, mirror sang android/app/src/main/assets/.
+- Nén ngữ cảnh dài hạn chạy tay được + chỉnh ngưỡng tự động: thêm trong Cài đặt Hệ thống ô "🧬 Số
+  tin nhắn trong phiên để tự động nén" (6–200, mặc định 16, lưu `jarvis_auto_summary_threshold`) và
+  nút "🗜️ Nén ngữ cảnh ngay (Manual Compact)" kèm dòng trạng thái.
+  `condenseSessionMemory(sessionObj, force)` nhận cờ `force` để bỏ qua ngưỡng/checkbox khi bấm tay,
+  đọc ngưỡng từ `autoSummaryThreshold` thay cho số 16 hard-code, chừa tối đa 10 tin gần nhất khỏi
+  phần tóm tắt và báo toast thành công/lỗi. Giữ nguyên tên hiển thị "Trí nhớ Vector RAG" ở checkbox,
+  nút sidebar, chip header và toast bật/tắt phiên (không đổi sang TAG). Bump app.js ?v=85, sw cache
+  v77, mirror sang android/app/src/main/assets/.
 
-- Sửa lỗi RAG Vector Memory / Kho tri thức không mở khi bấm nút: `openKnowledgeModal()` bị gọi qua `onclick` ở index.html (nút sidebar `btn-open-knowledge-sidebar` và nút thanh công cụ đầu vào `btn-open-knowledge-chip`) nhưng chưa gán vào `window`, nên bấm nút ném `ReferenceError` và không hiện giao diện quản lý trí nhớ. Khôi phục đầy đủ `js/rag.js` (1909 dòng) từ commit `1dd5062`: định nghĩa `window.JarvisRAG` (có phương thức `openModal(tab)`) và gán `window.openKnowledgeModal = (tab) => window.JarvisRAG?.openModal(tab);` để cả hai nút sidebar và header đều mở modal quản lý trí nhớ. Kiểm chứng: `node --check js/rag.js` PASS, `npm run sync-assets` đồng bộ 1 file sang android/app/src/main/assets/, `npm run check-assets` khớp 43/43 file, `npm run check-models` PASS, `npm run check-map` PASS.
+- Sửa lỗi RAG Vector Memory / Kho tri thức không mở khi bấm nút: `openKnowledgeModal()` bị gọi qua
+  `onclick` ở index.html (nút sidebar `btn-open-knowledge-sidebar` và nút thanh công cụ đầu vào
+  `btn-open-knowledge-chip`) nhưng chưa gán vào `window`, nên bấm nút ném `ReferenceError` và không
+  hiện giao diện quản lý trí nhớ. Khôi phục đầy đủ `js/rag.js` (1909 dòng) từ commit `1dd5062`: định
+  nghĩa `window.JarvisRAG` (có phương thức `openModal(tab)`) và gán
+  `window.openKnowledgeModal = (tab) => window.JarvisRAG?.openModal(tab);` để cả hai nút sidebar và
+  header đều mở modal quản lý trí nhớ. Kiểm chứng: `node --check js/rag.js` PASS,
+  `npm run sync-assets` đồng bộ 1 file sang android/app/src/main/assets/, `npm run check-assets`
+  khớp 43/43 file, `npm run check-models` PASS, `npm run check-map` PASS.
 
-- Bỏ câu mốc thời gian chèn ở đầu tin nhắn người dùng trong js/app.js: trước đây mỗi lượt gửi đi bị ghép `[Mốc thời gian gửi tin: dd/mm/yyyy (Năm yyyy)]` + nội dung, nên các model gateway (thấy rõ nhất ở GPT-6 Luna / Explabs) lặp lại nguyên câu đó — dưới dạng dịch sang tiếng Anh `[Timestamp sent: 22/11/2026 (Year 2026)]` — ngay đầu câu trả lời. Nay `promptWithTime` chỉ còn đúng nội dung người dùng (rỗng thì thay bằng ghi chú gửi tệp); mốc thời gian/ngày/giờ vẫn được cấp cho model qua system instruction `getDynamicSI` (timeInstruction) nên không mất khả năng biết ngày hiện tại. Bump app.js ?v=84, sw cache v76, mirror sang android/app/src/main/assets/.
+- Bỏ câu mốc thời gian chèn ở đầu tin nhắn người dùng trong js/app.js: trước đây mỗi lượt gửi đi bị
+  ghép `[Mốc thời gian gửi tin: dd/mm/yyyy (Năm yyyy)]` + nội dung, nên các model gateway (thấy rõ
+  nhất ở GPT-6 Luna / Explabs) lặp lại nguyên câu đó — dưới dạng dịch sang tiếng Anh
+  `[Timestamp sent: 22/11/2026 (Year 2026)]` — ngay đầu câu trả lời. Nay `promptWithTime` chỉ còn
+  đúng nội dung người dùng (rỗng thì thay bằng ghi chú gửi tệp); mốc thời gian/ngày/giờ vẫn được cấp
+  cho model qua system instruction `getDynamicSI` (timeInstruction) nên không mất khả năng biết ngày
+  hiện tại. Bump app.js ?v=84, sw cache v76, mirror sang android/app/src/main/assets/.
 
-- Ghi quy tắc cố định cho agent vào AGENTS.md mục "Adding a model or a provider/platform (mandatory)": (1) mọi model mới phải nhận ảnh — ảnh luôn được đính kèm ở mọi nhánh gửi, inputModalities chỉ lọc video/audio, provider từ chối thì toast "<tên model> does not process images" và tự gửi lại không kèm ảnh; (2) key của provider/nền tảng mới phải được obfuscate và đồng bộ Gist Cloud + backup JSON như key Google, kèm danh sách file bắt buộc (js/api-keys.js, js/sync.js, js/export.js, js/key-config-sync.js, js/quota.js) và checklist thêm model/provider. Cập nhật boicanhduan.json: thêm model_layer.image_support_rule + model_layer.provider_key_rule, mô tả js/app.js và js/sync.js, versioning/sw cache v75, latest_summary; check-map vẫn khớp 86 đường dẫn.
+- Ghi quy tắc cố định cho agent vào AGENTS.md mục "Adding a model or a provider/platform
+  (mandatory)": (1) mọi model mới phải nhận ảnh — ảnh luôn được đính kèm ở mọi nhánh gửi,
+  inputModalities chỉ lọc video/audio, provider từ chối thì toast "<tên model> does not process
+  images" và tự gửi lại không kèm ảnh; (2) key của provider/nền tảng mới phải được obfuscate và đồng
+  bộ Gist Cloud + backup JSON như key Google, kèm danh sách file bắt buộc (js/api-keys.js,
+  js/sync.js, js/export.js, js/key-config-sync.js, js/quota.js) và checklist thêm model/provider.
+  Cập nhật boicanhduan.json: thêm model_layer.image_support_rule + model_layer.provider_key_rule, mô
+  tả js/app.js và js/sync.js, versioning/sw cache v75, latest_summary; check-map vẫn khớp 86 đường
+  dẫn.
 
-- Ảnh gửi được cho MỌI model + báo toast khi model không xử lý ảnh: js/app.js thêm modelLabelOf() (lấy đúng tên model đang chọn: nhãn provider OpenRouter/NVIDIA/Cohere hoặc text option của #model-select), isImageRejection() (chỉ nhận diện lỗi "model không nhận ảnh", không bắt lỗi ảnh hỏng/quá lớn/mất mạng) và notifyImagesUnsupported() (toast "⚠️ <tên model> does not process images (không xử lý ảnh) — đã gửi lại không kèm ảnh."). Nhánh gateway OpenAI-compatible: bỏ điều kiện lọc ảnh theo inputModalities (trước đây model khai báo text-only bị bỏ ảnh ngay từ đầu, kèm toast "không nhận ảnh") nên ảnh luôn được gửi; khi provider trả 4xx kèm lỗi ảnh thì dropCompatImages() gỡ image_url khỏi lượt, báo toast rồi thử lại ngay không kèm ảnh (video/audio vẫn lọc theo inputModalities). Nhánh Experiential Labs: ảnh gửi qua image_url cho mọi model, bị từ chối thì gửi lại bằng sendExp() không ảnh. Nhánh Google generateContentStream và Interactions API: bỏ inlineData ảnh / part type 'image' rồi gửi lại; Interactions chỉ gửi type 'image' cho ảnh thật (trước đây video/audio cũng bị gắn type 'image' nên request sai). Đổi điều kiện build interactionInput theo hasImageFiles dùng chung. Bump app.js ?v=83, sw cache v75, mirror sang android/app/src/main/assets/.
+- Ảnh gửi được cho MỌI model + báo toast khi model không xử lý ảnh: js/app.js thêm modelLabelOf()
+  (lấy đúng tên model đang chọn: nhãn provider OpenRouter/NVIDIA/Cohere hoặc text option của
+  #model-select), isImageRejection() (chỉ nhận diện lỗi "model không nhận ảnh", không bắt lỗi ảnh
+  hỏng/quá lớn/mất mạng) và notifyImagesUnsupported() (toast "⚠️ <tên model> does not process images
+  (không xử lý ảnh) — đã gửi lại không kèm ảnh."). Nhánh gateway OpenAI-compatible: bỏ điều kiện lọc
+  ảnh theo inputModalities (trước đây model khai báo text-only bị bỏ ảnh ngay từ đầu, kèm toast
+  "không nhận ảnh") nên ảnh luôn được gửi; khi provider trả 4xx kèm lỗi ảnh thì dropCompatImages()
+  gỡ image_url khỏi lượt, báo toast rồi thử lại ngay không kèm ảnh (video/audio vẫn lọc theo
+  inputModalities). Nhánh Experiential Labs: ảnh gửi qua image_url cho mọi model, bị từ chối thì gửi
+  lại bằng sendExp() không ảnh. Nhánh Google generateContentStream và Interactions API: bỏ
+  inlineData ảnh / part type 'image' rồi gửi lại; Interactions chỉ gửi type 'image' cho ảnh thật
+  (trước đây video/audio cũng bị gắn type 'image' nên request sai). Đổi điều kiện build
+  interactionInput theo hasImageFiles dùng chung. Bump app.js ?v=83, sw cache v75, mirror sang
+  android/app/src/main/assets/.
 
-- Bổ sung Cohere vào đồng bộ Cloud Gist và sao lưu/khôi phục (trước đây bị bỏ sót hoàn toàn): js/sync.js thêm getCohereKeysList/NamesList + setCohere*, hợp nhất settings.cohereKeys/cohereKeyNames khi Smart Sync, keyUsageCohere khi merge và khi kiểm tra isLocalAhead, đóng gói cohereKeys/cohereKeyNames/keyUsageCohere trong cả backup Smart Sync lẫn nút Ghi đè Cloud, khôi phục + updateCohereQuotaUI trong nút Ghi đè Máy. js/export.js thêm 5 key/tên Experiential Labs, 3 key/tên Cohere và 2 bộ đếm usage, đồng thời sửa điều kiện mã hoá (trước chỉ bắt tên có chữ 'key' nên key dạng jarvis_*_api_1 của OpenRouter/Experiential Labs/NVIDIA/Cohere bị lưu dạng thô → nay nhận cả '_api_', mọi API key đều được obfuscate). js/key-config-sync.js đưa jina_api_key vào externalConfigs để cũng được mã hoá và đồng bộ. Mirror sang android/app/src/main/assets/ (43/43 file khớp).
+- Bổ sung Cohere vào đồng bộ Cloud Gist và sao lưu/khôi phục (trước đây bị bỏ sót hoàn toàn):
+  js/sync.js thêm getCohereKeysList/NamesList + setCohere*, hợp nhất
+  settings.cohereKeys/cohereKeyNames khi Smart Sync, keyUsageCohere khi merge và khi kiểm tra
+  isLocalAhead, đóng gói cohereKeys/cohereKeyNames/keyUsageCohere trong cả backup Smart Sync lẫn nút
+  Ghi đè Cloud, khôi phục + updateCohereQuotaUI trong nút Ghi đè Máy. js/export.js thêm 5 key/tên
+  Experiential Labs, 3 key/tên Cohere và 2 bộ đếm usage, đồng thời sửa điều kiện mã hoá (trước chỉ
+  bắt tên có chữ 'key' nên key dạng jarvis_*_api_1 của OpenRouter/Experiential Labs/NVIDIA/Cohere bị
+  lưu dạng thô → nay nhận cả '_api_', mọi API key đều được obfuscate). js/key-config-sync.js đưa
+  jina_api_key vào externalConfigs để cũng được mã hoá và đồng bộ. Mirror sang
+  android/app/src/main/assets/ (43/43 file khớp).
 
-- Tự chuyển model khi Google xếp hàng: nhánh generateContentStream (js/app.js) thêm hạn chót cho chunk đầu tiên — model Gemini 3.x chưa nhả byte nào trong ngưỡng (mặc định 8s) thì huỷ attempt, chạy lại bằng gemini-3.5-flash-lite (maxOutputTokens 65000, giữ mức Think Depth người dùng chọn) và báo bằng toast "⚡ ... chưa phản hồi sau 8s — đã tự chuyển sang Gemini 3.5 Flash Lite" + badge ⚡ trên header tin nhắn. Ngưỡng và công tắc nằm ở Cài đặt → Hiệu năng (jarvis_lite_fallback_sec 3-60, jarvis_lite_fallback_enabled, thêm vào cfgMap của js/api-keys.js); chỉ đổi một lần mỗi lượt (liteSwitched) và lượt chạy lại được nới ngân sách thử riêng (maxStreamAttempts += 1) thay vì hack streamAttempts--; gom phần tạo badge trùng lặp của fallback 404 và fallback chờ vào helper showModelFallbackBadge(model, tone, title); watchdog 45s và các fallback cũ giữ nguyên; thêm modelSwitchedFrom/modelSwitchedAtMs vào window.__jarvisTurnDebug. Bump app.js ?v=82, api-keys.js ?v=77, sw cache v74, mirror sang android/app/src/main/assets/.
+- Tự chuyển model khi Google xếp hàng: nhánh generateContentStream (js/app.js) thêm hạn chót cho
+  chunk đầu tiên — model Gemini 3.x chưa nhả byte nào trong ngưỡng (mặc định 8s) thì huỷ attempt,
+  chạy lại bằng gemini-3.5-flash-lite (maxOutputTokens 65000, giữ mức Think Depth người dùng chọn)
+  và báo bằng toast "⚡ ... chưa phản hồi sau 8s — đã tự chuyển sang Gemini 3.5 Flash Lite" + badge
+  ⚡ trên header tin nhắn. Ngưỡng và công tắc nằm ở Cài đặt → Hiệu năng (jarvis_lite_fallback_sec
+  3-60, jarvis_lite_fallback_enabled, thêm vào cfgMap của js/api-keys.js); chỉ đổi một lần mỗi lượt
+  (liteSwitched) và lượt chạy lại được nới ngân sách thử riêng (maxStreamAttempts += 1) thay vì hack
+  streamAttempts--; gom phần tạo badge trùng lặp của fallback 404 và fallback chờ vào helper
+  showModelFallbackBadge(model, tone, title); watchdog 45s và các fallback cũ giữ nguyên; thêm
+  modelSwitchedFrom/modelSwitchedAtMs vào window.__jarvisTurnDebug. Bump app.js ?v=82, api-keys.js
+  ?v=77, sw cache v74, mirror sang android/app/src/main/assets/.
 
 ## 2026-11-20
 
-- Rà lại lần tách js/chat-render.js và dọn phần thừa: bỏ alias chết getCopyText trong app.js (chỉ copy() nội bộ dùng), gom biểu thức cờ "ẩn khối suy luận" lặp 4 lần thành isThinkingHidden() trong chat-render.js (xuất qua window, app.js lấy alias) dùng cho renderMsgContent / createStreamRenderer / formatThinkingResponse / formatFinalThinkingResponse, bỏ 3 lớp trung gian sessions()/activeId()/renderSel() trong reRenderHistory để đọc trực tiếp window.sessions / window.activeId / window.renderSel. Sửa lỗi có sẵn ở window.openMsgInTTSStudio: const cleanRaw khai báo trong khối if nhưng dùng ở ngoài nên nút 🎙️ Studio ném ReferenceError — đưa khai báo ra trước sanitizeTranscript. Kiểm chứng: node --check PASS, sync-web-assets --check khớp 30/30; chat thật gemini-3.6-flash + Think Depth high (gemini-3.8-flash trả 503) ra đúng 1 khối 💭 51 từ/~76 tokens, câu trả lời đúng, nút Copy chỉ copy câu trả lời; reload lịch sử từ IndexedDB vẽ lại đúng 2 khối 💭; tắt/bật "Ẩn khối suy luận" ấn/hiện đúng, câu trả lời không mất; ghim/bỏ ghim, xoá tin (giữ vị trí cuộn), đổi phiên rồi quay lại đều đúng. Mirror android/app/src/main/assets/.
+- Rà lại lần tách js/chat-render.js và dọn phần thừa: bỏ alias chết getCopyText trong app.js (chỉ
+  copy() nội bộ dùng), gom biểu thức cờ "ẩn khối suy luận" lặp 4 lần thành isThinkingHidden() trong
+  chat-render.js (xuất qua window, app.js lấy alias) dùng cho renderMsgContent /
+  createStreamRenderer / formatThinkingResponse / formatFinalThinkingResponse, bỏ 3 lớp trung gian
+  sessions()/activeId()/renderSel() trong reRenderHistory để đọc trực tiếp window.sessions /
+  window.activeId / window.renderSel. Sửa lỗi có sẵn ở window.openMsgInTTSStudio: const cleanRaw
+  khai báo trong khối if nhưng dùng ở ngoài nên nút 🎙️ Studio ném ReferenceError — đưa khai báo ra
+  trước sanitizeTranscript. Kiểm chứng: node --check PASS, sync-web-assets --check khớp 30/30; chat
+  thật gemini-3.6-flash + Think Depth high (gemini-3.8-flash trả 503) ra đúng 1 khối 💭 51 từ/~76
+  tokens, câu trả lời đúng, nút Copy chỉ copy câu trả lời; reload lịch sử từ IndexedDB vẽ lại đúng 2
+  khối 💭; tắt/bật "Ẩn khối suy luận" ấn/hiện đúng, câu trả lời không mất; ghim/bỏ ghim, xoá tin
+  (giữ vị trí cuộn), đổi phiên rồi quay lại đều đúng. Mirror android/app/src/main/assets/.
 
-- Tách tiếp phần render lịch sử chat khỏi js/app.js sang js/chat-render.js (273 dòng): thinkingStats / buildThinkingDetailsHtml / mergeThinkingSegments / mergeAdjacentThinkingBlocks (khối suy luận 💭), renderMsgContent (Markdown + KaTeX + Mermaid + highlight code + nút Copy Code), appendMsg (bong bóng tin nhắn + thanh action), captureChatScroll / restoreChatScroll / reRenderHistory, stripThinkingForCopy / getCopyText / copy; bọc IIFE, xuất qua window, nạp trước app.js trong index.html và thêm vào STATIC_ASSETS của sw.js, app.js giữ alias cùng tên (chatHistory / sessions / activeId / DOM đọc động qua window) nên không phải sửa call site nào; bỏ 2 dòng gán window trùng (window.appendMsg, window.reRenderHistory). app.js 5269 → 5054 dòng. Kiểm chứng: node --check PASS, npm run check-models PASS, sync-web-assets --check khớp 30/30 file, render thử trong Chromium (2 bong bóng, 1 khối 💭 sau khi gộp, code block có nút Copy) không lỗi console. Commit 804cf52 push main.
+- Tách tiếp phần render lịch sử chat khỏi js/app.js sang js/chat-render.js (273 dòng): thinkingStats
+  / buildThinkingDetailsHtml / mergeThinkingSegments / mergeAdjacentThinkingBlocks (khối suy luận
+  💭), renderMsgContent (Markdown + KaTeX + Mermaid + highlight code + nút Copy Code), appendMsg
+  (bong bóng tin nhắn + thanh action), captureChatScroll / restoreChatScroll / reRenderHistory,
+  stripThinkingForCopy / getCopyText / copy; bọc IIFE, xuất qua window, nạp trước app.js trong
+  index.html và thêm vào STATIC_ASSETS của sw.js, app.js giữ alias cùng tên (chatHistory / sessions
+  / activeId / DOM đọc động qua window) nên không phải sửa call site nào; bỏ 2 dòng gán window trùng
+  (window.appendMsg, window.reRenderHistory). app.js 5269 → 5054 dòng. Kiểm chứng: node --check
+  PASS, npm run check-models PASS, sync-web-assets --check khớp 30/30 file, render thử trong
+  Chromium (2 bong bóng, 1 khối 💭 sau khi gộp, code block có nút Copy) không lỗi console. Commit
+  804cf52 push main.
 
-- Tái cấu trúc & dọn dẹp: tách registry model khỏi js/app.js sang js/model-registry.js (417 dòng: THINKING_LEVELS_BY_MODEL + nhãn mức, FLASH_LITE_MODEL/AUX_FALLBACK_MODELS, COMPAT_PROVIDERS + NVIDIA_DEFAULT_PROXY, COMPAT_MODEL_OPTS, EXPLABS_MODELS, buildReasoningPayload/buildNvidiaThinking/resolveCompatProvider — bọc IIFE, xuất qua window, app.js giữ alias cùng tên nên không phải sửa call site nào); thay 3 kiểu copy assets thủ công (build.js, build-apk.bat, CI) bằng scripts/sync-web-assets.js — danh sách file duy nhất, có --check, tự xoá file thừa và thư mục rỗng, thêm npm run sync-assets / check-assets; xoá 22 file assets trùng (assets/js/js/*, assets/css/css/*, assets/app.js, assets/api-keys.js) và 10 tệp rác (_blk1.txt, _blk2.txt, _fix1dd.txt + 7 file log); chuyển recent_changes sang CHANGELOG.md và cập nhật bản đồ file trong boicanhduan.json. Sửa lỗi TDZ có sẵn 'Cannot access bD before initialization' trong DOM.sendBtn.onclick (khai báo let bD; trước khi dùng) phát hiện khi smoke test luồng gửi tin. CI: thêm scripts/** vào paths và step actions/setup-node 20. Kiểm chứng: --check khớp 29/29 file, npm run check-models PASS, smoke test đổi model / mở Cài đặt / gửi tin qua Cohere đều đúng. Commit e11129c push main, GitHub Actions run #98 success.
+- Tái cấu trúc & dọn dẹp: tách registry model khỏi js/app.js sang js/model-registry.js (417 dòng:
+  THINKING_LEVELS_BY_MODEL + nhãn mức, FLASH_LITE_MODEL/AUX_FALLBACK_MODELS, COMPAT_PROVIDERS +
+  NVIDIA_DEFAULT_PROXY, COMPAT_MODEL_OPTS, EXPLABS_MODELS,
+  buildReasoningPayload/buildNvidiaThinking/resolveCompatProvider — bọc IIFE, xuất qua window,
+  app.js giữ alias cùng tên nên không phải sửa call site nào); thay 3 kiểu copy assets thủ công
+  (build.js, build-apk.bat, CI) bằng scripts/sync-web-assets.js — danh sách file duy nhất, có
+  --check, tự xoá file thừa và thư mục rỗng, thêm npm run sync-assets / check-assets; xoá 22 file
+  assets trùng (assets/js/js/_, assets/css/css/_, assets/app.js, assets/api-keys.js) và 10 tệp rác
+  (_blk1.txt, _blk2.txt, _fix1dd.txt + 7 file log); chuyển recent_changes sang CHANGELOG.md và cập
+  nhật bản đồ file trong boicanhduan.json. Sửa lỗi TDZ có sẵn 'Cannot access bD before
+  initialization' trong DOM.sendBtn.onclick (khai báo let bD; trước khi dùng) phát hiện khi smoke
+  test luồng gửi tin. CI: thêm scripts/** vào paths và step actions/setup-node 20. Kiểm chứng:
+  --check khớp 29/29 file, npm run check-models PASS, smoke test đổi model / mở Cài đặt / gửi tin
+  qua Cohere đều đúng. Commit e11129c push main, GitHub Actions run #98 success.
 
-- Tích hợp nền tảng Cohere (Command A+ 05-2026 & Command A Reasoning 08-2025) như provider riêng: baseUrl https://api.cohere.ai/compatibility/v1, 3 key xoay tua + đếm quota, thinking depth / max tokens theo từng model (Command A+: 128k ctx/64k out, text+ảnh+video; Reasoning: 256k ctx/32k out, text-only, reasoningToggle High/Tắt). Thêm optgroup '🤝 Cohere' + fieldset 3 key Cohere trong Settings (index.html). js/app.js: COMPAT_PROVIDERS.cohere (keyCount 3, keyIndexVar cohereKeyIndex, includeReasoning true, modelLabel), COMPAT_MODEL_OPTS cho 2 model; js/api-keys.js: CO_KEY_COUNT, readRawCoKey/Name, initCohereKeys, handleCheckCohereDuplicates, SLOT_SELECT_GROUPS.kind:'cohere', KEY_POOL_MENUS.cohere; js/quota.js: cohereUsage, badge 🤝. Mirror sang android/app/src/main/assets/. Commit 1888264 push main.
+- Tích hợp nền tảng Cohere (Command A+ 05-2026 & Command A Reasoning 08-2025) như provider riêng:
+  baseUrl https://api.cohere.ai/compatibility/v1, 3 key xoay tua + đếm quota, thinking depth / max
+  tokens theo từng model (Command A+: 128k ctx/64k out, text+ảnh+video; Reasoning: 256k ctx/32k out,
+  text-only, reasoningToggle High/Tắt). Thêm optgroup '🤝 Cohere' + fieldset 3 key Cohere trong
+  Settings (index.html). js/app.js: COMPAT_PROVIDERS.cohere (keyCount 3, keyIndexVar cohereKeyIndex,
+  includeReasoning true, modelLabel), COMPAT_MODEL_OPTS cho 2 model; js/api-keys.js: CO_KEY_COUNT,
+  readRawCoKey/Name, initCohereKeys, handleCheckCohereDuplicates, SLOT_SELECT_GROUPS.kind:'cohere',
+  KEY_POOL_MENUS.cohere; js/quota.js: cohereUsage, badge 🤝. Mirror sang
+  android/app/src/main/assets/. Commit 1888264 push main.
 
-- Sửa lỗi 401 Cohere 'Incorrect API key provided': js/app.js thêm nhánh else if (compatNow.id === 'cohere') trong khối chọn key trước khi gửi (thứ tự nvidia → cohere → else OpenRouter) + mở rộng compatPoolSrc/compatSelEl/compatSlotOf trong vòng retry sang cohere, đảm bảo dùng đúng bể key Cohere thay vì key OpenRouter. Mirror android. Commit 1888264.
+- Sửa lỗi 401 Cohere 'Incorrect API key provided': js/app.js thêm nhánh else if (compatNow.id ===
+  'cohere') trong khối chọn key trước khi gửi (thứ tự nvidia → cohere → else OpenRouter) + mở rộng
+  compatPoolSrc/compatSelEl/compatSlotOf trong vòng retry sang cohere, đảm bảo dùng đúng bể key
+  Cohere thay vì key OpenRouter. Mirror android. Commit 1888264.
 
-- Bảo vệ Experiential Labs không bị gateway compat nuốt: explabsModelSet, resolveCompatProvider() trả null cho mọi ID trong EXPLABS_MODELS (gpt-6-luna, deepseek-v4.1-flash, qwen4-max:free), IIFE checkExplabsCompatOverlap() cảnh báo console.warn, usesCompatGateway = !usesExplabs && !!resolveCompatProvider(am). Giờ thứ tự nhánh không còn quan trọng. Mirror android. Commit 1888264.
+- Bảo vệ Experiential Labs không bị gateway compat nuốt: explabsModelSet, resolveCompatProvider()
+  trả null cho mọi ID trong EXPLABS_MODELS (gpt-6-luna, deepseek-v4.1-flash, qwen4-max:free), IIFE
+  checkExplabsCompatOverlap() cảnh báo console.warn, usesCompatGateway = !usesExplabs &&
+  !!resolveCompatProvider(am). Giờ thứ tự nhánh không còn quan trọng. Mirror android.
+  Commit 1888264.
 
-- Sửa lỗi 422 Cohere 'top_k is not supported' và rà soát toàn bộ tham số: Cohere Compatibility API chỉ nhận whitelist (model, messages, stream, reasoning_effort, response_format, tools, temperature, max_tokens, stop, seed, top_p, frequency_penalty, presence_penalty) — KHÔNG có top_k, stream_options. js/app.js: COMPAT_PROVIDERS.cohere thêm unsupportedParams:['top_k','stream_options'] + reasoningEffortParam:'reasoning_effort'; body build xoá param bị cấm, reasoning gửi reasoning_effort: thk!=='none'?'high':'none' (không gửi reasoning object/include_reasoning); thêm lưới an toàn COMPAT_STRIPPABLE_PARAMS + compatParamStrips tự gỡ tham số khi 4xx chứa '<param> is not supported'. Kiểm chứng curl thật: cả 2 model HTTP 200 (reasoning_effort none/high), gửi lại top_k:40 → HTTP 422 tái hiện. Mirror android/app/src/main/assets/js/app.js. Chưa commit/push bản sửa này.
+- Sửa lỗi 422 Cohere 'top_k is not supported' và rà soát toàn bộ tham số: Cohere Compatibility API
+  chỉ nhận whitelist (model, messages, stream, reasoning_effort, response_format, tools,
+  temperature, max_tokens, stop, seed, top_p, frequency_penalty, presence_penalty) — KHÔNG có top_k,
+  stream_options. js/app.js: COMPAT_PROVIDERS.cohere thêm
+  unsupportedParams:['top_k','stream_options'] + reasoningEffortParam:'reasoning_effort'; body build
+  xoá param bị cấm, reasoning gửi reasoning_effort: thk!=='none'?'high':'none' (không gửi reasoning
+  object/include_reasoning); thêm lưới an toàn COMPAT_STRIPPABLE_PARAMS + compatParamStrips tự gỡ
+  tham số khi 4xx chứa '<param> is not supported'. Kiểm chứng curl thật: cả 2 model HTTP 200
+  (reasoning_effort none/high), gửi lại top_k:40 → HTTP 422 tái hiện. Mirror
+  android/app/src/main/assets/js/app.js. Chưa commit/push bản sửa này.
 
-- Sửa chậm vào suy luận Gemini 3.6/3.8/Hydrogen: gộp bảng thinkingLevel theo tài liệu Google (3.8 Flash & 4 Hydrogen không nhận 'minimal' -> hạ 'low'; 3.6 Flash và 3.5/3.1 Flash-Lite nhận đủ 4 mức), dùng chung cho menu Think Depth, generateContentStream, Interactions API; bỏ auto-sync Gist 5s trong recordKeyRequest (chỉ model 20 RPD chạy) để không kéo sync Cloud vào lúc model suy luận; fallback 400 hạ 'low' thay thinkingBudget. Bump versionCode 71 / versionName 1.1.71 / ?v=71 / sw cache v71, mirror js/app.js + js/quota.js + index.html + sw.js sang android/app/src/main/assets/. Commit a79d123 push main.
+- Sửa chậm vào suy luận Gemini 3.6/3.8/Hydrogen: gộp bảng thinkingLevel theo tài liệu Google (3.8
+  Flash & 4 Hydrogen không nhận 'minimal' -> hạ 'low'; 3.6 Flash và 3.5/3.1 Flash-Lite nhận đủ 4
+  mức), dùng chung cho menu Think Depth, generateContentStream, Interactions API; bỏ auto-sync Gist
+  5s trong recordKeyRequest (chỉ model 20 RPD chạy) để không kéo sync Cloud vào lúc model suy luận;
+  fallback 400 hạ 'low' thay thinkingBudget. Bump versionCode 71 / versionName 1.1.71 / ?v=71 / sw
+  cache v71, mirror js/app.js + js/quota.js + index.html + sw.js sang android/app/src/main/assets/.
+  Commit a79d123 push main.
 
-- Tăng maxTokens (trần output tokens) cho TẤT CẢ model NVIDIA/OpenRouter/Experiential Labs/Particle/ERNIE lên giới hạn tối đa của từng model (maxOutputTokens/apiMaxCompletionTokens) để tránh cắt câu trả lời giữa chừng. Cập nhật trong js/app.js, android/app/src/main/assets/js/app.js, android/app/src/main/assets/app.js COMPAT_MODEL_OPTS: GLM-5.3-Flash 32768→65536, Nemotron 3.5 Lightning/Bolt 32768→65536, Super VL 120B 32768→1048576 (gateway max 1M), Nemotron 3 Ultra giữ 32768 (maxOutputTokens=32768), Nano Omni (integrate) 32768→131072, Particle-1 32768→131072, ERNIE 5.5-Flash 32768→921600 (apiMaxCompletionTokens), Nemotron 3.5 Lightning (OR) 32768→65536, Super VL (OR) 32768→131072, Nano Omni (OR) 32768→65536. Kiểm chứng syntax node --check PASS 3 file. Mirror sang android/app/src/main/assets/.
+- Tăng maxTokens (trần output tokens) cho TẤT CẢ model NVIDIA/OpenRouter/Experiential
+  Labs/Particle/ERNIE lên giới hạn tối đa của từng model (maxOutputTokens/apiMaxCompletionTokens) để
+  tránh cắt câu trả lời giữa chừng. Cập nhật trong js/app.js, android/app/src/main/assets/js/app.js,
+  android/app/src/main/assets/app.js COMPAT_MODEL_OPTS: GLM-5.3-Flash 32768→65536, Nemotron 3.5
+  Lightning/Bolt 32768→65536, Super VL 120B 32768→1048576 (gateway max 1M), Nemotron 3 Ultra giữ
+  32768 (maxOutputTokens=32768), Nano Omni (integrate) 32768→131072, Particle-1 32768→131072, ERNIE
+  5.5-Flash 32768→921600 (apiMaxCompletionTokens), Nemotron 3.5 Lightning (OR) 32768→65536, Super VL
+  (OR) 32768→131072, Nano Omni (OR) 32768→65536. Kiểm chứng syntax node --check PASS 3 file. Mirror
+  sang android/app/src/main/assets/.
 
-- Thêm tham số sinh văn bản (temperature, top_p, top_k) cho 13 model NVIDIA/OpenRouter trong COMPAT_MODEL_OPTS với mặc định theo model: reasoning-heavy (Nemotron 3 Ultra, Nemotron 4 340B, Nemotron 3 8B) temp=0.6 topP=0.95 topK=20; general chat/vision temp=0.7 topP=0.9 topK=40. Cập nhật sendCompat() gửi temperature/top_p/top_k trong body OpenAI-compatible. Thêm UI Settings nhóm "Tham số Sinh văn bản (NVIDIA / OpenRouter)" với 3 slider Temperature (0-2), Top-p (0-1), Top-k (1-100) + hiển thị giá trị realtime, lưu localStorage (tmp/tpp/top). Priority: model defaults > user UI > fallback (0.7/0.9/40). Chỉ áp dụng nhóm NVIDIA. Mirror js/app.js + index.html sang android/app/src/main/assets/. Commit d07e820, 55c8a36 push main.
+- Thêm tham số sinh văn bản (temperature, top_p, top_k) cho 13 model NVIDIA/OpenRouter trong
+  COMPAT_MODEL_OPTS với mặc định theo model: reasoning-heavy (Nemotron 3 Ultra, Nemotron 4 340B,
+  Nemotron 3 8B) temp=0.6 topP=0.95 topK=20; general chat/vision temp=0.7 topP=0.9 topK=40. Cập nhật
+  sendCompat() gửi temperature/top_p/top_k trong body OpenAI-compatible. Thêm UI Settings nhóm "Tham
+  số Sinh văn bản (NVIDIA / OpenRouter)" với 3 slider Temperature (0-2), Top-p (0-1), Top-k
+  (1-100) + hiển thị giá trị realtime, lưu localStorage (tmp/tpp/top). Priority: model defaults >
+  user UI > fallback (0.7/0.9/40). Chỉ áp dụng nhóm NVIDIA. Mirror js/app.js + index.html sang
+  android/app/src/main/assets/. Commit d07e820, 55c8a36 push main.
 
-- Xóa model GPT-6.2 Astra và Clef khỏi nhóm Experiential Labs (key không dùng được). Xóa toàn bộ model Gemma (Gemma 4 26B A4B, Gemma 4 31B) khỏi mọi nhóm: Google AI Studio, NVIDIA, OpenRouter do server Google liên tục chập chờn. Cập nhật index.html (optgroup), js/app.js (COMPAT_PROVIDERS models + modelLabel, COMPAT_MODEL_OPTS, EXPLABS_MODELS, isExplabsModel), js/quota.js (EXPLABS_MODELS), android/app/src/main/assets/ mirror. npm run check-models PASS: NVIDIA 7 model, OpenRouter 5 model, COMPAT_MODEL_OPTS 12 entry.
+- Xóa model GPT-6.2 Astra và Clef khỏi nhóm Experiential Labs (key không dùng được). Xóa toàn bộ
+  model Gemma (Gemma 4 26B A4B, Gemma 4 31B) khỏi mọi nhóm: Google AI Studio, NVIDIA, OpenRouter do
+  server Google liên tục chập chờn. Cập nhật index.html (optgroup), js/app.js (COMPAT_PROVIDERS
+  models + modelLabel, COMPAT_MODEL_OPTS, EXPLABS_MODELS, isExplabsModel), js/quota.js
+  (EXPLABS_MODELS), android/app/src/main/assets/ mirror. npm run check-models PASS: NVIDIA 7 model,
+  OpenRouter 5 model, COMPAT_MODEL_OPTS 12 entry.
 
-- Xóa 2 model GLM 5.3 Flash (z-ai/glm-5.3-flash) và GPT-OSS-20B (openai/gpt-oss-20b) khỏi nhóm NVIDIA (integrate.api.nvidia.com/v1): xóa 2 <option> trong optgroup '🟢 NVIDIA' của model-select (index.html web + android/app/src/main/assets/index.html), xóa khỏi mảng COMPAT_PROVIDERS.nvidia.models (js/app.js + android mirrors), xóa case modelLabel cho 2 model trong nhà cung cấp NVIDIA và OpenRouter, xóa entry COMPAT_MODEL_OPTS cho cả 2 id, cập nhật text hướng dẫn Base URL trong 2 file index.html. Kiểm chứng preview app không còn 2 model trong dropdown NVIDIA. Commit 7681c9b push main.
+- Xóa 2 model GLM 5.3 Flash (z-ai/glm-5.3-flash) và GPT-OSS-20B (openai/gpt-oss-20b) khỏi nhóm
+  NVIDIA (integrate.api.nvidia.com/v1): xóa 2 <option> trong optgroup '🟢 NVIDIA' của model-select
+  (index.html web + android/app/src/main/assets/index.html), xóa khỏi mảng
+  COMPAT_PROVIDERS.nvidia.models (js/app.js + android mirrors), xóa case modelLabel cho 2 model
+  trong nhà cung cấp NVIDIA và OpenRouter, xóa entry COMPAT_MODEL_OPTS cho cả 2 id, cập nhật text
+  hướng dẫn Base URL trong 2 file index.html. Kiểm chứng preview app không còn 2 model trong
+  dropdown NVIDIA. Commit 7681c9b push main.
 
 ## 2026-11-19
 
-- Gộp 4 menu chọn key ở sidebar thành 1 menu dùng chung + kiểm chứng xoay tua key: (1) index.html thay 4 khối chọn key (Google/OpenRouter/Experiential Labs/NVIDIA) bằng 1 khối #key-pool-select với nhãn #key-pool-label và gợi ý #key-pool-hint; 4 <select> gốc (api-key-select, openrouter-key-select, explabs-key-select, nvidia-key-select) giữ nguyên id trong div ẩn #key-pool-sources để app.js/quota.js đọc trực tiếp như cũ; (2) js/api-keys.js thêm renderKeyPoolMenu() dò nền tảng theo model đang chọn (window.resolveCompatProvider cho nvidia/openrouter, window.EXPLABS_MODELS cho explabs, còn lại Google), clone option + hint của select gốc, ghi lựa chọn ngược vào select gốc rồi dispatch change nên lưu keySel của phiên/localStorage vẫn chạy; render lại khi đổi model (listener + switchSess gọi window.renderKeyPoolMenu) và mỗi lần renderSlotSelects/quota cập nhật; (3) nhãn '🤖 Mô hình Google Gemini:' đổi thành '🤖 Model chat chính:'; (4) js/app.js thêm EXPLABS_MODELS dùng chung (window.EXPLABS_MODELS) thay chuỗi điều kiện usesExplabs; (5) sửa xoay tua: trước đây khi key lỗi 401/402/403/429 gateway chỉ thử lại CÙNG key 4 lần rồi báo lỗi cả lượt — nay tự xoay sang key kế tiếp trong bể (chỉ khi đang 'Tự động xoay tua', tôn trọng khóa thủ công), cập nhật Authorization + badge key + con trỏ xoay tua, toast 'Key #X lỗi (HTTP 429), đang xoay sang Key #Y'. Kiểm chứng thực tế ở http://127.0.0.1:8137 (tab ẩn danh, key giả + fetch giả): xoay tua tuần tự NVIDIA TEST1→2→3, OpenRouter 1→2→3, EL 1→2→3, Google cân bằng theo lượt dùng (2→3→1→3); khóa thủ công 1 key giữ nguyên key qua các lượt; 429 ở key #2 → nhảy sang key #3, lượt sau đi tiếp #4/#5. Bump versionCode 70 / ?v=70 / sw cache v70, mirror index.html + sw.js + js/app.js + js/api-keys.js sang android/app/src/main/assets/.
+- Gộp 4 menu chọn key ở sidebar thành 1 menu dùng chung + kiểm chứng xoay tua key: (1) index.html
+  thay 4 khối chọn key (Google/OpenRouter/Experiential Labs/NVIDIA) bằng 1 khối #key-pool-select với
+  nhãn #key-pool-label và gợi ý #key-pool-hint; 4 <select> gốc (api-key-select,
+  openrouter-key-select, explabs-key-select, nvidia-key-select) giữ nguyên id trong div ẩn
+  #key-pool-sources để app.js/quota.js đọc trực tiếp như cũ; (2) js/api-keys.js thêm
+  renderKeyPoolMenu() dò nền tảng theo model đang chọn (window.resolveCompatProvider cho
+  nvidia/openrouter, window.EXPLABS_MODELS cho explabs, còn lại Google), clone option + hint của
+  select gốc, ghi lựa chọn ngược vào select gốc rồi dispatch change nên lưu keySel của
+  phiên/localStorage vẫn chạy; render lại khi đổi model (listener + switchSess gọi
+  window.renderKeyPoolMenu) và mỗi lần renderSlotSelects/quota cập nhật; (3) nhãn '🤖 Mô hình Google
+  Gemini:' đổi thành '🤖 Model chat chính:'; (4) js/app.js thêm EXPLABS_MODELS dùng chung
+  (window.EXPLABS_MODELS) thay chuỗi điều kiện usesExplabs; (5) sửa xoay tua: trước đây khi key lỗi
+  401/402/403/429 gateway chỉ thử lại CÙNG key 4 lần rồi báo lỗi cả lượt — nay tự xoay sang key kế
+  tiếp trong bể (chỉ khi đang 'Tự động xoay tua', tôn trọng khóa thủ công), cập nhật Authorization +
+  badge key + con trỏ xoay tua, toast 'Key #X lỗi (HTTP 429), đang xoay sang Key #Y'. Kiểm chứng
+  thực tế ở http://127.0.0.1:8137 (tab ẩn danh, key giả + fetch giả): xoay tua tuần tự NVIDIA
+  TEST1→2→3, OpenRouter 1→2→3, EL 1→2→3, Google cân bằng theo lượt dùng (2→3→1→3); khóa thủ công 1
+  key giữ nguyên key qua các lượt; 429 ở key #2 → nhảy sang key #3, lượt sau đi tiếp #4/#5. Bump
+  versionCode 70 / ?v=70 / sw cache v70, mirror index.html + sw.js + js/app.js + js/api-keys.js sang
+  android/app/src/main/assets/.
 
-- Kiểm thử thực tế 4 model NVIDIA mới trên app (127.0.0.1:8137): gửi tin qua UI cho từng model — Think Depth 'Tắt' → có câu trả lời và KHÔNG có khối suy luận (body gửi chat_template_kwargs.enable_thinking=false); Think Depth bật → có khối '💭 Quá trình suy luận' + câu trả lời (Gemma 61 từ/~89 tokens, Super VL 33 từ/~37, Ultra 34 từ/~54, Nano 218 từ/~294). Đo token suy luận thật qua usage.completion_tokens_details.reasoning_tokens: Gemma low 487 vs high 629, Super VL low 503 vs high 668 (high nhiều hơn ~30% → effort có tác dụng); Nano Omni reasoning_budget=1024 cắt đúng 1023 token (ngân sách là TRẦN, budget 16384 chỉ dùng 199), nên nhãn Think Depth đổi thành 'trần 16K/8K/4K/1K'; Ultra: medium_effort gần như vô tác dụng (plain 56/56 vs med 38/50, medFalse 39) → bỏ mức Med, chỉ còn Bật (mặc định)/Tắt, bỏ nhánh mediumEffort trong buildNvidiaThinking. Ghi nhận: đôi lúc model trả 2 đoạn suy luận trong cùng stream nên bubble hiện 2 khối 💭 (do provider, không phải lỗi app). Đã mirror js/app.js sang android/app/src/main/assets/, check_model_registry PASS.
+- Kiểm thử thực tế 4 model NVIDIA mới trên app (127.0.0.1:8137): gửi tin qua UI cho từng model —
+  Think Depth 'Tắt' → có câu trả lời và KHÔNG có khối suy luận (body gửi
+  chat_template_kwargs.enable_thinking=false); Think Depth bật → có khối '💭 Quá trình suy luận' +
+  câu trả lời (Gemma 61 từ/~89 tokens, Super VL 33 từ/~37, Ultra 34 từ/~54, Nano 218 từ/~294). Đo
+  token suy luận thật qua usage.completion_tokens_details.reasoning_tokens: Gemma low 487 vs high
+  629, Super VL low 503 vs high 668 (high nhiều hơn ~30% → effort có tác dụng); Nano Omni
+  reasoning_budget=1024 cắt đúng 1023 token (ngân sách là TRẦN, budget 16384 chỉ dùng 199), nên nhãn
+  Think Depth đổi thành 'trần 16K/8K/4K/1K'; Ultra: medium_effort gần như vô tác dụng (plain 56/56
+  vs med 38/50, medFalse 39) → bỏ mức Med, chỉ còn Bật (mặc định)/Tắt, bỏ nhánh mediumEffort trong
+  buildNvidiaThinking. Ghi nhận: đôi lúc model trả 2 đoạn suy luận trong cùng stream nên bubble hiện
+  2 khối 💭 (do provider, không phải lỗi app). Đã mirror js/app.js sang
+  android/app/src/main/assets/, check_model_registry PASS.
 
-- Thêm 4 model vào nhóm NVIDIA (vẫn gọi qua base url integrate.api.nvidia.com, không trùng với bản OpenRouter đã có): google/gemma-4-31b-it, nvidia/nemotron-3.5-super-vl-120b-a12b, nvidia/nemotron-3-ultra-550b-a55b, nvidia/nemotron-3-nano-omni-30b-a3b-reasoning (option trong optgroup 🟢 NVIDIA + COMPAT_PROVIDERS.nvidia.models + modelLabel). Kiểm chứng từng model bằng /v1/chat/completions qua proxy: cả 4 trả 200; chat_template_kwargs.enable_thinking=false tắt hẳn reasoning (reasoning_tokens=0) cho cả 4; /v1/models có đủ 4 id; trần max_tokens của gateway là 1048576 (lỗi 'Max tokens must not exceed 1048576'). Thêm cơ chế điều khiển reasoning riêng cho NVIDIA: buildNvidiaThinking() dựng chat_template_kwargs (+ reasoning_effort low/medium/high cho Gemma 4 & Super VL, chat_template_kwargs.medium_effort cho Ultra theo tài liệu NIM, reasoning_budget 1K/4K/8K/16K cho Nano Omni), buildReasoningPayload trả null khi có nvThinking, gateway Object.assign vào body; stream vẫn đọc delta.reasoning_content. Thông số trong COMPAT_MODEL_OPTS: Gemma 4 31B (ctx 262.144, out 32.768, text+ảnh+video), Super VL 120B A12B (ctx 1.048.576, out chia sẻ cửa sổ 1M, text+ảnh+video), Ultra 550B A55B (ctx 1.048.576, out 32.768, text), Nano Omni 30B A3B (ctx 262.144, out 131.072, text+ảnh+audio+video), maxTokens gửi thực 32.768 cho cả 4. Think Depth hiển thị đúng theo từng model (Ultra chỉ High/Med/Tắt). Mirror index.html + js/app.js sang android/app/src/main/assets/; npm run check-models PASS (7 model NVIDIA). Giữ versionCode 68 (cùng đợt thay đổi chưa release).
+- Thêm 4 model vào nhóm NVIDIA (vẫn gọi qua base url integrate.api.nvidia.com, không trùng với bản
+  OpenRouter đã có): google/gemma-4-31b-it, nvidia/nemotron-3.5-super-vl-120b-a12b,
+  nvidia/nemotron-3-ultra-550b-a55b, nvidia/nemotron-3-nano-omni-30b-a3b-reasoning (option trong
+  optgroup 🟢 NVIDIA + COMPAT_PROVIDERS.nvidia.models + modelLabel). Kiểm chứng từng model bằng
+  /v1/chat/completions qua proxy: cả 4 trả 200; chat_template_kwargs.enable_thinking=false tắt hẳn
+  reasoning (reasoning_tokens=0) cho cả 4; /v1/models có đủ 4 id; trần max_tokens của gateway là
+  1048576 (lỗi 'Max tokens must not exceed 1048576'). Thêm cơ chế điều khiển reasoning riêng cho
+  NVIDIA: buildNvidiaThinking() dựng chat_template_kwargs (+ reasoning_effort low/medium/high cho
+  Gemma 4 & Super VL, chat_template_kwargs.medium_effort cho Ultra theo tài liệu NIM,
+  reasoning_budget 1K/4K/8K/16K cho Nano Omni), buildReasoningPayload trả null khi có nvThinking,
+  gateway Object.assign vào body; stream vẫn đọc delta.reasoning_content. Thông số trong
+  COMPAT_MODEL_OPTS: Gemma 4 31B (ctx 262.144, out 32.768, text+ảnh+video), Super VL 120B A12B (ctx
+  1.048.576, out chia sẻ cửa sổ 1M, text+ảnh+video), Ultra 550B A55B (ctx 1.048.576, out 32.768,
+  text), Nano Omni 30B A3B (ctx 262.144, out 131.072, text+ảnh+audio+video), maxTokens gửi thực
+  32.768 cho cả 4. Think Depth hiển thị đúng theo từng model (Ultra chỉ High/Med/Tắt). Mirror
+  index.html + js/app.js sang android/app/src/main/assets/; npm run check-models PASS (7 model
+  NVIDIA). Giữ versionCode 68 (cùng đợt thay đổi chưa release).
 
-- NVIDIA Proxy URL có giá trị mặc định: thêm hằng NVIDIA_DEFAULT_PROXY = https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/v1 trong js/app.js và getBaseUrl() trả proxy đã lưu || NVIDIA_DEFAULT_PROXY, nên máy mới/APK cài mới không cần nhập gì vẫn chat được; nhập URL khác trong ô Cấu hình để ghi đè (localStorage nvidia_proxy_url vẫn thắng). Nút '🔌 Kiểm tra kết nối' trong js/api-keys.js dùng ô đang gõ || getBaseUrl() nên cũng test đúng proxy mặc định. Bỏ nhánh hasProxy trong toast lỗi mạng (giờ luôn đi qua proxy) và đổi placeholder/gợi ý trong index.html thành 'Để trống = dùng proxy mặc định'. Mirror index.html + js/app.js + js/api-keys.js sang android/app/src/main/assets/. Giữ versionCode 68 (chưa release). Đã kiểm chứng trong trình duyệt: xoá nvidia_proxy_url -> getBaseUrl trả proxy mặc định, nút test báo OK 829ms; đặt https://example.com/v1 -> getBaseUrl trả đúng URL ghi đè.
+- NVIDIA Proxy URL có giá trị mặc định: thêm hằng NVIDIA_DEFAULT_PROXY =
+  https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/v1 trong js/app.js và getBaseUrl() trả
+  proxy đã lưu || NVIDIA_DEFAULT_PROXY, nên máy mới/APK cài mới không cần nhập gì vẫn chat được;
+  nhập URL khác trong ô Cấu hình để ghi đè (localStorage nvidia_proxy_url vẫn thắng). Nút '🔌 Kiểm
+  tra kết nối' trong js/api-keys.js dùng ô đang gõ || getBaseUrl() nên cũng test đúng proxy mặc
+  định. Bỏ nhánh hasProxy trong toast lỗi mạng (giờ luôn đi qua proxy) và đổi placeholder/gợi ý
+  trong index.html thành 'Để trống = dùng proxy mặc định'. Mirror index.html + js/app.js +
+  js/api-keys.js sang android/app/src/main/assets/. Giữ versionCode 68 (chưa release). Đã kiểm chứng
+  trong trình duyệt: xoá nvidia_proxy_url -> getBaseUrl trả proxy mặc định, nút test báo OK 829ms;
+  đặt https://example.com/v1 -> getBaseUrl trả đúng URL ghi đè.
 
-- Chẩn đoán lỗi NVIDIA trên APK/điện thoại ('Failed to fetch' khi chọn Nemotron 3.5 Lightning, 'Authorization failed (HTTP 403)' khi chọn Bolt) và thêm công cụ tự kiểm tra: (1) nút '🔌 Kiểm tra kết nối' trong fieldset 3 NVIDIA API Keys (id btn-test-nvidia, js/api-keys.js) đọc proxy URL đang gõ + key ô #1, gửi 1 chat completion tối thiểu (bolt-e4b, max_tokens 8) để kiểm tra proxy lẫn key thật — vì endpoint /v1/models của NVIDIA KHÔNG kiểm tra key (key sai vẫn trả 200) — báo rõ 3 trạng thái: kết nối OK / proxy OK nhưng key bị từ chối 401-403 / không kết nối được proxy; (2) js/app.js gateway compat: đổi thông báo 401/403 của NVIDIA thành hướng dẫn kiểm tra key thay vì dump 'Authorization failed (HTTP 403)'. Đã kiểm chứng bằng proxy thật: key desktop trả 200 cho cả nvidia/nemotron-3.5-lightning-30b-a3b và nvidia/nemotron-3.5-bolt-e4b; proxy + key sai trả 403 Authorization failed; preflight từ origin https://appassets.androidplatform.net trả 204 kèm ACAO đúng. Kết luận lỗi 403 trên điện thoại là key nhập trên máy đó sai/khác key đang dùng trên desktop. Bump versionCode 68 / ?v=68 / sw cache v68, mirror index.html + sw.js + js/app.js + js/api-keys.js sang android/app/src/main/assets/.
+- Chẩn đoán lỗi NVIDIA trên APK/điện thoại ('Failed to fetch' khi chọn Nemotron 3.5 Lightning,
+  'Authorization failed (HTTP 403)' khi chọn Bolt) và thêm công cụ tự kiểm tra: (1) nút '🔌 Kiểm tra
+  kết nối' trong fieldset 3 NVIDIA API Keys (id btn-test-nvidia, js/api-keys.js) đọc proxy URL đang
+  gõ + key ô #1, gửi 1 chat completion tối thiểu (bolt-e4b, max_tokens 8) để kiểm tra proxy lẫn key
+  thật — vì endpoint /v1/models của NVIDIA KHÔNG kiểm tra key (key sai vẫn trả 200) — báo rõ 3 trạng
+  thái: kết nối OK / proxy OK nhưng key bị từ chối 401-403 / không kết nối được proxy; (2) js/app.js
+  gateway compat: đổi thông báo 401/403 của NVIDIA thành hướng dẫn kiểm tra key thay vì dump
+  'Authorization failed (HTTP 403)'. Đã kiểm chứng bằng proxy thật: key desktop trả 200 cho cả
+  nvidia/nemotron-3.5-lightning-30b-a3b và nvidia/nemotron-3.5-bolt-e4b; proxy + key sai trả 403
+  Authorization failed; preflight từ origin https://appassets.androidplatform.net trả 204 kèm ACAO
+  đúng. Kết luận lỗi 403 trên điện thoại là key nhập trên máy đó sai/khác key đang dùng trên
+  desktop. Bump versionCode 68 / ?v=68 / sw cache v68, mirror index.html + sw.js + js/app.js +
+  js/api-keys.js sang android/app/src/main/assets/.
 
-- Sửa lỗi 'Lỗi NVIDIA: Failed to fetch': NVIDIA integrate.api.nvidia.com không trả Access-Control-Allow-Origin cho origin lạ (chỉ build.nvidia.com và chính nó), nên mọi fetch từ trình duyệt/WebView bị chặn - không có cách sửa phía client. Thêm cơ chế proxy: ô 'NVIDIA Proxy URL' trong Cấu hình (cfgMap key nvidia_proxy_url, sync Gist qua externalConfigs, có trong backup JSON), provider nvidia dùng getBaseUrl() đọc proxy (rỗng thì gọi trực tiếp), gateway dùng compatBase, toast lỗi mạng hướng dẫn nhập proxy. Thêm scratch/nvidia-proxy.js (proxy Node local, CORS + stream, cổng 8140) và worker/nvidia-proxy.js (Cloudflare Worker template, giới hạn origin kevinkieu.github.io/appassets/localhost). Đã test thật: GET /v1/models 200 (32 model, đủ 3 model NVIDIA), POST /v1/chat/completions qua proxy trả 'OK', gửi tin từ UI bằng model Nemotron 3.5 Bolt E4B thành công, badge 🟢 NV Key #1. Proxy online đã deploy trên Freebuff Sites (site 'Jarvis NVIDIA Proxy', preview published): https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/v1 - đã test OPTIONS/POST từ origin kevinkieu.github.io và gửi tin từ UI qua proxy này thành công. sw.js bypass thêm integrate.api.nvidia.com + freebuff.site. Bump versionCode 67 / ?v=67 / sw cache v67, mirror index.html + sw.js + js/app.js, api-keys.js, export.js sang android/app/src/main/assets/.
+- Sửa lỗi 'Lỗi NVIDIA: Failed to fetch': NVIDIA integrate.api.nvidia.com không trả
+  Access-Control-Allow-Origin cho origin lạ (chỉ build.nvidia.com và chính nó), nên mọi fetch từ
+  trình duyệt/WebView bị chặn - không có cách sửa phía client. Thêm cơ chế proxy: ô 'NVIDIA Proxy
+  URL' trong Cấu hình (cfgMap key nvidia_proxy_url, sync Gist qua externalConfigs, có trong backup
+  JSON), provider nvidia dùng getBaseUrl() đọc proxy (rỗng thì gọi trực tiếp), gateway dùng
+  compatBase, toast lỗi mạng hướng dẫn nhập proxy. Thêm scratch/nvidia-proxy.js (proxy Node local,
+  CORS + stream, cổng 8140) và worker/nvidia-proxy.js (Cloudflare Worker template, giới hạn origin
+  kevinkieu.github.io/appassets/localhost). Đã test thật: GET /v1/models 200 (32 model, đủ 3 model
+  NVIDIA), POST /v1/chat/completions qua proxy trả 'OK', gửi tin từ UI bằng model Nemotron 3.5 Bolt
+  E4B thành công, badge 🟢 NV Key #1. Proxy online đã deploy trên Freebuff Sites (site 'Jarvis
+  NVIDIA Proxy', preview published): https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/v1 -
+  đã test OPTIONS/POST từ origin kevinkieu.github.io và gửi tin từ UI qua proxy này thành công.
+  sw.js bypass thêm integrate.api.nvidia.com + freebuff.site. Bump versionCode 67 / ?v=67 / sw cache
+  v67, mirror index.html + sw.js + js/app.js, api-keys.js, export.js sang
+  android/app/src/main/assets/.
 
-- Thêm nền tảng NVIDIA (integrate.api.nvidia.com/v1) làm model chat chính: (1) optgroup '🟢 NVIDIA' trong index.html với 3 model z-ai/glm-5.3-flash, nvidia/nemotron-3.5-lightning-30b-a3b, nvidia/nemotron-3.5-bolt-e4b; (2) provider nvidia trong COMPAT_PROVIDERS (baseUrl https://integrate.api.nvidia.com/v1, keyCount 3, keyIndexVar nvidiaKeyIndex) + COMPAT_MODEL_OPTS (maxTokens 32768, noReasoning: true nên buildReasoningPayload không gửi tham số reasoning, Think Depth khoá ở 'Tắt'); (3) key pool 3 ô NVIDIA có tên gợi nhớ (jarvis_nvidia_api_1..3 + jarvis_nvidia_api_name_1..3), dropdown chọn key ở sidebar và Cấu hình, nút kiểm tra trùng, di trú key đơn cũ nvidia_api_key sang ô #1; (4) js/quota.js thêm bộ đếm jarvis_nvidia_usage, badge NV + nhận diện provider theo COMPAT_PROVIDERS (icon 🟢, màu #76b900); (5) Gist Cloud 2 chiều: settings.nvidiaKeys/nvidiaKeyNames + keyUsageNvidia trong pull/merge/push/restore và điều kiện isLocalAhead; (6) js/export.js đưa key/tên/usage NVIDIA vào bản sao lưu JSON; (7) scratch/check_model_registry.js kiểm tra registry theo từng provider (NVIDIA + OpenRouter). Bump versionCode 65 / ?v=65 / sw cache v65, mirror index.html + sw.js + js/app.js, sync.js, api-keys.js, quota.js, export.js sang android/app/src/main/assets/.
+- Thêm nền tảng NVIDIA (integrate.api.nvidia.com/v1) làm model chat chính: (1) optgroup '🟢 NVIDIA'
+  trong index.html với 3 model z-ai/glm-5.3-flash, nvidia/nemotron-3.5-lightning-30b-a3b,
+  nvidia/nemotron-3.5-bolt-e4b; (2) provider nvidia trong COMPAT_PROVIDERS (baseUrl
+  https://integrate.api.nvidia.com/v1, keyCount 3, keyIndexVar nvidiaKeyIndex) + COMPAT_MODEL_OPTS
+  (maxTokens 32768, noReasoning: true nên buildReasoningPayload không gửi tham số reasoning, Think
+  Depth khoá ở 'Tắt'); (3) key pool 3 ô NVIDIA có tên gợi nhớ (jarvis_nvidia_api_1..3 +
+  jarvis_nvidia_api_name_1..3), dropdown chọn key ở sidebar và Cấu hình, nút kiểm tra trùng, di trú
+  key đơn cũ nvidia_api_key sang ô #1; (4) js/quota.js thêm bộ đếm jarvis_nvidia_usage, badge NV +
+  nhận diện provider theo COMPAT_PROVIDERS (icon 🟢, màu #76b900); (5) Gist Cloud 2 chiều:
+  settings.nvidiaKeys/nvidiaKeyNames + keyUsageNvidia trong pull/merge/push/restore và điều kiện
+  isLocalAhead; (6) js/export.js đưa key/tên/usage NVIDIA vào bản sao lưu JSON; (7)
+  scratch/check_model_registry.js kiểm tra registry theo từng provider (NVIDIA + OpenRouter). Bump
+  versionCode 65 / ?v=65 / sw cache v65, mirror index.html + sw.js + js/app.js, sync.js,
+  api-keys.js, quota.js, export.js sang android/app/src/main/assets/.
 
-- js/app.js: gộp các đoạn suy luận liền nhau trong cùng một stream thành MỘT khối 💭 duy nhất — thêm mergeThinkingSegments() (hút thinking/<thought> còn nằm trong content vào reasoning_content) + buildThinkingDetailsHtml() dùng chung + mergeAdjacentThinkingBlocks() gộp các <details class="thinking-block"> liền nhau (áp dụng cả khi render tin nhắn cũ, khi stream và trước khi lưu lượt). Sửa triệu chứng 2 khối 💭 (một từ reasoning_content, một từ HTML do model tự sinh vì lịch sử gửi kèm khối đã render). Mirror sang android/app/src/main/assets/js/app.js.
+- js/app.js: gộp các đoạn suy luận liền nhau trong cùng một stream thành MỘT khối 💭 duy nhất — thêm
+  mergeThinkingSegments() (hút thinking/<thought> còn nằm trong content vào reasoning_content) +
+  buildThinkingDetailsHtml() dùng chung + mergeAdjacentThinkingBlocks() gộp các
+  <details class="thinking-block"> liền nhau (áp dụng cả khi render tin nhắn cũ, khi stream và trước
+  khi lưu lượt). Sửa triệu chứng 2 khối 💭 (một từ reasoning_content, một từ HTML do model tự sinh
+  vì lịch sử gửi kèm khối đã render). Mirror sang android/app/src/main/assets/js/app.js.
 
-- js/app.js: lọc bỏ HTML khối 💭 đã render khỏi lịch sử gửi lên API (dữ liệu đã lưu giữ nguyên). Thêm historyTextForApi() (bọc stripThinkingForCopy, nếu tin cũ chỉ có suy luận thì lấy chữ thuần để không gửi message rỗng) và áp dụng cho: compatMessages (OpenRouter/NVIDIA/Experiential), expMessages, contents của generateContentStream + nhánh nối tiếp stream, histSummary của Interactions API (2 chỗ), toSummarize của auto-summary và pinnedSnippet. Nhờ vậy model không còn bắt chước HTML <details class="thinking-block"> để tự sinh khối 💭 giả. Mirror sang android/app/src/main/assets/js/app.js.
+- js/app.js: lọc bỏ HTML khối 💭 đã render khỏi lịch sử gửi lên API (dữ liệu đã lưu giữ nguyên).
+  Thêm historyTextForApi() (bọc stripThinkingForCopy, nếu tin cũ chỉ có suy luận thì lấy chữ thuần
+  để không gửi message rỗng) và áp dụng cho: compatMessages (OpenRouter/NVIDIA/Experiential),
+  expMessages, contents của generateContentStream + nhánh nối tiếp stream, histSummary của
+  Interactions API (2 chỗ), toSummarize của auto-summary và pinnedSnippet. Nhờ vậy model không còn
+  bắt chước HTML <details class="thinking-block"> để tự sinh khối 💭 giả. Mirror sang
+  android/app/src/main/assets/js/app.js.
 
-- Review lại bộ lọc khối 💭 trong lịch sử gửi API: bỏ wrapper historyTextForApi() vừa thêm (thừa) — fallback của nó bóc mọi thẻ HTML nên kéo cả dòng UI "Quá trình suy luận (… từ • … tokens - bấm để xem)" vào prompt, trong khi 4 call site đều đã tự bỏ qua text rỗng; nay dùng thẳng stripThinkingForCopy() (compatMessages, expMessages, contents generateContentStream + nhánh nối tiếp stream). Bump versionCode 69 / versionName 1.1.69 / ?v=69 (17 link) / sw cache v69, mirror index.html + sw.js + js/app.js sang android/app/src/main/assets/.
+- Review lại bộ lọc khối 💭 trong lịch sử gửi API: bỏ wrapper historyTextForApi() vừa thêm (thừa) —
+  fallback của nó bóc mọi thẻ HTML nên kéo cả dòng UI "Quá trình suy luận (… từ • … tokens - bấm để
+  xem)" vào prompt, trong khi 4 call site đều đã tự bỏ qua text rỗng; nay dùng thẳng
+  stripThinkingForCopy() (compatMessages, expMessages, contents generateContentStream + nhánh nối
+  tiếp stream). Bump versionCode 69 / versionName 1.1.69 / ?v=69 (17 link) / sw cache v69, mirror
+  index.html + sw.js + js/app.js sang android/app/src/main/assets/.
 
 ## 2026-11-18
 
-- Hoàn thiện bộ 3 model NVIDIA qua OpenRouter và dọn phần reasoning: (1) thêm option + slug cho nvidia/nemotron-3.5-super-vl:free và nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free, tách nhãn modelLabel cho cả 3 Nemotron; (2) gom logic dựng tham số suy luận vào buildReasoningPayload(mOpts, thk) (expose window), gateway chỉ set include_reasoning một lần và bỏ khi enabled:false; (3) Think Depth theo từng model: thêm COMPAT_MODEL_OPTS[id].levels để updateThinkingVisibility render đúng mức (Lightning/Super VL: Bật mặc định/Tắt; Nano Omni: High~16K/Med~8K/Low~4K/Min~1K/Tắt), kèm thkMap trong session để nhớ mức riêng của từng model khi đổi qua lại; (4) multimodal: thêm audio/* vào ô upload, processUploadFiles nhận audio (chặn >25MB), gateway compat gửi image_url / video_url / input_audio theo inputModalities của model (Super VL: text+ảnh+video; Nano Omni: text+ảnh+audio+video) và báo toast khi model không nhận tệp; (5) js/quota.js nhận diện OpenRouter từ COMPAT_PROVIDERS.models thay vì hard-code prefix; (6) thêm scratch/check_model_registry.js (npm run check-models) kiểm tra index.html ↔ COMPAT_PROVIDERS ↔ COMPAT_MODEL_OPTS và scratch/openrouter_nemotron_smoke.js (npm run smoke:openrouter) test live 3 model khi có OPENROUTER_API_KEY; (7) cập nhật tài liệu các module còn thiếu (export/cipher/quota/briefing/medication). Bump versionCode 64 / ?v=64 / sw cache v64, mirror sang android/app/src/main/assets/.
+- Hoàn thiện bộ 3 model NVIDIA qua OpenRouter và dọn phần reasoning: (1) thêm option + slug cho
+  nvidia/nemotron-3.5-super-vl:free và nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free, tách nhãn
+  modelLabel cho cả 3 Nemotron; (2) gom logic dựng tham số suy luận vào buildReasoningPayload(mOpts,
+  thk) (expose window), gateway chỉ set include_reasoning một lần và bỏ khi enabled:false; (3) Think
+  Depth theo từng model: thêm COMPAT_MODEL_OPTS[id].levels để updateThinkingVisibility render đúng
+  mức (Lightning/Super VL: Bật mặc định/Tắt; Nano Omni: High~16K/Med~8K/Low~4K/Min~1K/Tắt), kèm
+  thkMap trong session để nhớ mức riêng của từng model khi đổi qua lại; (4) multimodal: thêm audio/*
+  vào ô upload, processUploadFiles nhận audio (chặn >25MB), gateway compat gửi image_url / video_url
+  / input_audio theo inputModalities của model (Super VL: text+ảnh+video; Nano Omni:
+  text+ảnh+audio+video) và báo toast khi model không nhận tệp; (5) js/quota.js nhận diện OpenRouter
+  từ COMPAT_PROVIDERS.models thay vì hard-code prefix; (6) thêm scratch/check_model_registry.js (npm
+  run check-models) kiểm tra index.html ↔ COMPAT_PROVIDERS ↔ COMPAT_MODEL_OPTS và
+  scratch/openrouter_nemotron_smoke.js (npm run smoke:openrouter) test live 3 model khi có
+  OPENROUTER_API_KEY; (7) cập nhật tài liệu các module còn thiếu
+  (export/cipher/quota/briefing/medication). Bump versionCode 64 / ?v=64 / sw cache v64, mirror sang
+  android/app/src/main/assets/.
 
-- Thêm 2 model NVIDIA qua OpenRouter (BYOK NVIDIA bật trên trang OpenRouter, app vẫn dùng key OpenRouter sẵn có - KHÔNG tạo ô nhập key NVIDIA): nvidia/nemotron-3.5-super-vl:free (Nhãn 'Nemotron 3.5 Super VL', option 👁️) và nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free ('Nemotron 3 Nano Omni', option 🎧). Đối chiếu OpenRouter models/endpoints API: Super VL context 1.000.000, max_completion_tokens 131.072, nhận text+image+video; Nano Omni context 256.000, max_completion 65.536, nhận text+image+audio+video, reasoning.default_enabled = true. Cả 3 model Nemotron free (gồm Lightning đã có sẵn) đều KHÔNG công bố reasoning_effort nên Think Depth được xử lý riêng: Lightning + Super VL dùng cờ reasoningToggle -> gateway gửi reasoning {enabled:true/false} (mức Think Depth chỉ còn Bật mặc định / Tắt); Nano Omni dùng reasoningBudgets (supports_max_tokens = true) -> gửi reasoning {max_tokens: 1024/4096/8192/16384} theo Min/Low/Med/High, Tắt thì {enabled:false}. updateThinkingVisibility() trong js/app.js giờ đọc COMPAT_MODEL_OPTS[m].levels để render đúng danh sách mức cho từng model gateway (model khác giữ nguyên 4 mức cũ). Thêm nhánh include_reasoning chung sau khi dựng compatBody. modelLabel tách riêng 3 nhãn Nemotron. Bump versionCode 63 / ?v=63 / sw cache v63, mirror index.html + sw.js + js/app.js sang android/app/src/main/assets/.
+- Thêm 2 model NVIDIA qua OpenRouter (BYOK NVIDIA bật trên trang OpenRouter, app vẫn dùng key
+  OpenRouter sẵn có - KHÔNG tạo ô nhập key NVIDIA): nvidia/nemotron-3.5-super-vl:free (Nhãn
+  'Nemotron 3.5 Super VL', option 👁️) và nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+  ('Nemotron 3 Nano Omni', option 🎧). Đối chiếu OpenRouter models/endpoints API: Super VL context
+  1.000.000, max_completion_tokens 131.072, nhận text+image+video; Nano Omni context 256.000,
+  max_completion 65.536, nhận text+image+audio+video, reasoning.default_enabled = true. Cả 3 model
+  Nemotron free (gồm Lightning đã có sẵn) đều KHÔNG công bố reasoning_effort nên Think Depth được xử
+  lý riêng: Lightning + Super VL dùng cờ reasoningToggle -> gateway gửi reasoning
+  {enabled:true/false} (mức Think Depth chỉ còn Bật mặc định / Tắt); Nano Omni dùng reasoningBudgets
+  (supports_max_tokens = true) -> gửi reasoning {max_tokens: 1024/4096/8192/16384} theo
+  Min/Low/Med/High, Tắt thì {enabled:false}. updateThinkingVisibility() trong js/app.js giờ đọc
+  COMPAT_MODEL_OPTS[m].levels để render đúng danh sách mức cho từng model gateway (model khác giữ
+  nguyên 4 mức cũ). Thêm nhánh include_reasoning chung sau khi dựng compatBody. modelLabel tách
+  riêng 3 nhãn Nemotron. Bump versionCode 63 / ?v=63 / sw cache v63, mirror index.html + sw.js +
+  js/app.js sang android/app/src/main/assets/.
 
-- Toast lỗi gateway OpenRouter gọn hơn: helper formatUpstreamError() trong js/app.js rút message + mã lỗi từ error.metadata.raw khi provider trả JSON (vd Google 503 UNAVAILABLE, 429 rate-limit), kèm tên provider, thay vì dump cả khối JSON; nếu không có raw thì thêm (HTTP xxx). Không thêm option model trả phí google/gemma-4-26b-a4b-it vì id đó không nhận BYOK Google AI Studio (chỉ provider bên thứ ba → 402 khi 0 credit); BYOK chỉ áp cho bản :free (usage.is_byok = true). Bump versionCode 60 / ?v=60 / sw cache v60, mirror sang android/app/src/main/assets/.
+- Toast lỗi gateway OpenRouter gọn hơn: helper formatUpstreamError() trong js/app.js rút message +
+  mã lỗi từ error.metadata.raw khi provider trả JSON (vd Google 503 UNAVAILABLE, 429 rate-limit),
+  kèm tên provider, thay vì dump cả khối JSON; nếu không có raw thì thêm (HTTP xxx). Không thêm
+  option model trả phí google/gemma-4-26b-a4b-it vì id đó không nhận BYOK Google AI Studio (chỉ
+  provider bên thứ ba → 402 khi 0 credit); BYOK chỉ áp cho bản :free (usage.is_byok = true). Bump
+  versionCode 60 / ?v=60 / sw cache v60, mirror sang android/app/src/main/assets/.
 
-- js/app.js nhánh gateway OpenAI-compatible: tự thử lại tối đa 4 lần khi provider trả lỗi tạm thời 429/502/503/504 (chờ 600ms/1500ms/2500ms, huỷ được theo AbortController, hiện ↻ thử lại ở latency, log console.warn) — Google AI Studio qua BYOK hay trả 503 UNAVAILABLE cách quãng rồi 200 ngay sau đó. Bump versionCode 61 / ?v=61 / sw cache v61, mirror sang android/app/src/main/assets/.
+- js/app.js nhánh gateway OpenAI-compatible: tự thử lại tối đa 4 lần khi provider trả lỗi tạm thời
+  429/502/503/504 (chờ 600ms/1500ms/2500ms, huỷ được theo AbortController, hiện ↻ thử lại ở latency,
+  log console.warn) — Google AI Studio qua BYOK hay trả 503 UNAVAILABLE cách quãng rồi 200 ngay sau
+  đó. Bump versionCode 61 / ?v=61 / sw cache v61, mirror sang android/app/src/main/assets/.
 
-- Nhánh streaming Google trong js/app.js: watchdog "chưa có chunk đầu" 20s -> 45s (đo thực tế header Google có thể mất 9-19s, có lúc >25s khi xếp hàng, cắt sớm thì phải xếp hàng lại); thêm 503/UNAVAILABLE vào isStreamCutoff để nối tiếp luồng khi Google cắt stream giữa chừng; khi FAIL-SAFE 2 phải hỏi lại với thinking TẮT (Gemma 4 stream suy luận rồi không xuất chữ) thì hiện toast + dòng trạng thái "Đang lấy câu trả lời từ Google…" để UI không đứng hình. Bump versionCode 62 / ?v=62 / sw cache v62, mirror sang android/app/src/main/assets/.
+- Nhánh streaming Google trong js/app.js: watchdog "chưa có chunk đầu" 20s -> 45s (đo thực tế header
+  Google có thể mất 9-19s, có lúc >25s khi xếp hàng, cắt sớm thì phải xếp hàng lại); thêm
+  503/UNAVAILABLE vào isStreamCutoff để nối tiếp luồng khi Google cắt stream giữa chừng; khi
+  FAIL-SAFE 2 phải hỏi lại với thinking TẮT (Gemma 4 stream suy luận rồi không xuất chữ) thì hiện
+  toast + dòng trạng thái "Đang lấy câu trả lời từ Google…" để UI không đứng hình. Bump versionCode
+  62 / ?v=62 / sw cache v62, mirror sang android/app/src/main/assets/.
 
 ## 2026-11-17
 
-- Chốt an toàn chống ghi đè trắng Cloud trong performSmartSync (js/sync.js): trước đây nếu có Gist ID mà GET Gist thất bại (PAT sai, mạng lỗi, 5xx) thì hasRemoteData = false -> isLocalAhead = true -> máy mới tinh (localSessions rỗng) sẽ PATCH đè backup rỗng lên Cloud. Thêm cờ cloudReadFailed (set trong catch) + biến wouldWipeCloud (Cloud có phiên nhưng bản đóng gói rỗng) để chặn hẳn bước push và báo toast cảnh báo. Luồng bình thường (đọc được Gist) không thay đổi: máy mới tinh chỉ kéo dữ liệu về, isLocalAhead = false nên không push gì. Đã mô phỏng bằng script Node 8 kịch bản (máy mới / đọc lỗi / có phiên mặc định / merge rỗng / chưa có Gist ID) — pass hết. Đã mirror sang android/app/src/main/assets/.
+- Chốt an toàn chống ghi đè trắng Cloud trong performSmartSync (js/sync.js): trước đây nếu có Gist
+  ID mà GET Gist thất bại (PAT sai, mạng lỗi, 5xx) thì hasRemoteData = false -> isLocalAhead = true
+  -> máy mới tinh (localSessions rỗng) sẽ PATCH đè backup rỗng lên Cloud. Thêm cờ cloudReadFailed
+  (set trong catch) + biến wouldWipeCloud (Cloud có phiên nhưng bản đóng gói rỗng) để chặn hẳn bước
+  push và báo toast cảnh báo. Luồng bình thường (đọc được Gist) không thay đổi: máy mới tinh chỉ kéo
+  dữ liệu về, isLocalAhead = false nên không push gì. Đã mô phỏng bằng script Node 8 kịch bản (máy
+  mới / đọc lỗi / có phiên mặc định / merge rỗng / chưa có Gist ID) — pass hết. Đã mirror sang
+  android/app/src/main/assets/.
 
-- Thêm ERNIE-5.5-Flash (baidu/ernie-5.5-flash-preview:free) vào OpenRouter: option trong optgroup OpenRouter (index.html), slug trong COMPAT_PROVIDERS + nhãn 'ERNIE-5.5-Flash', thông số riêng trong COMPAT_MODEL_OPTS (contextWindow 1.024.000, maxOutputTokens 1.024.000 theo model card, apiMaxCompletionTokens 921.600 theo trần OpenRouter công bố, maxTokens thực gửi 32.768). Điểm quan trọng: ERNIE luôn bật reasoning, effort bị khoá ở high và KHÔNG chỉnh được (cả Qianfan lẫn OpenRouter) -> thêm cờ reasoningAlwaysOn: gateway chỉ gửi reasoning: { exclude: false } + include_reasoning để hiển thị khối suy luận, không gửi effort (Think Depth không tác dụng với model này), tránh 400 do tham số effort không hợp lệ. Đối chiếu /api/v1/models/.../endpoints: context_length 1024000, max_completion_tokens 921600, supported_parameters có reasoning, include_reasoning, reasoning_effort. Đã mirror sang android/app/src/main/assets/.
+- Thêm ERNIE-5.5-Flash (baidu/ernie-5.5-flash-preview:free) vào OpenRouter: option trong optgroup
+  OpenRouter (index.html), slug trong COMPAT_PROVIDERS + nhãn 'ERNIE-5.5-Flash', thông số riêng
+  trong COMPAT_MODEL_OPTS (contextWindow 1.024.000, maxOutputTokens 1.024.000 theo model card,
+  apiMaxCompletionTokens 921.600 theo trần OpenRouter công bố, maxTokens thực gửi 32.768). Điểm quan
+  trọng: ERNIE luôn bật reasoning, effort bị khoá ở high và KHÔNG chỉnh được (cả Qianfan lẫn
+  OpenRouter) -> thêm cờ reasoningAlwaysOn: gateway chỉ gửi reasoning: { exclude: false } +
+  include_reasoning để hiển thị khối suy luận, không gửi effort (Think Depth không tác dụng với
+  model này), tránh 400 do tham số effort không hợp lệ. Đối chiếu /api/v1/models/.../endpoints:
+  context_length 1024000, max_completion_tokens 921600, supported_parameters có reasoning,
+  include_reasoning, reasoning_effort. Đã mirror sang android/app/src/main/assets/.
 
-- Hoàn thiện model Particle-1 trên OpenRouter (particle-ai/particle-1:free): option đã có trong optgroup OpenRouter (index.html), thêm vào COMPAT_PROVIDERS + nhãn 'Particle-1' và bảng thông số riêng COMPAT_MODEL_OPTS trong js/app.js (contextWindow 1.048.576, maxOutputTokens 131.072, maxTokens thực gửi 32.768, offEffort 'none' vì Particle mặc định reasoning=high khi không gửi tham số, efforts none/minimal/low/medium/high/xhigh/max/ultra). Gateway /chat/completions giờ đọc max_tokens theo bảng này và gửi reasoning.effort = 'none' tường minh khi Think Depth tắt. Đối chiếu OpenRouter endpoints API: context 1048576, max_completion_tokens 131072, supports_reasoning true, reasoning_effort được nhận. Đã mirror sang android/app/src/main/assets/.
+- Hoàn thiện model Particle-1 trên OpenRouter (particle-ai/particle-1:free): option đã có trong
+  optgroup OpenRouter (index.html), thêm vào COMPAT_PROVIDERS + nhãn 'Particle-1' và bảng thông số
+  riêng COMPAT_MODEL_OPTS trong js/app.js (contextWindow 1.048.576, maxOutputTokens 131.072,
+  maxTokens thực gửi 32.768, offEffort 'none' vì Particle mặc định reasoning=high khi không gửi tham
+  số, efforts none/minimal/low/medium/high/xhigh/max/ultra). Gateway /chat/completions giờ đọc
+  max_tokens theo bảng này và gửi reasoning.effort = 'none' tường minh khi Think Depth tắt. Đối
+  chiếu OpenRouter endpoints API: context 1048576, max_completion_tokens 131072, supports_reasoning
+  true, reasoning_effort được nhận. Đã mirror sang android/app/src/main/assets/.
 
-- Sửa lỗi Smart Sync hồi sinh tin nhắn/phiên đã xóa và lỗi nhảy lên top khi xóa tin nhắn. Nguyên nhân: merge phiên chọn bản có NHIỀU tin hơn (cCount > lCount) mà bỏ qua việc máy này vừa xóa, và việc xóa không để lại dấu vết nào để Cloud biết. Thêm cơ chế TOMBSTONE: js/app.js ghi localStorage 'jarvis_deleted_msgs' (sessionId -> [{s: chữ ký role+độ dài+đầu+cuối, t}], TTL 90 ngày, tối đa 800/máy) khi deleteMsg / retryMsg / editMsg / clearActiveSession, và 'jarvis_deleted_session_ids' khi bấm xóa phiên; expose window.jarvisMsgTombstones {add, filter, readAll, mergeAll}. js/sync.js: nhận tombstone từ Gist (cloudData.deletedMsgs + deletedSessionIds) TRƯỚC khi merge, lọc tin đã xóa khỏi cả bản cục bộ lẫn bản Cloud trước khi so sánh độ dài, đặt prunedRemoteByTombstone để buộc isLocalAhead = true (đấy bản đã lọc lên Gist), đóng gói deletedMsgs/deletedSessionIds vào backup. Đồng bộ ngầm: nếu phiên đang mở bị NGẮN đi (do máy khác xóa) thì vẽ lại bằng reRenderHistory kèm giữ vị trí cuộn. Thêm captureChatScroll/restoreChatScroll trong app.js để deleteMsg không nhảy lên top (giữ nguyên scroll, tự xuống đáy nếu đang ở đáy). Đã mirror sang android/app/src/main/assets/.
+- Sửa lỗi Smart Sync hồi sinh tin nhắn/phiên đã xóa và lỗi nhảy lên top khi xóa tin nhắn. Nguyên
+  nhân: merge phiên chọn bản có NHIỀU tin hơn (cCount > lCount) mà bỏ qua việc máy này vừa xóa, và
+  việc xóa không để lại dấu vết nào để Cloud biết. Thêm cơ chế TOMBSTONE: js/app.js ghi localStorage
+  'jarvis_deleted_msgs' (sessionId -> [{s: chữ ký role+độ dài+đầu+cuối, t}], TTL 90 ngày, tối đa
+  800/máy) khi deleteMsg / retryMsg / editMsg / clearActiveSession, và 'jarvis_deleted_session_ids'
+  khi bấm xóa phiên; expose window.jarvisMsgTombstones {add, filter, readAll, mergeAll}. js/sync.js:
+  nhận tombstone từ Gist (cloudData.deletedMsgs + deletedSessionIds) TRƯỚC khi merge, lọc tin đã xóa
+  khỏi cả bản cục bộ lẫn bản Cloud trước khi so sánh độ dài, đặt prunedRemoteByTombstone để buộc
+  isLocalAhead = true (đấy bản đã lọc lên Gist), đóng gói deletedMsgs/deletedSessionIds vào backup.
+  Đồng bộ ngầm: nếu phiên đang mở bị NGẮN đi (do máy khác xóa) thì vẽ lại bằng reRenderHistory kèm
+  giữ vị trí cuộn. Thêm captureChatScroll/restoreChatScroll trong app.js để deleteMsg không nhảy lên
+  top (giữ nguyên scroll, tự xuống đáy nếu đang ở đáy). Đã mirror sang android/app/src/main/assets/.
 
-- Thêm model Qwen4 Max (codename chính xác 'qwen4-max:free') vào nền tảng Experiential Labs: option trong optgroup Experiential Labs (index.html), isExplabsModel + tên hiển thị 'Qwen4 Max' (js/app.js), gửi kèm reasoning_effort cho riêng model này với mapping Think Depth minimal->none, low/medium/high giữ nguyên, và tự set Think Depth = low khi chọn model. Đã kiểm chứng bằng request thật tới api.experientiallabs.ai: reasoning_effort nhận HTTP 200. Thêm bộ đếm chẩn đoán stream trong nhánh Experiential Labs (expEvents/expThinkEvents/expTextEvents/firstThinkMs/firstTextMs) và helper window.jarvisDebug() trong app.js để đọc window.__jarvisTurnDebug từ Console — phát hiện Qwen4 Max gửi toàn bộ suy luận trong 1 event duy nhất (delta.reasoning, ~100-475 ký tự) nên khối suy luận hiện một lần là do server, không phải lỗi renderer; DeepSeek V4.1 Flash chia 56 event nhỏ nên stream được. Đã mirror sang android/app/src/main/assets/.
+- Thêm model Qwen4 Max (codename chính xác 'qwen4-max:free') vào nền tảng Experiential Labs: option
+  trong optgroup Experiential Labs (index.html), isExplabsModel + tên hiển thị 'Qwen4 Max'
+  (js/app.js), gửi kèm reasoning_effort cho riêng model này với mapping Think Depth minimal->none,
+  low/medium/high giữ nguyên, và tự set Think Depth = low khi chọn model. Đã kiểm chứng bằng request
+  thật tới api.experientiallabs.ai: reasoning_effort nhận HTTP 200. Thêm bộ đếm chẩn đoán stream
+  trong nhánh Experiential Labs (expEvents/expThinkEvents/expTextEvents/firstThinkMs/firstTextMs) và
+  helper window.jarvisDebug() trong app.js để đọc window.__jarvisTurnDebug từ Console — phát hiện
+  Qwen4 Max gửi toàn bộ suy luận trong 1 event duy nhất (delta.reasoning, ~100-475 ký tự) nên khối
+  suy luận hiện một lần là do server, không phải lỗi renderer; DeepSeek V4.1 Flash chia 56 event nhỏ
+  nên stream được. Đã mirror sang android/app/src/main/assets/.
 
-- Sửa lỗi restore từ Gist Cloud báo 'setGoogleKeyNamesList is not defined': js/sync.js gọi hàm global nhưng js/app.js chỉ export getGoogleKeyNamesList ra window. Thêm window.setGoogleKeyNamesList = setGoogleKeyNamesList trong app.js và bridge window-safe cho setGoogleKeyNamesList ở đầu js/sync.js (theo đúng kiểu các helper khác). Lưu ý: lỗi cũ làm restore dừng giữa đường (key Google đã về, externalConfigs/model/temperature chưa), nên phải Restore lại một lần sau khi nạp bản mới. Đã mirror sang android/app/src/main/assets/js/.
+- Sửa lỗi restore từ Gist Cloud báo 'setGoogleKeyNamesList is not defined': js/sync.js gọi hàm
+  global nhưng js/app.js chỉ export getGoogleKeyNamesList ra window. Thêm
+  window.setGoogleKeyNamesList = setGoogleKeyNamesList trong app.js và bridge window-safe cho
+  setGoogleKeyNamesList ở đầu js/sync.js (theo đúng kiểu các helper khác). Lưu ý: lỗi cũ làm restore
+  dừng giữa đường (key Google đã về, externalConfigs/model/temperature chưa), nên phải Restore lại
+  một lần sau khi nạp bản mới. Đã mirror sang android/app/src/main/assets/js/.
 
-- Tối ưu độ trễ nhánh Google (generateContentStream): gửi thinkingConfig.thinkingLevel (kèm includeThoughts) cho Gemini 3.x/4 thay vì thinkingBudget cũ, giảm round-trip retry do sai tham số; tự hạ mức 'minimal' -> 'low' cho gemini-3.8/4 vì hai model này không nhận minimal (đây là nguyên nhân request 3.8 bị treo ở dấu 3 chấm); thêm watchdog 25s tự hủy attempt và fallback về thinkingBudget rồi bỏ thinkingConfig nếu Google không nhả chunk đầu tiên; maxOutputTokens: 8192 khi tắt thinking, 32768 khi bật thinking (Gemini tính chung thinking + output nên để 8192 lúc bật thinking làm stream treo ở 3.6/3.8/Hydrogen), giữ 65000 riêng cho gemini-3.5-flash-lite; số tin ngữ cảnh mặc định 16 -> 10 khi người dùng chưa tự nhập (js/app.js + index.html). Đã mirror sang android/app/src/main/assets/.
+- Tối ưu độ trễ nhánh Google (generateContentStream): gửi thinkingConfig.thinkingLevel (kèm
+  includeThoughts) cho Gemini 3.x/4 thay vì thinkingBudget cũ, giảm round-trip retry do sai tham số;
+  tự hạ mức 'minimal' -> 'low' cho gemini-3.8/4 vì hai model này không nhận minimal (đây là nguyên
+  nhân request 3.8 bị treo ở dấu 3 chấm); thêm watchdog 25s tự hủy attempt và fallback về
+  thinkingBudget rồi bỏ thinkingConfig nếu Google không nhả chunk đầu tiên; maxOutputTokens: 8192
+  khi tắt thinking, 32768 khi bật thinking (Gemini tính chung thinking + output nên để 8192 lúc bật
+  thinking làm stream treo ở 3.6/3.8/Hydrogen), giữ 65000 riêng cho gemini-3.5-flash-lite; số tin
+  ngữ cảnh mặc định 16 -> 10 khi người dùng chưa tự nhập (js/app.js + index.html). Đã mirror sang
+  android/app/src/main/assets/.
 
-- Loại bỏ hoàn toàn nền tảng NVIDIA: xóa optgroup model, ô NVIDIA API Key và NVIDIA Base URL trong Cài đặt hệ thống (index.html), nhà cung cấp nvidia trong COMPAT_PROVIDERS + logic nvidia_base_url và thông báo lỗi CORS trong js/app.js, entry nvidia_api_key/nvidia_base_url trong cfgMap (js/app.js, js/api-keys.js) và danh sách backup (js/export.js), cập nhật ghi chú sync. Thêm 2 model OpenRouter: google/gemma-4-26b-a4b-it:free (Gemma 4 26B A4B) và google/gemma-4-31b-it:free (Gemma 4 31B). Giữ nguyên mask nvapi- trong js/cipher.js để bảo vệ key lịch sử chat cũ. Đã mirror sang android/app/src/main/assets/.
+- Loại bỏ hoàn toàn nền tảng NVIDIA: xóa optgroup model, ô NVIDIA API Key và NVIDIA Base URL trong
+  Cài đặt hệ thống (index.html), nhà cung cấp nvidia trong COMPAT_PROVIDERS + logic nvidia_base_url
+  và thông báo lỗi CORS trong js/app.js, entry nvidia_api_key/nvidia_base_url trong cfgMap
+  (js/app.js, js/api-keys.js) và danh sách backup (js/export.js), cập nhật ghi chú sync. Thêm 2
+  model OpenRouter: google/gemma-4-26b-a4b-it:free (Gemma 4 26B A4B) và google/gemma-4-31b-it:free
+  (Gemma 4 31B). Giữ nguyên mask nvapi- trong js/cipher.js để bảo vệ key lịch sử chat cũ. Đã mirror
+  sang android/app/src/main/assets/.
 
-- Đồng bộ & mã hóa NVIDIA key (nvidia_api_key) ngang các nền tảng khác. js/sync.js: thêm bước so sánh settings.externalConfigs (giải mã JVENC_ trước khi so) để máy có key mới/đổi key được đẩy lên Gist ngay cả khi chưa có tin nhắn chat mới (trước đây key mới không bao giờ tới Cloud). js/export.js: thêm nvidia_api_key vào danh sách cấu hình được mã hóa trong bản sao lưu JSON. js/cipher.js: che mẫu nvapi- trong lịch sử chat. js/api-keys.js: hẹn auto-sync sau khi bấm Lưu Cấu Hình. Đã mirror sang android/app/src/main/assets/js/.
+- Đồng bộ & mã hóa NVIDIA key (nvidia_api_key) ngang các nền tảng khác. js/sync.js: thêm bước so
+  sánh settings.externalConfigs (giải mã JVENC_ trước khi so) để máy có key mới/đổi key được đẩy lên
+  Gist ngay cả khi chưa có tin nhắn chat mới (trước đây key mới không bao giờ tới Cloud).
+  js/export.js: thêm nvidia_api_key vào danh sách cấu hình được mã hóa trong bản sao lưu JSON.
+  js/cipher.js: che mẫu nvapi- trong lịch sử chat. js/api-keys.js: hẹn auto-sync sau khi bấm Lưu Cấu
+  Hình. Đã mirror sang android/app/src/main/assets/js/.
 
-- **`a754122`** — RAG search is worker-first (new js/rag.worker.js; js/rag.js has worker path + searchSimilarVectorsMain fallback, shared computeHybridScore). Added js/eventBus.js exposing window.EventBus and emitting app:ready, loaded in index.html before rag.js. Added cross-platform build.js; build-apk.bat now runs node bump-version.js first. Mirrors updated under android/app/src/main/assets/.
+- **`a754122`** — RAG search is worker-first (new js/rag.worker.js; js/rag.js has worker path +
+  searchSimilarVectorsMain fallback, shared computeHybridScore). Added js/eventBus.js exposing
+  window.EventBus and emitting app:ready, loaded in index.html before rag.js. Added cross-platform
+  build.js; build-apk.bat now runs node bump-version.js first. Mirrors updated under
+  android/app/src/main/assets/.
