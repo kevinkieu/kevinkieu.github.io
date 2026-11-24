@@ -1146,7 +1146,122 @@ window.enableBargeIn = enableBargeIn;
 document.addEventListener('DOMContentLoaded', () => {
   initWakeWordIntegration();
   enableBargeIn();
+  initWakeWordSettingsUI();
 });
+
+// ==========================================
+// WAKE WORD SETTINGS UI INIT
+// ==========================================
+function initWakeWordSettingsUI() {
+  // Train button
+  const trainBtn = $('btn-train-wake-word');
+  if (trainBtn) {
+    trainBtn.onclick = () => window.trainWakeWord?.();
+  }
+  
+  // Start listening button
+  const startBtn = $('btn-start-wake-word');
+  if (startBtn) {
+    startBtn.onclick = () => window.startWakeWordListening?.();
+  }
+  
+  // Stop listening button
+  const stopBtn = $('btn-stop-wake-word');
+  if (stopBtn) {
+    stopBtn.onclick = () => window.stopWakeWordListening?.();
+  }
+  
+  // Reset training button
+  const resetBtn = $('btn-reset-wake-word');
+  if (resetBtn) {
+    resetBtn.onclick = () => window.resetWakeWordTraining?.();
+  }
+  
+  // Auto-start checkbox
+  const autoStartCheckbox = $('ww-auto-start');
+  if (autoStartCheckbox) {
+    autoStartCheckbox.checked = localStorage.getItem('jarvis_wake_word_enabled') === 'true';
+    autoStartCheckbox.onchange = (e) => {
+      window.toggleWakeWord?.(e.target.checked);
+    };
+  }
+  
+  // Listen for WakeWordTFJS state changes to update UI
+  if (window.WakeWordTFJS) {
+    window.WakeWordTFJS.onStateChange(updateWakeWordSettingsUI);
+    window.WakeWordTFJS.onProgress(updateWakeWordTrainingProgress);
+  }
+  
+  // Initial UI update
+  updateWakeWordSettingsUI(window.WakeWordTFJS?.getState?.() || 'idle');
+}
+
+function updateWakeWordSettingsUI(state) {
+  const statusEl = $('ww-status-text');
+  const trainBtn = $('btn-train-wake-word');
+  const startBtn = $('btn-start-wake-word');
+  const stopBtn = $('btn-stop-wake-word');
+  const remainingEl = $('ww-remaining-count');
+  const progressEl = $('wake-word-training-progress');
+  
+  if (statusEl) {
+    const labels = {
+      idle: '⏸️ Chưa khởi tạo',
+      loading: '⏳ Đang tải model...',
+      ready: '✅ Sẵn sàng train',
+      training: '🎙️ Đang train...',
+      listening: '🟢 Đang lắng nghe "Hey Jarvis"',
+      detected: '🎉 Phát hiện!',
+      error: '❌ Lỗi'
+    };
+    statusEl.innerText = labels[state] || state;
+  }
+  
+  if (window.WakeWordTFJS) {
+    const remaining = window.WakeWordTFJS.getRemainingExamples();
+    const trained = window.WakeWordTFJS.isTrained();
+    
+    if (trainBtn) {
+      trainBtn.disabled = state === 'training' || state === 'listening';
+      trainBtn.innerText = remaining > 0 ? `🎙️ Ghi mẫu (còn ${remaining})` : '✅ Đủ mẫu - Train model';
+    }
+    
+    if (startBtn) {
+      startBtn.disabled = !trained || state === 'listening';
+    }
+    
+    if (stopBtn) {
+      stopBtn.disabled = state !== 'listening';
+    }
+    
+    if (remainingEl) {
+      remainingEl.innerText = remaining;
+    }
+  }
+  
+  // Show/hide progress box
+  if (progressEl && state !== 'training' && state !== 'recording' && state !== 'recording-progress' && state !== 'training-progress') {
+    progressEl.style.display = 'none';
+  }
+}
+
+function updateWakeWordTrainingProgress(phase, message) {
+  const progressEl = $('wake-word-training-progress');
+  const progressText = $('ww-progress-text');
+  if (progressEl && progressText) {
+    progressText.innerText = message;
+    progressEl.style.display = 'block';
+  }
+  
+  // Also update main status
+  const statusEl = $('ww-status-text');
+  if (statusEl && phase !== 'training-progress' && phase !== 'recording-progress') {
+    statusEl.innerText = message;
+  }
+}
+
+window.updateWakeWordSettingsUI = updateWakeWordSettingsUI;
+window.updateWakeWordTrainingProgress = updateWakeWordTrainingProgress;
 
 // UI Helper: Toggle wake word từ settings
 window.toggleWakeWord = async function (enabled) {

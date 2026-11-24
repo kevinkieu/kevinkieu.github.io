@@ -694,8 +694,8 @@
             }
           }
 
-          // D3. HỢP NHẤT PROVIDER & MODEL ĐỘNG (Kilo, ...): chỉ nhận từ Cloud những
-          // provider/model máy này CHƯA có, giữ nguyên bản đang dùng/sửa ở máy.
+          // D3. HỢP NHẤT PROVIDER & MODEL ĐỘNG (Kilo, ...): nhận từ Cloud những
+          // provider/model máy này CHƯA có, VÀ restore keys cho provider đã có.
           const remoteDP = cloudData.settings?.dynamicProviders;
           if (
             remoteDP &&
@@ -709,12 +709,50 @@
             const localProv = localDP.providers || {};
             const localModels = localDP.models || {};
             const missingDP = { providers: {}, models: {} };
+            
+            // 1. Thêm provider/model mới (chưa có local)
             Object.entries(remoteDP.providers || {}).forEach(([id, p]) => {
-              if (!localProv[id]) missingDP.providers[id] = p;
+              if (!localProv[id]) {
+                missingDP.providers[id] = p;
+              } else {
+                // 2. Provider đã có local: restore keys từ Cloud (nếu Cloud có keys)
+                if (p.keys && Array.isArray(p.keys) && p.keys.length > 0) {
+                  const keyPrefix = p.keyPrefix || `jarvis_provider_${id}_api`;
+                  const namePrefix = p.keyNamePrefix || `jarvis_provider_${id}_name`;
+                  let restored = 0;
+                  p.keys.forEach((key, i) => {
+                    if (key && i < (p.keyCount || p.keys.length)) {
+                      let k = key;
+                      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
+                        k = window.deobfuscateKey ? window.deobfuscateKey(k) : k;
+                      }
+                      ls.setItem(`${keyPrefix}_${i + 1}`, k);
+                      restored++;
+                    }
+                  });
+                  if (p.keyNames && Array.isArray(p.keyNames)) {
+                    p.keyNames.forEach((name, i) => {
+                      if (name && i < (p.keyCount || p.keys.length)) {
+                        const namePrefix = p.keyNamePrefix || `jarvis_provider_${id}_name`;
+                        ls.setItem(`${namePrefix}_${i + 1}`, name || '');
+                      }
+                    });
+                  }
+                  if (p.usage && typeof window.saveProviderUsage === 'function') {
+                    window.saveProviderUsage(id, p.usage);
+                  }
+                  if (restored > 0) {
+                    hasChanges = true;
+                    console.log(`[SmartSync] Restored ${restored} keys for existing provider "${id}" from Cloud`);
+                  }
+                }
+              }
             });
+            
             Object.entries(remoteDP.models || {}).forEach(([id, m]) => {
               if (!localModels[id]) missingDP.models[id] = m;
             });
+            
             const nProv = Object.keys(missingDP.providers).length;
             const nModel = Object.keys(missingDP.models).length;
             if (nProv || nModel) {
