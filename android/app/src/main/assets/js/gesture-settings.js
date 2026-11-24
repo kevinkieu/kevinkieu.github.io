@@ -8,22 +8,24 @@
   'use strict';
 
   const GESTURE_LABELS = {
-    'shake': '📳 Lắc thiết bị (Shake)',
+    shake: '📳 Lắc thiết bị (Shake)',
     '3-finger-hold': '👆 3 ngón giữ (Hold 500ms)',
     '2-finger-double-tap': '☝️ 2 ngón double-tap',
-    'edge-swipe': '➡️ Vuốt từ mép màn hình'
+    'edge-swipe': '➡️ Vuốt từ mép màn hình',
   };
 
   const ACTION_LABELS = {
-    'none': '❌ Không hành động',
+    none: '❌ Không hành động',
     'debug-overlay': '🐛 Debug Console',
     'live-call': '📞 Mở Live Call',
-    'wake-word': '🎙️ Bật Wake Word'
+    'wake-word': '🎙️ Bật Wake Word',
   };
 
   function createGestureSettingsHTML() {
     const config = window.GestureManager ? window.GestureManager.getConfig() : {};
-    const availableActions = window.GestureManager ? window.GestureManager.getAvailableActions() : ['none'];
+    const availableActions = window.GestureManager
+      ? window.GestureManager.getAvailableActions()
+      : ['none'];
 
     let html = `
       <div class="dp-block">
@@ -68,12 +70,12 @@
   function initGestureSettings() {
     const container = $('gesture-settings-container');
     if (!container) return;
-    
+
     container.innerHTML = createGestureSettingsHTML();
 
     // Event listeners cho select
     container.querySelectorAll('.gesture-action-select').forEach(select => {
-      select.addEventListener('change', (e) => {
+      select.addEventListener('change', e => {
         const gesture = e.target.dataset.gesture;
         const action = e.target.value;
         if (window.GestureManager) {
@@ -83,15 +85,18 @@
             const hint = e.target.parentElement.querySelector('.dp-hint');
             if (hint) {
               const labels = {
-                'none': '❌ Không hành động',
+                none: '❌ Không hành động',
                 'debug-overlay': '🐛 Debug Console',
                 'live-call': '📞 Mở Live Call',
-                'wake-word': '🎙️ Bật Wake Word'
+                'wake-word': '🎙️ Bật Wake Word',
               };
               hint.innerHTML = `Hiện tại: <strong>${labels[action] || action}</strong>`;
             }
             if (typeof showToast === 'function') {
-              showToast(`Đã gán ${e.target.options[e.target.selectedIndex].text} cho ${action === 'none' ? 'không hành động' : action}`, 'success');
+              showToast(
+                `Đã gán ${e.target.options[e.target.selectedIndex].text} cho ${action === 'none' ? 'không hành động' : action}`,
+                'success'
+              );
             }
           }
         }
@@ -108,10 +113,11 @@
           window.GestureManager.setGestureAction('3-finger-hold', 'none');
           window.GestureManager.setGestureAction('2-finger-double-tap', 'none');
           window.GestureManager.setGestureAction('edge-swipe', 'none');
-          
+
           // Refresh UI
           initGestureSettings();
-          if (typeof showToast === 'function') showToast('Đã khôi phục gesture mặc định', 'success');
+          if (typeof showToast === 'function')
+            showToast('Đã khôi phục gesture mặc định', 'success');
         }
       };
     }
@@ -122,7 +128,10 @@
       testBtn.onclick = () => {
         if (window.GestureManager) {
           // Simulate shake trigger
-          window.GestureManager.executeAction(window.GestureManager.getConfig().shake || 'debug-overlay', { source: 'test-shake' });
+          window.GestureManager.executeAction(
+            window.GestureManager.getConfig().shake || 'debug-overlay',
+            { source: 'test-shake' }
+          );
           if (typeof showToast === 'function') showToast('Đã trigger shake action', 'info');
         }
       };
@@ -132,17 +141,20 @@
   // Public API
   window.GestureSettings = {
     init: initGestureSettings,
-    createHTML: createGestureSettingsHTML
+    createHTML: createGestureSettingsHTML,
   };
 
   // Auto-init khi DOM ready (sau gesture-manager)
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      // Delay một chút để gesture-manager init xong
-      setTimeout(initGestureSettings, 100);
-    }, { once: true });
+    document.addEventListener(
+      'DOMContentLoaded',
+      () => {
+        // Delay một chút để gesture-manager init xong
+        setTimeout(initGestureSettings, 100);
+      },
+      { once: true }
+    );
   } else {
     setTimeout(initGestureSettings, 100);
   }
-
 })();

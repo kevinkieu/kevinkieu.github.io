@@ -2926,3 +2926,86 @@ think {
     font-size: 1rem;
   }
 }
+
+/* ==========================================================================
+   Generic Collapsible Sections (Settings Groups)
+   ========================================================================== */
+
+.collapsible-header {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.15s ease;
+  border-radius: var(--radius-sm);
+}
+
+.collapsible-header:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  margin: -4px -8px;
+}
+
+.section-toggle-icon {
+  display: inline-block;
+  transition: transform 0.2s ease;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.collapsible-header[aria-expanded='false'] .section-toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.collapsible-content {
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out, padding 0.3s ease-out, margin 0.3s ease-out;
+  overflow: hidden;
+}
+
+.collapsible-content.collapsed {
+  max-height: 0 !important;
+  opacity: 0;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  border-top: none !important;
+}
+
+.collapsible-content:not(.collapsed) {
+  animation: dpExpand 0.3s ease-out;
+}
+
+.collapsible-content-wrapper {
+  padding-top: 8px;
+}
+
+/* Legend inside collapsible header */
+.collapsible-header legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin: 0;
+  padding: 4px 0;
+  width: auto;
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .collapsible-header {
+    padding: 8px 4px;
+  }
+  
+  .collapsible-header:hover {
+    padding: 8px 4px;
+    margin: -8px -4px;
+  }
+  
+  .section-toggle-icon {
+    font-size: 1rem;
+  }
+}

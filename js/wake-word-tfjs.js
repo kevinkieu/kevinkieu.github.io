@@ -74,6 +74,8 @@
     } catch (err) {
       console.error('[WakeWord-TFJS] Load dependencies failed:', err);
       setState(STATE.ERROR);
+      if (typeof showToast === 'function')
+        showToast('❌ Wake Word: ' + err.message, 'danger', 5000);
       throw err;
     }
   }
@@ -113,6 +115,8 @@
       } catch (err) {
         console.error('[WakeWord-TFJS] Create recognizer failed (attempt', attempt, '):', err);
         if (attempt === maxRetries) {
+          if (typeof showToast === 'function')
+            showToast('❌ Wake Word: Tạo recognizer thất bại - ' + err.message, 'danger', 5000);
           throw err;
         }
         // Wait before retry
@@ -209,6 +213,8 @@
     } catch (err) {
       console.error('[WakeWord-TFJS] Training failed:', err);
       setState(STATE.ERROR);
+      if (typeof showToast === 'function')
+        showToast('❌ Train Wake Word thất bại: ' + err.message, 'danger', 5000);
       throw err;
     }
   }
@@ -286,6 +292,8 @@
     } catch (err) {
       console.error('[WakeWord-TFJS] Start listening failed:', err);
       setState(STATE.ERROR);
+      if (typeof showToast === 'function')
+        showToast('❌ Bật Wake Word thất bại: ' + err.message, 'danger', 5000);
       throw err;
     }
   }

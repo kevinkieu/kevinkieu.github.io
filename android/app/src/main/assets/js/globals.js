@@ -264,6 +264,150 @@ window.showToast = function (m, t) {
   }, 3200);
 };
 
+// --- COLLAPSIBLE SECTION UTILITY ---
+/**
+ * Tạo section có thể collapse/expand cho settings
+ * @param {string} sectionId - ID của section (để lưu localStorage)
+ * @param {string} headerSelector - Selector cho header element (mặc định tìm .settings-group legend hoặc .section-header)
+ * @param {string} contentSelector - Selector cho content element (mặc định tìm nội dung sau header)
+ */
+window.makeCollapsibleSection = function (sectionId, headerSelector, contentSelector) {
+  const storageKey = 'jarvis_section_collapsed_' + sectionId;
+  let header = document.querySelector(headerSelector);
+  let content = document.querySelector(contentSelector);
+  
+  // Nếu không tìm thấy header/content, thử tìm theo cấu trúc mặc định
+  if (!header) {
+    header = document.querySelector('#' + sectionId + ' .settings-group legend, #' + sectionId + ' .section-header, #' + sectionId + ' fieldset legend');
+  }
+  if (!content) {
+    // Tìm content: phần tử tiếp theo sau header, hoặc tất cả các element con trừ legend/header
+    if (header && header.parentElement) {
+      content = header.parentElement.querySelector('.settings-group > *:not(legend), .section-content, .collapsible-content');
+    }
+  }
+  
+  if (!header || !content) {
+    console.warn('[makeCollapsibleSection] Không tìm thấy header/content cho', sectionId);
+    return;
+  }
+
+  // Thêm class và attribute cho header
+  header.classList.add('collapsible-header');
+  header.style.cursor = 'pointer';
+  header.style.userSelect = 'none';
+  header.setAttribute('role', 'button');
+  header.setAttribute('aria-expanded', 'true');
+  
+  // Thêm icon toggle nếu chưa có
+  let toggleIcon = header.querySelector('.section-toggle-icon');
+  if (!toggleIcon) {
+    toggleIcon = document.createElement('span');
+    toggleIcon.className = 'section-toggle-icon';
+    toggleIcon.innerHTML = '▼';
+    toggleIcon.style.marginLeft = '8px';
+    toggleIcon.style.display = 'inline-block';
+    toggleIcon.style.transition = 'transform 0.2s ease';
+    header.appendChild(toggleIcon);
+  }
+
+  // Thêm class cho content
+  content.classList.add('collapsible-content');
+  content.style.transition = 'max-height 0.3s ease-out, opacity 0.3s ease-out, padding 0.3s ease-out, margin 0.3s ease-out';
+  content.style.overflow = 'hidden';
+
+  // Khôi phục trạng thái từ localStorage
+  const storageKey = 'jarvis_section_collapsed_' + sectionId;
+  const saved = localStorage.getItem('jarvis_section_collapsed_' + sectionId);
+  if (saved === '1') {
+    content.classList.add('collapsed');
+    header.setAttribute('aria-expanded', 'false');
+    if (content.querySelector('.section-toggle-icon')) {
+      content.querySelector('.section-toggle-icon').style.transform = 'rotate(-90deg)';
+    } else {
+      const icon = header.querySelector('.section-toggle-icon');
+      if (icon) icon.style.transform = 'rotate(-90deg)';
+    }
+  }
+
+  // Click handler
+  header.onclick = function(e) {
+    // Không toggle nếu click vào input/button/link
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || 
+        e.target.tagName === 'SELECT' || e.target.tagName === 'A' ||
+        e.target.tagName === 'LABEL' || e.target.closest('label')) {
+      return;
+    }
+    
+    const isCollapsed = content.classList.toggle('collapsed');
+    header.setAttribute('aria-expanded', !isCollapsed);
+    
+    // Rotate icon
+    const icon = header.querySelector('.section-toggle-icon');
+    if (icon) {
+      icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+    }
+    
+    // Lưu trạng thái
+    try {
+      localStorage.setItem('jarvis_section_collapsed_' + sectionId, isCollapsed ? '1' : '0');
+    } catch (_) {}
+  };
+
+  // Thêm style hover
+  header.style.transition = 'background 0.15s ease';
+  header.addEventListener('mouseenter', () => {
+    header.style.background = 'rgba(99, 102, 241, 0.08)';
+    header.style.borderRadius = 'var(--radius-sm)';
+    header.style.padding = '4px 8px';
+    header.style.margin = '-4px -8px';
+  });
+  header.addEventListener('mouseleave', () => {
+    header.style.background = '';
+    header.style.borderRadius = '';
+    header.style.padding = '';
+    header.style.margin = '';
+  });
+  
+  return { header, content };
+};
+
+// Hàm helper để áp dụng cho tất cả fieldset trong settings modal
+window.initAllCollapsibleSections = function() {
+  // Tìm tất cả fieldset trong settings modal
+  const settingsModal = document.getElementById('settings-modal');
+  if (!settingsModal) return;
+  
+  const fieldsets = settingsModal.querySelectorAll('fieldset.settings-group');
+  fieldsets.forEach((fieldset, index) => {
+    const legend = fieldset.querySelector('legend');
+    if (!legend) return;
+    
+    // Tạo section ID
+    const sectionId = 'settings_section_' + index;
+    fieldset.id = fieldset.id || sectionId;
+    
+    // Tạo content wrapper cho nội dung fieldset (trừ legend)
+    let contentWrapper = fieldset.querySelector('.collapsible-content-wrapper');
+    if (!contentWrapper) {
+      contentWrapper = document.createElement('div');
+      contentWrapper.className = 'collapsible-content-wrapper';
+      // Di chuyển tất cả children trừ legend vào wrapper
+      const children = Array.from(fieldset.children).filter(child => child !== legend);
+      children.forEach(child => contentWrapper.appendChild(child));
+      fieldset.appendChild(contentWrapper);
+    }
+    
+    window.makeCollapsibleSection(sectionId, '#' + sectionId + ' legend', '#' + sectionId + ' .collapsible-content-wrapper');
+  });
+};
+
+// Auto-init khi DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+  // Delay để các modal đã được render
+  setTimeout(window.initAllCollapsibleSections, 500);
+});
+
 // --- PERSISTENT STORAGE & NATIVE BRIDGE ---
 if (navigator.storage && navigator.storage.persist) {
   navigator.storage.persist().catch(function () {});

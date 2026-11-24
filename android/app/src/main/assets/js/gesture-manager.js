@@ -9,10 +9,10 @@
 
   const STORAGE_KEY = 'jarvis_gesture_config';
   const DEFAULT_CONFIG = {
-    shake: 'debug-overlay',           // Mặc định: lắc để mở Debug Console (tránh conflict screenshot)
-    '3-finger-hold': 'none',          // 3 ngón giữ - tắt mặc định vì conflict screenshot hệ thống
-    '2-finger-double-tap': 'none',    // 2 ngón double-tap - có thể bật trong Settings
-    'edge-swipe': 'none',             // Vuốt từ mép màn hình
+    shake: 'debug-overlay', // Mặc định: lắc để mở Debug Console (tránh conflict screenshot)
+    '3-finger-hold': 'none', // 3 ngón giữ - tắt mặc định vì conflict screenshot hệ thống
+    '2-finger-double-tap': 'none', // 2 ngón double-tap - có thể bật trong Settings
+    'edge-swipe': 'none', // Vuốt từ mép màn hình
   };
 
   // Trạng thái gesture
