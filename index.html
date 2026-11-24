@@ -31,7 +31,7 @@
   </script>
 
   <!-- MODULAR STYLESHEETS -->
-  <link rel="stylesheet" href="./css/style.css?v=74">
+  <link rel="stylesheet" href="./css/style.css?v=79">
   <link rel="stylesheet" href="./css/live.css">
   <link rel="stylesheet" href="./css/tts.css">
   <link rel="stylesheet" href="./css/translate.css">
@@ -759,13 +759,13 @@
         </fieldset>
 
         <!-- DYNAMIC PROVIDER / MODEL MANAGEMENT -->
-        <fieldset class="settings-group dp-section" style="border: 2px solid #6366f1; background: rgba(99,102,241,0.04); padding: 0; margin: 0; min-width: 0;">
-          <legend style="color:#6366f1; font-weight:700; white-space: normal; word-break: break-word; overflow-wrap: break-word; max-width: 100%; padding: 0 8px;">⚙️ Quản lý Provider & Model động (không cần sửa code)</legend>
-          <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px;line-height:1.4; overflow-wrap: break-word; word-break: break-word; padding: 0 12px 12px;">
+        <div class="settings-group dp-section" style="border: 2px solid #6366f1; background: rgba(99,102,241,0.04);">
+          <div class="dp-section-title">⚙️ Quản lý Provider & Model động (không cần sửa code)</div>
+          <div class="dp-section-desc">
             Thêm/sửa/xoá provider (NVIDIA, OpenRouter, Cohere, ...) và model tương ứng. Dữ liệu lưu localStorage, đồng bộ qua Gist/backup. Google và Experiential Labs là built-in, không được xoá.
           </div>
 
-          <div id="dp-status-msg" style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px; overflow-wrap: break-word; word-break: break-word; padding: 0 12px;" role="status" aria-live="polite"></div>
+          <div id="dp-status-msg" class="dp-status" role="status" aria-live="polite"></div>
 
           <!-- ============ PROVIDER FORM ============ -->
           <div class="dp-block">
@@ -865,7 +865,7 @@
               <button id="dp-rebuild-select" class="btn dp-btn-outline">🔄 Cập nhật dropdown model trong chat</button>
             </div>
           </div>
-        </fieldset>
+        </div>
 
         <!-- STORAGE & MEMORY MANAGEMENT -->
         <fieldset class="settings-group" style="border: 2px solid #10b981; background: rgba(16,185,129,0.04);">

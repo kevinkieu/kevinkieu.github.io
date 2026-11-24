@@ -1149,7 +1149,10 @@
     .modal-scroll-body {
       padding: 18px 20px;
       overflow-y: auto;
+      overflow-x: hidden;
       flex: 1;
+      min-width: 0;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -2337,123 +2340,127 @@
 .key-validate-hint { transition: color 0.2s ease; }
 
 /* ==========================================================================
-   Dynamic Provider & Model Management UI - TRIỆT ĐỂ fix overlap/cut-off
+   Quản lý Provider & Model động (dp-*) - layout an toàn mobile & desktop
+   LƯU Ý: dùng <div class="dp-section"> thay <fieldset>.
+   Chromium/Android WebView bị lỗi khi fieldset mang display:flex/grid:
+   chiều cao fieldset bị collapse -> nội dung các khối đè lên nhau.
    ========================================================================== */
 
-/* Reset fieldset & legend - eliminación hoàn toàn style mặc định của trình duyệt */
-.dp-section fieldset {
-  border: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  min-width: 0 !important;
-  display: block !important;
-  background: transparent !important;
-  box-sizing: border-box !important;
-}
-.dp-section legend {
-  display: block !important;
-  padding: 0 !important;
-  margin: 0 0 8px 0 !important;
-  font-size: 0.85rem !important;
-  font-weight: 700 !important;
-  white-space: normal !important;
-  word-break: break-word !important;
-  overflow-wrap: break-word !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-}
-
 .dp-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-width: 100%;
-  overflow-x: hidden;
-  min-width: 0;
+  display: block;
   box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
-/* Mỗi block (form provider, form model, danh sách...) cách nhau rõ ràng */
+.dp-section-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #6366f1;
+  line-height: 1.35;
+  margin: 0 0 8px;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.dp-section-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+
+.dp-status {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+  min-height: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Mỗi khối nội dung: block + margin, KHÔNG flex trên khung ngoài */
 .dp-block {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 10px;
+  padding: 12px;
+  margin: 0 0 12px;
   box-shadow: var(--shadow-sm);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 8px;
-  box-sizing: border-box;
-  min-width: 0;
   overflow: hidden;
 }
 
-.dp-list-block {
-  margin-bottom: 10px;
+.dp-section .dp-block:last-child {
+  margin-bottom: 0;
 }
 
 .dp-block-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
-  margin-bottom: 4px;
-  padding-bottom: 5px;
+  padding: 0 0 6px;
+  margin: 0 0 10px;
   border-bottom: 1px solid var(--border);
-  box-sizing: border-box;
 }
 
 .dp-block-title {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 700;
   color: var(--text-main);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* --- Trường nhập liệu --- */
+.dp-form-group {
+  display: block;
+  margin: 0 0 10px;
   min-width: 0;
 }
 
-/* --- Form fields --- */
-.dp-form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  box-sizing: border-box;
-  min-width: 0;
+.dp-section .dp-form-group:last-child {
+  margin-bottom: 0;
 }
 
 .dp-label {
-  font-size: 0.72rem;
+  display: block;
+  font-size: 0.74rem;
   font-weight: 600;
   color: var(--text-muted);
-  white-space: normal;
-  word-break: break-word;
+  margin: 0 0 4px;
+  line-height: 1.35;
   overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .dp-hint {
   font-weight: 400;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
-  margin-left: 3px;
 }
 
 .dp-msg {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
-  margin-top: 3px;
+  margin-top: 4px;
   min-height: 1.1em;
   overflow-wrap: break-word;
   word-break: break-word;
 }
 
-/* Hai ô nhỏ bên nhau trên desktop; trên mobile xếp thành 1 cột */
 .dp-row-inline {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  box-sizing: border-box;
+  gap: 8px;
 }
 
 @media (max-width: 480px) {
@@ -2463,39 +2470,29 @@
 }
 
 .dp-form-half {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
   min-width: 0;
 }
 
-/* Danh sách key input bên trong provider form */
 .dp-key-inputs {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
-/* --- Buttons - full width, không bị cắt chữ --- */
-.dp-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-  width: 100%;
-  box-sizing: border-box;
+/* Input/select/textarea luôn vừa khung, không tràn ngang */
+.dp-section input,
+.dp-section select,
+.dp-section textarea {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
 }
 
-@media (min-width: 481px) {
-  .dp-actions {
-    flex-direction: row;
-  }
-}
-
+/* --- Nút bấm --- */
 .dp-actions-stack {
+  display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .dp-btn-primary,
@@ -2503,22 +2500,24 @@
 .dp-btn-outline {
   display: block;
   width: 100%;
-  min-height: 44px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  padding: 0 12px;
   box-sizing: border-box;
+  min-height: 42px;
+  padding: 10px 12px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
   white-space: normal;
   word-break: break-word;
   overflow-wrap: break-word;
-  text-align: center;
-  line-height: 1.25;
+  border-radius: var(--radius-md);
+  cursor: pointer;
 }
 
 .dp-btn-primary {
   background: var(--accent, #6366f1);
   color: #fff;
-  border: none;
+  border: 1px solid transparent;
 }
 
 .dp-btn-secondary {
@@ -2533,154 +2532,121 @@
   border: 1px solid var(--primary);
 }
 
-/* --- Lists (provider list & model list) --- */
+/* --- Danh sách provider/model: bảng rộng -> cuộn ngang trong khối --- */
 .dp-list-scroll {
-  flex: 1;
+  max-height: 300px;
   overflow: auto;
-  min-height: 0;
   -webkit-overflow-scrolling: touch;
-  margin-top: 4px;
-  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input, var(--bg-card));
 }
 
 .dp-list {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-/* Mỗi item trong danh sách - ngăn chặn chồng chéo */
-.dp-list-item {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  box-sizing: border-box;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.dp-list-item-main {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
   min-width: 0;
 }
 
-.dp-list-item-id {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-main);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  overflow-wrap: break-word;
-  word-break: break-all;
-  white-space: pre-wrap;
-  min-width: 0;
+.dp-list table {
+  min-width: 560px;
+  width: 100% !important;
+  margin: 0;
 }
 
-.dp-list-item-label {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  overflow-wrap: break-word;
-  word-break: break-all;
-  white-space: pre-wrap;
-  min-width: 0;
-}
-
-.dp-list-item-meta {
-  font-size: 0.66rem;
-  color: var(--text-muted);
-  overflow-wrap: break-word;
-  word-break: break-all;
-  white-space: pre-wrap;
-  min-width: 0;
-}
-
-.dp-list-item-actions {
-  display: flex;
-  gap: 5px;
-  flex-shrink: 0;
-  align-self: flex-start;
-  min-width: 0;
-}
-
-/* Nút nhỏ trong danh sách item */
-.dp-list-item-actions .dp-btn {
-  font-size: 0.68rem;
-  padding: 3px 7px;
-  min-height: 30px;
+.dp-list table th,
+.dp-list table td {
+  padding: 6px 8px !important;
+  vertical-align: middle;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* --- Inputs & Selects - bắt buộc full width, không bị cắt --- */
-.dp-section input,
-.dp-section select,
-.dp-section textarea {
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-  min-width: 0 !important;
+/* Cắt gọn cột Base URL (bảng provider) để bảng không dài vô tận */
+.dp-list table td:nth-child(4) {
+  max-width: 220px;
 }
 
-.dp-section .modern-input,
-.dp-section .modern-select,
-.dp-section .modern-textarea {
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
+.dp-list-footer {
+  margin-top: 8px;
 }
 
-/* Mobile-specific adjustments */
+.dp-list-footer .dp-btn-outline {
+  margin: 0;
+}
+
+/* Nút nhỏ thao tác trong bảng */
+.dp-list .dp-btn {
+  display: inline-block;
+  width: auto;
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-main);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.dp-list .dp-btn:hover {
+  background: var(--primary-container);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.dp-list .dp-btn.danger,
+.dp-list .dp-btn-del {
+  color: var(--danger);
+}
+
+.dp-list .dp-btn.danger:hover,
+.dp-list .dp-btn-del:hover {
+  background: var(--danger-bg);
+  border-color: transparent;
+}
+
+/* --- Mobile --- */
 @media (max-width: 640px) {
+  .dp-section {
+    padding: 10px;
+  }
+
   .dp-block {
-    padding: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
   }
-  .dp-list {
-    gap: 4px;
-  }
-  .dp-list-item {
-    padding: 6px 8px;
-  }
-  .modern-input, .modern-select {
+
+  .dp-section .modern-input,
+  .dp-section .modern-select,
+  .dp-section .modern-textarea {
     font-size: 16px !important;
-    max-width: 100% !important;
   }
-  .modal-box {
-    width: 98%;
-    max-width: none !important;
+
+  .dp-list-scroll {
+    max-height: 240px;
   }
-  .modal-scroll-body {
-    padding: 8px 10px !important;
+
+  .dp-list table {
+    min-width: 520px;
   }
-  .settings-group {
-    padding: 6px !important;
-  }
+
   .dp-btn-primary,
   .dp-btn-secondary,
   .dp-btn-outline {
-    padding: 0 10px !important;
     min-height: 44px;
-    font-size: 0.82rem;
-    line-height: 1.25;
-    white-space: normal;
-    word-break: break-word;
-  }
-  .dp-block-header {
-    padding-bottom: 4px;
-  }
-  .dp-form-group {
-    gap: 3px;
   }
 }
 
-/* Desktop hover refinement */
 @media (hover: hover) and (pointer: fine) {
   .dp-btn-primary:hover {
-    filter: brightness(1.05);
+    filter: brightness(1.06);
+  }
+  .dp-btn-secondary:hover {
+    background: var(--bg-sidebar);
+  }
+  .dp-btn-outline:hover {
+    background: var(--primary-container);
   }
 }
