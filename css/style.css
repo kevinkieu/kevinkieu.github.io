@@ -2344,8 +2344,9 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  /* Không dùng overflow: hidden trên section cha — làm bị cắt nội dung con */
   max-width: 100%;
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 /* Mỗi block (form provider, form model, danh sách...) cách nhau rõ ràng, không đè chồng */
@@ -2618,24 +2619,30 @@
     max-width: 100%;
   }
   .modal-box {
-    width: 94%;
-    max-width: none;
+    width: 96%;
+    max-width: none !important;
   }
   .modal-scroll-body {
-    padding: 12px 14px !important;
+    padding: 10px 12px !important;
   }
   .settings-group {
-    padding: 10px !important;
+    padding: 8px !important;
   }
   .dp-btn-primary,
   .dp-btn-secondary,
   .dp-btn-outline {
-    padding: 0 12px !important;
+    padding: 0 10px !important;
     min-height: 44px;
     font-size: 0.85rem;
     line-height: 1.2;
     white-space: normal;
     word-break: break-word;
+  }
+  .dp-block-header {
+    padding-bottom: 4px;
+  }
+  .dp-form-group {
+    gap: 4px;
   }
 }
 
