@@ -64,33 +64,37 @@
               statusEl.style.color = "var(--success)";
               if (btnPersist) btnPersist.style.display = "none";
             } else {
-              // Kiểm tra trạng thái permission để gợi ý tốt hơn (trừ TWA)
-              let permState = 'unknown';
-              const twa = (location.origin === 'https://appassets.androidplatform.net') ||
-                          /wv\)/.test(navigator.userAgent.toLowerCase()) ||
-                          (navigator.userAgent.toLowerCase().includes('android') && !navigator.userAgent.toLowerCase().includes('chrome'));
-              if (!twa) {
+              // Phát hiện WebView (APK Android)
+              const isWebView = (typeof JarvisNativeBridge !== 'undefined' && JarvisNativeBridge.isNativeApp === true) ||
+                                /wv\)/.test(navigator.userAgent.toLowerCase()) ||
+                                location.origin === 'https://appassets.androidplatform.net';
+              
+              if (isWebView) {
+                // WebView: IndexedDB + Native Bridge (SharedPreferences) đã luôn persistent
+                statusEl.innerText = "🟢 Đã bảo vệ bởi WebView + Native Bridge";
+                statusEl.style.color = "var(--success)";
+                if (btnPersist) btnPersist.style.display = "none";
+              } else {
+                // Kiểm tra trạng thái permission cho trình duyệt thường
+                let permState = 'unknown';
                 try {
                   if (navigator.permissions && navigator.permissions.query) {
                     const perm = await navigator.permissions.query({ name: 'persistent-storage' });
                     permState = perm.state;
                   }
                 } catch (_) {}
-              } else {
-                // TWA: nếu chưa persisted thì thường là 'prompt' (có thể kích hoạt được)
-                permState = 'prompt';
+                if (permState === 'denied') {
+                  statusEl.innerText = "🔴 Bị chặn (cần bật thủ công)";
+                  statusEl.style.color = "var(--danger)";
+                } else if (permState === 'granted') {
+                  statusEl.innerText = "🟡 Quyền đã cho, chưa kích hoạt";
+                  statusEl.style.color = "var(--warning)";
+                } else {
+                  statusEl.innerText = "⚪ Chưa bật";
+                  statusEl.style.color = "var(--warning)";
+                }
+                if (btnPersist) btnPersist.style.display = "inline-block";
               }
-              if (permState === 'denied') {
-                statusEl.innerText = "🔴 Bị chặn (cần bật thủ công)";
-                statusEl.style.color = "var(--danger)";
-              } else if (permState === 'granted') {
-                statusEl.innerText = "🟡 Quyền đã cho, chưa kích hoạt";
-                statusEl.style.color = "var(--warning)";
-              } else {
-                statusEl.innerText = "⚪ Chưa bật";
-                statusEl.style.color = "var(--warning)";
-              }
-              if (btnPersist) btnPersist.style.display = "inline-block";
             }
           }
         }
@@ -123,28 +127,33 @@
           return;
         }
 
-        const twa = isTwaOrWebView();
+        const isWebView = (typeof JarvisNativeBridge !== 'undefined' && JarvisNativeBridge.isNativeApp === true) ||
+                          /wv\)/.test(navigator.userAgent.toLowerCase()) ||
+                          location.origin === 'https://appassets.androidplatform.net';
+        
+        if (isWebView) {
+          showToast("🟢 WebView (APK) đã luôn lưu trữ vĩnh viễn qua IndexedDB + Native Bridge (SharedPreferences). Không cần kích hoạt thêm.", "success");
+          updateStorageStatus();
+          return;
+        }
+
         let ok = false;
         try {
-          // Trên TWA/WebView: permissions API thường không hoạt động
-          // persist() gọi trong user gesture (click handler) là đủ
-          if (!twa) {
-            let permState = 'unknown';
-            try {
-              if (navigator.permissions && navigator.permissions.query) {
-                const perm = await navigator.permissions.query({ name: 'persistent-storage' });
-                permState = perm.state;
-              }
-            } catch (_) {}
+          let permState = 'unknown';
+          try {
+            if (navigator.permissions && navigator.permissions.query) {
+              const perm = await navigator.permissions.query({ name: 'persistent-storage' });
+              permState = perm.state;
+            }
+          } catch (_) {}
 
-            if (permState !== 'granted' && permState !== 'denied') {
-              try {
-                if (navigator.permissions && navigator.permissions.request) {
-                  await navigator.permissions.request({ name: 'persistent-storage' });
-                }
-              } catch (_) {
-                // Android Chrome không hỗ trợ request() cho persistent-storage - bỏ qua
+          if (permState !== 'granted' && permState !== 'denied') {
+            try {
+              if (navigator.permissions && navigator.permissions.request) {
+                await navigator.permissions.request({ name: 'persistent-storage' });
               }
+            } catch (_) {
+              // Android Chrome không hỗ trợ request() cho persistent-storage - bỏ qua
             }
           }
 
@@ -158,9 +167,7 @@
         } else {
           const ua = navigator.userAgent.toLowerCase();
           let hint = "Trình duyệt chưa cho phép cấp quyền vĩnh viễn.";
-          if (twa) {
-            hint += " Trong ứng dụng Android (TWA):Persistent Storage thường tự được cấp cho PWA đã cài. Hãy thử xóa cache ứng dụng (Cài đặt → Ứng dụng → Jarvis AI → Bộ nhớ → Xóa bộ nhớ) rồi mở lại app, hoặc kiểm tra Cài đặt Android → Ứng dụng → Jarvis AI → Quyền → cho phép 'Lưu trữ'.";
-          } else if (/android.*chrome/i.test(ua) || /android.*crios/i.test(ua)) {
+          if (/android.*chrome/i.test(ua) || /android.*crios/i.test(ua)) {
             hint += " Trên Chrome Android: ⋮ Menu → Cài đặt → Quyền riêng tư & bảo mật → Cài đặt trang web → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
           } else if (ua.includes('chrome') || ua.includes('edg')) {
             hint += " Hãy vào chrome://site-settings → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";

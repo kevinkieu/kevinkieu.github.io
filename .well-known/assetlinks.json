@@ -1,14 +1,10 @@
-[
-  {
-    "relation": [
-      "delegate_permission/common.handle_all_urls"
-    ],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "io.github.kevinkieu.twa",
-      "sha256_cert_fingerprints": [
-        "E8:31:B9:A2:D0:33:80:28:C3:DE:D6:AC:08:07:A9:29:5A:0D:69:96:CC:AE:36:B3:2C:D6:8C:8F:28:34:2B:B7"
-      ]
-    }
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.kevinkieu.jarvisai",
+    "sha256_cert_fingerprints": [
+      "4F:81:80:23:FB:E6:15:6D:F5:7F:0C:8B:35:C0:17:03:78:26:9F:DB:79:F2:43:C4:9B:F4:15:6D:9D:7E:68:75"
+    ]
   }
-]
+}]

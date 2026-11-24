@@ -19,7 +19,7 @@ const ROOT = path.join(__dirname, '..');
 const DEST = path.join(ROOT, 'android', 'app', 'src', 'main', 'assets');
 
 // File phẳng ở gốc dự án cần có trong assets
-const ROOT_FILES = ['index.html', 'manifest.json', 'sw.js'];
+const ROOT_FILES = ['index.html', 'manifest.json', 'sw.js', '.well-known/assetlinks.json'];
 // Thư mục cần mirror toàn bộ (đệ quy)
 const DIRS = ['js', 'css'];
 // Icon: mọi file icon*.png ở gốc

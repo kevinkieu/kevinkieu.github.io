@@ -64,9 +64,37 @@
               statusEl.style.color = "var(--success)";
               if (btnPersist) btnPersist.style.display = "none";
             } else {
-              statusEl.innerText = "⚪ Chưa bật";
-              statusEl.style.color = "var(--warning)";
-              if (btnPersist) btnPersist.style.display = "inline-block";
+              // Phát hiện WebView (APK Android)
+              const isWebView = (typeof JarvisNativeBridge !== 'undefined' && JarvisNativeBridge.isNativeApp === true) ||
+                                /wv\)/.test(navigator.userAgent.toLowerCase()) ||
+                                location.origin === 'https://appassets.androidplatform.net';
+              
+              if (isWebView) {
+                // WebView: IndexedDB + Native Bridge (SharedPreferences) đã luôn persistent
+                statusEl.innerText = "🟢 Đã bảo vệ bởi WebView + Native Bridge";
+                statusEl.style.color = "var(--success)";
+                if (btnPersist) btnPersist.style.display = "none";
+              } else {
+                // Kiểm tra trạng thái permission cho trình duyệt thường
+                let permState = 'unknown';
+                try {
+                  if (navigator.permissions && navigator.permissions.query) {
+                    const perm = await navigator.permissions.query({ name: 'persistent-storage' });
+                    permState = perm.state;
+                  }
+                } catch (_) {}
+                if (permState === 'denied') {
+                  statusEl.innerText = "🔴 Bị chặn (cần bật thủ công)";
+                  statusEl.style.color = "var(--danger)";
+                } else if (permState === 'granted') {
+                  statusEl.innerText = "🟡 Quyền đã cho, chưa kích hoạt";
+                  statusEl.style.color = "var(--warning)";
+                } else {
+                  statusEl.innerText = "⚪ Chưa bật";
+                  statusEl.style.color = "var(--warning)";
+                }
+                if (btnPersist) btnPersist.style.display = "inline-block";
+              }
             }
           }
         }
@@ -77,21 +105,78 @@
 
     // --- EVENT HANDLERS ---
     function bindEvents() {
+      // Helper: phát hiện TWA/WebView (APK cài từ Play/store)
+      function isTwaOrWebView() {
+        const ua = navigator.userAgent.toLowerCase();
+        const origin = location.origin;
+        // TWA dùng origin https://appassets.androidplatform.net
+        // WebView thường có user agent chứa 'wv' hoặc 'android' nhưng không phải Chrome app
+        return origin === 'https://appassets.androidplatform.net' ||
+               /wv\)/.test(ua) ||
+               (ua.includes('android') && !ua.includes('chrome'));
+      }
+
       $('btn-refresh-storage')?.addEventListener('click', () => {
         updateStorageStatus();
         showToast("🔄 Đã cập nhật trạng thái bộ nhớ!", "success");
       });
 
       $('btn-request-persist')?.addEventListener('click', async () => {
-        if (navigator.storage && navigator.storage.persist) {
-          const ok = await navigator.storage.persist();
-          if (ok) {
-            showToast("🛡️ Đã kích hoạt Lưu trữ Vĩnh viễn (Persistent Storage)!", "success");
-          } else {
-            showToast("Trình duyệt chưa cho phép cấp quyền vĩnh viễn.", "warning");
-          }
-          updateStorageStatus();
+        if (!navigator.storage || !navigator.storage.persist) {
+          showToast("Trình duyệt không hỗ trợ Persistent Storage.", "warning");
+          return;
         }
+
+        const isWebView = (typeof JarvisNativeBridge !== 'undefined' && JarvisNativeBridge.isNativeApp === true) ||
+                          /wv\)/.test(navigator.userAgent.toLowerCase()) ||
+                          location.origin === 'https://appassets.androidplatform.net';
+        
+        if (isWebView) {
+          showToast("🟢 WebView (APK) đã luôn lưu trữ vĩnh viễn qua IndexedDB + Native Bridge (SharedPreferences). Không cần kích hoạt thêm.", "success");
+          updateStorageStatus();
+          return;
+        }
+
+        let ok = false;
+        try {
+          let permState = 'unknown';
+          try {
+            if (navigator.permissions && navigator.permissions.query) {
+              const perm = await navigator.permissions.query({ name: 'persistent-storage' });
+              permState = perm.state;
+            }
+          } catch (_) {}
+
+          if (permState !== 'granted' && permState !== 'denied') {
+            try {
+              if (navigator.permissions && navigator.permissions.request) {
+                await navigator.permissions.request({ name: 'persistent-storage' });
+              }
+            } catch (_) {
+              // Android Chrome không hỗ trợ request() cho persistent-storage - bỏ qua
+            }
+          }
+
+          ok = await navigator.storage.persist();
+        } catch (e) {
+          console.warn('Lỗi khi kích hoạt persistent storage:', e);
+        }
+
+        if (ok) {
+          showToast("🛡️ Đã kích hoạt Lưu trữ Vĩnh viễn (Persistent Storage)!", "success");
+        } else {
+          const ua = navigator.userAgent.toLowerCase();
+          let hint = "Trình duyệt chưa cho phép cấp quyền vĩnh viễn.";
+          if (/android.*chrome/i.test(ua) || /android.*crios/i.test(ua)) {
+            hint += " Trên Chrome Android: ⋮ Menu → Cài đặt → Quyền riêng tư & bảo mật → Cài đặt trang web → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
+          } else if (ua.includes('chrome') || ua.includes('edg')) {
+            hint += " Hãy vào chrome://site-settings → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
+          } else if (ua.includes('firefox')) {
+            hint += " Hãy vào about:preferences#privacy → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
+          }
+          showToast(hint, "warning");
+        }
+        updateStorageStatus();
       });
 
       $('btn-restore-session-backup')?.addEventListener('click', async () => {
