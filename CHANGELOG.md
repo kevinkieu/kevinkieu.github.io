@@ -3,6 +3,65 @@
 Lịch sử thay đổi của dự án, mới nhất ở trên cùng. Bản đồ kiến trúc (dạng máy đọc) nằm ở
 [`boicanhduan.json`](boicanhduan.json).
 
+## 2026-11-25
+
+- **Fix: Wake Word robust loading với retry + wait for model loaded**
+  - `js/wake-word-tfjs.js`: Thêm retry logic (3 lần) cho `createRecognizer()`,
+    `await recognizer.ensureModelLoaded()`, verify `collectExample` function trước khi dùng. Thêm
+    logging chi tiết từng bước để debug.
+  - Thêm `showToast()` error handling ở 4 catch blocks: load dependencies, create recognizer, train
+    keyword, start listening. Lỗi hiện toast đỏ rõ ràng lên màn hình (5s) thay vì chỉ log console.
+
+- **Fix: Duplicate const storageKey in globals.js causing app crash**
+  - `js/globals.js`: Xóa duplicate `const storageKey` declaration trong `makeCollapsibleSection()`
+    (line 331). Lỗi `Identifier 'storageKey' has already been declared` gây crash app toàn bộ
+    (sessions không hiện, menu không mở, settings không mở).
+  - Error: `SyntaxError: Identifier 'storageKey' has already been declared` → JavaScript crash.
+
+- **Fix: Opt-in Collapsible Settings Sections + UI Restored**
+  - `js/globals.js`: `initCollapsibleSections()` chỉ query
+    `fieldset.settings-group.collapsible-section` (opt-in), không còn auto-apply cho tất cả
+    fieldset.
+  - `index.html`: 18 fieldset trong Settings modal thêm `class="collapsible-section"`.
+  - `js/globals.js`: `makeCollapsibleSection()` generic utility + `initCollapsibleSections()` tự
+    động áp dụng.
+  - `css/style.css`: CSS cho collapsible sections (hover, icon, animation, mobile responsive).
+  - Vấn đề UI hỏng đã fix: không còn auto-apply cho tất cả fieldset, chỉ opt-in.
+
+- **Feature: Gesture Manager + Debug Overlay + Live Call gesture**
+  - `js/gesture-manager.js`: Central gesture detection (shake mặc định, 3-finger-hold,
+    2-finger-double-tap), action registry, config persistence. Mặc định đổi sang SHAKE (tránh
+    conflict screenshot hệ thống).
+  - `js/debug-overlay.js`: Mobile debug console (capture log/warn/error, filter, copy, clear, drag,
+    resize).
+  - `css/debug-overlay.css`: Floating panel styling (dark theme, responsive).
+  - `js/live.js`: Register 'live-call' & 'wake-word' actions với GestureManager.
+  - `js/gesture-settings.js`: Gesture Settings UI trong Settings modal (select action, live preview,
+    reset defaults, test shake).
+  - `index.html`: Thêm gesture-manager.js, gesture-settings.js, debug-overlay.js, debug-overlay.css.
+
+- **Feature: Wake Word "Hey Jarvis" Hands-Free (TensorFlow.js Speech Commands + Transfer Learning)**
+  - `js/wake-word-tfjs.js`: Phát hiện "Hey Jarvis" offline, on-device, không cần API key. Train bằng
+    cách ghi 8-10 mẫu giọng nói. Real-time detection qua microphone.
+  - `js/lazy-libs.js`: Thêm lazy load cho `@tensorflow/tfjs` + `@tensorflow-models/speech-commands`
+    (dependsOn tfjs).
+  - `js/live.js`: Tích hợp WakeWordTFJS API (init, trainKeyword, start, callbacks) + Barge-in (ngắt
+    Jarvis khi đang nói).
+  - `js/tts.js`: Thêm `stopSpeaking()`, `pauseSpeaking()`, `resumeSpeaking()` cho barge-in.
+  - `index.html`: Nạp wake-word-tfjs.js thay Porcupine cũ.
+
+- **Feature: Quick Settings Tile "Hey Jarvis" (Android)**
+  - `android/app/src/main/AndroidManifest.xml`: Đăng ký `JarvisTileService` với
+    `BIND_QUICK_SETTINGS_TILE` permission.
+  - `android/app/src/main/java/com/kevinkieu/jarvisai/JarvisTileService.kt`: TileService cho Quick
+    Settings (toggle wake word listening, auto-start live call).
+  - `android/app/src/main/res/values/strings.xml`: Tile labels (Hey Jarvis / Đang nghe / Chạm để
+    bật).
+  - `android/app/src/main/res/drawable/ic_tile_jarvis.xml` + `ic_tile_jarvis_active.xml`: Vector
+    icons.
+  - `js/live.js`: Register 'live-call' & 'wake-word' actions với GestureManager, handle intent từ
+    tile.
+
 ## 2026-11-24
 
 - **Single Provider Config Source (gộp cấu hình provider thành một nguồn duy nhất)**: Tạo

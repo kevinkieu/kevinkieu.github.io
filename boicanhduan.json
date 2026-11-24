@@ -5,7 +5,7 @@
     "language": "JavaScript (ES modules, không bundler, không framework)",
     "purpose": "Multimodal AI assistant: chat đa model (Google Gemini + gateway OpenAI-compatible), live voice/video call, phiên dịch trực tiếp 2 màn hình, TTS studio, knowledge base + RAG, tìm kiếm web, tủ thuốc/nhắc uống thuốc và đồng bộ GitHub Gist 2 chiều.",
     "platforms": ["Web", "PWA", "Android (WebView + native medication alarms)"],
-    "versioning": "Android versionCode 74 / versionName 1.1.74 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=92, dynamic-providers.js ?v=82, sync.js ?v=79, storage-manager.js ?v=80), sw cache jarvis-ai-pwa-v85"
+    "versioning": "Android versionCode 75 / versionName 1.1.75 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=93, dynamic-providers.js ?v=83, sync.js ?v=80, storage-manager.js ?v=81, wake-word-tfjs.js ?v=2, gesture-manager.js ?v=2, gesture-settings.js ?v=1, debug-overlay.js ?v=2, globals.js ?v=77), sw cache jarvis-ai-pwa-v86"
   },
   "runtime_entry": {
     "web": "index.html",
@@ -291,8 +291,8 @@
   "changelog": {
     "file": "CHANGELOG.md",
     "note": "Lịch sử thay đổi chi tiết đã chuyển từ recent_changes sang CHANGELOG.md để boicanhduan.json chỉ còn mô tả kiến trúc.",
-    "entries": 44,
-    "last_change_date": "2026-11-24",
-    "latest_summary": "Gộp mục Quản lý Provider & Model động thành collapsible (ẩn/hiện bằng nút bấm tiêu đề) để rút ngắn modal Settings; Persistent Storage WebView fix; build-apk single file; assetlinks.json package fix; API Keys overflow + Provider/Model overlap fix. Bump versionCode 74, sw cache v85, sync assets."
+    "entries": 50,
+    "last_change_date": "2026-11-25",
+    "latest_summary": "Fix: Wake Word robust loading + Toast errors + Duplicate const storageKey fix + Opt-in Collapsible Settings + Gesture Manager + Debug Overlay + Quick Settings Tile + Wake Word Hands-Free (TF.js). Bump versionCode 75, sw cache v86, sync assets."
   }
 }
