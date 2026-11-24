@@ -1344,3 +1344,38 @@ window.resetWakeWordTraining = function () {
     if (typeof showToast === 'function') showToast('🔄 Đã reset training data', 'info');
   }
 };
+
+// ==========================================
+// GESTURE INTEGRATION: Live Call & Wake Word actions
+// ==========================================
+// Register live-call action with GestureManager
+if (window.GestureManager) {
+  window.GestureManager.registerAction('live-call', data => {
+    console.log('[Live] Gesture triggered: live-call');
+    if (!window.isLiveActive()) {
+      window.startLiveVoiceCall({ miniBar: true });
+    }
+  });
+  window.GestureManager.registerAction('wake-word', data => {
+    console.log('[Live] Gesture triggered: wake-word');
+    window.toggleWakeWord?.(true);
+    setTimeout(() => window.startWakeWordListening?.(), 500);
+  });
+} else {
+  // Wait for GestureManager
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.GestureManager) {
+      window.GestureManager.registerAction('live-call', data => {
+        console.log('[Live] Gesture triggered: live-call');
+        if (!window.isLiveActive()) {
+          window.startLiveVoiceCall({ miniBar: true });
+        }
+      });
+      window.GestureManager.registerAction('wake-word', data => {
+        console.log('[Live] Gesture triggered: wake-word');
+        window.toggleWakeWord?.(true);
+        setTimeout(() => window.startWakeWordListening?.(), 500);
+      });
+    }
+  });
+}
