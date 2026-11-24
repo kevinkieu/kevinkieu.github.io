@@ -709,7 +709,7 @@
             const localProv = localDP.providers || {};
             const localModels = localDP.models || {};
             const missingDP = { providers: {}, models: {} };
-            
+
             // 1. Thêm provider/model mới (chưa có local)
             Object.entries(remoteDP.providers || {}).forEach(([id, p]) => {
               if (!localProv[id]) {
@@ -743,16 +743,18 @@
                   }
                   if (restored > 0) {
                     hasChanges = true;
-                    console.log(`[SmartSync] Restored ${restored} keys for existing provider "${id}" from Cloud`);
+                    console.log(
+                      `[SmartSync] Restored ${restored} keys for existing provider "${id}" from Cloud`
+                    );
                   }
                 }
               }
             });
-            
+
             Object.entries(remoteDP.models || {}).forEach(([id, m]) => {
               if (!localModels[id]) missingDP.models[id] = m;
             });
-            
+
             const nProv = Object.keys(missingDP.providers).length;
             const nModel = Object.keys(missingDP.models).length;
             if (nProv || nModel) {

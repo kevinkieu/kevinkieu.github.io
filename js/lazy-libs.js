@@ -30,6 +30,8 @@
       label: 'Speech Commands (Transfer Learning)',
       url: 'https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.2/dist/speech-commands.min.js',
       get: () => window.speechCommands,
+      // Custom ready check: wait for window.speechCommands.create to be available
+      readyCheck: () => window.speechCommands && typeof window.speechCommands.create === 'function',
       dependsOn: 'tfjs', // Phải tải tfjs trước
     },
   };
@@ -62,11 +64,14 @@
 
   // Trả về thư viện đã tải (hoặc tải mới). Không bao giờ gọi 2 lần song song.
   // Hỗ trợ dependsOn: tự tải thư viện phụ thuộc trước.
+  // Hỗ trợ readyCheck: hàm tùy chỉnh để kiểm tra thư viện thực sự sẵn sàng (không chỉ object tồn tại).
   window.ensureLib = async function ensureLib(name) {
     const lib = LIBS[name];
     if (!lib) return Promise.reject(new Error('Thư viện không được hỗ trợ: ' + name));
-    const ready = lib.get();
-    if (ready) return ready;
+
+    // Check if already ready (using custom readyCheck or default get)
+    const isReady = lib.readyCheck ? lib.readyCheck() : !!lib.get();
+    if (isReady) return lib.get();
     if (pending[name]) return pending[name];
 
     // Tải dependency trước nếu có
@@ -76,9 +81,28 @@
 
     pending[name] = injectScript(lib.url)
       .then(() => {
-        const value = lib.get();
-        if (!value) throw new Error('Đã tải ' + lib.url + ' nhưng không tìm thấy ' + lib.label);
-        return value;
+        // Wait for readyCheck if provided, otherwise just check get()
+        if (lib.readyCheck) {
+          return new Promise((resolve, reject) => {
+            const checkReady = () => {
+              if (lib.readyCheck()) {
+                resolve(lib.get());
+              } else {
+                setTimeout(checkReady, 50);
+              }
+            };
+            checkReady();
+            // Timeout after 10 seconds
+            setTimeout(
+              () => reject(new Error('Timeout waiting for ' + lib.label + ' to be ready')),
+              10000
+            );
+          });
+        } else {
+          const value = lib.get();
+          if (!value) throw new Error('Đã tải ' + lib.url + ' nhưng không tìm thấy ' + lib.label);
+          return value;
+        }
       })
       .catch(err => {
         delete pending[name];
