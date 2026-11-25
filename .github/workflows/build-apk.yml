@@ -85,15 +85,57 @@ jobs:
           echo "versionCode=$CURRENT_CODE -> $NEW_CODE | versionName=1.1.$NEW_CODE"
           grep -E "versionCode|versionName" "$GRADLE_FILE"
 
+      - name: 🔐 Khôi phục keystore ký APK (từ GitHub Secrets)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KS_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          # Keystore KHÔNG còn nằm trong repo. Thiếu secret thì build APK debug,
+          # không bao giờ ghi mật khẩu vào log.
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "SIGNING_READY=false" >> "$GITHUB_ENV"
+            echo "Không có ANDROID_KEYSTORE_BASE64 → build APK debug (chưa ký release)." >&2
+            exit 0
+          fi
+          if ! echo "$KEYSTORE_B64" | base64 -d > android/app/jarvis.keystore; then
+            echo "ANDROID_KEYSTORE_BASE64 không giải mã được → build APK debug." >&2
+            rm -f android/app/jarvis.keystore
+            echo "SIGNING_READY=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          {
+            echo "storeFile=jarvis.keystore"
+            echo "storePassword=$KS_PASSWORD"
+            echo "keyAlias=${KS_ALIAS:-jarviskey}"
+            echo "keyPassword=${KS_KEY_PASSWORD:-$KS_PASSWORD}"
+          } > android/keystore.properties
+          chmod 600 android/keystore.properties
+          # Tự kiểm tra: keystore phải mở được bằng mật khẩu trong Secrets.
+          # Nếu sai/hỏng thì build APK debug thay vì làm fail cả workflow.
+          if ! keytool -list -keystore android/app/jarvis.keystore -storepass "$KS_PASSWORD" >/dev/null 2>&1; then
+            echo "Keystore không mở được bằng ANDROID_KEYSTORE_PASSWORD → build APK debug." >&2
+            rm -f android/app/jarvis.keystore android/keystore.properties
+            echo "SIGNING_READY=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "SIGNING_READY=true" >> "$GITHUB_ENV"
+
       - name: 🚀 Biên dịch file Android APK (ưu tiên release, fallback debug nếu cần)
         id: build
         run: |
           cd android
-          if ./gradlew assembleRelease --stacktrace; then
-            echo "BUILD_RELEASE=true" >> "$GITHUB_ENV"
+          if [ "$SIGNING_READY" = "true" ]; then
+            if ./gradlew assembleRelease --stacktrace; then
+              echo "BUILD_RELEASE=true" >> "$GITHUB_ENV"
+            else
+              echo "BUILD_RELEASE=false" >> "$GITHUB_ENV"
+              echo "Release build failed, will try debug build and publish debug APK separately." >&2
+              ./gradlew assembleDebug --stacktrace
+            fi
           else
             echo "BUILD_RELEASE=false" >> "$GITHUB_ENV"
-            echo "Release build failed, will try debug build and publish debug APK separately." >&2
             ./gradlew assembleDebug --stacktrace
           fi
 

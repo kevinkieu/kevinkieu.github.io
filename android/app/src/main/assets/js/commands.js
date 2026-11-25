@@ -109,6 +109,39 @@
     renderPromptList();
   }
 
+  // --- QUICK CAPTURE: /remember <nội dung> → lưu thẳng vào Trí nhớ cá nhân (Second Brain) ---
+  async function quickRemember(body) {
+    const text = String(body || '').trim();
+    if (!text) {
+      showToast('Cú pháp: /remember <nội dung cần nhớ>', 'warning');
+      return null;
+    }
+    const RAG = window.JarvisRAG;
+    if (!RAG || typeof RAG.addMemory !== 'function') {
+      showToast('Chưa sẵn sàng: thiếu module Trí nhớ (js/rag.js)!', 'danger');
+      return null;
+    }
+    const title = text.split(/\s+/).slice(0, 8).join(' ').slice(0, 70);
+    showToast('🧠 Đang ghi nhớ...', 'info');
+    try {
+      const item = await RAG.addMemory({ title, text, category: 'personal' });
+      if (item && item.deduped) {
+        showToast(`🧠 Đã gộp vào trí nhớ có sẵn: "${item.title}"`, 'success');
+      } else {
+        showToast(`🧠 Đã nhớ: "${(item && item.title) || title}"`, 'success');
+      }
+      return item;
+    } catch (e) {
+      showToast(
+        'Không lưu được trí nhớ: ' +
+          (e && e.message ? e.message : e) +
+          ' (cần Google API Key để tạo vector)',
+        'danger'
+      );
+      return null;
+    }
+  }
+
   // --- COMMAND PALETTE (CTRL+K) ---
   const COMMANDS = [
     {
@@ -210,6 +243,16 @@
         typeof window.openKnowledgeModal === 'function'
           ? window.openKnowledgeModal('memory')
           : window.JarvisRAG?.openModal('memory'),
+    },
+    {
+      id: 'remember',
+      title: 'Ghi nhớ nhanh một thông tin (/remember <nội dung>)',
+      shortcut: '/remember',
+      icon: '🧠',
+      run: () => {
+        const text = window.prompt('Nội dung cần Jarvis ghi nhớ lâu dài:');
+        if (text) quickRemember(text);
+      },
     },
     {
       id: 'search',
@@ -337,6 +380,11 @@
       openCommandPalette();
       return true;
     }
+    // Ghi nhớ nhanh: /remember <nội dung> (hoặc /nho)
+    if (cmdWord === '/remember' || cmdWord === '/nho' || cmdWord === '/nhớ') {
+      quickRemember(text.slice(cmdWord.length).trim());
+      return true;
+    }
     if (cmdWord === '/sync') {
       $('btn-open-cloud-sync')?.click();
       return true;
@@ -426,6 +474,7 @@
   window.closeCommandPalette = closeCommandPalette;
   window.openPromptLibraryModal = openPromptLibraryModal;
   window.executeChatSlashCommand = executeChatSlashCommand;
+  window.jarvisQuickRemember = quickRemember;
   window.renderSnippets = renderSnippets;
   window.renderPromptList = renderPromptList;
 })();

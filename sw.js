@@ -1,5 +1,5 @@
 // Jarvis AI Service Worker for PWA
-const CACHE_NAME = 'jarvis-ai-pwa-v86';
+const CACHE_NAME = 'jarvis-ai-pwa-v88';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -13,6 +13,8 @@ const STATIC_ASSETS = [
   './css/rag.css',
   './js/model-registry.js',
   './js/chat-render.js',
+  './js/persona-config.js',
+  './js/local-llm.js',
   './js/app.js',
   './js/sync.js',
   './js/live.js',

@@ -11,3 +11,11 @@ android/app/build/
 android/local.properties
 
 node_modules/
+
+# Android signing: KHONG commit keystore/mat khau len repo public
+*.jks
+*.keystore
+
+# Ảnh chụp màn hình khi test UI (giữ trên máy, không đẩy lên repo public)
+screenshots/
+keystore.properties

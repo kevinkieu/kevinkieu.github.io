@@ -1216,6 +1216,7 @@
             externalConfigs: getExternalConfigsObj(true),
             dynamicProviders: window.DynamicProviders?.exportConfig(true),
             gestureConfig: ls.getItem('jarvis_gesture_config') || '',
+            personaConfig: ls.getItem('jarvis_persona_config') || '',
             model: getDOM().model?.value || 'gemini-3.6-flash',
             // Provider đã chọn (model id có thể trùng giữa nhiều provider)
             modelProvider: window.DynamicProviders?.getSelectedModelProvider?.() || null,
@@ -1225,6 +1226,9 @@
             systemInstruction: getDOM().sysInst?.value || '',
             theme: ls.getItem('jarvis_theme') || 'auto',
             autoLearnMemory: ls.getItem('jarvis_auto_learn_memory') || 'true',
+            ollamaHost: ls.getItem('jarvis_ollama_host') || '',
+            ollamaModel: ls.getItem('jarvis_ollama_model') || '',
+            ollamaAutoFallback: ls.getItem('jarvis_ollama_auto_fallback') || 'true',
             ragEnabled: ls.getItem('jarvis_rag_enabled') || 'true',
             autoSyncCloud: ls.getItem('jarvis_auto_sync_cloud') || 'true',
           },
@@ -1506,6 +1510,10 @@
           cohereKeyNames: getCohereKeyNamesList(),
           externalConfigs: getExternalConfigsObj(true),
           dynamicProviders: window.DynamicProviders?.exportConfig(true),
+          personaConfig: ls.getItem('jarvis_persona_config') || '',
+          ollamaHost: ls.getItem('jarvis_ollama_host') || '',
+          ollamaModel: ls.getItem('jarvis_ollama_model') || '',
+          ollamaAutoFallback: ls.getItem('jarvis_ollama_auto_fallback') || 'true',
           model: getDOM().model?.value || 'gemini-3.6-flash',
           // Provider đã chọn (model id có thể trùng giữa nhiều provider)
           modelProvider: window.DynamicProviders?.getSelectedModelProvider?.() || null,
@@ -1641,6 +1649,12 @@
             window.GestureManager.init();
           }
         }
+        if (parsed.settings.personaConfig) {
+          ls.setItem('jarvis_persona_config', parsed.settings.personaConfig);
+          if (window.PersonaConfig && typeof window.PersonaConfig.refreshUI === 'function') {
+            window.PersonaConfig.refreshUI();
+          }
+        }
         if (parsed.settings.model && getDOM().model) {
           // Khôi phục theo cả provider để không chọn nhầm option trùng model id
           const applied = window.DynamicProviders?.selectModelOption?.(
@@ -1665,6 +1679,14 @@
         }
         if (parsed.settings.autoLearnMemory)
           ls.setItem('jarvis_auto_learn_memory', parsed.settings.autoLearnMemory);
+        if (parsed.settings.ollamaHost)
+          ls.setItem('jarvis_ollama_host', parsed.settings.ollamaHost);
+        if (parsed.settings.ollamaModel)
+          ls.setItem('jarvis_ollama_model', parsed.settings.ollamaModel);
+        if (parsed.settings.ollamaAutoFallback)
+          ls.setItem('jarvis_ollama_auto_fallback', parsed.settings.ollamaAutoFallback);
+        if (window.LocalLLM && typeof window.LocalLLM.refreshUI === 'function')
+          window.LocalLLM.refreshUI();
         if (parsed.settings.ragEnabled)
           ls.setItem('jarvis_rag_enabled', parsed.settings.ragEnabled);
       }

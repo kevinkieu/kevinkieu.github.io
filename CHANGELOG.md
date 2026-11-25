@@ -5,6 +5,70 @@ Lịch sử thay đổi của dự án, mới nhất ở trên cùng. Bản đ�
 
 ## 2026-11-25
 
+- **💻 Ollama local LLM + tự chuyển khi cloud lỗi**
+  - `js/local-llm.js` (mới): dò server Ollama (`GET /api/tags`), stream chat (`POST /api/chat`,
+    NDJSON), cấu hình `jarvis_ollama_host` / `jarvis_ollama_model` / `jarvis_ollama_auto_fallback`.
+    Không cần API key, không ghi quota.
+  - Model Ollama vào optgroup "💻 Ollama (máy local)" của `#model-select` với id `ollama:<model>`;
+    nhánh gửi tin riêng trong `js/app.js` (không đòi Google key, báo đúng tên model khi ảnh không
+    được xử lý rồi gửi tiếp không kèm ảnh).
+  - Fallback: model cloud lỗi / hết quota / mất mạng → tự chạy lại đúng lượt đó bằng Ollama local,
+    gắn nhãn "💻 Ollama (tự động)" trên bong bóng trả lời; Ollama cũng lỗi thì hiện lỗi gốc.
+  - UI: fieldset "Ollama - LLM chạy trên máy của bạn" trong Cài đặt (host, model, công tắc fallback,
+    nút kiểm tra kết nối); cấu hình này đi kèm backup JSON + Gist sync.
+
+- **🎭 Persona tự chèn vào mọi lượt chat**
+  - `js/persona-config.js`: thêm `buildCard()` (thẻ tính cách ngắn: danh tính + xưng hô + quy tắc
+    đang bật) và cờ `autoInject` (mặc định bật, checkbox "Tự chèn thẻ tính cách" trong Cài đặt).
+  - `js/app.js`: `getDynamicSI()` đặt thẻ này ngay sau `[CHỈ THỊ HỆ THỐNG]` (ưu tiên cao nhất), nên
+    phiên ngắn hay model local (Ollama) vẫn giữ đúng "con người" của Jarvis.
+
+- **🧠 Trí nhớ: gộp trùng khi lưu + ghi nhớ nhanh bằng lệnh chat**
+  - `js/rag.js`: `addMemoryItem` so text đã chuẩn hoá và cosine ≥ 0.93 với trí nhớ cũ → cập nhật mẩu
+    cũ (giữ bản dài hơn, làm mới vector) thay vì tạo bản sao; trả về `deduped: true`.
+  - Lệnh chat mới: `/remember <nội dung>` (hoặc `/nho`) lưu thẳng vào Second Brain, có trong Ctrl+K
+    và `js/commands.js`.
+
+- **🔍 Lọc nhanh danh sách phiên**
+  - Gõ vào ô tìm kiếm sidebar là lọc ngay `#session-select` theo tên phiên, model đã dùng và nội
+    dung tin nhắn; `Esc` xoá lọc, `Enter` mở tìm kiếm sâu (từ khoá/ngữ nghĩa) như cũ.
+
+- **🧹 Dọn repo**
+  - `package.json`: sửa `description` bị hỏng ("<div align=\"center\">"), `license` → `UNLICENSED`,
+    thêm `private: true`, version khớp app (1.1.76), bỏ `|| true` che lỗi ở `typecheck`.
+  - `TODO.md`: viết lại theo trạng thái thực tế (Ollama/memory đã xong, wake word on-device vẫn
+    còn).
+  - `.gitignore`: bỏ qua `screenshots/` (ảnh test UI, không đẩy lên repo public).
+- **🔐 Bảo mật: gỡ keystore ký APK + mật khẩu khỏi repo public** (GitHub Pages buộc repo public)
+  - `android/app/jarvis.keystore`: `git rm --cached` (file vẫn còn trên máy), `.gitignore` thêm
+    `*.jks`, `*.keystore`, `keystore.properties`. Trước đây keystore + mật khẩu viết cứng trong
+    `build.gradle` nằm công khai → ai cũng ký được APK giả mạo cùng chữ ký.
+  - `android/app/build.gradle`: bỏ mật khẩu viết cứng; đọc `android/keystore.properties` (local,
+    gitignore) → biến môi trường `JARVIS_STORE_FILE` / `JARVIS_STORE_PASSWORD` / `JARVIS_KEY_ALIAS`
+    / `JARVIS_KEY_PASSWORD`; thiếu keystore thì build vẫn chạy (APK ký bằng debug key) thay vì báo
+    lỗi.
+  - `.github/workflows/build-apk.yml`: thêm bước khôi phục keystore từ secret
+    `ANDROID_KEYSTORE_BASE64` (+ `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+    `ANDROID_KEY_PASSWORD`); thiếu secret thì build APK debug thay vì release chưa ký. Bước này còn
+    tự kiểm tra keystore mở được bằng mật khẩu (base64 hỏng/sai mật khẩu → build APK debug, không
+    làm fail cả workflow).
+  - 4 secret trên đã được nạp vào repo `kevinkieu/kevinkieu.github.io`. Keystore giữ nguyên chữ ký
+    cũ nên bản cài trên máy vẫn cập nhật được, không phải gỡ app hay mất dữ liệu.
+  - Xoá `_probe.html` (bản copy `index.html`) khỏi repo.
+
+- **🎭 Tách "con người của Jarvis" thành cấu hình (Settings → Tính cách)**
+  - `js/persona-config.js` (mới): danh tính mặc định, phong cách/xưng hô và 3 khối quy tắc bật/tắt
+    (mốc thời gian thực tế, bảo vệ đời tư, buộc viết câu trả lời sau suy luận); lưu
+    `jarvis_persona_config`.
+  - `js/app.js`: `getDynamicSI()` ghép system instruction từ `window.PersonaConfig`; bỏ chuỗi quy
+    tắc viết cứng và tên người thân khỏi source public.
+  - `index.html`: fieldset "Tính cách & Quy tắc" + nạp `persona-config.js?v=1`; bump `app.js ?v=93`,
+    `sync.js ?v=81`, `export.js ?v=79`.
+  - `js/sync.js`: `settings.personaConfig` trong cả 2 luồng push + khôi phục khi pull (gọi
+    `PersonaConfig.refreshUI()`).
+  - `js/export.js`: `jarvis_persona_config` vào backup JSON.
+  - `sw.js`: cache `jarvis-ai-pwa-v87`, precache `persona-config.js`.
+
 - **🗑️ Remove hoàn toàn tính năng Wake Word "Hey Jarvis" (TF.js)**
   - Xoá `js/wake-word-tfjs.js` (TensorFlow.js Speech Commands không nhận diện ổn định, luôn lỗi khi
     "Ghi mẫu" nên không thể dùng thực tế).

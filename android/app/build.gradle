@@ -2,6 +2,32 @@ plugins {
     id 'com.android.application'
 }
 
+// --- CẤU HÌNH KÝ APK (không viết cứng mật khẩu trong repo public) ---
+// Thứ tự ưu tiên: android/keystore.properties (file local, đã gitignore)
+// -> biến môi trường (dùng cho CI/GitHub Secrets).
+// Không tìm thấy keystore thì vẫn build được (APK ký bằng debug key) thay vì lỗi.
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+def hasKeystoreProps = keystorePropsFile.exists()
+if (hasKeystoreProps) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+
+def signingValue = { String propKey, String envName, String fallback ->
+    def fromProps = hasKeystoreProps ? keystoreProps.getProperty(propKey) : null
+    if (fromProps) return fromProps
+    def fromEnv = System.getenv(envName)
+    if (fromEnv) return fromEnv
+    return fallback
+}
+
+def releaseStoreFile = file(signingValue('storeFile', 'JARVIS_STORE_FILE', 'jarvis.keystore'))
+def releaseStorePassword = signingValue('storePassword', 'JARVIS_STORE_PASSWORD', '')
+def releaseKeyAlias = signingValue('keyAlias', 'JARVIS_KEY_ALIAS', 'jarviskey')
+def releaseKeyPassword = signingValue('keyPassword', 'JARVIS_KEY_PASSWORD', '')
+def canSignRelease =
+        releaseStoreFile.exists() && releaseStorePassword && releaseKeyPassword
+
 android {
     namespace 'com.kevinkieu.jarvisai'
     compileSdk 34
@@ -15,22 +41,24 @@ android {
     }
 
     signingConfigs {
-        release {
-            storeFile file('jarvis.keystore')
-            storePassword '***REMOVED***'
-            keyAlias 'jarviskey'
-            keyPassword '***REMOVED***'
+        if (canSignRelease) {
+            release {
+                storeFile releaseStoreFile
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
         }
     }
 
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig signingConfigs.release
+            if (canSignRelease) signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
-            signingConfig signingConfigs.release
+            if (canSignRelease) signingConfig signingConfigs.release
             debuggable true
         }
     }

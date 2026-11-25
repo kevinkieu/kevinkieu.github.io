@@ -89,7 +89,7 @@
               <input
                 type="text"
                 id="sidebar-search-input"
-                placeholder="🔍 Tìm kiếm phiên & tri thức..."
+                placeholder="🔍 Lọc phiên... (Enter: tìm sâu)"
                 class="modern-input"
               />
             </div>
@@ -1493,6 +1493,158 @@
                   class="modern-textarea"
                   placeholder="Nhập ngữ cảnh dùng chung cho tất cả các phiên..."
                 ></textarea>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- PERSONA & RULES (Tính cách của Jarvis) -->
+          <fieldset class="settings-group collapsible-section">
+            <legend>🎭 Tính cách & Quy tắc của Jarvis</legend>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <div>
+                <label class="field-label" for="persona-identity-input"
+                  >Danh tính mặc định (dùng khi phiên không có System Instruction):</label
+                >
+                <textarea
+                  id="persona-identity-input"
+                  rows="2"
+                  class="modern-textarea"
+                  placeholder="Bạn là Jarvis AI - trợ lý thông minh, chuẩn xác và thân thiện."
+                ></textarea>
+              </div>
+              <div>
+                <label class="field-label" for="persona-tone-input">Phong cách & cách xưng hô:</label>
+                <textarea
+                  id="persona-tone-input"
+                  rows="2"
+                  class="modern-textarea"
+                  placeholder="Ví dụ: Xưng 'tôi' - gọi 'anh', trả lời ngắn gọn, đi thẳng vào ý chính, hạn chế lan man."
+                ></textarea>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <label
+                  style="
+                    cursor: pointer;
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                  "
+                >
+                  <input type="checkbox" id="persona-rule-time" checked /> ⏱️ Luôn nhắc mốc thời gian thực tế (tránh
+                  tính sai tuổi/năm)
+                </label>
+                <label
+                  style="
+                    cursor: pointer;
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                  "
+                >
+                  <input type="checkbox" id="persona-rule-privacy" checked /> 🔒 Không tự nhắc chuyện gia đình / đời tư
+                  khi không được hỏi
+                </label>
+                <label
+                  style="
+                    cursor: pointer;
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                  "
+                >
+                  <input type="checkbox" id="persona-rule-thinking" checked /> 🧠 Buộc viết câu trả lời hoàn chỉnh sau
+                  khi suy luận
+                </label>
+                <label
+                  style="
+                    cursor: pointer;
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                  "
+                >
+                  <input type="checkbox" id="persona-card-inject" checked /> 💉 Tự chèn thẻ tính cách ngắn vào đầu mỗi
+                  lượt chat (kể cả model local)
+                </label>
+              </div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.4">
+                Cấu hình này lưu vào backup JSON và đồng bộ Gist, không còn viết cứng trong source code.
+              </div>
+              <button id="btn-persona-reset" class="btn" style="width: 100%; padding: 8px; font-size: 0.8rem">
+                🔄 Khôi phục mặc định
+              </button>
+            </div>
+          </fieldset>
+
+          <!-- OLLAMA LOCAL LLM -->
+          <fieldset
+            class="settings-group collapsible-section"
+            style="border: 2px solid #10b981; background: rgba(16, 185, 129, 0.05)"
+          >
+            <legend style="color: #059669; font-weight: 700">💻 Ollama - LLM chạy trên máy của bạn</legend>
+            <div
+              style="
+                font-size: 0.75rem;
+                color: var(--text-muted);
+                background: var(--bg-card);
+                padding: 10px;
+                border-radius: var(--radius-sm);
+                margin-bottom: 10px;
+                border: 1px solid var(--border);
+              "
+            >
+              💡 Chat miễn phí, không cần API key, chạy offline sau khi tải model. Model Ollama xuất hiện trong ô
+              <b>🤖 Model chat chính</b> ở sidebar dưới nhóm <b>💻 Ollama (máy local)</b>.
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <div>
+                <label class="field-label" for="ollama-host-input">Địa chỉ Ollama (host):</label>
+                <input
+                  type="text"
+                  id="ollama-host-input"
+                  class="modern-input"
+                  placeholder="http://127.0.0.1:11434"
+                  autocomplete="off"
+                />
+              </div>
+              <div>
+                <label class="field-label" for="ollama-model-input">Model local mặc định:</label>
+                <input
+                  type="text"
+                  id="ollama-model-input"
+                  class="modern-input"
+                  list="ollama-model-datalist"
+                  placeholder="llama3.2"
+                  autocomplete="off"
+                />
+                <datalist id="ollama-model-datalist"></datalist>
+              </div>
+              <label
+                style="
+                  cursor: pointer;
+                  font-size: 0.8rem;
+                  font-weight: 600;
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                "
+              >
+                <input type="checkbox" id="ollama-auto-fallback" checked /> ⚡ Tự chuyển sang Ollama local khi model
+                cloud lỗi / hết quota
+              </label>
+              <button id="btn-ollama-probe" class="btn" style="width: 100%; padding: 8px; font-size: 0.8rem">
+                🔌 Kiểm tra kết nối & dò model
+              </button>
+              <div id="ollama-probe-status" style="font-size: 0.72rem; line-height: 1.4; color: var(--text-muted)">
+                Chưa kiểm tra. Mở Ollama trên máy rồi bấm nút trên.
               </div>
             </div>
           </fieldset>
@@ -3615,7 +3767,7 @@
     <script type="module" src="./js/search.js?v=76"></script>
     <script type="module" src="./js/extract.js?v=76"></script>
     <script type="module" src="./js/blob.js?v=76"></script>
-    <script type="module" src="./js/export.js?v=78"></script>
+    <script type="module" src="./js/export.js?v=79"></script>
     <script type="module" src="./js/quota.js?v=78"></script>
     <script type="module" src="./js/storage-manager.js?v=80"></script>
     <script type="module" src="./js/color-tags.js?v=76"></script>
@@ -3624,7 +3776,7 @@
     <script type="module" src="./js/web-share-target.js?v=76"></script>
     <script type="module" src="./js/key-config-sync.js?v=76"></script>
     <script type="module" src="./js/medication.js?v=76"></script>
-    <script type="module" src="./js/commands.js?v=76"></script>
+    <script type="module" src="./js/commands.js?v=77"></script>
     <script type="module" src="./js/briefing.js?v=76"></script>
     <script type="module" src="./js/cipher.js?v=76"></script>
     <script type="module" src="./js/database.js?v=76"></script>
@@ -3636,14 +3788,16 @@
     <script type="module" src="./js/model-registry.js?v=76"></script>
     <script type="module" src="./js/dynamic-providers.js?v=82"></script>
     <script type="module" src="./js/chat-render.js?v=76"></script>
-    <script type="module" src="./js/app.js?v=92"></script>
+    <script type="module" src="./js/persona-config.js?v=2"></script>
+    <script type="module" src="./js/local-llm.js?v=1"></script>
+    <script type="module" src="./js/app.js?v=94"></script>
     <script type="module" src="./js/api-keys.js?v=77"></script>
-    <script type="module" src="./js/sync.js?v=80"></script>
+    <script type="module" src="./js/sync.js?v=81"></script>
     <script type="module" src="./js/live.js?v=77"></script>
     <script type="module" src="./js/tts.js?v=76"></script>
     <script type="module" src="./js/translate.js?v=76"></script>
     <script type="module" src="./js/eventBus.js?v=76"></script>
     <script type="module" src="./js/rag-core.js?v=76"></script>
-    <script type="module" src="./js/rag.js?v=76"></script>
+    <script type="module" src="./js/rag.js?v=77"></script>
   </body>
 </html>

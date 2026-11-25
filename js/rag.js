@@ -412,20 +412,68 @@
     return chunks;
   }
 
+  // Chuẩn hoá text để so trùng: bỏ khác biệt hoa/thường, khoảng trắng và dấu câu
+  function normalizeMemoryText(t) {
+    return String(t || '')
+      .toLowerCase()
+      .normalize('NFC')
+      .replace(/\s+/g, ' ')
+      .replace(/[.,;:!?…"'“”‘’()\[\]{}]/g, '')
+      .trim();
+  }
+
   // --- KNOWLEDGE BASE: ADD PERSONAL MEMORY (SECOND BRAIN) ---
+  // Tự gộp khi lưu: nếu đã có mẩu trí nhớ trùng (cùng nội dung hoặc vector rất giống)
+  // thì cập nhật mẩu cũ thay vì tạo bản sao mới. Trả về item kèm cờ deduped: true.
   async function addMemoryItem({ title, text, category = 'personal' }, customApiKey = null) {
     if (!text || !text.trim()) throw new Error('Nội dung không được để trống.');
-    const embedding = await getEmbedding(text.trim(), {
+    const cleanText = text.trim();
+    const embedding = await getEmbedding(cleanText, {
       taskType: 'RETRIEVAL_DOCUMENT',
       title: title || 'Ghi nhớ cá nhân',
       apiKey: customApiKey,
     });
+
+    try {
+      const norm = normalizeMemoryText(cleanText);
+      const existing = await getAllVectorItems('memory');
+      const dup = (existing || []).find(it => {
+        if (!it || it.type !== 'memory') return false;
+        const itNorm = normalizeMemoryText(it.text);
+        if (itNorm && norm) {
+          if (itNorm === norm) return true;
+          if (norm.length > 20 && itNorm.length > 20) {
+            if (itNorm.includes(norm) || norm.includes(itNorm)) return true;
+          }
+        }
+        if (it.vector && embedding) return cosineSimilarity(it.vector, embedding) >= 0.93;
+        return false;
+      });
+      if (dup) {
+        // Giữ bản dài hơn (nhiều thông tin hơn), nhưng luôn cập nhật vector + tiêu đề
+        const keepNew = cleanText.length >= String(dup.text || '').length;
+        const merged = Object.assign({}, dup, {
+          title: (title || dup.title || 'Ghi nhớ cá nhân').trim(),
+          text: keepNew ? cleanText : dup.text,
+          category: category || dup.category || 'personal',
+          vector: embedding || dup.vector,
+          updatedAt: Date.now(),
+        });
+        await saveVectorItem(merged);
+        console.log('[Memory] Gộp vào trí nhớ có sẵn:', merged.title);
+        renderMemoryList();
+        return Object.assign({}, merged, { deduped: true });
+      }
+    } catch (dupErr) {
+      console.warn('[Memory] Bỏ qua kiểm tra trùng lặp:', dupErr);
+    }
+
     const id = `mem_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     const item = {
       id,
       type: 'memory',
       title: (title || 'Ghi nhớ cá nhân').trim(),
-      text: text.trim(),
+      text: cleanText,
       category: category || 'personal',
       vector: embedding,
       createdAt: Date.now(),
@@ -2138,6 +2186,7 @@ Giọng văn ấm áp, thông minh, tôn trọng, đúng chuẩn Jarvis. Không 
     editMemory,
     synthesizePersonaProfile,
     addMemory: addMemoryItem,
+    normalizeMemoryText,
     deleteMemory: async id => {
       await deleteVectorItem(id);
       await renderMemoryList();

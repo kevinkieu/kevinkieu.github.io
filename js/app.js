@@ -1650,22 +1650,21 @@ $('btn-open-settings').onclick = () => {
 
 const getDynamicSI = (ragSnippet = '') => {
   const cs = sessions.find(x => x.id === activeId);
-  const b = DOM.sysInst?.value || 'Bạn là Jarvis AI - trợ lý thông minh và chuẩn xác.',
+  // "Con người" của Jarvis lấy từ js/persona-config.js (Settings → Tính cách),
+  // không còn viết cứng chuỗi quy tắc trong file này.
+  const persona =
+    window.PersonaConfig && typeof window.PersonaConfig.get === 'function'
+      ? window.PersonaConfig.get()
+      : null;
+  const b =
+      DOM.sysInst?.value?.trim() ||
+      (persona ? persona.identity : '') ||
+      'Bạn là Jarvis AI - trợ lý thông minh và chuẩn xác.',
     g =
       DOM.globContext?.value ||
       ls.getItem('jarvis_global_context') ||
       ls.getItem('huanmu_global_context') ||
-      '',
-    now = new Date(),
-    days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
-  const hh = String(now.getHours()).padStart(2, '0'),
-    mm = String(now.getMinutes()).padStart(2, '0'),
-    ss = String(now.getSeconds()).padStart(2, '0');
-  const timeStr = `${hh}:${mm}:${ss}`;
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const day = now.getDate();
-  const dateStr = `${days[now.getDay()]}, ngày ${day}/${month}/${year}`;
+      '';
 
   const memorySnippet =
     cs?.summaryMemory && DOM.toggleAutoSummary?.checked !== false
@@ -1686,14 +1685,43 @@ const getDynamicSI = (ragSnippet = '') => {
 
   const ragBlock = ragSnippet ? `\n\n${ragSnippet}\n` : '';
 
-  const timeInstruction = `[MỐC THỜI GIAN THỰC TẾ & NGUYÊN TẮC SUY LUẬN THỜI GIAN BẮT BUỘC]:
-- Hôm nay là: ${dateStr}. Bây giờ là: ${timeStr} (Múi giờ Việt Nam GMT+7).
-- NĂM HIỆN TẠI BẮT BUỘC LÀ NĂM ${year}. TUYỆT ĐỐI KHÔNG coi năm nay là năm 2024 hay 2025 (đó chỉ là thời điểm dữ liệu huấn luyện cũ).
-- NGUYÊN TẮC SUY LUẬN THỜI GIAN & TÍNH TUỔI:
-  + Mọi phép tính toán số tuổi, thời gian đã trôi qua kể từ một mốc quá khứ (ví dụ: mốc sinh năm 2024, các sự kiện trong quá khứ) hay tính thời gian đến tương lai ĐỀU BẮT BUỘC PHẢI lấy mốc thời điểm HIỆN TẠI LÀ THÁNG ${month}/${year} (NĂM ${year}).
-  + Ví dụ: Một người hoặc đứa trẻ sinh vào tháng 01/2024, tính đến thời điểm hiện tại tháng ${month}/${year} đã là ${year - 2024} năm ${month - 1} tháng (khoảng ${(year - 2024) * 12 + month - 1} tháng tuổi), TUYỆT ĐỐI KHÔNG được tính nhầm là 10 tháng tuổi!`;
+  const timeInstruction =
+    !persona || persona.timeRule !== false
+      ? window.PersonaConfig && typeof window.PersonaConfig.buildTimeRule === 'function'
+        ? window.PersonaConfig.buildTimeRule(new Date())
+        : ''
+      : '';
 
-  return `${timeInstruction}\n\n[CHỈ THỊ HỆ THỐNG]:\n${DOM.toggleGlob?.checked !== false && g ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}${ragBlock}\n\n[QUY TẮC ỨNG XỬ TẾ NHỊ]: Khi người dùng hỏi các câu hỏi kiến thức khoa học, nấu ăn, công nghệ, học tập hoặc câu hỏi phổ thông (như thịt gà, kỹ thuật, thời tiết...), TUYỆT ĐỐI KHÔNG tự tiện nhắc đến thông tin gia đình, đời tư, con cái (như bé Bắp, bé Tiền) nếu người dùng không chủ động hỏi hay yêu cầu.\n\n[QUY TẮC TRẢ LỜI CỦA MÔ HÌNH SUY LUẬN (THINKING)]: Sau khi hoàn tất quá trình suy luận nội bộ, bạn BẮT BUỘC PHẢI viết toàn bộ nội dung câu trả lời hoàn chỉnh, chi tiết, logic và thân thiện để gửi trực tiếp cho người dùng. TUYỆT ĐỐI KHÔNG kết thúc phản hồi khi chưa viết phần câu trả lời cho người dùng.`;
+  const extraRules = [];
+  if (persona && persona.tone) {
+    extraRules.push(
+      window.PersonaConfig && typeof window.PersonaConfig.buildToneRule === 'function'
+        ? window.PersonaConfig.buildToneRule(persona.tone)
+        : `[PHONG CÁCH & CÁCH XƯNG HÔ NGƯỜI DÙNG MUỐN]:\n${persona.tone}`
+    );
+  }
+  if (!persona || persona.privacyRule !== false) {
+    extraRules.push(
+      window.PersonaConfig && typeof window.PersonaConfig.buildPrivacyRule === 'function'
+        ? window.PersonaConfig.buildPrivacyRule()
+        : '[QUY TẮC ỨNG XỬ TẾ NHỊ]: Không tự tiện nhắc đến thông tin gia đình, đời tư, con cái hay người thân nếu người dùng không chủ động hỏi.'
+    );
+  }
+  if (!persona || persona.thinkingRule !== false) {
+    extraRules.push(
+      window.PersonaConfig && typeof window.PersonaConfig.buildThinkingRule === 'function'
+        ? window.PersonaConfig.buildThinkingRule()
+        : '[QUY TẮC TRẢ LỜI CỦA MÔ HÌNH SUY LUẬN (THINKING)]: Sau khi hoàn tất suy luận nội bộ, bạn BẮT BUỘC PHẢI viết câu trả lời hoàn chỉnh cho người dùng.'
+    );
+  }
+  const extraBlock = extraRules.filter(Boolean).join('\n\n');
+
+  const card =
+    persona && window.PersonaConfig && typeof window.PersonaConfig.buildCard === 'function'
+      ? window.PersonaConfig.buildCard(persona)
+      : '';
+
+  return `${timeInstruction ? timeInstruction + '\n\n' : ''}[CHỈ THỊ HỆ THỐNG]:\n${card ? card + '\n\n' : ''}${DOM.toggleGlob?.checked !== false && g ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}${ragBlock}${extraBlock ? '\n\n' + extraBlock : ''}`;
 };
 
 window.exportCleanArticle = () => {
@@ -2225,8 +2253,38 @@ async function switchSess(id) {
 
 DOM.selSession.onchange = e => switchSess(e.target.value);
 
+// Lọc phiên theo từ khoá gõ ở ô tìm kiếm sidebar (tên phiên, model đã dùng, nội dung tin nhắn)
+let sessionFilter = '';
+function sessionMatchesFilter(s, q) {
+  if (!s) return false;
+  if (
+    String(s.name || '')
+      .toLowerCase()
+      .includes(q)
+  )
+    return true;
+  return (s.his || []).some(m => {
+    if (
+      String(m.model || '')
+        .toLowerCase()
+        .includes(q)
+    )
+      return true;
+    return String(m.text || '')
+      .toLowerCase()
+      .includes(q);
+  });
+}
+
 function renderSel() {
-  const v = sessions;
+  const q = sessionFilter.trim().toLowerCase();
+  let v = sessions;
+  if (q) {
+    const matched = sessions.filter(s => sessionMatchesFilter(s, q));
+    // Luôn giữ phiên đang mở trong danh sách để ô select không bị trống
+    const active = sessions.find(s => s.id === activeId);
+    v = active && !matched.includes(active) ? [active, ...matched] : matched;
+  }
   DOM.selSession.innerHTML = v.length
     ? v
         .map(s => {
@@ -2234,7 +2292,7 @@ function renderSel() {
           return `<option value="${s.id}" ${s.id === activeId ? 'selected' : ''}>${dot}${s.name}</option>`;
         })
         .join('')
-    : '<option value="">(Chưa có phiên nào)</option>';
+    : '<option value="">(Không có phiên khớp)</option>';
   if (activeId) DOM.selSession.value = activeId;
   const curS = sessions.find(x => x.id === activeId);
   const kInfo =
@@ -3004,6 +3062,8 @@ DOM.sendBtn.onclick = async () => {
   // bD (bong bóng trả lời) phải khai báo TRƯỚC khối chọn key: các nhánh "thiếu key"
   // bên dưới đã gọi bD?.remove() trước khi khối let ở cuối handler chạy -> TDZ.
   let bD;
+  // Prompt đã làm giàu (web/URL/RAG) — dùng lại khi phải chạy tiếp bằng Ollama local
+  let promptForLocal = '';
   if (isProcessing) return abortController?.abort();
   const rawMsg = DOM.input.value.trim();
   if (rawMsg.startsWith('/') && executeChatSlashCommand(rawMsg)) {
@@ -3034,6 +3094,8 @@ DOM.sendBtn.onclick = async () => {
   // fallback resolveCompatProvider
   const getModelProvider = modelId => {
     const mid = String(modelId || '').trim();
+    // Model chạy trên Ollama local (id dạng "ollama:<tên model>") — không thuộc provider cloud nào
+    if (window.LocalLLM && window.LocalLLM.isLocalModel(mid)) return 'ollama';
     // 1. Nếu là model ĐANG CHỌN trong dropdown: lấy đúng option đang được chọn.
     //    Model id có thể trùng giữa nhiều provider (vd particle-ai/particle-1:free
     //    ở OpenRouter và Kilo) — .find() theo value sẽ luôn lấy option đầu tiên.
@@ -3132,6 +3194,8 @@ DOM.sendBtn.onclick = async () => {
   // Kiểm tra Explabs TRƯỚC và loại trừ khỏi nhánh compat, để thứ tự nhánh không
   // còn phụ thuộc vào việc ID có nằm trong COMPAT_PROVIDERS hay không.
   const usesExplabs = (window.EXPLABS_MODELS || []).includes(am);
+  // Model chạy trên Ollama (máy người dùng): không cần API key, không ghi quota
+  const localModel = !!(window.LocalLLM && window.LocalLLM.isLocalModel(am));
   // Model từ gateway OpenAI-compatible (OpenRouter/NVIDIA/Cohere + dynamic providers) không dùng Google API Key
   const providerId = getModelProvider(am);
   const usesCompatGateway =
@@ -3252,6 +3316,8 @@ DOM.sendBtn.onclick = async () => {
     }
     if (typeof window.recordExplabsRequest === 'function')
       window.recordExplabsRequest(keyIndexNum, am);
+  } else if (localModel) {
+    // Ollama chạy trên máy: không dùng API key nào
   } else {
     if (!gKey) return showToast('Cần ít nhất 1 Google API Key trong Cài đặt!', 'danger');
   }
@@ -3261,11 +3327,14 @@ DOM.sendBtn.onclick = async () => {
   abortController = new AbortController();
   // Gateway OpenAI-compatible (OpenRouter) và Experiential Labs không dùng Google Key
   // nên không ghi quota Google - hai bên có bộ đếm riêng, ghi ở trên khi xoay key
-  if (!usesCompatGateway && !usesExplabs) recordKeyRequest(keyIndexNum, am);
+  if (!usesCompatGateway && !usesExplabs && !localModel) recordKeyRequest(keyIndexNum, am);
 
   DOM.sendBtn.innerHTML = `<span>Dừng</span> 🛑`;
   DOM.sendBtn.style.background = 'var(--danger)';
 
+  // Model thật sự đã trả lời (có thể là Ollama local khi fallback)
+  let effectiveModel = am;
+  let localModelUsed = '';
   let finalResp = '',
     botTime = getNowTime24h(),
     dispText = msg || '📎 [Gửi tệp]',
@@ -3289,7 +3358,7 @@ DOM.sendBtn.onclick = async () => {
         time: botTime,
         interactionId: recordedIxId,
         keyIndex: keyIndexNum,
-        model: am,
+        model: effectiveModel,
         pinnedKey: keyIndexNum,
       }
     );
@@ -3324,9 +3393,12 @@ DOM.sendBtn.onclick = async () => {
         );
         ragBadge = `<span class="rag-status-badge" onclick="window.JarvisRAG.showRetrievedDetails('${payload}')" title="Trích xuất từ: ${escapeHtml(topTitle)} (${topPct}% khớp). Bấm để xem chi tiết!">🧠 Trí nhớ RAG (${ragMatches.length} mục · ${topPct}%)</span>`;
       }
-      const keyBadge = getKeyBadgeHtml(keyIndexNum, am);
+      const keyBadge = localModelUsed
+        ? `<span class="interaction-id-badge" title="Trả lời bằng Ollama local - không dùng API key">💻 ${escapeHtml(localModelUsed)}</span>`
+        : getKeyBadgeHtml(keyIndexNum, am);
+      const localLabel = localModelUsed ? ` · 💻 ${escapeHtml(localModelUsed)}` : '';
       bD.querySelector('.message-header').innerHTML =
-        `<span>✨ Jarvis AI</span><span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}</span>${keyBadge}${ixBadge}${ragBadge}`;
+        `<span>✨ Jarvis AI</span><span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}${localLabel}</span>${keyBadge}${ixBadge}${ragBadge}`;
       const currentBotIdx = chatHistory.length - 1,
         aDiv = document.createElement('div');
       aDiv.className = 'msg-actions';
@@ -3387,6 +3459,98 @@ DOM.sendBtn.onclick = async () => {
     }
   };
 
+  // --- LƯỢT CHẠY BẰNG OLLAMA LOCAL (chọn model local, hoặc fallback khi cloud lỗi) ---
+  const runOllamaTurn = async (localModelName, reason = '') => {
+    const L = window.LocalLLM;
+    if (!L) throw new Error('Thiếu module Ollama (js/local-llm.js)');
+    const name = String(localModelName || L.getModel()).trim();
+    const card =
+      window.PersonaConfig && typeof window.PersonaConfig.buildCard === 'function'
+        ? window.PersonaConfig.buildCard()
+        : '';
+
+    // Bỏ bong bóng "chờ model cloud" (nếu có) để không còn 2 bong bóng cùng lượt
+    if (bD && bD.parentNode) bD.remove();
+    bD = document.createElement('div');
+    bD.className = 'message-container';
+    bD.innerHTML = `
+          <div class="bot-message">
+            <div class="message-header">
+              <span>✨ Jarvis AI</span>
+              <span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">💻 ${escapeHtml(name)}</span>
+              <div class="typing-bubble">
+                <span class="wait-label">⏳ Đang gọi Ollama local (${escapeHtml(name)})…</span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+              </div>
+            </div>
+            <div class="msg-content"></div>
+          </div>
+        `;
+    DOM.chat.appendChild(bD);
+    bD.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const cDl = bD.querySelector('.msg-content');
+    const rendererL = createStreamRenderer(cDl);
+    bD.querySelector('.typing-bubble')?.remove();
+
+    const out = await L.streamChat({
+      // Model local không đọc được System Instruction dài như Gemini -> gắn thẻ tính cách ngắn
+      si: getDynamicSI(),
+      history: chatHistory,
+      prompt: (card ? card + '\n\n' : '') + (promptForLocal || fP),
+      model: name,
+      signal: abortController?.signal,
+      onDelta: (_piece, full) => {
+        try {
+          rendererL.push(full);
+        } catch (_) {}
+      },
+    });
+
+    const text = String(out || '').trim();
+    if (!text) throw new Error('Ollama trả về nội dung rỗng');
+
+    localModelUsed = name;
+    effectiveModel = window.LocalLLM.toModelId(name);
+    finalResp = text;
+    // Lượt local đã trọn vẹn: xoá lỗi cũ của cloud để không hiện nút "Viết tiếp" sai
+    lastErr = null;
+    streamFinishReason = 'STOP';
+    pS = true;
+    await rendererL.flush(text);
+    await saveTurn(reason === 'fallback' ? ' · 💻 Ollama (tự động)' : '');
+    return true;
+  };
+
+  // Chuyển sang Ollama khi nhà cung cấp cloud lỗi / hết quota.
+  // 'done' = đã trả lời xong, 'failed' = Ollama cũng lỗi, 'aborted' = người dùng bấm Dừng, false = không thử
+  let localFallbackTried = false;
+  const tryLocalFallback = async reason => {
+    const L = window.LocalLLM;
+    if (!L || !L.isAutoFallbackEnabled()) return false;
+    if (localModel || localFallbackTried) return false;
+    if (abortController?.signal?.aborted) return false;
+    if (!L.shouldFallback(reason)) return false;
+    localFallbackTried = true;
+    const target = L.getModel();
+    const why = String((reason && reason.message) || reason || '').slice(0, 120);
+    showToast(
+      `⚡ Nhà cung cấp lỗi${why ? ': ' + why : ''} → tự chuyển sang Ollama local (${target})...`,
+      'warning'
+    );
+    console.warn('[Ollama fallback] Lý do:', reason);
+    try {
+      await runOllamaTurn(target, 'fallback');
+      return 'done';
+    } catch (fbErr) {
+      if (fbErr?.name === 'AbortError') return 'aborted';
+      console.warn('[Ollama fallback] Ollama cũng lỗi:', fbErr);
+      bD?.remove();
+      return 'failed';
+    }
+  };
+
   try {
     await appendMsg(
       'user',
@@ -3404,11 +3568,13 @@ DOM.sendBtn.onclick = async () => {
     const currentKeyBadge = getKeyBadgeHtml(keyIndexNum, am);
     // Nhãn chờ: hiện ngay khi gửi, tự biến mất cùng .typing-bubble khi có chunk đầu tiên.
     // Google thường giữ kết nối 5–17s trước byte đầu nên cần chỉ báo để không tưởng app treo.
-    const waitProviderLabel = usesExplabs
-      ? 'Experiential Labs'
-      : usesCompatGateway
-        ? window.COMPAT_PROVIDERS?.[providerId]?.label || providerId
-        : 'Google';
+    const waitProviderLabel = localModel
+      ? 'Ollama local'
+      : usesExplabs
+        ? 'Experiential Labs'
+        : usesCompatGateway
+          ? window.COMPAT_PROVIDERS?.[providerId]?.label || providerId
+          : 'Google';
     bD = document.createElement('div');
     bD.className = 'message-container';
     bD.innerHTML = `
@@ -3579,6 +3745,9 @@ DOM.sendBtn.onclick = async () => {
       }
     }
 
+    // Giữ lại prompt đã làm giàu để dùng tiếp nếu phải fallback sang Ollama local
+    promptForLocal = fnP;
+
     const base64Files = [];
     for (const f of imgs) base64Files.push(await fileToBase64(f));
 
@@ -3605,6 +3774,17 @@ DOM.sendBtn.onclick = async () => {
     });
 
     const thk = DOM.thinking.value;
+
+    // --- ENGINE LOCAL: OLLAMA (chạy trên máy người dùng, không cần API key) ---
+    // Ollama không xử lý ảnh với hầu hết model text -> báo đúng tên model rồi gửi tiếp không kèm ảnh.
+    if (localModel) {
+      if (imgs.length) notifyImagesUnsupported(modelLabelOf(am));
+      promptForLocal = fnP;
+      // Bỏ bong bóng chờ của luồng cloud trước khi tự dựng bong bóng Ollama
+      if (bD && bD.parentNode) bD.remove();
+      await runOllamaTurn(window.LocalLLM.modelFromId(am));
+      return;
+    }
 
     // --- ENGINE 0: EXPERIENTIAL LABS GATEWAY (gpt-6-luna, deepseek-v4.1-flash, clef) ---
     const isExplabsModel =
@@ -5209,7 +5389,13 @@ DOM.sendBtn.onclick = async () => {
 
     if (!pS) {
       bD.remove();
-      return showToast(formatGoogleApiError(lastErr), 'danger');
+      const fbState = await tryLocalFallback(lastErr);
+      if (fbState === 'done' || fbState === 'aborted') return;
+      return showToast(
+        formatGoogleApiError(lastErr) +
+          (fbState === 'failed' ? ' — Ollama local cũng không phản hồi.' : ''),
+        'danger'
+      );
     }
     await saveTurn();
   } catch (err) {
@@ -5217,8 +5403,19 @@ DOM.sendBtn.onclick = async () => {
       showToast('Đã dừng phản hồi!', 'warning');
       await saveTurn(' (Đã dừng)');
     } else {
-      showToast('Lỗi: ' + err.message, 'danger');
-      bD?.remove();
+      let fbState = false;
+      try {
+        fbState = await tryLocalFallback(err);
+      } catch (_) {}
+      if (fbState !== 'done' && fbState !== 'aborted') {
+        showToast(
+          'Lỗi: ' +
+            err.message +
+            (fbState === 'failed' ? ' — Ollama local cũng không phản hồi.' : ''),
+          'danger'
+        );
+        bD?.remove();
+      }
     }
   } finally {
     const wasAborted = abortController?.signal?.aborted;
@@ -5452,7 +5649,19 @@ DOM.searchInput.addEventListener('keydown', e => {
 
 const sideSearchInput = $('sidebar-search-input');
 if (sideSearchInput) {
+  // Gõ là lọc ngay danh sách phiên (tên, model, nội dung tin nhắn)
+  sideSearchInput.addEventListener('input', () => {
+    sessionFilter = sideSearchInput.value;
+    renderSel();
+  });
   sideSearchInput.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      sideSearchInput.value = '';
+      sessionFilter = '';
+      renderSel();
+      sideSearchInput.blur();
+      return;
+    }
     if (e.key === 'Enter') {
       e.preventDefault();
       const q = sideSearchInput.value.trim();

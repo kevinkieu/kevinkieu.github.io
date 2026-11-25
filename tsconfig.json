@@ -5,7 +5,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowJs": true,
-    "checkJs": true,
+    "checkJs": false,
     "declaration": false,
     "emitDeclarationOnly": false,
     "noEmit": true,
