@@ -1472,86 +1472,6 @@
             </div>
           </fieldset>
 
-          <!-- WAKE WORD SETTINGS -->
-          <fieldset
-            class="settings-group collapsible-section"
-            style="border: 2px solid #0ea5e9; background: rgba(14, 165, 233, 0.04)"
-          >
-            <legend style="color: #0ea5e9; font-weight: 700">🎙️ Wake Word "Hey Jarvis" (TensorFlow.js)</legend>
-            <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4">
-              Phát hiện "Hey Jarvis" hoàn toàn offline, trên thiết bị. Cần train 8-10 mẫu giọng nói lần đầu.
-            </div>
-
-            <div
-              id="wake-word-status"
-              style="
-                font-weight: 600;
-                margin-bottom: 8px;
-                padding: 8px;
-                background: var(--bg-card);
-                border-radius: var(--radius-sm);
-                border: 1px solid var(--border);
-              "
-            >
-              Trạng thái: <span id="ww-status-text">⏸️ Chưa khởi tạo</span>
-            </div>
-
-            <div
-              id="wake-word-training-progress"
-              style="
-                display: none;
-                margin-bottom: 10px;
-                padding: 8px;
-                background: rgba(14, 165, 233, 0.1);
-                border-radius: var(--radius-sm);
-                border: 1px solid #0ea5e9;
-                font-size: 0.8rem;
-              "
-            >
-              <span id="ww-progress-text">Đang tải model...</span>
-            </div>
-
-            <div id="wake-word-remaining" style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px">
-              Cần thêm <span id="ww-remaining-count">8</span> mẫu nữa
-            </div>
-
-            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px">
-              <button id="btn-train-wake-word" class="btn" style="flex: 1; min-width: 140px">🎙️ Ghi mẫu (còn 8)</button>
-              <button id="btn-start-wake-word" class="btn primary" style="flex: 1; min-width: 140px" disabled>
-                🟢 Bắt đầu lắng nghe
-              </button>
-              <button id="btn-stop-wake-word" class="btn" style="flex: 1; min-width: 120px" disabled>⏸️ Dừng</button>
-            </div>
-
-            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px">
-              <button id="btn-reset-wake-word" class="btn warning" style="flex: 1; min-width: 140px">
-                🔄 Reset training data
-              </button>
-            </div>
-
-            <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.5">
-              <b>Hướng dẫn:</b><br />
-              1. Bấm <b>"Ghi mẫu"</b> → nói rõ <b>"Hey Jarvis"</b> (~1.5s) → lặp lại 8-10 lần<br />
-              2. Khi đủ mẫu → bấm <b>"Train Model"</b> → chờ ~10s<br />
-              3. Bấm <b>"Bắt đầu lắng nghe"</b> → nói <b>"Hey Jarvis"</b> → tự mở Live Call<br />
-              4. <b>Barge-in:</b> Jarvis đang nói → bạn nói → Jarvis dừng ngay
-            </div>
-
-            <label
-              style="
-                cursor: pointer;
-                font-size: 0.82rem;
-                font-weight: 600;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                margin-top: 10px;
-              "
-            >
-              <input type="checkbox" id="ww-auto-start" /> 🔄 Tự động bật wake word khi mở app
-            </label>
-          </fieldset>
-
           <!-- SYSTEM INSTRUCTIONS -->
           <fieldset class="settings-group collapsible-section">
             <legend>⚙️ Ngữ cảnh Phiên Chat & Live (System Prompt)</legend>
@@ -3690,12 +3610,12 @@
 
     <!-- JAVASCRIPT APPLICATION MODULES -->
     <script src="./js/globals.js?v=76"></script>
-    <script src="./js/lazy-libs.js?v=76"></script>
+    <script src="./js/lazy-libs.js?v=77"></script>
     <link rel="stylesheet" href="./css/debug-overlay.css?v=1" />
     <script type="module" src="./js/search.js?v=76"></script>
     <script type="module" src="./js/extract.js?v=76"></script>
     <script type="module" src="./js/blob.js?v=76"></script>
-    <script type="module" src="./js/export.js?v=77"></script>
+    <script type="module" src="./js/export.js?v=78"></script>
     <script type="module" src="./js/quota.js?v=78"></script>
     <script type="module" src="./js/storage-manager.js?v=80"></script>
     <script type="module" src="./js/color-tags.js?v=76"></script>
@@ -3709,8 +3629,8 @@
     <script type="module" src="./js/cipher.js?v=76"></script>
     <script type="module" src="./js/database.js?v=76"></script>
     <script type="module" src="./js/session-cleanup.js?v=76"></script>
-    <script type="module" src="./js/gesture-manager.js?v=1"></script>
-    <script type="module" src="./js/gesture-settings.js?v=1"></script>
+    <script type="module" src="./js/gesture-manager.js?v=2"></script>
+    <script type="module" src="./js/gesture-settings.js?v=2"></script>
     <script type="module" src="./js/debug-overlay.js?v=1"></script>
     <script type="module" src="./js/provider-registry.js?v=1"></script>
     <script type="module" src="./js/model-registry.js?v=76"></script>
@@ -3718,9 +3638,8 @@
     <script type="module" src="./js/chat-render.js?v=76"></script>
     <script type="module" src="./js/app.js?v=92"></script>
     <script type="module" src="./js/api-keys.js?v=77"></script>
-    <script type="module" src="./js/sync.js?v=79"></script>
-    <script type="module" src="./js/wake-word-tfjs.js?v=1"></script>
-    <script type="module" src="./js/live.js?v=76"></script>
+    <script type="module" src="./js/sync.js?v=80"></script>
+    <script type="module" src="./js/live.js?v=77"></script>
     <script type="module" src="./js/tts.js?v=76"></script>
     <script type="module" src="./js/translate.js?v=76"></script>
     <script type="module" src="./js/eventBus.js?v=76"></script>

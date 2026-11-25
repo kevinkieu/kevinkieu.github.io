@@ -290,7 +290,6 @@
       const labels = {
         'debug-overlay': '🐛 Debug Console',
         'live-call': '📞 Live Call',
-        'wake-word': '🎙️ Wake Word',
         none: 'Không hành động',
       };
       showToast(`${labels[action] || action} (${gesture})`, 'info', 1500);
@@ -367,6 +366,7 @@
     getConfig,
     getAvailableActions,
     getGestureConfig: name => gestureRegistry.get(name),
+    init,
     // For Settings UI
     getAllGestures: () => {
       const result = {};

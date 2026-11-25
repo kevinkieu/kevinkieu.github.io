@@ -188,6 +188,7 @@
 
     cfgs['live_search_enabled'] = ls.getItem('live_search_enabled') || 'true';
     cfgs['live_context_enabled'] = ls.getItem('live_context_enabled') || 'true';
+    cfgs['jarvis_gesture_config'] = ls.getItem('jarvis_gesture_config') || '';
     cfgs['jarvis_folders'] = ls.getItem('jarvis_folders') || '["Mặc định"]';
     cfgs['jarvis_custom_prompts'] = ls.getItem('jarvis_custom_prompts') || '[]';
     cfgs['jarvis_medications'] = ls.getItem('jarvis_medications') || '[]';

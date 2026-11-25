@@ -1215,6 +1215,7 @@
             cohereKeyNames: getCohereKeyNamesList(),
             externalConfigs: getExternalConfigsObj(true),
             dynamicProviders: window.DynamicProviders?.exportConfig(true),
+            gestureConfig: ls.getItem('jarvis_gesture_config') || '',
             model: getDOM().model?.value || 'gemini-3.6-flash',
             // Provider đã chọn (model id có thể trùng giữa nhiều provider)
             modelProvider: window.DynamicProviders?.getSelectedModelProvider?.() || null,
@@ -1633,6 +1634,12 @@
           typeof window.DynamicProviders?.importConfig === 'function'
         ) {
           window.DynamicProviders.importConfig(parsed.settings.dynamicProviders, { merge: true });
+        }
+        if (parsed.settings.gestureConfig) {
+          ls.setItem('jarvis_gesture_config', parsed.settings.gestureConfig);
+          if (window.GestureManager && typeof window.GestureManager.init === 'function') {
+            window.GestureManager.init();
+          }
         }
         if (parsed.settings.model && getDOM().model) {
           // Khôi phục theo cả provider để không chọn nhầm option trùng model id

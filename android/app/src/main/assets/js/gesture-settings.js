@@ -18,7 +18,6 @@
     none: '❌ Không hành động',
     'debug-overlay': '🐛 Debug Console',
     'live-call': '📞 Mở Live Call',
-    'wake-word': '🎙️ Bật Wake Word',
   };
 
   function createGestureSettingsHTML() {
@@ -47,7 +46,6 @@
             <option value="none" ${currentAction === 'none' ? 'selected' : ''}>${ACTION_LABELS.none}</option>
             <option value="debug-overlay" ${currentAction === 'debug-overlay' ? 'selected' : ''}>${ACTION_LABELS['debug-overlay']}</option>
             <option value="live-call" ${currentAction === 'live-call' ? 'selected' : ''}>${ACTION_LABELS['live-call']}</option>
-            <option value="wake-word" ${currentAction === 'wake-word' ? 'selected' : ''}>${ACTION_LABELS['wake-word']}</option>
           </select>
           <div class="dp-hint" style="margin-top: 4px; font-size: 0.7rem; color: var(--text-muted)">
             Hiện tại: <strong>${ACTION_LABELS[currentAction] || currentAction}</strong>
@@ -88,7 +86,6 @@
                 none: '❌ Không hành động',
                 'debug-overlay': '🐛 Debug Console',
                 'live-call': '📞 Mở Live Call',
-                'wake-word': '🎙️ Bật Wake Word',
               };
               hint.innerHTML = `Hiện tại: <strong>${labels[action] || action}</strong>`;
             }

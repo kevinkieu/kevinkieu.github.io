@@ -19,21 +19,6 @@
       url: 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
       get: () => window.html2pdf,
     },
-    // TensorFlow.js + Speech Commands cho Wake Word "Hey Jarvis"
-    // TF.js core (cần tải trước Speech Commands)
-    tfjs: {
-      label: 'TensorFlow.js Core',
-      url: 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js',
-      get: () => window.tf,
-    },
-    speechCommands: {
-      label: 'Speech Commands (Transfer Learning)',
-      url: 'https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.2/dist/speech-commands.min.js',
-      get: () => window.speechCommands,
-      // Custom ready check: wait for window.speechCommands.create to be available
-      readyCheck: () => window.speechCommands && typeof window.speechCommands.create === 'function',
-      dependsOn: 'tfjs', // Phải tải tfjs trước
-    },
   };
 
   const pending = Object.create(null);

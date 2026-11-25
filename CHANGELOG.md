@@ -5,6 +5,31 @@ Lịch sử thay đổi của dự án, mới nhất ở trên cùng. Bản đ�
 
 ## 2026-11-25
 
+- **🗑️ Remove hoàn toàn tính năng Wake Word "Hey Jarvis" (TF.js)**
+  - Xoá `js/wake-word-tfjs.js` (TensorFlow.js Speech Commands không nhận diện ổn định, luôn lỗi khi
+    "Ghi mẫu" nên không thể dùng thực tế).
+  - `index.html`: Bỏ fieldset Wake Word trong Cài đặt + bỏ script import.
+  - `js/live.js`: Bỏ toàn bộ tích hợp Wake Word, chỉ còn Barge-in + gesture action `live-call`.
+  - `js/gesture-manager.js`, `js/gesture-settings.js`: Bỏ action `wake-word` khỏi danh sách gán
+    gesture.
+  - `js/lazy-libs.js`: Bỏ 2 entry `tfjs` và `speechCommands` không còn ai dùng.
+
+- **Fix: Gesture settings không lưu sau khi khởi động lại app**
+  - Nguyên nhân: cấu hình gesture chỉ nằm trong localStorage, không có trong backup JSON và không
+    được đẩy lên Gist, nên sau khi cài lại/khôi phục thì quay về mặc định.
+  - `js/export.js`: Thêm `jarvis_gesture_config` vào backup JSON.
+  - `js/sync.js`: Thêm `gestureConfig` vào payload push Gist và khôi phục khi pull; sau khi restore
+    gọi lại `GestureManager.init()` để áp dụng ngay.
+  - `js/gesture-manager.js`: Export `init()` để tái khởi tạo sau khi đồng bộ.
+
+- **Fix: Lỗi syntax `js/live.js` (thiếu `});` đóng listener DOMContentLoaded)**
+  - Viết lại phần cuối file: listener `DOMContentLoaded` đóng đúng, bỏ listener lồng nhau (dead
+    code), đăng ký gesture `live-call` gọn trong một chỗ.
+
+- **Build**: versionCode 76 / versionName 1.1.76, sw cache `jarvis-ai-pwa-v86`, bump cache buster
+  cho `live.js`, `export.js`, `sync.js`, `lazy-libs.js`, `gesture-manager.js`,
+  `gesture-settings.js`.
+
 - **Fix: Wake Word robust loading với retry + wait for model loaded**
   - `js/wake-word-tfjs.js`: Thêm retry logic (3 lần) cho `createRecognizer()`,
     `await recognizer.ensureModelLoaded()`, verify `collectExample` function trước khi dùng. Thêm

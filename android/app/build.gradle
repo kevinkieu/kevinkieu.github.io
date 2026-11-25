@@ -10,8 +10,8 @@ android {
         applicationId "com.kevinkieu.jarvisai"
         minSdk 24
         targetSdk 34
-        versionCode 72
-        versionName "1.1.72"
+        versionCode 76
+        versionName "1.1.76"
     }
 
     signingConfigs {
