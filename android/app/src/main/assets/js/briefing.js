@@ -331,9 +331,21 @@
               .map(m => `- ${m.title || 'Ghi nhớ'}: ${m.text || ''}`)
               .join('\n');
           }
-        } catch (mErr) {
-          console.warn('Lỗi đọc Second Brain:', mErr);
-        }
+              } catch (mErr) {
+        console.warn('Lỗi đọc Second Brain:', mErr);
+      }
+    }
+
+      // Cá nhân hóa từ hồ sơ người dùng
+      let personaContext = '';
+      if (window.Personalization && typeof window.Personalization.getProfile === 'function') {
+        const p = window.Personalization.getProfile();
+        const parts = [];
+        if (p.name) parts.push('Tên: ' + p.name);
+        if (p.role) parts.push('Vai trò: ' + p.role);
+        if (p.interests) parts.push('Quan tâm: ' + p.interests);
+        if (p.notes) parts.push('Ghi chú: ' + p.notes);
+        personaContext = parts.join(' | ');
       }
 
       // Biên soạn bản tin bằng Flash Lite
@@ -351,6 +363,9 @@ ${newsInfo ? newsInfo.slice(0, 2000) : 'Các diễn biến phát triển AI mớ
 
 Dữ liệu trí nhớ Second Brain về người dùng (mục tiêu, sở thích, dự án):
 ${memoryContext ? memoryContext : 'Người dùng là một chuyên gia/kỹ sư công nghệ đam mê AI, tập trung vào hiệu suất cao và ứng dụng AI vào cuộc sống thực tế.'}
+
+Hồ sơ cá nhân hóa:
+${personaContext || 'Chưa có hồ sơ cá nhân hóa.'}
 
 Nhiệm vụ:
 Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền cảm hứng, ngắn gọn, súc tích, mang tính thực tế cao cho người dùng:

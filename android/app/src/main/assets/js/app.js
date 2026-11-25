@@ -855,13 +855,68 @@ window.forkSessionAt = async index => {
     lastInteractionId: null,
     assignedApiKey: null,
     orderIndex: Date.now(),
+    parentSessionId: curS.id,
+    forkAtIndex: index,
   };
 
   sessions.unshift(newS);
   await saveToDB(newS);
   await switchSess(newForkId);
   showToast(`🌿 Đã rẽ nhánh sang phiên mới từ tin #${index + 1}!`);
+  if (typeof window.renderBranchTimeline === 'function') window.renderBranchTimeline();
 };
+
+// --- BRANCH TIMELINE RENDER (Git-graph style in sidebar) ---
+function renderBranchTimeline() {
+  const container = $('branch-timeline');
+  if (!container) return;
+  const list = Array.isArray(sessions) ? sessions : [];
+  if (!list.length) {
+    container.innerHTML = '<div style="color:var(--text-muted);font-size:0.78rem;">Chưa có phiên nào.</div>';
+    return;
+  }
+
+  // Build children map
+  const childrenMap = new Map();
+  list.forEach(s => {
+    const pid = s.parentSessionId || null;
+    if (!childrenMap.has(pid)) childrenMap.set(pid, []);
+    childrenMap.get(pid).push(s);
+  });
+
+  // Sort each group by orderIndex desc (newest first) to match sessions order
+  childrenMap.forEach(arr => arr.sort((a, b) => (b.orderIndex || 0) - (a.orderIndex || 0)));
+
+  // Render recursively with indentation
+  let html = '';
+  const renderNode = (s, depth) => {
+    const isActive = s.id === activeId;
+    const indent = depth * 14;
+    const icon = s.parentSessionId ? '🌿' : '💬';
+    html += `<div style="display:flex;align-items:center;gap:6px;padding:4px 6px;margin-left:${indent}px;border-radius:6px;cursor:pointer;background:${isActive ? 'var(--primary-container)' : 'transparent'};" onclick="window.switchSess && window.switchSess('${s.id}')">`;
+    html += `<span style="color:var(--primary);font-size:0.9rem;">${icon}</span>`;
+    html += `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.78rem;color:${isActive ? 'var(--primary)' : 'var(--text-main)'};font-weight:${isActive ? '700' : '400'};">${(s.name || 'Phiên').replace(/</g, '&lt;')}</span>`;
+    html += `</div>`;
+    const kids = childrenMap.get(s.id) || [];
+    kids.forEach(k => renderNode(k, depth + 1));
+  };
+
+  // Roots: sessions without parent (or parent not in list)
+  const rootIds = new Set(list.map(s => s.id));
+  const roots = (childrenMap.get(null) || []).concat(
+    list.filter(s => s.parentSessionId && !rootIds.has(s.parentSessionId))
+  );
+  // dedup roots
+  const seen = new Set();
+  roots.forEach(s => {
+    if (seen.has(s.id)) return;
+    seen.add(s.id);
+    renderNode(s, 0);
+  });
+
+  container.innerHTML = html || '<div style="color:var(--text-muted);font-size:0.78rem;">Chưa có phiên nào.</div>';
+}
+if (typeof window.renderBranchTimeline !== 'function') window.renderBranchTimeline = renderBranchTimeline;
 
 // --- FEATURE 2: DAILY BRIEFING (Đã chuyển sang js/briefing.js) ---
 
@@ -1531,23 +1586,16 @@ const updateTokenCount = () => {
   }
 };
 
-const applyTheme = m => {
-  const t =
-    m === 'auto'
-      ? new Date().getHours() >= 18 || new Date().getHours() < 6
-        ? 'dark'
-        : 'light'
-      : m;
-  const tIcons = { auto: '🌙', dark: '🌙', light: '☀️' },
-    tLabels = { auto: 'Tự động', dark: 'Tối', light: 'Sáng' };
-  DOM.btnTheme.innerHTML = `${tIcons[m] || '🌙'} <span class="mobile-hidden">${tLabels[m] || 'Tự động'}</span>`;
-  document.documentElement.setAttribute('data-theme', t);
-  ls.setItem('theme', m);
-};
-applyTheme(ls.getItem('theme') || 'auto');
+// Theme handled by js/theme-scheduler.js (auto/light/dark/sepia + scheduler)
+if (window.ThemeScheduler && typeof window.ThemeScheduler.init === 'function') {
+  try {
+    window.ThemeScheduler.init();
+  } catch (e) {}
+}
 DOM.btnTheme.onclick = () => {
-  const c = ls.getItem('theme') || 'auto';
-  applyTheme(c === 'auto' ? 'dark' : c === 'dark' ? 'light' : 'auto');
+  if (window.ThemeScheduler && typeof window.ThemeScheduler.cycleMode === 'function') {
+    window.ThemeScheduler.cycleMode();
+  }
 };
 
 if (DOM.input) {
@@ -1716,12 +1764,17 @@ const getDynamicSI = (ragSnippet = '') => {
   }
   const extraBlock = extraRules.filter(Boolean).join('\n\n');
 
+  const personalBlock =
+    window.Personalization && typeof window.Personalization.buildPromptBlock === 'function'
+      ? window.Personalization.buildPromptBlock()
+      : '';
+
   const card =
     persona && window.PersonaConfig && typeof window.PersonaConfig.buildCard === 'function'
       ? window.PersonaConfig.buildCard(persona)
       : '';
 
-  return `${timeInstruction ? timeInstruction + '\n\n' : ''}[CHỈ THỊ HỆ THỐNG]:\n${card ? card + '\n\n' : ''}${DOM.toggleGlob?.checked !== false && g ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}${ragBlock}${extraBlock ? '\n\n' + extraBlock : ''}`;
+  return `${timeInstruction ? timeInstruction + '\n\n' : ''}[CHỈ THỊ HỆ THỐNG]:\n${card ? card + '\n\n' : ''}${DOM.toggleGlob?.checked !== false && g ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}${ragBlock}${extraBlock ? '\n\n' + extraBlock : ''}${personalBlock ? '\n\n' + personalBlock : ''}`;
 };
 
 window.exportCleanArticle = () => {
@@ -2301,6 +2354,7 @@ function renderSel() {
       : '';
   $('session-msg-count').innerText = `${chatHistory.length} tin nhắn${kInfo}`;
   updateColorPickerUI();
+  if (typeof window.renderBranchTimeline === 'function') window.renderBranchTimeline();
 }
 
 $('btn-new-session').onclick = () => newSess();

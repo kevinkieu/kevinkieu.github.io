@@ -296,6 +296,39 @@
       icon: '🗄️',
       run: () => $('btn-file-library')?.click(),
     },
+    {
+      id: 'switch-model',
+      title: 'Chuyển nhanh mô hình AI đang dùng',
+      shortcut: '/switchmodel',
+      icon: '🤖',
+      run: () => {
+        const sel = $('model-select');
+        if (!sel || !sel.options.length) return;
+        const idx = sel.selectedIndex;
+        const next = (idx + 1) % sel.options.length;
+        sel.selectedIndex = next;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        if (typeof window.showToast === 'function')
+          window.showToast(`🤖 Đã chuyển sang: ${sel.options[next].text}`, 'info');
+      },
+    },
+    {
+      id: 'persona',
+      title: 'Cá nhân hóa Jarvis (Hồ sơ & Facts)',
+      shortcut: '/persona',
+      icon: '👤',
+      run: () =>
+        typeof window.openPersonalizationModal === 'function'
+          ? window.openPersonalizationModal()
+          : null,
+    },
+    {
+      id: 'export-pdf',
+      title: 'Xuất hội thoại hiện tại ra tệp PDF',
+      shortcut: '/exportpdf',
+      icon: '📄',
+      run: () => (typeof window.exportChatPDF === 'function' ? window.exportChatPDF() : null),
+    },
   ];
 
   function openCommandPalette() {

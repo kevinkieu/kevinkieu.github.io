@@ -190,6 +190,9 @@
     cfgs['live_context_enabled'] = ls.getItem('live_context_enabled') || 'true';
     cfgs['jarvis_gesture_config'] = ls.getItem('jarvis_gesture_config') || '';
     cfgs['jarvis_persona_config'] = ls.getItem('jarvis_persona_config') || '';
+    cfgs['jarvis_persona_profile'] = ls.getItem('jarvis_persona_profile') || '';
+    cfgs['jarvis_facts'] = ls.getItem('jarvis_facts') || '';
+    cfgs['jarvis_ui_density'] = ls.getItem('jarvis_ui_density') || '';
     cfgs['jarvis_ollama_host'] = ls.getItem('jarvis_ollama_host') || '';
     cfgs['jarvis_ollama_model'] = ls.getItem('jarvis_ollama_model') || '';
     cfgs['jarvis_ollama_auto_fallback'] = ls.getItem('jarvis_ollama_auto_fallback') || 'true';

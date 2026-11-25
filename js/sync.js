@@ -1217,6 +1217,9 @@
             dynamicProviders: window.DynamicProviders?.exportConfig(true),
             gestureConfig: ls.getItem('jarvis_gesture_config') || '',
             personaConfig: ls.getItem('jarvis_persona_config') || '',
+            personaProfile: ls.getItem('jarvis_persona_profile') || '',
+            factsStore: ls.getItem('jarvis_facts') || '',
+            uiDensity: ls.getItem('jarvis_ui_density') || '',
             model: getDOM().model?.value || 'gemini-3.6-flash',
             // Provider đã chọn (model id có thể trùng giữa nhiều provider)
             modelProvider: window.DynamicProviders?.getSelectedModelProvider?.() || null,
@@ -1655,6 +1658,17 @@
             window.PersonaConfig.refreshUI();
           }
         }
+        if (parsed.settings.personaProfile) {
+          ls.setItem('jarvis_persona_profile', parsed.settings.personaProfile);
+        }
+        if (parsed.settings.factsStore) {
+          ls.setItem('jarvis_facts', parsed.settings.factsStore);
+        }
+        if (parsed.settings.uiDensity) {
+          ls.setItem('jarvis_ui_density', parsed.settings.uiDensity);
+          if (window.Personalization && typeof window.Personalization.setDensity === 'function')
+            window.Personalization.setDensity(parsed.settings.uiDensity);
+        }
         if (parsed.settings.model && getDOM().model) {
           // Khôi phục theo cả provider để không chọn nhầm option trùng model id
           const applied = window.DynamicProviders?.selectModelOption?.(
@@ -1675,7 +1689,9 @@
           getDOM().sysInst.value = parsed.settings.systemInstruction;
         if (parsed.settings.theme) {
           ls.setItem('jarvis_theme', parsed.settings.theme);
-          if (typeof applyTheme === 'function') applyTheme(parsed.settings.theme);
+          ls.setItem('theme', parsed.settings.theme);
+          if (window.ThemeScheduler && typeof window.ThemeScheduler.setMode === 'function')
+            window.ThemeScheduler.setMode(parsed.settings.theme);
         }
         if (parsed.settings.autoLearnMemory)
           ls.setItem('jarvis_auto_learn_memory', parsed.settings.autoLearnMemory);

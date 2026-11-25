@@ -68,6 +68,47 @@
   --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
 }
 
+[data-theme='sepia'] {
+  --bg-main: #fdf6e3;
+  --bg-sidebar: #f5e6c8;
+  --bg-card: #fefbf3;
+  --bg-glass: rgba(254, 251, 243, 0.9);
+  --border: #d4b884;
+  --border-focus: #b8860b;
+  --text-main: #3d2b1f;
+  --text-muted: #8b7355;
+  --bg-msg-user: #b8860b;
+  --text-msg-user: #ffffff;
+  --bg-msg-bot: #fefbf3;
+  --primary: #b8860b;
+  --primary-hover: #daa520;
+  --primary-container: rgba(184, 134, 11, 0.15);
+  --primary-glow: rgba(184, 134, 11, 0.3);
+  --accent: #cd853f;
+  --danger: #cd5c5c;
+  --danger-hover: #b22222;
+  --danger-bg: rgba(205, 92, 92, 0.15);
+  --warning: #b8860b;
+  --warning-bg: rgba(184, 134, 11, 0.15);
+  --success: #8fbc8f;
+  --success-bg: rgba(143, 188, 143, 0.15);
+  --input-bg: #faf3e0;
+  --shadow-sm: 0 1px 2px 0 rgba(139, 115, 85, 0.15);
+  --shadow-md: 0 4px 6px -1px rgba(139, 115, 85, 0.2), 0 2px 4px -2px rgba(139, 115, 85, 0.15);
+  --shadow-lg: 0 10px 25px -5px rgba(139, 115, 85, 0.25), 0 8px 10px -6px rgba(139, 115, 85, 0.2);
+}
+
+/* COMPACT UI DENSITY */
+body.compact-ui {
+  --chat-font-size: 14px;
+}
+body.compact-ui .sidebar-section {
+  padding: 6px;
+}
+body.compact-ui .msg-content {
+  padding: 8px 10px;
+}
+
 /* GLOBAL RESET & BASE */
 *,
 *::before,
