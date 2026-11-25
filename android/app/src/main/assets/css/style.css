@@ -109,55 +109,6 @@ body.compact-ui .msg-content {
   padding: 8px 10px;
 }
 
-/* BRANCH TIMELINE */
-#branch-timeline {
-  flex: 1;
-  overflow: auto;
-  min-height: 40px;
-}
-.branch-section {
-  margin-top: 8px;
-  flex: 0 0 auto;
-  max-height: 220px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.branch-empty {
-  color: var(--text-muted);
-  font-size: 0.78rem;
-}
-.branch-node {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.branch-node:hover {
-  background: var(--primary-container);
-}
-.branch-node.active {
-  background: var(--primary-container);
-}
-.branch-node-icon {
-  color: var(--primary);
-  font-size: 0.9rem;
-}
-.branch-node-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.78rem;
-  color: var(--text-main);
-}
-.branch-node.active .branch-node-name {
-  color: var(--primary);
-  font-weight: 700;
-}
-
 /* PERSONALIZATION MODAL */
 .pers-form {
   display: flex;

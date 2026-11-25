@@ -5,6 +5,14 @@ Lịch sử thay đổi của dự án, mới nhất ở trên cùng. Bản đ�
 
 ## 2026-11-25
 
+- **🧹 Bỏ panel "Nhánh Hội Thoại" khỏi sidebar**
+  - Panel Git-graph chiếm tới 220px chiều cao sidebar và lặp lại danh sách phiên đã có trong ô chọn
+    phiên. Đã gỡ HTML `#branch-timeline`, CSS `.branch-*`, `renderBranchTimeline()` và lời gọi trong
+    `renderSel()`.
+  - Giữ nguyên `forkSessionAt()` và metadata `parentSessionId` / `forkAtIndex` trên phiên fork, nên
+    chức năng rẽ nhánh và dữ liệu cũ không bị ảnh hưởng; chỉ mất phần hiển thị cây trong sidebar.
+  - Bump `css/style.css?v=82`, `js/app.js?v=95`, mirror Android assets.
+
 - **🎨 Cá nhân hóa: hồ sơ người dùng + facts + mật độ giao diện**
   - `js/personalization.js` (mới): hồ sơ (tên, vai trò, phong cách trả lời, sở thích, ghi chú) lưu
     localStorage `jarvis_persona_profile`; kho facts dài hạn `jarvis_facts` (thêm/xoá từ modal); mật

@@ -865,46 +865,6 @@ window.forkSessionAt = async index => {
   showToast(`🌿 Đã rẽ nhánh sang phiên mới từ tin #${index + 1}!`);
 };
 
-// --- BRANCH TIMELINE RENDER (Git-graph style in sidebar) ---
-function renderBranchTimeline() {
-  const container = $('branch-timeline');
-  if (!container) return;
-  const list = Array.isArray(sessions) ? sessions : [];
-  const childrenMap = new Map();
-  list.forEach(s => {
-    const pid = s.parentSessionId || null;
-    if (!childrenMap.has(pid)) childrenMap.set(pid, []);
-    childrenMap.get(pid).push(s);
-  });
-  childrenMap.forEach(arr => arr.sort((a, b) => (b.orderIndex || 0) - (a.orderIndex || 0)));
-
-  const sessionIds = new Set(list.map(s => s.id));
-  const roots = list.filter(s => !s.parentSessionId || !sessionIds.has(s.parentSessionId));
-  const rendered = new Set();
-  const html = [];
-  const renderNode = (s, depth) => {
-    if (rendered.has(s.id)) return;
-    rendered.add(s.id);
-    const isActive = s.id === activeId;
-    html.push(
-      `<div class="branch-node${isActive ? ' active' : ''}" style="margin-left:${depth * 14}px" data-session-id="${escapeHtml(s.id)}">` +
-        `<span class="branch-node-icon">${s.parentSessionId ? '🌿' : '💬'}</span>` +
-        `<span class="branch-node-name">${escapeHtml(s.name || 'Phiên')}</span>` +
-        '</div>'
-    );
-    (childrenMap.get(s.id) || []).forEach(child => renderNode(child, depth + 1));
-  };
-  roots.forEach(s => renderNode(s, 0));
-  container.innerHTML = html.join('') || '<div class="branch-empty">Chưa có phiên nào.</div>';
-}
-
-// Delegated click: switching sessions without inline handlers in generated HTML
-$('branch-timeline')?.addEventListener('click', event => {
-  const node = event.target.closest('[data-session-id]');
-  if (node) switchSess(node.dataset.sessionId);
-});
-window.renderBranchTimeline = renderBranchTimeline;
-
 // --- FEATURE 2: DAILY BRIEFING (Đã chuyển sang js/briefing.js) ---
 
 // --- FEATURE 3: HANDS-FREE VOICE FLOW CONTROLLER (HARDWARE-GRADE getUserMedia + GEMINI STT) ---
@@ -2329,7 +2289,6 @@ function renderSel() {
       : '';
   $('session-msg-count').innerText = `${chatHistory.length} tin nhắn${kInfo}`;
   updateColorPickerUI();
-  renderBranchTimeline();
 }
 
 $('btn-new-session').onclick = () => newSess();

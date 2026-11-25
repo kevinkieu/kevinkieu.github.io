@@ -23,7 +23,6 @@
   }
   function saveProfile(p) {
     ls.setItem(PROFILE_KEY, JSON.stringify(p || {}));
-
   }
 
   function getFacts() {
@@ -193,7 +192,6 @@
     });
   }
 
-
   function openModal() {
     ensureModal();
     const p = getProfile();
@@ -229,7 +227,4 @@
     buildPromptBlock,
     openModal,
   };
-
-
-
 })();

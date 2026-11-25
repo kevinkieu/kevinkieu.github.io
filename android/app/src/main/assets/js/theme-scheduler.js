@@ -31,7 +31,6 @@
   let currentMode = 'auto';
   let schedulerInterval = null;
 
-
   // Load saved settings
   function loadSettings() {
     try {
@@ -71,7 +70,6 @@
     return 'dark';
   }
 
-
   // Apply theme to document
   function applyTheme(theme) {
     const root = document.documentElement;
@@ -94,7 +92,8 @@
 
   function refreshScheduler() {
     clearInterval(schedulerInterval);
-    schedulerInterval = currentMode === 'auto' ? setInterval(() => applyTheme('auto'), 60000) : null;
+    schedulerInterval =
+      currentMode === 'auto' ? setInterval(() => applyTheme('auto'), 60000) : null;
   }
 
   // Public API
