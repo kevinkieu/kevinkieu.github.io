@@ -327,8 +327,7 @@
       title: 'Xuất hội thoại hiện tại ra tệp PDF',
       shortcut: '/exportpdf',
       icon: '📄',
-      run: () =>
-        typeof window.exportChatPDF === 'function' ? window.exportChatPDF() : null,
+      run: () => (typeof window.exportChatPDF === 'function' ? window.exportChatPDF() : null),
     },
   ];
 

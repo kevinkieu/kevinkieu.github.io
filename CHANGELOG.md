@@ -5,6 +5,32 @@ Lịch sử thay đổi của dự án, mới nhất ở trên cùng. Bản đ�
 
 ## 2026-11-25
 
+- **🎨 Cá nhân hóa: hồ sơ người dùng + facts + mật độ giao diện**
+  - `js/personalization.js` (mới): hồ sơ (tên, vai trò, phong cách trả lời, sở thích, ghi chú) lưu
+    localStorage `jarvis_persona_profile`; kho facts dài hạn `jarvis_facts` (thêm/xoá từ modal); mật
+    độ giao diện `jarvis_ui_density` → class `body.compact-ui`.
+  - `buildPromptBlock()` sinh khối hồ sơ + facts, tự chèn vào `getDynamicSI()` (`js/app.js`) và vào
+    prompt Daily Briefing (`js/briefing.js`) nên mọi lượt chat đều biết người dùng.
+  - Modal mở bằng lệnh `/persona` hoặc Command Palette (`js/commands.js`).
+  - Đồng bộ 2 chiều Gist + backup JSON: `settings.personaProfile` / `settings.factsStore` /
+    `settings.uiDensity` (`js/sync.js`, `js/export.js`).
+
+- **🌗 Theme scheduler: auto/light/dark/sepia theo giờ**
+  - `js/theme-scheduler.js` (mới): lịch giờ mặc định 06:00 sáng → 18:00 sepia → 22:00 tối, lưu
+    localStorage `jarvis_theme_schedule`; timer 60 giây chỉ chạy ở chế độ auto; đặt `data-theme`
+    trên `<html>` và cập nhật nút `#btn-theme`; theme sepia thêm trong `css/style.css`.
+  - `js/app.js` dùng `ThemeScheduler.cycleMode()` cho nút theme; `js/sync.js` khôi phục theme khi
+    đồng bộ từ Gist.
+
+- **🌿 Dò thời gian nhánh phiên (branch timeline)**
+  - `js/app.js`: `forkSessionAt()` lưu `parentSessionId` + `forkAtIndex` cho phiên fork;
+    `renderBranchTimeline()` vẽ biểu đồ Git-graph trong `#branch-timeline` (mới trong `index.html`),
+    cập nhật mỗi khi đổi phiên.
+
+- **⌨️ Command Palette: lệnh mới**
+  - `js/commands.js`: thêm `switch-model` (đổi model), `export-pdf` (xuất PDF), `persona` (mở modal
+    cá nhân hóa); bỏ các mục trùng lặp với nút/luồng có sẵn.
+
 - **💻 Ollama local LLM + tự chuyển khi cloud lỗi**
   - `js/local-llm.js` (mới): dò server Ollama (`GET /api/tags`), stream chat (`POST /api/chat`,
     NDJSON), cấu hình `jarvis_ollama_host` / `jarvis_ollama_model` / `jarvis_ollama_auto_fallback`.

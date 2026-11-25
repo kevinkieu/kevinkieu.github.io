@@ -8,7 +8,9 @@
   const $ = id => document.getElementById(id);
   const ls = window.ls || localStorage;
   const showToast = (msg, type) =>
-    typeof window.showToast === 'function' ? window.showToast(msg, type) : console.log(`[${type}] ${msg}`);
+    typeof window.showToast === 'function'
+      ? window.showToast(msg, type)
+      : console.log(`[${type}] ${msg}`);
 
   const PROFILE_KEY = 'jarvis_persona_profile';
   const FACTS_KEY = 'jarvis_facts';
@@ -161,7 +163,8 @@
     if (!c) return;
     const facts = getFacts();
     if (!facts.length) {
-      c.innerHTML = '<div style="color:var(--text-muted);font-size:0.78rem;">Chưa có fact nào.</div>';
+      c.innerHTML =
+        '<div style="color:var(--text-muted);font-size:0.78rem;">Chưa có fact nào.</div>';
       return;
     }
     c.innerHTML = facts
@@ -184,7 +187,10 @@
   function escapeHtml(str) {
     return typeof window.escapeHtml === 'function'
       ? window.escapeHtml(str)
-      : String(str || '').replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[m]);
+      : String(str || '').replace(
+          /[&<>"]/g,
+          m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[m]
+        );
   }
 
   function openModal() {

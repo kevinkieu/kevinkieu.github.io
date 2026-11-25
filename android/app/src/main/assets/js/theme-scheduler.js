@@ -20,9 +20,9 @@
 
   // Default schedule (24h format)
   const DEFAULT_SCHEDULE = {
-    lightStart: 6,   // 06:00 - Light mode starts
-    sepiaStart: 18,  // 18:00 - Sepia/Reading mode starts
-    darkStart: 22,   // 22:00 - Dark mode starts
+    lightStart: 6, // 06:00 - Light mode starts
+    sepiaStart: 18, // 18:00 - Sepia/Reading mode starts
+    darkStart: 22, // 22:00 - Dark mode starts
   };
 
   let schedule = { ...DEFAULT_SCHEDULE };
@@ -121,9 +121,11 @@
     }
 
     // Dispatch custom event for other modules
-    window.dispatchEvent(new CustomEvent('theme-changed', {
-      detail: { theme, effectiveTheme, schedule: { ...schedule } }
-    }));
+    window.dispatchEvent(
+      new CustomEvent('theme-changed', {
+        detail: { theme, effectiveTheme, schedule: { ...schedule } },
+      })
+    );
   }
 
   // Check and apply scheduled theme (for auto mode)
@@ -152,7 +154,7 @@
     if (mediaQueryListener) return;
 
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    mediaQueryListener = (e) => {
+    mediaQueryListener = e => {
       // Only react if in auto mode and no custom schedule override
       if (currentMode === 'auto') {
         // Could add logic here to respect system preference as fallback

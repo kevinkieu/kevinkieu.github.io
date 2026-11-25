@@ -872,7 +872,8 @@ function renderBranchTimeline() {
   if (!container) return;
   const list = Array.isArray(sessions) ? sessions : [];
   if (!list.length) {
-    container.innerHTML = '<div style="color:var(--text-muted);font-size:0.78rem;">Chưa có phiên nào.</div>';
+    container.innerHTML =
+      '<div style="color:var(--text-muted);font-size:0.78rem;">Chưa có phiên nào.</div>';
     return;
   }
 
@@ -914,9 +915,11 @@ function renderBranchTimeline() {
     renderNode(s, 0);
   });
 
-  container.innerHTML = html || '<div style="color:var(--text-muted);font-size:0.78rem;">Chưa có phiên nào.</div>';
+  container.innerHTML =
+    html || '<div style="color:var(--text-muted);font-size:0.78rem;">Chưa có phiên nào.</div>';
 }
-if (typeof window.renderBranchTimeline !== 'function') window.renderBranchTimeline = renderBranchTimeline;
+if (typeof window.renderBranchTimeline !== 'function')
+  window.renderBranchTimeline = renderBranchTimeline;
 
 // --- FEATURE 2: DAILY BRIEFING (Đã chuyển sang js/briefing.js) ---
 

@@ -331,10 +331,10 @@
               .map(m => `- ${m.title || 'Ghi nhớ'}: ${m.text || ''}`)
               .join('\n');
           }
-              } catch (mErr) {
-        console.warn('Lỗi đọc Second Brain:', mErr);
+        } catch (mErr) {
+          console.warn('Lỗi đọc Second Brain:', mErr);
+        }
       }
-    }
 
       // Cá nhân hóa từ hồ sơ người dùng
       let personaContext = '';
