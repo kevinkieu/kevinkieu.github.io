@@ -31,6 +31,14 @@ Lịch sử thay đổi của dự án, mới nhất ở trên cùng. Bản đ�
   - `js/commands.js`: thêm `switch-model` (đổi model), `export-pdf` (xuất PDF), `persona` (mở modal
     cá nhân hóa); bỏ các mục trùng lặp với nút/luồng có sẵn.
 
+- **🧹 Đơn giản hóa sau review personalization/theme/branch**
+  - `js/personalization.js`: bỏ các wrapper trùng utility của `js/globals.js`, modal dùng lại
+    `.modal-box`/`#modal-overlay`, facts render bằng class CSS.
+  - `js/theme-scheduler.js`: áp theme trực tiếp qua `data-theme`, lịch giờ xử lý khung giờ qua nửa
+    đêm, bỏ listener `matchMedia` không có tác dụng và các nhánh trùng lặp.
+  - `js/app.js`: branch timeline dùng class CSS, click phân tách bằng delegation, bỏ gọi trùng.
+  - `js/briefing.js`: dùng chung `Personalization.buildPromptBlock()` thay vì tự ghép hồ sơ.
+
 - **💻 Ollama local LLM + tự chuyển khi cloud lỗi**
   - `js/local-llm.js` (mới): dò server Ollama (`GET /api/tags`), stream chat (`POST /api/chat`,
     NDJSON), cấu hình `jarvis_ollama_host` / `jarvis_ollama_model` / `jarvis_ollama_auto_fallback`.

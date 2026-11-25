@@ -5,12 +5,10 @@
 (function () {
   'use strict';
 
-  const $ = id => document.getElementById(id);
-  const ls = window.ls || localStorage;
-  const showToast = (msg, type) =>
-    typeof window.showToast === 'function'
-      ? window.showToast(msg, type)
-      : console.log(`[${type}] ${msg}`);
+  const $ = window.$;
+  const ls = window.ls;
+  const showToast = window.showToast;
+  const escapeHtml = window.escapeHtml;
 
   const PROFILE_KEY = 'jarvis_persona_profile';
   const FACTS_KEY = 'jarvis_facts';
@@ -25,7 +23,7 @@
   }
   function saveProfile(p) {
     ls.setItem(PROFILE_KEY, JSON.stringify(p || {}));
-    if (typeof window.showToast === 'function') showToast('✅ Đã lưu hồ sơ cá nhân!', 'success');
+
   }
 
   function getFacts() {
@@ -81,56 +79,68 @@
     return lines.join('\n');
   }
 
-  // Modal UI (lazy create)
+  // Modal UI dùng lại .modal-box và #modal-overlay của app (lazy create)
   let modalEl = null;
   function ensureModal() {
     if (modalEl) return modalEl;
     modalEl = document.createElement('div');
     modalEl.id = 'personalization-modal';
-    modalEl.style.cssText =
-      'display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;padding:16px;';
+    modalEl.className = 'modal-box';
     modalEl.innerHTML = `
-      <div style="background:var(--bg-card);border-radius:var(--radius-lg);padding:20px;max-width:560px;width:100%;max-height:90vh;overflow:auto;border:1px solid var(--border);">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <h3 style="margin:0;color:var(--text-main);">👤 Cá nhân hóa Jarvis</h3>
-          <button id="pers-close" class="btn" style="padding:4px 10px;">✕</button>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <label style="font-size:0.8rem;font-weight:600;color:var(--text-muted);">Tên của bạn</label>
-          <input id="pers-name" class="modern-input" placeholder="Ví dụ: Kevin" />
-          <label style="font-size:0.8rem;font-weight:600;color:var(--text-muted);">Vai trò / nghề nghiệp</label>
-          <input id="pers-role" class="modern-input" placeholder="Ví dụ: Kỹ sư phần mềm" />
-          <label style="font-size:0.8rem;font-weight:600;color:var(--text-muted);">Phong cách trả lời mong muốn</label>
-          <select id="pers-style" class="modern-select">
-            <option value="Cân bằng, rõ ràng">Cân bằng, rõ ràng</option>
-            <option value="Ngắn gọn, đi thẳng vấn đề">Ngắn gọn, đi thẳng vấn đề</option>
-            <option value="Chi tiết, giải thích sâu">Chi tiết, giải thích sâu</option>
-            <option value="Thân thiện, hài hước">Thân thiện, hài hước</option>
-          </select>
-          <label style="font-size:0.8rem;font-weight:600;color:var(--text-muted);">Sở thích / chủ đề quan tâm</label>
-          <input id="pers-interests" class="modern-input" placeholder="Ví dụ: AI, lập trình, năng suất" />
-          <label style="font-size:0.8rem;font-weight:600;color:var(--text-muted);">Ghi chú thêm</label>
-          <textarea id="pers-notes" class="modern-input" rows="3" placeholder="Thông tin khác Jarvis nên nhớ..."></textarea>
-          <label style="font-size:0.8rem;font-weight:600;color:var(--text-muted);">Mật độ giao diện</label>
-          <select id="pers-density" class="modern-select">
-            <option value="comfortable">Thoải mái (mặc định)</option>
-            <option value="compact">Gọn (compact)</option>
-          </select>
-          <button id="pers-save" class="btn primary" style="margin-top:6px;">💾 Lưu hồ sơ</button>
-        </div>
-        <hr style="margin:16px 0;border-color:var(--border);" />
-        <h4 style="margin:0 0 8px 0;color:var(--text-main);">🧠 Facts dài hạn</h4>
-        <div style="display:flex;gap:8px;margin-bottom:8px;">
-          <input id="pers-fact-input" class="modern-input" placeholder="Thêm một sự kiện cần nhớ..." style="flex:1;" />
-          <button id="pers-fact-add" class="btn" style="padding:6px 12px;">➕</button>
-        </div>
-        <div id="pers-facts-list" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow:auto;"></div>
+      <div class="modal-header">
+        <h3>👤 Cá nhân hóa Jarvis</h3>
+        <button id="pers-close" class="btn pers-close" aria-label="Đóng">✕</button>
+      </div>
+      <div class="modal-scroll-body">
+        <fieldset class="settings-group">
+          <legend>👤 Hồ sơ người dùng</legend>
+          <div class="pers-form">
+            <div>
+              <label class="field-label" for="pers-name">Tên của bạn</label>
+              <input id="pers-name" class="modern-input" placeholder="Ví dụ: Kevin" />
+            </div>
+            <div>
+              <label class="field-label" for="pers-role">Vai trò / nghề nghiệp</label>
+              <input id="pers-role" class="modern-input" placeholder="Ví dụ: Kỹ sư phần mềm" />
+            </div>
+            <div>
+              <label class="field-label" for="pers-style">Phong cách trả lời mong muốn</label>
+              <select id="pers-style" class="modern-select">
+                <option value="Cân bằng, rõ ràng">Cân bằng, rõ ràng</option>
+                <option value="Ngắn gọn, đi thẳng vấn đề">Ngắn gọn, đi thẳng vấn đề</option>
+                <option value="Chi tiết, giải thích sâu">Chi tiết, giải thích sâu</option>
+                <option value="Thân thiện, hài hước">Thân thiện, hài hước</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label" for="pers-interests">Sở thích / chủ đề quan tâm</label>
+              <input id="pers-interests" class="modern-input" placeholder="Ví dụ: AI, lập trình, năng suất" />
+            </div>
+            <div>
+              <label class="field-label" for="pers-notes">Ghi chú thêm</label>
+              <textarea id="pers-notes" class="modern-input" rows="3" placeholder="Thông tin khác Jarvis nên nhớ..."></textarea>
+            </div>
+            <div>
+              <label class="field-label" for="pers-density">Mật độ giao diện</label>
+              <select id="pers-density" class="modern-select">
+                <option value="comfortable">Thoải mái (mặc định)</option>
+                <option value="compact">Gọn (compact)</option>
+              </select>
+            </div>
+            <button id="pers-save" class="btn primary">💾 Lưu hồ sơ</button>
+          </div>
+        </fieldset>
+        <fieldset class="settings-group">
+          <legend>🧠 Facts dài hạn</legend>
+          <div class="pers-fact-form">
+            <input id="pers-fact-input" class="modern-input" placeholder="Thêm một sự kiện cần nhớ..." />
+            <button id="pers-fact-add" class="btn" aria-label="Thêm fact">➕</button>
+          </div>
+          <div id="pers-facts-list" class="pers-facts-list"></div>
+        </fieldset>
       </div>`;
     document.body.appendChild(modalEl);
 
-    modalEl.addEventListener('click', e => {
-      if (e.target === modalEl) closeModal();
-    });
     $('pers-close').onclick = closeModal;
     $('pers-save').onclick = () => {
       const p = {
@@ -141,8 +151,8 @@
         notes: $('pers-notes').value.trim(),
       };
       saveProfile(p);
+      showToast('✅ Đã lưu hồ sơ cá nhân!', 'success');
       setDensity($('pers-density').value);
-      renderFacts();
     };
     $('pers-fact-add').onclick = () => {
       const v = $('pers-fact-input').value.trim();
@@ -163,35 +173,26 @@
     if (!c) return;
     const facts = getFacts();
     if (!facts.length) {
-      c.innerHTML =
-        '<div style="color:var(--text-muted);font-size:0.78rem;">Chưa có fact nào.</div>';
+      c.innerHTML = '<div class="pers-empty">Chưa có fact nào.</div>';
       return;
     }
     c.innerHTML = facts
       .map(
         f =>
-          `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--input-bg);border-radius:6px;border:1px solid var(--border);">
-            <span style="flex:1;font-size:0.8rem;color:var(--text-main);">${escapeHtml(f.text)}</span>
-            <button class="btn" style="padding:2px 8px;font-size:0.75rem;" data-fid="${f.id}">🗑️</button>
+          `<div class="pers-fact-row">
+            <span class="pers-fact-text">${escapeHtml(f.text)}</span>
+            <button class="btn pers-fact-remove" data-fid="${escapeHtml(f.id)}" aria-label="Xoá fact">🗑️</button>
           </div>`
       )
       .join('');
     c.querySelectorAll('button[data-fid]').forEach(b => {
       b.onclick = () => {
-        removeFact(b.getAttribute('data-fid'));
+        removeFact(b.dataset.fid);
         renderFacts();
       };
     });
   }
 
-  function escapeHtml(str) {
-    return typeof window.escapeHtml === 'function'
-      ? window.escapeHtml(str)
-      : String(str || '').replace(
-          /[&<>"]/g,
-          m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[m]
-        );
-  }
 
   function openModal() {
     ensureModal();
@@ -228,7 +229,7 @@
     buildPromptBlock,
     openModal,
   };
-  window.openPersonalizationModal = openModal;
 
-  // Command palette hook (if commands.js loaded later, it reads window)
+
+
 })();

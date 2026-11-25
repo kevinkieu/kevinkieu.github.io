@@ -317,10 +317,7 @@
       title: 'Cá nhân hóa Jarvis (Hồ sơ & Facts)',
       shortcut: '/persona',
       icon: '👤',
-      run: () =>
-        typeof window.openPersonalizationModal === 'function'
-          ? window.openPersonalizationModal()
-          : null,
+      run: () => window.Personalization?.openModal?.(),
     },
     {
       id: 'export-pdf',

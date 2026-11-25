@@ -109,6 +109,102 @@ body.compact-ui .msg-content {
   padding: 8px 10px;
 }
 
+/* BRANCH TIMELINE */
+#branch-timeline {
+  flex: 1;
+  overflow: auto;
+  min-height: 40px;
+}
+.branch-section {
+  margin-top: 8px;
+  flex: 0 0 auto;
+  max-height: 220px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.branch-empty {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+.branch-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.branch-node:hover {
+  background: var(--primary-container);
+}
+.branch-node.active {
+  background: var(--primary-container);
+}
+.branch-node-icon {
+  color: var(--primary);
+  font-size: 0.9rem;
+}
+.branch-node-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  color: var(--text-main);
+}
+.branch-node.active .branch-node-name {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* PERSONALIZATION MODAL */
+.pers-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pers-form > div > .field-label {
+  margin-bottom: 4px;
+}
+.pers-fact-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.pers-fact-form .modern-input {
+  flex: 1;
+}
+.pers-facts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow: auto;
+}
+.pers-fact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--input-bg);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.pers-fact-text {
+  flex: 1;
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
+.pers-fact-remove {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+}
+.pers-empty {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
 /* GLOBAL RESET & BASE */
 *,
 *::before,

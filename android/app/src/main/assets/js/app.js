@@ -863,7 +863,6 @@ window.forkSessionAt = async index => {
   await saveToDB(newS);
   await switchSess(newForkId);
   showToast(`🌿 Đã rẽ nhánh sang phiên mới từ tin #${index + 1}!`);
-  if (typeof window.renderBranchTimeline === 'function') window.renderBranchTimeline();
 };
 
 // --- BRANCH TIMELINE RENDER (Git-graph style in sidebar) ---
@@ -871,55 +870,40 @@ function renderBranchTimeline() {
   const container = $('branch-timeline');
   if (!container) return;
   const list = Array.isArray(sessions) ? sessions : [];
-  if (!list.length) {
-    container.innerHTML =
-      '<div style="color:var(--text-muted);font-size:0.78rem;">Chưa có phiên nào.</div>';
-    return;
-  }
-
-  // Build children map
   const childrenMap = new Map();
   list.forEach(s => {
     const pid = s.parentSessionId || null;
     if (!childrenMap.has(pid)) childrenMap.set(pid, []);
     childrenMap.get(pid).push(s);
   });
-
-  // Sort each group by orderIndex desc (newest first) to match sessions order
   childrenMap.forEach(arr => arr.sort((a, b) => (b.orderIndex || 0) - (a.orderIndex || 0)));
 
-  // Render recursively with indentation
-  let html = '';
+  const sessionIds = new Set(list.map(s => s.id));
+  const roots = list.filter(s => !s.parentSessionId || !sessionIds.has(s.parentSessionId));
+  const rendered = new Set();
+  const html = [];
   const renderNode = (s, depth) => {
+    if (rendered.has(s.id)) return;
+    rendered.add(s.id);
     const isActive = s.id === activeId;
-    const indent = depth * 14;
-    const icon = s.parentSessionId ? '🌿' : '💬';
-    html += `<div style="display:flex;align-items:center;gap:6px;padding:4px 6px;margin-left:${indent}px;border-radius:6px;cursor:pointer;background:${isActive ? 'var(--primary-container)' : 'transparent'};" onclick="window.switchSess && window.switchSess('${s.id}')">`;
-    html += `<span style="color:var(--primary);font-size:0.9rem;">${icon}</span>`;
-    html += `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.78rem;color:${isActive ? 'var(--primary)' : 'var(--text-main)'};font-weight:${isActive ? '700' : '400'};">${(s.name || 'Phiên').replace(/</g, '&lt;')}</span>`;
-    html += `</div>`;
-    const kids = childrenMap.get(s.id) || [];
-    kids.forEach(k => renderNode(k, depth + 1));
+    html.push(
+      `<div class="branch-node${isActive ? ' active' : ''}" style="margin-left:${depth * 14}px" data-session-id="${escapeHtml(s.id)}">` +
+        `<span class="branch-node-icon">${s.parentSessionId ? '🌿' : '💬'}</span>` +
+        `<span class="branch-node-name">${escapeHtml(s.name || 'Phiên')}</span>` +
+        '</div>'
+    );
+    (childrenMap.get(s.id) || []).forEach(child => renderNode(child, depth + 1));
   };
-
-  // Roots: sessions without parent (or parent not in list)
-  const rootIds = new Set(list.map(s => s.id));
-  const roots = (childrenMap.get(null) || []).concat(
-    list.filter(s => s.parentSessionId && !rootIds.has(s.parentSessionId))
-  );
-  // dedup roots
-  const seen = new Set();
-  roots.forEach(s => {
-    if (seen.has(s.id)) return;
-    seen.add(s.id);
-    renderNode(s, 0);
-  });
-
-  container.innerHTML =
-    html || '<div style="color:var(--text-muted);font-size:0.78rem;">Chưa có phiên nào.</div>';
+  roots.forEach(s => renderNode(s, 0));
+  container.innerHTML = html.join('') || '<div class="branch-empty">Chưa có phiên nào.</div>';
 }
-if (typeof window.renderBranchTimeline !== 'function')
-  window.renderBranchTimeline = renderBranchTimeline;
+
+// Delegated click: switching sessions without inline handlers in generated HTML
+$('branch-timeline')?.addEventListener('click', event => {
+  const node = event.target.closest('[data-session-id]');
+  if (node) switchSess(node.dataset.sessionId);
+});
+window.renderBranchTimeline = renderBranchTimeline;
 
 // --- FEATURE 2: DAILY BRIEFING (Đã chuyển sang js/briefing.js) ---
 
@@ -1589,17 +1573,8 @@ const updateTokenCount = () => {
   }
 };
 
-// Theme handled by js/theme-scheduler.js (auto/light/dark/sepia + scheduler)
-if (window.ThemeScheduler && typeof window.ThemeScheduler.init === 'function') {
-  try {
-    window.ThemeScheduler.init();
-  } catch (e) {}
-}
-DOM.btnTheme.onclick = () => {
-  if (window.ThemeScheduler && typeof window.ThemeScheduler.cycleMode === 'function') {
-    window.ThemeScheduler.cycleMode();
-  }
-};
+// Theme scheduler owns initialization; app only wires the toggle button
+DOM.btnTheme.onclick = () => window.ThemeScheduler?.cycleMode?.();
 
 if (DOM.input) {
   DOM.input.value = ls.getItem('jarvis_draft') || '';
@@ -1767,10 +1742,7 @@ const getDynamicSI = (ragSnippet = '') => {
   }
   const extraBlock = extraRules.filter(Boolean).join('\n\n');
 
-  const personalBlock =
-    window.Personalization && typeof window.Personalization.buildPromptBlock === 'function'
-      ? window.Personalization.buildPromptBlock()
-      : '';
+  const personalBlock = window.Personalization?.buildPromptBlock?.() || '';
 
   const card =
     persona && window.PersonaConfig && typeof window.PersonaConfig.buildCard === 'function'
@@ -2357,7 +2329,7 @@ function renderSel() {
       : '';
   $('session-msg-count').innerText = `${chatHistory.length} tin nhắn${kInfo}`;
   updateColorPickerUI();
-  if (typeof window.renderBranchTimeline === 'function') window.renderBranchTimeline();
+  renderBranchTimeline();
 }
 
 $('btn-new-session').onclick = () => newSess();

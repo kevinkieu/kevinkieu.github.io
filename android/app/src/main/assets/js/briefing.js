@@ -336,17 +336,8 @@
         }
       }
 
-      // Cá nhân hóa từ hồ sơ người dùng
-      let personaContext = '';
-      if (window.Personalization && typeof window.Personalization.getProfile === 'function') {
-        const p = window.Personalization.getProfile();
-        const parts = [];
-        if (p.name) parts.push('Tên: ' + p.name);
-        if (p.role) parts.push('Vai trò: ' + p.role);
-        if (p.interests) parts.push('Quan tâm: ' + p.interests);
-        if (p.notes) parts.push('Ghi chú: ' + p.notes);
-        personaContext = parts.join(' | ');
-      }
+      // Cá nhân hóa từ hồ sơ người dùng (dùng chung buildPromptBlock)
+      const personaContext = window.Personalization?.buildPromptBlock?.() || '';
 
       // Biên soạn bản tin bằng Flash Lite
       if (statusEl) statusEl.innerText = 'Jarvis đang biên soạn bản tin siêu tốc...';
