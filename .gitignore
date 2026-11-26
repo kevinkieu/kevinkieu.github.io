@@ -19,3 +19,7 @@ node_modules/
 # Ảnh chụp màn hình khi test UI (giữ trên máy, không đẩy lên repo public)
 screenshots/
 keystore.properties
+
+# Vercel deploy token cho proxy du phong (khong commit)
+.vercel-token
+.vercel/

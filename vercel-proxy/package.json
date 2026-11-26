@@ -1,0 +1,7 @@
+{
+  "name": "jarvis-cors-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CORS relay cho NVIDIA/Kilo - proxy du phong doc lap, chay tren Vercel Edge",
+  "type": "module"
+}

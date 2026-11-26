@@ -5,7 +5,7 @@
     "language": "JavaScript (ES modules, không bundler, không framework)",
     "purpose": "Multimodal AI assistant: chat đa model (Google Gemini + gateway OpenAI-compatible), live voice/video call, phiên dịch trực tiếp 2 màn hình, TTS studio, knowledge base + RAG, tìm kiếm web, tủ thuốc/nhắc uống thuốc và đồng bộ GitHub Gist 2 chiều.",
     "platforms": ["Web", "PWA", "Android (WebView + native medication alarms)"],
-    "versioning": "Android versionCode 76 / versionName 1.1.76 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=95, dynamic-providers.js ?v=82, sync.js ?v=81, storage-manager.js ?v=80, export.js ?v=79, commands.js ?v=77, rag.js ?v=77, live.js ?v=77, lazy-libs.js ?v=77, persona-config.js ?v=2, local-llm.js ?v=1, gesture-manager.js ?v=2, gesture-settings.js ?v=2, debug-overlay.js ?v=1, globals.js ?v=76), sw cache jarvis-ai-pwa-v88"
+    "versioning": "Android versionCode 76 / versionName 1.1.76 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=100, dynamic-providers.js ?v=82, sync.js ?v=84, api-keys.js ?v=79, provider-registry.js ?v=2, storage-manager.js ?v=80, export.js ?v=79, commands.js ?v=77, rag.js ?v=77, live.js ?v=77, lazy-libs.js ?v=77, persona-config.js ?v=2, gesture-manager.js ?v=2, gesture-settings.js ?v=2, debug-overlay.js ?v=1, globals.js ?v=76), sw cache jarvis-ai-pwa-v89"
   },
   "runtime_entry": {
     "web": "index.html",
@@ -37,7 +37,7 @@
     "external_apis": [
       "Google Gemini: generateContentStream (chat, kèm thinkingConfig theo model), Interactions API (engine thay thế), BidiGenerateContent (live voice/video), TTS, Embedding 2 (+ fallback embedding-001)",
       "OpenRouter (openai/gpt, nvidia/*, z-ai/*, qwen...) — OpenAI-compatible chat completions + streaming",
-      "NVIDIA integrate.api.nvidia.com (OpenAI-compatible, cần proxy CORS khi chạy web: scratch/nvidia-proxy.js cho local, worker/nvidia-proxy.js cho Cloudflare Workers)",
+      "NVIDIA integrate.api.nvidia.com (OpenAI-compatible, cần proxy CORS khi chạy web: scratch/nvidia-proxy.js cho local, worker/nvidia-proxy.js cho Cloudflare Workers, vercel-proxy/api/relay.js cho relay dự phòng độc lập trên Vercel Edge)",
       "Experiential Labs (OpenAI-compatible)",
       "Cohere Compatibility API (Command A+, Command A Reasoning; reasoning_effort thay cho reasoning object)",
       "Tavily / Serper / Jina Reader / Brave (tìm kiếm & trích xuất nội dung web)",
@@ -62,8 +62,8 @@
     "lazy_cdn_libs": ["pdf.js (chỉ tải khi cần đọc PDF, qua js/lazy-libs.js)", "html2pdf.js (chỉ tải khi xuất PDF)"],
     "service_worker": {
       "file": "sw.js",
-      "cache": "jarvis-ai-pwa-v87",
-      "precache": "STATIC_ASSETS: index.html, manifest, icons, 5 file CSS, js/{model-registry,chat-render,persona-config,local-llm,app,sync,live,tts,translate,rag,search,extract,blob,markdown.worker}.js + toàn bộ CDN_LIBS",
+      "cache": "jarvis-ai-pwa-v89",
+      "precache": "STATIC_ASSETS: index.html, manifest, icons, 5 file CSS, js/{model-registry,chat-render,persona-config,app,sync,live,tts,translate,rag,search,extract,blob,markdown.worker}.js + toàn bộ CDN_LIBS",
       "html": "network-first (để bản deploy GitHub Pages lên ngay), fallback cache → ./index.html",
       "js_css_cdn": "stale-while-revalidate",
       "bypass": "googleapis.com, tavily.com, jina.ai, serper.dev, brave.com, api.github.com, gist.githubusercontent.com, integrate.api.nvidia.com, freebuff.site",
@@ -103,7 +103,6 @@
         "js/persona-config.js": "Cấu hình 'con người' của Jarvis (tách khỏi getDynamicSI): danh tính mặc định, phong cách/xưng hô, 3 khối quy tắc bật/tắt (mốc thời gian thực tế, bảo vệ đời tư, buộc viết câu trả lời sau suy luận) và cờ autoInject (tự chèn thẻ tính cách ngắn vào đầu mọi lượt chat). Lưu localStorage jarvis_persona_config, UI trong Settings, đi kèm backup JSON + Gist sync; export window.PersonaConfig (get/save/reset/refreshUI/buildCard/buildTimeRule/buildToneRule/buildPrivacyRule/buildThinkingRule). Nạp trước app.js.",
         "js/personalization.js": "Cá nhân hóa người dùng: hồ sơ (tên, vai trò, phong cách trả lời, sở thích, ghi chú) lưu localStorage jarvis_persona_profile, kho facts dài hạn jarvis_facts (thêm/xoá, tối đa 30 fact khi chèn prompt), mật độ giao diện jarvis_ui_density (comfortable/compact → class body.compact-ui), modal '/persona' tạo lazy, buildPromptBlock() sinh khối [HỒ SƠ NGƯỜI DÙNG] + [SỰ KIỆN/FACTS DÀI HẠN] để app.js (getDynamicSI) và briefing.js tự chèn vào prompt. Đi kèm backup JSON + Gist sync (settings.personaProfile/factsStore/uiDensity). Export window.Personalization.",
         "js/theme-scheduler.js": "Bộ chuyển theme theo lịch: chế độ auto/light/dark/sepia lưu localStorage 'theme', lịch giờ jarvis_theme_schedule (lightStart/sepiaStart/darkStart, mặc định 6/18/22), setInterval 60s áp theme khi ở chế độ auto, đặt data-theme trên <html> và cập nhật nút #btn-theme, phát event 'theme-changed'. Lịch giờ chạy qua nửa đêm cũng được xử lý. Export window.ThemeScheduler (init/setMode/getMode/getEffectiveTheme/setSchedule/getSchedule/getModes/cycleMode/destroy); app.js và sync.js dùng để setMode khi khôi phục cấu hình.",
-        "js/local-llm.js": "Ollama local LLM: cấu hình host (jarvis_ollama_host, mặc định http://127.0.0.1:11434), model mặc định (jarvis_ollama_model), cờ tự chuyển khi cloud lỗi (jarvis_ollama_auto_fallback); dò model qua GET /api/tags, stream chat qua POST /api/chat (NDJSON), đổ model vào optgroup '💻 Ollama (máy local)' của #model-select với id ollama:<model>, UI trong Settings và nút kiểm tra kết nối. Không dùng API key; app.js gọi LocalLLM.streamChat cho lượt local và cho fallback.",
         "js/color-tags.js": "Gán màu nhãn cho phiên chat qua #session-color-picker (color chip), lưu vào session.",
         "js/follow-up-chips.js": "Sinh chip câu hỏi tiếp theo sau mỗi câu trả lời (renderFollowUpChips) và gắn sự kiện điền vào ô nhập.",
         "js/selection-toolbar.js": "Thanh công cụ nổi khi bôi đen văn bản (copy, hỏi lại, dịch, đọc TTS) + ẩn/hiện theo vùng chọn.",
@@ -234,7 +233,11 @@
         "scratch/ep.json": "Dữ liệu tạm (endpoint/provider) dùng khi kiểm tra model.",
         "scratch/or_models.json": "Bản dump danh sách model OpenRouter phục vụ đối chiếu slug/giá/context.",
         "worker/nvidia-proxy.js": "Template Cloudflare Worker proxy CORS + stream: đường dẫn /v1/* → NVIDIA integrate API, /kilo/v1/* → Kilo ai-gateway.kilo.ai — bản deploy của scratch/nvidia-proxy.js và scratch/kilo-proxy.js.",
-        "worker/sites.deploy.json": "Manifest deploy của Worker proxy NVIDIA."
+        "worker/sites.deploy.json": "Manifest deploy của Worker proxy NVIDIA.",
+        "vercel-proxy/api/relay.js": "Proxy CORS dự phòng độc lập (Vercel Edge, không phụ thuộc freebuff/Cloudflare): nhận /api/(.*) qua rewrite → ?__p=, chuyển tiếp tới NVIDIA integrate (/api/v1) hoặc Kilo (/api/kilo/v1), stream passthrough. Siết chống lạm dụng: Origin bắt buộc thuộc allowlist (GitHub Pages, appassets, loopback), chỉ GET/POST/OPTIONS, chỉ 3 path /v1/models, /v1/chat/completions, /v1/completions, chặn '..' và '//', không chuyển cookie. Lưu ý nền tảng Vercel tự chặn payload > ~4.5 MB trước khi vào function (413, không CORS) nên payload lớn phải dựa vào proxy freebuff/Worker. Deploy: https://vercel-proxy-two-lake.vercel.app",
+        "vercel-proxy/vercel.json": "Rewrite /api/(.*) → /api/relay?__p=$1 để Vercel sinh Edge Function (catch-all [...path].js trước đó bị bỏ qua, mọi request 404).",
+        "vercel-proxy/package.json": "Khai báo project Vercel tối giản (type module), không dependency, không build step.",
+        "vercel-proxy/README.md": "Hướng dẫn deploy relay dự phòng, Base URL cho NVIDIA/Kilo và các lớp chặn bị dùng như proxy mở."
       }
     },
     {
@@ -295,7 +298,7 @@
     "file": "CHANGELOG.md",
     "note": "Lịch sử thay đổi chi tiết đã chuyển từ recent_changes sang CHANGELOG.md để boicanhduan.json chỉ còn mô tả kiến trúc.",
     "entries": 50,
-    "last_change_date": "2026-11-25",
-    "latest_summary": "Fix luồng Gist Cloud trên máy mới: two-way sync kéo được API key, base URL của provider động và Global Context; D2 bỏ qua key không có ở Cloud (tránh isLocalAhead sai), fallback globalContext từ top-level settings, manual pull lưu localStorage. Bump sync.js."
+    "last_change_date": "2026-11-26",
+    "latest_summary": "Fix Gist Sync: 3-way merge cho key/settings (timestamp thay 'ô trống thì nhận'), Smart Sync kéo được model/theme/persona/system instruction toàn cục, đẩy tombstone tri thức lên Cloud. Bump sync.js v83."
   }
 }

@@ -1,3 +1,75 @@
+## 2026-11-26 — Siết relay Vercel chống bị dùng như proxy mở
+
+- `vercel-proxy/api/relay.js`: bắt buộc `Origin` thuộc allowlist (GitHub Pages, appassets,
+  loopback), thiếu/lạ → 403 và không echo origin lạ; chỉ `GET`/`POST`/`OPTIONS` (khác → 405).
+- Allowlist endpoint: chỉ `/v1/models`, `/v1/chat/completions`, `/v1/completions` (áp cả tiền tố
+  `/kilo`), path khác → 404; chặn `..` và `//` → 400. Upstream luôn cố định NVIDIA/Kilo nên không
+  thể dùng để quét host khác (chặn SSRF).
+- Không chuyển cookie, xoá `set-cookie` khỏi response; thêm `Access-Control-Max-Age: 600` và
+  `Cache-Control: no-store` cho response lỗi JSON.
+- Bỏ guard body 12 MB (code chết): đo thực tế Vercel đã trả `413 FUNCTION_PAYLOAD_TOO_LARGE` trước
+  khi vào function với payload ~5 MB, nên giới hạn thật là ~4.5 MB của nền tảng; khi đó app coi là
+  lỗi mạng và tự nhảy sang proxy freebuff.
+- `boicanhduan.json`: thêm nhóm `vercel-proxy/*` vào testing_and_tooling và ghi chú relay dự phòng
+  trong `architecture.external_apis`.
+- Đã deploy lại production và test bằng curl (kết quả ghi trong CHANGELOG lần trước).
+
+## 2026-11-26 — Thêm relay dự phòng độc lập trên Vercel Edge
+
+- `vercel-proxy/`: Edge Function `api/[...path].js` chuyển tiếp `/api/v1/*` → NVIDIA và
+  `/api/kilo/v1/*` → Kilo, thêm CORS header, trả 502 JSON khi upstream lỗi mạng; không dependency,
+  không build step. Đây là proxy dự phòng nằm NGOÀI hạ tầng freebuff.site (khác nhà cung cấp).
+- `.gitignore`: chặn `.vercel-token` và `.vercel/` để token deploy không bao giờ vào git.
+- Đã deploy production: `https://vercel-proxy-two-lake.vercel.app` (Edge Function `api/relay.js` +
+  rewrite `/api/(.*)` → `/api/relay?__p=$1` vì catch-all `[...path].js` không được Vercel nhận
+  diện).
+- `js/app.js`: thêm URL Vercel vào ĐẦU danh sách fallback cho NVIDIA (`/api/v1`) và Kilo
+  (`/api/kilo/v1`), trước các hostname freebuff; bump `js/app.js?v=100`.
+- Đã kiểm tra bằng curl: OPTIONS → 204 kèm CORS, `GET /api/v1/models` → 200 (danh sách model NVIDIA
+  thật), `POST /api/kilo/v1/chat/completions` → 401 của Kilo kèm CORS, origin lạ không được echo.
+
+## 2026-11-26 — Gỡ toàn bộ Ollama local
+
+- Xoá `js/local-llm.js` (và mirror Android), bỏ script tag + bump `app.js?v=99`, `sync.js?v=84`, SW
+  cache `jarvis-ai-pwa-v89`.
+- `index.html`: xoá fieldset "💻 Ollama - LLM chạy trên máy của bạn" (host, model, auto-fallback,
+  nút dò model).
+- `js/app.js`: bỏ nhánh engine local (`runOllamaTurn`), auto-fallback `tryLocalFallback` cùng mọi
+  nhánh key/badge/nhãn chờ `localModel`, `localModelUsed`, `promptForLocal`; lỗi lượt gửi nay chỉ
+  báo toast như trước.
+- `js/sync.js` + `js/export.js`: bỏ `ollamaHost`/`ollamaModel`/`ollamaAutoFallback` khỏi settings
+  sync và backup JSON (key `jarvis_ollama_*` cũ trong Gist/backup được bỏ qua an toàn).
+- Cập nhật `boicanhduan.json`, `TODO.md`, mô tả `package.json`. `npm test` 93/93 pass,
+  `check-models` / `check-map` / `check-assets` OK.
+
+## 2026-11-26 — Đưa toggle bóc tách Link về đúng chat văn bản, bỏ "proxy backup" trùng Worker
+
+- index.html: chuyển checkbox "Tự động bóc tách nội dung Link" từ nhóm Cấu hình Cuộc gọi Live AI
+  sang sidebar chat (ngay dưới Tìm kiếm Web), đổi id `live-toggle-url-scrape` → `toggle-url-scrape`.
+  Đây là cờ cho chat văn bản (`jarvis_url_scrape_enabled`), không liên quan cuộc gọi Live.
+- js/api-keys.js: đọc/ghi/lưu cờ theo id mới; js/app.js: giữ nguyên gate auto-extract ở luồng gửi
+  tin.
+- js/app.js: giữ và bổ sung endpoint dự phòng cho proxy NVIDIA/Kilo. Endpoint chính hãng bị chặn
+  CORS nên trình duyệt bắt buộc phải đi qua proxy freebuff.site; preview và production là hai môi
+  trường deploy riêng (hạn mức/publish riêng), nên một hostname bị pause/chặn thì hostname còn lại
+  vẫn phục vụ. Thứ tự thử: proxy đang cấu hình → production → preview (bỏ trùng lặp).
+- Bump `js/app.js?v=98`, `js/api-keys.js?v=79`, mirror Android assets.
+
+## 2026-11-26 — Fix Gist Sync: 3-way merge cho key/settings, tombstone tri thức, Smart Sync kéo được model/theme/persona/system instruction
+
+- js/sync.js: thay luật "ô trống thì nhận" bằng 3-way merge (local / remote / base snapshot +
+  timestamp) cho toàn bộ key (Google 1..10 + OpenRouter/Experiential/NVIDIA/Cohere + provider động +
+  externalConfigs): sửa/xoá key ở một máy nay lan sang máy khác, không còn bị Cloud điền lại key đã
+  xoá.
+- js/sync.js: Smart Sync nay áp dụng model + provider, temperature, searchEngine, system instruction
+  toàn cục, theme, personaConfig, personaProfile, factsStore, uiDensity, gestureConfig, Ollama,
+  ragEnabled, autoLearnMemory từ Cloud (trước đây chỉ đẩy lên, không kéo về).
+- js/sync.js: đẩy tombstone tri thức (deletedVectorIds) lên Cloud và merge khi pull → xoá tri thức
+  không còn bị hồi sinh từ Cloud/máy khác.
+- js/sync.js: bump timestamp settings/key tại thời điểm push; restore settingsUpdatedAt/keyUpdatedAt
+  - snapshot khi "Ghi đè Máy".
+- Tests: npm test 93/93 pass, node --check js/sync.js pass.
+
 ## 2026-11-26 — Fix Gist sync: Global Context + Dynamic Provider keys/base URL
 
 - js/sync.js: D2 merge externalConfigs gio bo qua cac key khong ton tai o Cloud (tranh isLocalAhead
