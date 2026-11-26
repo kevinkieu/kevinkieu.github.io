@@ -1,3 +1,14 @@
+## 2026-11-26 — Fix Gist sync: Global Context + Dynamic Provider keys/base URL
+
+- js/sync.js: D2 merge externalConfigs gio bo qua cac key khong ton tai o Cloud (tranh isLocalAhead
+  bi kich hoat sai do gia tri mac dinh nhu live_search_enabled), tranh new device tu push ghi de
+  Cloud.
+- js/sync.js: them fallback khoi phuc Global Context tu top-level settings.globalContext khi
+  externalConfigs thieu jarvis_global_context; luu ca jarvis_/huanmu_ global context.
+- js/sync.js: manual pull (Ghi de May) luu global context vao localStorage (khong chi DOM).
+- Muc dich: tren may moi, two-way sync keo duoc API key, base URL cua provider dong va Global
+  Context.
+
 # Changelog — Jarvis AI
 
 Lịch sử thay đổi của dự án, mới nhất ở trên cùng. Bản đồ kiến trúc (dạng máy đọc) nằm ở

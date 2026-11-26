@@ -296,6 +296,6 @@
     "note": "Lịch sử thay đổi chi tiết đã chuyển từ recent_changes sang CHANGELOG.md để boicanhduan.json chỉ còn mô tả kiến trúc.",
     "entries": 50,
     "last_change_date": "2026-11-25",
-    "latest_summary": "Remove hoàn toàn Wake Word (TF.js) vì không hoạt động ổn định + Fix Gesture settings không lưu sau khi khởi động lại (thêm jarvis_gesture_config vào backup JSON và Gist sync). Dọn lazy-libs, gesture actions, sửa lỗi syntax live.js. Bump versionCode 76, sw cache v86, sync assets."
+    "latest_summary": "Fix luồng Gist Cloud trên máy mới: two-way sync kéo được API key, base URL của provider động và Global Context; D2 bỏ qua key không có ở Cloud (tránh isLocalAhead sai), fallback globalContext từ top-level settings, manual pull lưu localStorage. Bump sync.js."
   }
 }

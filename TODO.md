@@ -41,6 +41,12 @@
 - [ ] Tách `js/app.js` (~5800 dòng) thành các module nhỏ hơn (send-pipeline, session-manager,
       memory), tránh thêm nhánh mới vào cùng một hàm gửi tin.
 
+## Vừa hoàn thành (2026-11-26)
+
+- [x] Sửa luồng Gist Cloud: máy mới đồng bộ 2 chiều kéo được API key, base URL của provider động và
+      Global Context. `js/sync.js`: D2 bỏ qua key không có ở Cloud, fallback Global Context từ
+      top-level settings, manual pull lưu localStorage. Android assets đã sync.
+
 ## Ghi chú vận hành
 
 - `npm run sync-assets` sau mỗi lần sửa `js/` / `css/` (mirror sang `android/app/src/main/assets`).

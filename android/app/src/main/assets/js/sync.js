@@ -694,6 +694,21 @@
             }
           }
 
+          // Fallback: khoi phuc Global Context tu top-level settings neu externalConfigs thieu
+          if (
+            cloudData.settings &&
+            cloudData.settings.globalContext &&
+            !(ls.getItem('jarvis_global_context') || '').trim()
+          ) {
+            var _gc = String(cloudData.settings.globalContext).trim();
+            if (_gc) {
+              ls.setItem('jarvis_global_context', _gc);
+              ls.setItem('huanmu_global_context', _gc);
+              if (typeof window.initExternalConfigs === 'function') window.initExternalConfigs();
+              hasChanges = true;
+            }
+          }
+
           // D3. HỢP NHẤT PROVIDER & MODEL ĐỘNG (Kilo, ...): nhận từ Cloud những
           // provider/model máy này CHƯA có, VÀ restore keys cho provider đã có.
           const remoteDP = cloudData.settings?.dynamicProviders;
@@ -1022,6 +1037,7 @@
               return s;
             };
             for (const cfgKey of Object.keys(localExtCfg)) {
+              if (!(cfgKey in (remoteExtCfg || {}))) continue;
               const lVal = normCfgVal(localExtCfg[cfgKey]);
               if (lVal && lVal !== normCfgVal(remoteExtCfg[cfgKey])) {
                 isLocalAhead = true;
@@ -1683,8 +1699,11 @@
         }
         if (parsed.settings.searchEngine && getDOM().searchEngineSel)
           getDOM().searchEngineSel.value = parsed.settings.searchEngine;
-        if (parsed.settings.globalContext && getDOM().globContext)
+        if (parsed.settings.globalContext && getDOM().globContext) {
           getDOM().globContext.value = parsed.settings.globalContext;
+          ls.setItem('jarvis_global_context', parsed.settings.globalContext);
+          ls.setItem('huanmu_global_context', parsed.settings.globalContext);
+        }
         if (parsed.settings.systemInstruction && getDOM().sysInst)
           getDOM().sysInst.value = parsed.settings.systemInstruction;
         if (parsed.settings.theme) {
