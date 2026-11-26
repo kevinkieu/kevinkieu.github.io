@@ -732,6 +732,11 @@
       $('lite-fallback-enabled').checked = ls.getItem('jarvis_lite_fallback_enabled') !== 'false';
     if ($('live-toggle-search'))
       $('live-toggle-search').checked = ls.getItem('live_search_enabled') !== 'false';
+    if ($('toggle-url-scrape')) {
+      $('toggle-url-scrape').checked = ls.getItem('jarvis_url_scrape_enabled') === 'true';
+      $('toggle-url-scrape').onchange = e =>
+        ls.setItem('jarvis_url_scrape_enabled', e.target.checked ? 'true' : 'false');
+    }
     if ($('live-toggle-context'))
       $('live-toggle-context').checked = ls.getItem('live_context_enabled') !== 'false';
     if ($('hide-deepseek-thinking-checkbox')) {
@@ -776,6 +781,7 @@
       $('lite-fallback-enabled')?.checked ? 'true' : 'false'
     );
     ls.setItem('live_search_enabled', $('live-toggle-search')?.checked ? 'true' : 'false');
+    ls.setItem('jarvis_url_scrape_enabled', $('toggle-url-scrape')?.checked ? 'true' : 'false');
     ls.setItem('live_context_enabled', $('live-toggle-context')?.checked ? 'true' : 'false');
     ls.setItem(
       'jarvis_hide_deepseek_thinking',

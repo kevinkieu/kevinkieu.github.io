@@ -171,6 +171,267 @@
   const getDOM = () => window.DOM || {};
   const oLay = $('modal-overlay');
 
+  // ===== 3-WAY MERGE CHO CẤU HÌNH & KEY (thay luật "ô trống thì nhận") =====
+  const readSyncMap = key => { try { const o = JSON.parse(ls.getItem(key) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (_) { return {}; } };
+  const writeSyncMap = (key, obj) => { try { ls.setItem(key, JSON.stringify(obj || {})); } catch (_) {} };
+  const normVal = v => (v === undefined || v === null ? '' : String(v));
+  const decVal = v => {
+    let s = normVal(v);
+    if (s.startsWith('JVENC_') || s.startsWith('ENC_')) s = String(deobfuscateKey(s) || '').trim();
+    return s;
+  };
+  const resolveSyncValue = (local, remote, base, localTs, remoteTs) => {
+    const L = normVal(local), R = normVal(remote), B = (base === undefined || base === null) ? null : normVal(base);
+    if (L === R) return { value: L, changed: false };
+    if (B === null) {
+      if (R) return { value: R, changed: true };
+      return { value: L, changed: false };
+    }
+    if (L === B) return { value: R, changed: true };
+    if (R === B) return { value: L, changed: false };
+    if ((remoteTs || 0) > (localTs || 0)) return { value: R, changed: true };
+    return { value: L, changed: false };
+  };
+  const SETTINGS_SYNC_KEYS = [
+    'model','temperature','searchEngine','systemInstruction','theme',
+    'personaConfig','personaProfile','factsStore','uiDensity','gestureConfig',
+    'ragEnabled','autoLearnMemory',
+  ];
+  const collectSettingsSnapshot = () => {
+    const d = getDOM();
+    const modelProv = window.DynamicProviders?.getSelectedModelProvider?.() || '';
+    const model = (d.model?.value || 'gemini-3.6-flash') + '||' + modelProv;
+    return {
+      model,
+      temperature: d.temp?.value || 0.5,
+      searchEngine: d.searchEngineSel?.value || 'tavily',
+      systemInstruction: d.sysInst?.value || '',
+      theme: ls.getItem('jarvis_theme') || 'auto',
+      personaConfig: ls.getItem('jarvis_persona_config') || '',
+      personaProfile: ls.getItem('jarvis_persona_profile') || '',
+      factsStore: ls.getItem('jarvis_facts') || '',
+      uiDensity: ls.getItem('jarvis_ui_density') || '',
+      gestureConfig: ls.getItem('jarvis_gesture_config') || '',
+      ragEnabled: ls.getItem('jarvis_rag_enabled') || 'true',
+      autoLearnMemory: ls.getItem('jarvis_auto_learn_memory') || 'true',
+    };
+  };
+  function applySyncedSetting(key, value) {
+    const d = getDOM();
+    const v = normVal(value);
+    switch (key) {
+      case 'model': {
+        if (!d.model || !v) return false;
+        const parts = v.split('||');
+        const mid = parts[0];
+        const prov = parts[1] || null;
+        const applied = window.DynamicProviders?.selectModelOption?.(mid, prov);
+        if (!applied) d.model.value = mid;
+        return true;
+      }
+      case 'temperature': if (!d.temp) return false; d.temp.value = v; if (d.tempVal) d.tempVal.innerText = v; return true;
+      case 'searchEngine': if (!d.searchEngineSel) return false; d.searchEngineSel.value = v; return true;
+      case 'systemInstruction': if (!d.sysInst) return false; d.sysInst.value = v; return true;
+      case 'theme': ls.setItem('jarvis_theme', v); ls.setItem('theme', v); if (window.ThemeScheduler && typeof window.ThemeScheduler.setMode === 'function') window.ThemeScheduler.setMode(v); return true;
+      case 'personaConfig': ls.setItem('jarvis_persona_config', v); if (window.PersonaConfig && typeof window.PersonaConfig.refreshUI === 'function') window.PersonaConfig.refreshUI(); return true;
+      case 'personaProfile': ls.setItem('jarvis_persona_profile', v); return true;
+      case 'factsStore': ls.setItem('jarvis_facts', v); return true;
+      case 'uiDensity': ls.setItem('jarvis_ui_density', v); if (window.Personalization && typeof window.Personalization.setDensity === 'function') window.Personalization.setDensity(v); return true;
+      case 'gestureConfig': ls.setItem('jarvis_gesture_config', v); if (window.GestureManager && typeof window.GestureManager.init === 'function') window.GestureManager.init(); return true;
+      case 'ragEnabled': ls.setItem('jarvis_rag_enabled', v); return true;
+      case 'autoLearnMemory': ls.setItem('jarvis_auto_learn_memory', v); return true;
+    }
+    return false;
+  }
+  function mergeRemoteSettings(remoteSettings, remoteTs) {
+    const local = collectSettingsSnapshot();
+    const base = readSyncMap('jarvis_settings_snapshot');
+    const localTs = readSyncMap('jarvis_settings_updated_at');
+    const rt = remoteTs || {};
+    let changedLocal = 0;
+    let localAhead = false;
+    SETTINGS_SYNC_KEYS.forEach(key => {
+      const remoteVal = (key === 'model')
+        ? (remoteSettings.model ? (remoteSettings.model + '||' + (remoteSettings.modelProvider || '')) : '')
+        : remoteSettings[key];
+      const r = resolveSyncValue(local[key], remoteVal, base[key], localTs[key], rt[key]);
+      if (r.value !== normVal(local[key])) {
+        applySyncedSetting(key, r.value);
+        changedLocal++;
+      }
+      if (r.value !== normVal(remoteVal)) localAhead = true;
+    });
+    const newLocal = collectSettingsSnapshot();
+    const newBase = Object.assign({}, base);
+    const newTs = Object.assign({}, localTs);
+    SETTINGS_SYNC_KEYS.forEach(key => {
+      newBase[key] = newLocal[key];
+      if (rt[key] && (rt[key] > (newTs[key] || 0))) newTs[key] = rt[key];
+    });
+    writeSyncMap('jarvis_settings_snapshot', newBase);
+    writeSyncMap('jarvis_settings_updated_at', newTs);
+    return { changedLocal, localAhead };
+  }
+  const BUILTIN_KEY_PROVIDERS = ['openrouter','explabs','nvidia','cohere'];
+  function collectKeySnapshot() {
+    const out = {};
+    for (let i = 1; i <= 10; i++) {
+      out['jarvis_api_' + i] = normVal(ls.getItem('jarvis_api_' + i) || ls.getItem('huanmu_api_' + i) || '');
+      out['jarvis_api_name_' + i] = normVal(ls.getItem('jarvis_api_name_' + i) || ls.getItem('huanmu_api_name_' + i) || '');
+    }
+    BUILTIN_KEY_PROVIDERS.forEach(pid => {
+      const cnt = getProviderKeyCount(pid);
+      const kp = getProviderKeyPrefix(pid);
+      const np = getProviderKeyNamePrefix(pid);
+      for (let i = 1; i <= cnt; i++) {
+        out[kp + '_' + i] = normVal(ls.getItem(kp + '_' + i) || '');
+        out[np + '_' + i] = normVal(ls.getItem(np + '_' + i) || '');
+      }
+    });
+    try {
+      const dp = window.DynamicProviders?.exportConfig?.(false) || {};
+      Object.entries(dp.providers || {}).forEach(([id, p]) => {
+        const cnt = Math.min(Math.max(parseInt(p.keyCount, 10) || 0, 0), 10);
+        const kp = p.keyPrefix || 'jarvis_provider_' + id + '_api';
+        const np = p.keyNamePrefix || 'jarvis_provider_' + id + '_name';
+        for (let i = 1; i <= cnt; i++) {
+          out[kp + '_' + i] = normVal(ls.getItem(kp + '_' + i) || '');
+          out[np + '_' + i] = normVal(ls.getItem(np + '_' + i) || '');
+        }
+      });
+    } catch (_) {}
+    try {
+      Object.entries(getExternalConfigsObj(false) || {}).forEach(([k, v]) => { out[k] = normVal(v); });
+    } catch (_) {}
+    return out;
+  }
+  function collectRemoteKeyMap(settings) {
+    const out = {};
+    const s = settings || {};
+    for (let i = 0; i < 10; i++) {
+      out['jarvis_api_' + (i + 1)] = decVal((s.keys || [])[i]);
+      out['jarvis_api_name_' + (i + 1)] = normVal((s.keyNames || [])[i]);
+    }
+    const builtinMap = {
+      openrouter: { keys: s.openRouterKeys, names: s.openRouterKeyNames, pid: 'openrouter' },
+      explabs: { keys: s.explabsKeys, names: s.explabsKeyNames, pid: 'explabs' },
+      nvidia: { keys: s.nvidiaKeys, names: s.nvidiaKeyNames, pid: 'nvidia' },
+      cohere: { keys: s.cohereKeys, names: s.cohereKeyNames, pid: 'cohere' },
+    };
+    Object.values(builtinMap).forEach(({ keys, names, pid }) => {
+      const cnt = getProviderKeyCount(pid);
+      const kp = getProviderKeyPrefix(pid);
+      const np = getProviderKeyNamePrefix(pid);
+      for (let i = 0; i < cnt; i++) {
+        out[kp + '_' + (i + 1)] = decVal((keys || [])[i]);
+        out[np + '_' + (i + 1)] = normVal((names || [])[i]);
+      }
+    });
+    const dp = s.dynamicProviders || {};
+    Object.entries(dp.providers || {}).forEach(([id, p]) => {
+      const cnt = Math.min(Math.max(parseInt(p.keyCount, 10) || 0, 0), 10);
+      const kp = (p.keyPrefix || 'jarvis_provider_' + id + '_api');
+      const np = (p.keyNamePrefix || 'jarvis_provider_' + id + '_name');
+      const keys = p.keys || [];
+      const names = p.keyNames || [];
+      for (let i = 0; i < cnt; i++) {
+        out[kp + '_' + (i + 1)] = decVal(keys[i]);
+        out[np + '_' + (i + 1)] = normVal(names[i]);
+      }
+    });
+    const ext = s.externalConfigs || {};
+    Object.entries(ext).forEach(([k, v]) => {
+      out[k] = decVal(v);
+    });
+    return out;
+  }
+  function applySyncedKey(storageKey, value) {
+    const v = normVal(value);
+    ls.setItem(storageKey, v);
+    if (/^jarvis_api_(\d+)$/.test(storageKey)) {
+      const i = +RegExp.$1;
+      ls.setItem('huanmu_api_' + i, v);
+    }
+    if (/^jarvis_api_name_(\d+)$/.test(storageKey)) {
+      const i = +RegExp.$1;
+      ls.setItem('huanmu_api_name_' + i, v);
+    }
+  }
+  function mergeRemoteKeySettings(settings, remoteTs) {
+    const local = collectKeySnapshot();
+    const base = readSyncMap('jarvis_key_snapshot');
+    const localTs = readSyncMap('jarvis_key_updated_at');
+    const remote = collectRemoteKeyMap(settings);
+    const rt = remoteTs || {};
+    let changedLocal = 0;
+    let localAhead = false;
+    Object.keys(local).forEach(k => {
+      if (!(k in remote)) remote[k] = '';
+    });
+    Object.keys(remote).forEach(k => {
+      if (!(k in local)) local[k] = '';
+    });
+    Object.keys(local).forEach(k => {
+      const r = resolveSyncValue(local[k], remote[k], base[k], localTs[k], rt[k]);
+      if (r.value !== normVal(local[k])) {
+        applySyncedKey(k, r.value);
+        changedLocal++;
+      }
+      if (r.value !== normVal(remote[k])) localAhead = true;
+    });
+    Object.keys(remote).forEach(k => {
+      if (k in local) return;
+      const r = resolveSyncValue('', remote[k], undefined, 0, rt[k]);
+      if (r.value !== '') { applySyncedKey(k, r.value); changedLocal++; }
+      if (r.value !== normVal(remote[k])) localAhead = true;
+    });
+    const newLocal = collectKeySnapshot();
+    const newBase = Object.assign({}, base);
+    const newTs = Object.assign({}, localTs);
+    Object.keys(newLocal).forEach(k => {
+      newBase[k] = newLocal[k];
+      if (rt[k] && (rt[k] > (newTs[k] || 0))) newTs[k] = rt[k];
+    });
+    writeSyncMap('jarvis_key_snapshot', newBase);
+    writeSyncMap('jarvis_key_updated_at', newTs);
+    if (changedLocal > 0) {
+      if (typeof window.initAPIKeys === 'function') window.initAPIKeys();
+      if (typeof window.initExternalConfigs === 'function') window.initExternalConfigs();
+    }
+    return { changedLocal, localAhead };
+  }
+  function bumpKeyTimestamps() {
+    const cur = collectKeySnapshot();
+    const snap = readSyncMap('jarvis_key_snapshot');
+    const ts = readSyncMap('jarvis_key_updated_at');
+    const hasSnap = Object.keys(snap).length > 0;
+    Object.keys(cur).forEach(k => {
+      if (!hasSnap) { snap[k] = cur[k]; if (ts[k] === undefined) ts[k] = 0; return; }
+      if (normVal(snap[k]) !== normVal(cur[k])) { ts[k] = Date.now(); snap[k] = cur[k]; }
+    });
+    writeSyncMap('jarvis_key_snapshot', snap);
+    writeSyncMap('jarvis_key_updated_at', ts);
+    return ts;
+  }
+  function bumpSettingsTimestamps() {
+    const cur = collectSettingsSnapshot();
+    const snap = readSyncMap('jarvis_settings_snapshot');
+    const ts = readSyncMap('jarvis_settings_updated_at');
+    const hasSnap = Object.keys(snap).length > 0;
+    Object.keys(cur).forEach(k => {
+      if (!hasSnap) { snap[k] = cur[k]; if (ts[k] === undefined) ts[k] = 0; return; }
+      if (normVal(snap[k]) !== normVal(cur[k])) { ts[k] = Date.now(); snap[k] = cur[k]; }
+    });
+    writeSyncMap('jarvis_settings_snapshot', snap);
+    writeSyncMap('jarvis_settings_updated_at', ts);
+    return ts;
+  }
+  function readDeletedVectorIds() {
+    try { return new Set(JSON.parse(ls.getItem('jarvis_deleted_vector_ids') || '[]')); } catch (_) { return new Set(); }
+  }
+  function writeDeletedVectorIds(set) {
+    try { ls.setItem('jarvis_deleted_vector_ids', JSON.stringify(Array.from(set).slice(-500))); } catch (_) {} }
+
   // --- GITHUB GIST CLOUD SYNC CONTROLLER (2-WAY SMART MERGE & AUTO SYNC) ---
   const cloudSyncModal = $('cloud-sync-modal');
   const gistPatInput = $('gist-pat-input');
@@ -406,6 +667,9 @@
 
       let hasRemoteData = false;
       let hasChanges = false;
+      let keysNeedPush = false;
+      let settingsNeedPush = false;
+      let vectorTombstoneChanged = false;
       let cloudReadFailed = false; // Đọc Gist lỗi -> KHÔNG được đẩy bản cục bộ lên (tránh ghi đè trắng)
 
       // 2. Nếu đã có Gist ID, tải dữ liệu từ Cloud về để HỢP NHẤT (Merge)
@@ -437,6 +701,17 @@
               ls.setItem('jarvis_deleted_session_ids', JSON.stringify(Array.from(cur).slice(-500)));
             } catch (_) {}
           }
+          // A0b. Tombstone tri thức từ Cloud
+          if (Array.isArray(cloudData.deletedVectorIds) && cloudData.deletedVectorIds.length) {
+            const beforeSize = deletedVectorIds.size;
+            cloudData.deletedVectorIds.forEach(id => { if (id) deletedVectorIds.add(id); });
+            if (deletedVectorIds.size !== beforeSize) {
+              vectorTombstoneChanged = true;
+              hasChanges = true;
+              try { ls.setItem('jarvis_deleted_vector_ids', JSON.stringify(Array.from(deletedVectorIds).slice(-500))); } catch (_) {}
+            }
+          }
+
           // Bỏ khỏi bản cục bộ những tin đã nằm trong tombstone (kể cả tombstone vừa nhận)
           let prunedLocal = false;
           if (
@@ -566,135 +841,17 @@
             finalPrompts = Array.from(pMap.values());
           }
 
-          // D. HỢP NHẤT KHÓA GOOGLE API (Bổ sung vào các slot còn trống)
-          if (cloudData.settings?.keys && Array.isArray(cloudData.settings.keys)) {
-            const localKeys = getGoogleKeysList();
-            const remoteKeys = cloudData.settings.keys;
-            const mergedKeys = [];
-            let keyChanged = false;
-            for (let i = 0; i < 10; i++) {
-              let rKey = remoteKeys[i] || '';
-              if (rKey.startsWith('JVENC_') || rKey.startsWith('ENC_')) rKey = deobfuscateKey(rKey);
-              mergedKeys[i] = localKeys[i] || rKey || '';
-              if (!localKeys[i] && rKey) keyChanged = true;
-            }
-            if (keyChanged) {
-              setGoogleKeysList(mergedKeys);
-            }
-          }
+          // D. 3-WAY MERGE cho key + tên + externalConfigs (base snapshot + timestamp)
+          const keyMerge = mergeRemoteKeySettings(cloudData.settings || {}, cloudData.settings?.keyUpdatedAt || {});
+          if (keyMerge.changedLocal > 0) hasChanges = true;
+          keysNeedPush = keyMerge.localAhead;
 
-          // D1. HỢP NHẤT TÊN GOOGLE KEY, 5 KEY + TÊN OPENROUTER VÀ 5 KEY + TÊN EXPERIENTIAL LABS
-          if (
-            mergeRemoteSlotNames(
-              cloudData.settings?.keyNames,
-              getGoogleKeyNamesList(),
-              setGoogleKeyNamesList
-            )
-          ) {
-            hasChanges = true;
-          }
-          if (
-            mergeRemoteSlotKeys(
-              cloudData.settings?.openRouterKeys,
-              getOpenRouterKeysList(false),
-              setOpenRouterKeysList
-            )
-          ) {
-            hasChanges = true;
-          }
-          if (
-            mergeRemoteSlotNames(
-              cloudData.settings?.openRouterKeyNames,
-              getOpenRouterKeyNamesList(),
-              setOpenRouterKeyNamesList
-            )
-          ) {
-            hasChanges = true;
-          }
-          if (
-            mergeRemoteSlotKeys(
-              cloudData.settings?.explabsKeys,
-              getExplabsKeysList(false),
-              setExplabsKeysList
-            )
-          ) {
-            hasChanges = true;
-          }
-          if (
-            mergeRemoteSlotNames(
-              cloudData.settings?.explabsKeyNames,
-              getExplabsKeyNamesList(),
-              setExplabsKeyNamesList
-            )
-          ) {
-            hasChanges = true;
-          }
-          if (
-            mergeRemoteSlotKeys(
-              cloudData.settings?.nvidiaKeys,
-              getNvidiaKeysList(false),
-              setNvidiaKeysList
-            )
-          ) {
-            hasChanges = true;
-          }
-          if (
-            mergeRemoteSlotNames(
-              cloudData.settings?.nvidiaKeyNames,
-              getNvidiaKeyNamesList(),
-              setNvidiaKeyNamesList
-            )
-          ) {
-            hasChanges = true;
-          }
+          // D2. 3-WAY MERGE cho settings (model/theme/persona/system instruction/...)
+          const setMerge = mergeRemoteSettings(cloudData.settings || {}, cloudData.settings?.settingsUpdatedAt || {});
+          if (setMerge.changedLocal > 0) hasChanges = true;
+          settingsNeedPush = setMerge.localAhead;
 
-          if (
-            mergeRemoteSlotKeys(
-              cloudData.settings?.cohereKeys,
-              getCohereKeysList(false),
-              setCohereKeysList
-            )
-          ) {
-            hasChanges = true;
-          }
-          if (
-            mergeRemoteSlotNames(
-              cloudData.settings?.cohereKeyNames,
-              getCohereKeyNamesList(),
-              setCohereKeyNamesList
-            )
-          ) {
-            hasChanges = true;
-          }
-
-          // D2. HỢP NHẤT CẤU HÌNH NGOÀI & API KEY DỊCH VỤ ĐÃ MÃ HÓA
-          // (Tavily, Serper, Experiential Labs, OpenRouter...).
-          // Nguyên tắc: máy nào đã có key thì giữ nguyên, chỉ nhận từ Cloud khi ô đó đang trống.
-          const remoteExtCfg = cloudData.settings?.externalConfigs;
-          if (remoteExtCfg && typeof remoteExtCfg === 'object') {
-            const localExtCfg = getExternalConfigsObj(false) || {};
-            const mergedExtCfg = {};
-            let extCfgChanged = false;
-            Object.entries(remoteExtCfg).forEach(([cfgKey, rawVal]) => {
-              let remoteVal = rawVal;
-              if (
-                typeof remoteVal === 'string' &&
-                (remoteVal.startsWith('JVENC_') || remoteVal.startsWith('ENC_'))
-              ) {
-                remoteVal = deobfuscateKey(remoteVal);
-              }
-              const localVal = localExtCfg[cfgKey];
-              const hasLocal =
-                localVal !== undefined && localVal !== null && String(localVal).trim() !== '';
-              mergedExtCfg[cfgKey] = hasLocal ? localVal : (remoteVal ?? '');
-              if (!hasLocal && remoteVal) extCfgChanged = true;
-            });
-            if (extCfgChanged) {
-              setExternalConfigsObj(mergedExtCfg);
-            }
-          }
-
-          // Fallback: khoi phuc Global Context tu top-level settings neu externalConfigs thieu
+          // Fallback: khôi phục Global Context từ top-level settings nếu externalConfigs thiếu
           if (
             cloudData.settings &&
             cloudData.settings.globalContext &&
@@ -730,38 +887,9 @@
               if (!localProv[id]) {
                 missingDP.providers[id] = p;
               } else {
-                // 2. Provider đã có local: restore keys từ Cloud (nếu Cloud có keys)
-                if (p.keys && Array.isArray(p.keys) && p.keys.length > 0) {
-                  const keyPrefix = p.keyPrefix || `jarvis_provider_${id}_api`;
-                  const namePrefix = p.keyNamePrefix || `jarvis_provider_${id}_name`;
-                  let restored = 0;
-                  p.keys.forEach((key, i) => {
-                    if (key && i < (p.keyCount || p.keys.length)) {
-                      let k = key;
-                      if (k.startsWith('JVENC_') || k.startsWith('ENC_')) {
-                        k = window.deobfuscateKey ? window.deobfuscateKey(k) : k;
-                      }
-                      ls.setItem(`${keyPrefix}_${i + 1}`, k);
-                      restored++;
-                    }
-                  });
-                  if (p.keyNames && Array.isArray(p.keyNames)) {
-                    p.keyNames.forEach((name, i) => {
-                      if (name && i < (p.keyCount || p.keys.length)) {
-                        const namePrefix = p.keyNamePrefix || `jarvis_provider_${id}_name`;
-                        ls.setItem(`${namePrefix}_${i + 1}`, name || '');
-                      }
-                    });
-                  }
-                  if (p.usage && typeof window.saveProviderUsage === 'function') {
-                    window.saveProviderUsage(id, p.usage);
-                  }
-                  if (restored > 0) {
-                    hasChanges = true;
-                    console.log(
-                      `[SmartSync] Restored ${restored} keys for existing provider "${id}" from Cloud`
-                    );
-                  }
+                // Provider đã có local: keys handled by mergeRemoteKeySettings (3-way); chỉ restore usage.
+                if (p.usage && typeof window.saveProviderUsage === 'function') {
+                  window.saveProviderUsage(id, p.usage);
                 }
               }
             });
@@ -984,67 +1112,9 @@
           if (window.isLocalNvidiaUsageAhead(cloudData.keyUsageNvidia)) isLocalAhead = true;
         }
 
-        // 5. Kiểm tra Google/OpenRouter/Experiential Labs keys và tên gợi nhớ có thay đổi cục bộ không
-        if (!isLocalAhead) {
-          const settings = cloudData.settings || {};
-          if (
-            slotSettingsChanged(
-              getGoogleKeysList(),
-              getGoogleKeyNamesList(),
-              settings.keys || [],
-              settings.keyNames || []
-            ) ||
-            slotSettingsChanged(
-              getOpenRouterKeysList(false),
-              getOpenRouterKeyNamesList(),
-              settings.openRouterKeys || [],
-              settings.openRouterKeyNames || []
-            ) ||
-            slotSettingsChanged(
-              getExplabsKeysList(false),
-              getExplabsKeyNamesList(),
-              settings.explabsKeys || [],
-              settings.explabsKeyNames || []
-            ) ||
-            slotSettingsChanged(
-              getNvidiaKeysList(false),
-              getNvidiaKeyNamesList(),
-              settings.nvidiaKeys || [],
-              settings.nvidiaKeyNames || []
-            ) ||
-            slotSettingsChanged(
-              getCohereKeysList(false),
-              getCohereKeyNamesList(),
-              settings.cohereKeys || [],
-              settings.cohereKeyNames || []
-            )
-          ) {
-            isLocalAhead = true;
-          }
-        }
-
-        // 5. Kiểm tra CẤU HÌNH NGOÀI (Tavily, Serper, Experiential Labs, OpenRouter...)
-        // Máy này vừa nhập/đổi API key mà chưa chat thêm cũng phải được đẩy lên Cloud,
-        // nếu không key mới sẽ không bao giờ tới Gist cho tới khi có tin nhắn mới.
-        if (!isLocalAhead) {
-          const remoteExtCfg = cloudData.settings?.externalConfigs;
-          if (remoteExtCfg && typeof remoteExtCfg === 'object') {
-            const localExtCfg = getExternalConfigsObj(false) || {};
-            const normCfgVal = v => {
-              let s = v === undefined || v === null ? '' : String(v).trim();
-              if (s.startsWith('JVENC_') || s.startsWith('ENC_'))
-                s = String(deobfuscateKey(s) || '').trim();
-              return s;
-            };
-            for (const cfgKey of Object.keys(localExtCfg)) {
-              if (!(cfgKey in (remoteExtCfg || {}))) continue;
-              const lVal = normCfgVal(localExtCfg[cfgKey]);
-              if (lVal && lVal !== normCfgVal(remoteExtCfg[cfgKey])) {
-                isLocalAhead = true;
-                break;
-              }
-            }
-          }
+        // 5. Key/config vừa nhập/đổi ở máy này (3-way) phải được đẩy lên Cloud
+        if (!isLocalAhead && (keysNeedPush || settingsNeedPush)) {
+          isLocalAhead = true;
         }
         // 7. Provider/model động (Kilo, ...) vừa thêm HOẶC vừa sửa ở máy này
         if (!isLocalAhead && typeof window.DynamicProviders?.exportConfig === 'function') {
@@ -1186,6 +1256,8 @@
           );
       } else if (!gistId || isLocalAhead) {
         // Đóng gói và đẩy lên Gist khi máy này có dữ liệu mới hơn (isLocalAhead) hoặc chưa có Gist ID
+        const _settingsTs = bumpSettingsTimestamps();
+        const _keyTs = bumpKeyTimestamps();
         const backupData = {
           version: 2,
           app: 'Jarvis AI',
@@ -1202,6 +1274,7 @@
               : {},
           deletedSessionIds: Array.from(deletedSessionIds),
           knowledgeBase: finalKnowledge,
+          deletedVectorIds: Array.from(deletedVectorIds),
           medications: JSON.parse(ls.getItem('jarvis_medications') || '[]'),
           medHistory: JSON.parse(ls.getItem('jarvis_med_history') || '[]'),
           keyUsageFlash:
@@ -1245,11 +1318,10 @@
             systemInstruction: getDOM().sysInst?.value || '',
             theme: ls.getItem('jarvis_theme') || 'auto',
             autoLearnMemory: ls.getItem('jarvis_auto_learn_memory') || 'true',
-            ollamaHost: ls.getItem('jarvis_ollama_host') || '',
-            ollamaModel: ls.getItem('jarvis_ollama_model') || '',
-            ollamaAutoFallback: ls.getItem('jarvis_ollama_auto_fallback') || 'true',
             ragEnabled: ls.getItem('jarvis_rag_enabled') || 'true',
             autoSyncCloud: ls.getItem('jarvis_auto_sync_cloud') || 'true',
+            settingsUpdatedAt: _settingsTs,
+            keyUpdatedAt: _keyTs,
           },
         };
 
@@ -1491,6 +1563,8 @@
         }
       }
 
+      const _settingsTs2 = bumpSettingsTimestamps();
+      const _keyTs2 = bumpKeyTimestamps();
       const backupData = {
         version: 2,
         app: 'Jarvis AI',
@@ -1502,6 +1576,7 @@
         customPrompts: JSON.parse(ls.getItem('jarvis_custom_prompts') || '[]'),
         folders: JSON.parse(ls.getItem('jarvis_folders') || '["Mặc định"]'),
         knowledgeBase: allKnowledge,
+        deletedVectorIds: Array.from(readDeletedVectorIds()),
         medications: JSON.parse(ls.getItem('jarvis_medications') || '[]'),
         medHistory: JSON.parse(ls.getItem('jarvis_med_history') || '[]'),
         keyUsageFlash:
@@ -1530,9 +1605,6 @@
           externalConfigs: getExternalConfigsObj(true),
           dynamicProviders: window.DynamicProviders?.exportConfig(true),
           personaConfig: ls.getItem('jarvis_persona_config') || '',
-          ollamaHost: ls.getItem('jarvis_ollama_host') || '',
-          ollamaModel: ls.getItem('jarvis_ollama_model') || '',
-          ollamaAutoFallback: ls.getItem('jarvis_ollama_auto_fallback') || 'true',
           model: getDOM().model?.value || 'gemini-3.6-flash',
           // Provider đã chọn (model id có thể trùng giữa nhiều provider)
           modelProvider: window.DynamicProviders?.getSelectedModelProvider?.() || null,
@@ -1544,6 +1616,8 @@
           autoLearnMemory: ls.getItem('jarvis_auto_learn_memory') || 'true',
           ragEnabled: ls.getItem('jarvis_rag_enabled') || 'true',
           autoSyncCloud: ls.getItem('jarvis_auto_sync_cloud') || 'true',
+          settingsUpdatedAt: _settingsTs2,
+          keyUpdatedAt: _keyTs2,
         },
       };
 
@@ -1638,6 +1712,11 @@
         if (window.saveToNativeBridge)
           window.saveToNativeBridge('jarvis_med_history', JSON.stringify(parsed.medHistory));
       }
+      if (parsed.deletedVectorIds && Array.isArray(parsed.deletedVectorIds)) {
+        const cur = new Set(JSON.parse(ls.getItem('jarvis_deleted_vector_ids') || '[]'));
+        parsed.deletedVectorIds.forEach(id => { if (id) cur.add(id); });
+        ls.setItem('jarvis_deleted_vector_ids', JSON.stringify(Array.from(cur).slice(-500)));
+      }
       if (typeof window.reloadMaxMedicationsFromStorage === 'function') {
         window.reloadMaxMedicationsFromStorage();
       }
@@ -1714,16 +1793,15 @@
         }
         if (parsed.settings.autoLearnMemory)
           ls.setItem('jarvis_auto_learn_memory', parsed.settings.autoLearnMemory);
-        if (parsed.settings.ollamaHost)
-          ls.setItem('jarvis_ollama_host', parsed.settings.ollamaHost);
-        if (parsed.settings.ollamaModel)
-          ls.setItem('jarvis_ollama_model', parsed.settings.ollamaModel);
-        if (parsed.settings.ollamaAutoFallback)
-          ls.setItem('jarvis_ollama_auto_fallback', parsed.settings.ollamaAutoFallback);
-        if (window.LocalLLM && typeof window.LocalLLM.refreshUI === 'function')
-          window.LocalLLM.refreshUI();
         if (parsed.settings.ragEnabled)
           ls.setItem('jarvis_rag_enabled', parsed.settings.ragEnabled);
+        if (parsed.settings.settingsUpdatedAt && typeof parsed.settings.settingsUpdatedAt === 'object')
+          writeSyncMap('jarvis_settings_updated_at', parsed.settings.settingsUpdatedAt);
+        if (parsed.settings.keyUpdatedAt && typeof parsed.settings.keyUpdatedAt === 'object')
+          writeSyncMap('jarvis_key_updated_at', parsed.settings.keyUpdatedAt);
+        // Làm mới snapshot để không bị coi là thay đổi local sau khi restore
+        try { writeSyncMap('jarvis_settings_snapshot', collectSettingsSnapshot()); } catch (_) {}
+        try { writeSyncMap('jarvis_key_snapshot', collectKeySnapshot()); } catch (_) {}
       }
 
       if (parsed.keyUsageFlash && typeof window.setKeyUsageData === 'function') {

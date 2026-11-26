@@ -460,7 +460,16 @@
         keyCount: p.keyCount,
         keyIndexVar: `${p.id}KeyIndex`,
         keyLabel: p.label,
-        getBaseUrl: () => p.baseUrl,
+        getBaseUrl: () => {
+          if (p.id === 'nvidia') {
+            const stored = (localStorage.getItem('nvidia_proxy_url') || '')
+              .trim()
+              .replace(/\/+$/, '');
+            if (stored) return stored;
+            return 'https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/v1';
+          }
+          return p.baseUrl;
+        },
         models: modelIds,
         extraHeaders: p.extraHeaders,
         includeReasoning: p.includeReasoning,

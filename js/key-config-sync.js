@@ -91,6 +91,7 @@
     obj['jina_api_key'] = obfuscate && jinaVal ? window.obfuscateKey(jinaVal) : jinaVal;
     obj['live_search_enabled'] = ls.getItem('live_search_enabled') || 'true';
     obj['live_context_enabled'] = ls.getItem('live_context_enabled') || 'true';
+    obj['jarvis_url_scrape_enabled'] = ls.getItem('jarvis_url_scrape_enabled') || 'false';
     return obj;
   }
 

@@ -3050,8 +3050,6 @@ DOM.sendBtn.onclick = async () => {
   // bD (bong bóng trả lời) phải khai báo TRƯỚC khối chọn key: các nhánh "thiếu key"
   // bên dưới đã gọi bD?.remove() trước khi khối let ở cuối handler chạy -> TDZ.
   let bD;
-  // Prompt đã làm giàu (web/URL/RAG) — dùng lại khi phải chạy tiếp bằng Ollama local
-  let promptForLocal = '';
   if (isProcessing) return abortController?.abort();
   const rawMsg = DOM.input.value.trim();
   if (rawMsg.startsWith('/') && executeChatSlashCommand(rawMsg)) {
@@ -3082,8 +3080,6 @@ DOM.sendBtn.onclick = async () => {
   // fallback resolveCompatProvider
   const getModelProvider = modelId => {
     const mid = String(modelId || '').trim();
-    // Model chạy trên Ollama local (id dạng "ollama:<tên model>") — không thuộc provider cloud nào
-    if (window.LocalLLM && window.LocalLLM.isLocalModel(mid)) return 'ollama';
     // 1. Nếu là model ĐANG CHỌN trong dropdown: lấy đúng option đang được chọn.
     //    Model id có thể trùng giữa nhiều provider (vd particle-ai/particle-1:free
     //    ở OpenRouter và Kilo) — .find() theo value sẽ luôn lấy option đầu tiên.
@@ -3182,8 +3178,6 @@ DOM.sendBtn.onclick = async () => {
   // Kiểm tra Explabs TRƯỚC và loại trừ khỏi nhánh compat, để thứ tự nhánh không
   // còn phụ thuộc vào việc ID có nằm trong COMPAT_PROVIDERS hay không.
   const usesExplabs = (window.EXPLABS_MODELS || []).includes(am);
-  // Model chạy trên Ollama (máy người dùng): không cần API key, không ghi quota
-  const localModel = !!(window.LocalLLM && window.LocalLLM.isLocalModel(am));
   // Model từ gateway OpenAI-compatible (OpenRouter/NVIDIA/Cohere + dynamic providers) không dùng Google API Key
   const providerId = getModelProvider(am);
   const usesCompatGateway =
@@ -3304,8 +3298,6 @@ DOM.sendBtn.onclick = async () => {
     }
     if (typeof window.recordExplabsRequest === 'function')
       window.recordExplabsRequest(keyIndexNum, am);
-  } else if (localModel) {
-    // Ollama chạy trên máy: không dùng API key nào
   } else {
     if (!gKey) return showToast('Cần ít nhất 1 Google API Key trong Cài đặt!', 'danger');
   }
@@ -3315,14 +3307,13 @@ DOM.sendBtn.onclick = async () => {
   abortController = new AbortController();
   // Gateway OpenAI-compatible (OpenRouter) và Experiential Labs không dùng Google Key
   // nên không ghi quota Google - hai bên có bộ đếm riêng, ghi ở trên khi xoay key
-  if (!usesCompatGateway && !usesExplabs && !localModel) recordKeyRequest(keyIndexNum, am);
+  if (!usesCompatGateway && !usesExplabs) recordKeyRequest(keyIndexNum, am);
 
   DOM.sendBtn.innerHTML = `<span>Dừng</span> 🛑`;
   DOM.sendBtn.style.background = 'var(--danger)';
 
-  // Model thật sự đã trả lời (có thể là Ollama local khi fallback)
+  // Model thật sự đã trả lời
   let effectiveModel = am;
-  let localModelUsed = '';
   let finalResp = '',
     botTime = getNowTime24h(),
     dispText = msg || '📎 [Gửi tệp]',
@@ -3381,12 +3372,9 @@ DOM.sendBtn.onclick = async () => {
         );
         ragBadge = `<span class="rag-status-badge" onclick="window.JarvisRAG.showRetrievedDetails('${payload}')" title="Trích xuất từ: ${escapeHtml(topTitle)} (${topPct}% khớp). Bấm để xem chi tiết!">🧠 Trí nhớ RAG (${ragMatches.length} mục · ${topPct}%)</span>`;
       }
-      const keyBadge = localModelUsed
-        ? `<span class="interaction-id-badge" title="Trả lời bằng Ollama local - không dùng API key">💻 ${escapeHtml(localModelUsed)}</span>`
-        : getKeyBadgeHtml(keyIndexNum, am);
-      const localLabel = localModelUsed ? ` · 💻 ${escapeHtml(localModelUsed)}` : '';
+      const keyBadge = getKeyBadgeHtml(keyIndexNum, am);
       bD.querySelector('.message-header').innerHTML =
-        `<span>✨ Jarvis AI</span><span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}${localLabel}</span>${keyBadge}${ixBadge}${ragBadge}`;
+        `<span>✨ Jarvis AI</span><span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">🕒 ${botTime}${suffix}</span>${keyBadge}${ixBadge}${ragBadge}`;
       const currentBotIdx = chatHistory.length - 1,
         aDiv = document.createElement('div');
       aDiv.className = 'msg-actions';
@@ -3447,98 +3435,6 @@ DOM.sendBtn.onclick = async () => {
     }
   };
 
-  // --- LƯỢT CHẠY BẰNG OLLAMA LOCAL (chọn model local, hoặc fallback khi cloud lỗi) ---
-  const runOllamaTurn = async (localModelName, reason = '') => {
-    const L = window.LocalLLM;
-    if (!L) throw new Error('Thiếu module Ollama (js/local-llm.js)');
-    const name = String(localModelName || L.getModel()).trim();
-    const card =
-      window.PersonaConfig && typeof window.PersonaConfig.buildCard === 'function'
-        ? window.PersonaConfig.buildCard()
-        : '';
-
-    // Bỏ bong bóng "chờ model cloud" (nếu có) để không còn 2 bong bóng cùng lượt
-    if (bD && bD.parentNode) bD.remove();
-    bD = document.createElement('div');
-    bD.className = 'message-container';
-    bD.innerHTML = `
-          <div class="bot-message">
-            <div class="message-header">
-              <span>✨ Jarvis AI</span>
-              <span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">💻 ${escapeHtml(name)}</span>
-              <div class="typing-bubble">
-                <span class="wait-label">⏳ Đang gọi Ollama local (${escapeHtml(name)})…</span>
-                <span class="typing-dot"></span>
-                <span class="typing-dot"></span>
-                <span class="typing-dot"></span>
-              </div>
-            </div>
-            <div class="msg-content"></div>
-          </div>
-        `;
-    DOM.chat.appendChild(bD);
-    bD.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    const cDl = bD.querySelector('.msg-content');
-    const rendererL = createStreamRenderer(cDl);
-    bD.querySelector('.typing-bubble')?.remove();
-
-    const out = await L.streamChat({
-      // Model local không đọc được System Instruction dài như Gemini -> gắn thẻ tính cách ngắn
-      si: getDynamicSI(),
-      history: chatHistory,
-      prompt: (card ? card + '\n\n' : '') + (promptForLocal || fP),
-      model: name,
-      signal: abortController?.signal,
-      onDelta: (_piece, full) => {
-        try {
-          rendererL.push(full);
-        } catch (_) {}
-      },
-    });
-
-    const text = String(out || '').trim();
-    if (!text) throw new Error('Ollama trả về nội dung rỗng');
-
-    localModelUsed = name;
-    effectiveModel = window.LocalLLM.toModelId(name);
-    finalResp = text;
-    // Lượt local đã trọn vẹn: xoá lỗi cũ của cloud để không hiện nút "Viết tiếp" sai
-    lastErr = null;
-    streamFinishReason = 'STOP';
-    pS = true;
-    await rendererL.flush(text);
-    await saveTurn(reason === 'fallback' ? ' · 💻 Ollama (tự động)' : '');
-    return true;
-  };
-
-  // Chuyển sang Ollama khi nhà cung cấp cloud lỗi / hết quota.
-  // 'done' = đã trả lời xong, 'failed' = Ollama cũng lỗi, 'aborted' = người dùng bấm Dừng, false = không thử
-  let localFallbackTried = false;
-  const tryLocalFallback = async reason => {
-    const L = window.LocalLLM;
-    if (!L || !L.isAutoFallbackEnabled()) return false;
-    if (localModel || localFallbackTried) return false;
-    if (abortController?.signal?.aborted) return false;
-    if (!L.shouldFallback(reason)) return false;
-    localFallbackTried = true;
-    const target = L.getModel();
-    const why = String((reason && reason.message) || reason || '').slice(0, 120);
-    showToast(
-      `⚡ Nhà cung cấp lỗi${why ? ': ' + why : ''} → tự chuyển sang Ollama local (${target})...`,
-      'warning'
-    );
-    console.warn('[Ollama fallback] Lý do:', reason);
-    try {
-      await runOllamaTurn(target, 'fallback');
-      return 'done';
-    } catch (fbErr) {
-      if (fbErr?.name === 'AbortError') return 'aborted';
-      console.warn('[Ollama fallback] Ollama cũng lỗi:', fbErr);
-      bD?.remove();
-      return 'failed';
-    }
-  };
-
   try {
     await appendMsg(
       'user',
@@ -3556,13 +3452,11 @@ DOM.sendBtn.onclick = async () => {
     const currentKeyBadge = getKeyBadgeHtml(keyIndexNum, am);
     // Nhãn chờ: hiện ngay khi gửi, tự biến mất cùng .typing-bubble khi có chunk đầu tiên.
     // Google thường giữ kết nối 5–17s trước byte đầu nên cần chỉ báo để không tưởng app treo.
-    const waitProviderLabel = localModel
-      ? 'Ollama local'
-      : usesExplabs
-        ? 'Experiential Labs'
-        : usesCompatGateway
-          ? window.COMPAT_PROVIDERS?.[providerId]?.label || providerId
-          : 'Google';
+    const waitProviderLabel = usesExplabs
+      ? 'Experiential Labs'
+      : usesCompatGateway
+        ? window.COMPAT_PROVIDERS?.[providerId]?.label || providerId
+        : 'Google';
     bD = document.createElement('div');
     bD.className = 'message-container';
     bD.innerHTML = `
@@ -3590,7 +3484,7 @@ DOM.sendBtn.onclick = async () => {
 
     let rawMatch = fnP.match(/https?:\/\/[^\s]+/)?.[0];
     const uMatch = rawMatch ? rawMatch.replace(/[.,!?;:)\]]+$/, '') : null;
-    if (uMatch) {
+    if (uMatch && ls.getItem('jarvis_url_scrape_enabled') === 'true') {
       const isYt = uMatch.includes('youtube.com') || uMatch.includes('youtu.be');
       let urlBadge = null;
       const msgHdr = bD?.querySelector('.message-header');
@@ -3733,9 +3627,6 @@ DOM.sendBtn.onclick = async () => {
       }
     }
 
-    // Giữ lại prompt đã làm giàu để dùng tiếp nếu phải fallback sang Ollama local
-    promptForLocal = fnP;
-
     const base64Files = [];
     for (const f of imgs) base64Files.push(await fileToBase64(f));
 
@@ -3762,17 +3653,6 @@ DOM.sendBtn.onclick = async () => {
     });
 
     const thk = DOM.thinking.value;
-
-    // --- ENGINE LOCAL: OLLAMA (chạy trên máy người dùng, không cần API key) ---
-    // Ollama không xử lý ảnh với hầu hết model text -> báo đúng tên model rồi gửi tiếp không kèm ảnh.
-    if (localModel) {
-      if (imgs.length) notifyImagesUnsupported(modelLabelOf(am));
-      promptForLocal = fnP;
-      // Bỏ bong bóng chờ của luồng cloud trước khi tự dựng bong bóng Ollama
-      if (bD && bD.parentNode) bD.remove();
-      await runOllamaTurn(window.LocalLLM.modelFromId(am));
-      return;
-    }
 
     // --- ENGINE 0: EXPERIENTIAL LABS GATEWAY (gpt-6-luna, deepseek-v4.1-flash, clef) ---
     const isExplabsModel =
@@ -4279,14 +4159,60 @@ DOM.sendBtn.onclick = async () => {
 
         const compatBase = typeof prov.getBaseUrl === 'function' ? prov.getBaseUrl() : prov.baseUrl;
         const compatUrl = `${compatBase}/chat/completions`;
-        console.log(`[Gateway ${prov.keyLabel}] Endpoint:`, compatUrl);
-        const sendCompat = () =>
-          fetch(compatUrl, {
-            method: 'POST',
-            headers: compatHeaders,
-            body: JSON.stringify(compatBody),
-            signal: abortController.signal,
-          });
+        // Endpoint dự phòng cho proxy NVIDIA/Kilo. Endpoint chính hãng bị chặn CORS nên trình duyệt
+        // BẮT BUỘC đi qua proxy freebuff.site. Preview và production là hai môi trường deploy riêng
+        // (hạn mức/khoá publish riêng), nên một hostname bị pause/chặn thì hostname còn lại vẫn phục vụ.
+        const compatFallbackBases = [];
+        const _primaryBase = String(compatBase).replace(/\/+$/, '');
+        if (prov.id === 'nvidia') {
+          const _stored = (ls.getItem('nvidia_proxy_url') || '').trim().replace(/\/+$/, '');
+          if (_stored && _stored !== _primaryBase) compatFallbackBases.push(_stored);
+          // Du phong DOC LAP: Vercel Edge (khac nha cung cap voi freebuff/Cloudflare)
+          compatFallbackBases.push('https://vercel-proxy-two-lake.vercel.app/api/v1');
+          compatFallbackBases.push('https://jarvis-nvidia-proxy-9klgal.freebuff.site/v1');
+          compatFallbackBases.push('https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/v1');
+        } else if (String(compatBase).toLowerCase().includes('kilo')) {
+          compatFallbackBases.push('https://vercel-proxy-two-lake.vercel.app/api/kilo/v1');
+          compatFallbackBases.push('https://jarvis-nvidia-proxy-9klgal.freebuff.site/kilo/v1');
+          compatFallbackBases.push(
+            'https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/kilo/v1'
+          );
+        }
+        const compatBasesToTry = [
+          _primaryBase,
+          ...compatFallbackBases.filter(b => b && b !== _primaryBase),
+        ];
+        console.log(
+          `[Gateway ${prov.keyLabel}] Endpoint:`,
+          compatUrl,
+          '| fallbacks:',
+          compatBasesToTry.slice(1)
+        );
+        const sendCompat = async () => {
+          let lastErr = null;
+          for (const _base of compatBasesToTry) {
+            const _url = `${_base}/chat/completions`;
+            try {
+              const _res = await fetch(_url, {
+                method: 'POST',
+                headers: compatHeaders,
+                body: JSON.stringify(compatBody),
+                signal: abortController.signal,
+              });
+              // Proxy down/thất bại server -> thử endpoint tiếp theo
+              if (_res.status >= 500) {
+                lastErr = new Error(`HTTP ${_res.status} từ ${_url}`);
+                continue;
+              }
+              return _res;
+            } catch (_e) {
+              if (abortController.signal.aborted) throw _e;
+              lastErr = _e;
+              continue;
+            }
+          }
+          throw lastErr || new Error('Không kết nối được proxy ' + compatBasesToTry[0]);
+        };
 
         let compatRes = null;
         let compatErrText = '';
@@ -5377,13 +5303,7 @@ DOM.sendBtn.onclick = async () => {
 
     if (!pS) {
       bD.remove();
-      const fbState = await tryLocalFallback(lastErr);
-      if (fbState === 'done' || fbState === 'aborted') return;
-      return showToast(
-        formatGoogleApiError(lastErr) +
-          (fbState === 'failed' ? ' — Ollama local cũng không phản hồi.' : ''),
-        'danger'
-      );
+      return showToast(formatGoogleApiError(lastErr), 'danger');
     }
     await saveTurn();
   } catch (err) {
@@ -5391,19 +5311,8 @@ DOM.sendBtn.onclick = async () => {
       showToast('Đã dừng phản hồi!', 'warning');
       await saveTurn(' (Đã dừng)');
     } else {
-      let fbState = false;
-      try {
-        fbState = await tryLocalFallback(err);
-      } catch (_) {}
-      if (fbState !== 'done' && fbState !== 'aborted') {
-        showToast(
-          'Lỗi: ' +
-            err.message +
-            (fbState === 'failed' ? ' — Ollama local cũng không phản hồi.' : ''),
-          'danger'
-        );
-        bD?.remove();
-      }
+      showToast('Lỗi: ' + err.message, 'danger');
+      bD?.remove();
     }
   } finally {
     const wasAborted = abortController?.signal?.aborted;

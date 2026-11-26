@@ -6,15 +6,10 @@
 
 ### 1. 💻 LLM local & offline
 
-- [x] Ollama client (`js/local-llm.js`): `GET /api/tags` dò model, `POST /api/chat` stream NDJSON,
-      không cần API key.
-- [x] Model Ollama hiện trong `#model-select` (id `ollama:<model>`), cấu hình host/model trong
-      Settings → "Ollama - LLM chạy trên máy của bạn".
-- [x] Auto-fallback: model cloud lỗi / hết quota → tự chạy lại lượt đó bằng Ollama local (bật/tắt
-      bằng `jarvis_ollama_auto_fallback`).
+- [x] ~~Ollama local~~ — đã gỡ toàn bộ (2026-11-26), không dùng nữa.
 - [ ] WebLLM / WebGPU (zero-install trong trình duyệt) qua `js/lazy-libs.js`.
 - [ ] Bộ định tuyến model (`/auto`): phân loại ý định (code / suy luận / sáng tạo / trả lời nhanh) →
-      chọn model tối ưu, ưu tiên Cloud → Ollama → WebLLM.
+      chọn model tối ưu, ưu tiên Cloud → WebLLM.
 
 ### 2. 🎙️ Giọng nói
 

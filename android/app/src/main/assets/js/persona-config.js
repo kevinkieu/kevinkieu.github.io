@@ -95,7 +95,7 @@
 
   // Thẻ tính cách NGẮN, đặt ngay đầu System Instruction ở mọi lượt chat.
   // Mục đích: model vẫn giữ đúng "con người" của Jarvis kể cả khi
-  // System Instruction bị cắt ngắn, bị bỏ qua (model local/Ollama) hoặc khi
+  // System Instruction bị cắt ngắn, bị bỏ qua (model local) hoặc khi
   // phiên chỉ có 1-2 lượt ngắn.
   function buildCard(cfg) {
     const c = cfg || get();
