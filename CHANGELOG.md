@@ -1,3 +1,38 @@
+## 2026-11-27 — Hàng đợi tin nhắn ngoại tuyến (không mất nội dung khi mất mạng)
+
+- `js/offline-queue.js` (mới): hàng đợi ở `localStorage['jarvis_offline_queue']`, tối đa **20 tin**,
+  **chỉ tin văn bản** (không xếp ảnh/file base64 để không đầy quota 5MB); API
+  `enqueue/list/count/update/remove/clearSession`, `isOnline()`, `isOfflineError()`; phát event
+  `jarvis:queue-changed`.
+- `js/app.js`: khi `navigator.onLine === false`, tin nhắn được đưa vào hàng đợi, hiện ngay bubble
+  người dùng + thẻ "🕓 Chờ gửi" (nút Gửi ngay / Xóa) thay vì báo lỗi rồi mất nội dung. Mất mạng giữa
+  chừng (fetch fail) cũng đưa tin vào hàng đợi. `flushOfflineQueue()` tự chạy khi có mạng (`online`
+  event, mở app, sau mỗi lượt), gửi tuần tự, tối đa 3 lần thử rồi đánh dấu `failed`.
+- `index.html` + `css/style.css`: badge `📴 Ngoại tuyến · N tin chờ` / `⏳ N tin chờ gửi` cạnh ô
+  nhập và style thẻ tin chờ; nạp `js/offline-queue.js`, bump `js/app.js?v=102`.
+- `sw.js`: thêm `js/offline-queue.js` vào precache, cache PWA `jarvis-ai-pwa-v91`.
+- `test/offline-queue.test.js`: 8 test (FIFO, lọc phiên, giới hạn 20 tin, tin rỗng, cập nhật trạng
+  thái, xoá tin/phiên, lỗi mạng, độ bền localStorage).
+
+## 2026-11-27 — Tự động failover sang model dự phòng khi provider quá tải
+
+- `js/failover.js` (mới): logic thuần cho failover — `isFailoverable()` nhận diện lỗi tạm thời
+  (429/5xx/402, `RESOURCE_EXHAUSTED`, "overloaded", mất mạng) và **không** coi 400/401/403 là lỗi
+  tạm thời; `chainFor()`/`nextTarget()` đọc chuỗi dự phòng; `createState()`/`withinBudget()` giới
+  hạn ngân sách **22 giây** và **tối đa 3 model** cho một lượt.
+- `js/model-registry.js`: thêm `FAILOVER_CHAINS` (Gemini 4 Hydrogen / 3.8 / 3.7 / 3.6 Flash và Gemma
+  4 → Gemini 3.5 Flash Lite → 3.1 Flash Lite); model gateway không khai báo dùng chuỗi mặc định này.
+- `js/app.js`: thêm `switchToFailoverModel()` + badge `🔁 <model>` dùng chung cho cả 3 nhánh gửi.
+  Gateway (OpenRouter/NVIDIA/Kilo/Vercel) và Experiential Labs khi hết lượt thử/hết key sẽ chuyển
+  sang Gemini Flash Lite rồi chạy tiếp ENGINE 2 — bỏ qua Interactions để không gửi
+  `previous_interaction_id` của model cũ (`forceStreamEngine`). Nhánh Gemini khi đã xoay hết key mà
+  vẫn 429/503 sẽ chuyển model theo chuỗi. Không failover khi người dùng bấm Dừng, khi đã có chữ (giữ
+  hành vi "Viết tiếp"), hoặc khi hết ngân sách 22s.
+- `index.html` + `sw.js`: nạp `js/failover.js`, cache PWA `jarvis-ai-pwa-v90`, bump
+  `js/app.js?v=101`, `js/model-registry.js?v=77`.
+- `test/failover.test.js`: 10 test cho nhận diện lỗi, chuỗi dự phòng, trần model và ngân sách thời
+  gian.
+
 ## 2026-11-26 — Siết relay Vercel chống bị dùng như proxy mở
 
 - `vercel-proxy/api/relay.js`: bắt buộc `Origin` thuộc allowlist (GitHub Pages, appassets,

@@ -2234,6 +2234,7 @@ async function switchSess(id) {
     }
   }
   DOM.chat.scrollTop = DOM.chat.scrollHeight;
+  renderPendingQueue();
   renderSel();
   if (!openTabs.includes(id)) openTabs.push(id);
   renderTabs();
@@ -3045,6 +3046,124 @@ window.clearActiveSession = async () => {
   }
 };
 
+// --- HÀNG ĐỢI NGOẠI TUYẾN (xem js/offline-queue.js) ---
+// Tin văn bản gửi lúc mất mạng được giữ lại và tự gửi khi có mạng. Chỉ xếp tin
+// văn bản: ảnh/file base64 sẽ làm đầy quota localStorage 5MB của app.
+let flushingOfflineQueue = false;
+
+function renderPendingQueue() {
+  const q = window.JarvisOfflineQueue;
+  if (!q) return;
+  const badge = $('offline-queue-badge');
+  const total = q.count();
+  if (badge) {
+    badge.style.display = total ? 'inline-flex' : 'none';
+    badge.textContent = navigator.onLine
+      ? `⏳ ${total} tin chờ gửi`
+      : `📴 Ngoại tuyến · ${total} tin chờ`;
+    badge.title = navigator.onLine
+      ? 'Tin đã xếp hàng, đang chờ gửi lại'
+      : 'Mất mạng — tin sẽ tự gửi khi có mạng trở lại';
+  }
+  document.querySelectorAll('.pending-queue-item').forEach(el => el.remove());
+  const items = q.list(activeId);
+  if (!items.length || !DOM.chat) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'pending-queue-item';
+  wrap.innerHTML = items
+    .map(it => {
+      const failed = it.status === 'failed';
+      const tone = failed ? '#ef4444' : '#f59e0b';
+      return `
+        <div class="pending-queue-card" style="border-color:${tone};">
+          <div class="pending-queue-head">
+            <span style="color:${tone};font-weight:700;">${failed ? '⚠️ Gửi lỗi' : '🕓 Chờ gửi'}</span>
+            <span class="pending-queue-actions">
+              <button type="button" onclick="sendQueuedNow('${it.id}')">Gửi ngay</button>
+              <button type="button" onclick="dropQueuedItem('${it.id}')">Xóa</button>
+            </span>
+          </div>
+          <div class="pending-queue-text">${escapeHtml(it.text).slice(0, 500)}</div>
+          ${
+            it.lastError
+              ? `<div class="pending-queue-error">${escapeHtml(it.lastError).slice(0, 160)}</div>`
+              : ''
+          }
+        </div>`;
+    })
+    .join('');
+  DOM.chat.appendChild(wrap);
+  DOM.chat.scrollTop = DOM.chat.scrollHeight;
+}
+
+window.dropQueuedItem = id => {
+  window.JarvisOfflineQueue?.remove(id);
+  renderPendingQueue();
+};
+
+window.sendQueuedNow = id => {
+  if (!navigator.onLine) {
+    showToast('Vẫn chưa có mạng — thử lại khi kết nối trở lại.', 'warning');
+    return;
+  }
+  window.JarvisOfflineQueue?.update(id, { status: 'queued', attempts: 0, lastError: '' });
+  flushOfflineQueue(true);
+};
+
+async function flushOfflineQueue(onlyFirst = false) {
+  const q = window.JarvisOfflineQueue;
+  if (!q || flushingOfflineQueue || isProcessing || !navigator.onLine) return;
+  const items = q.list(activeId).filter(it => it.status !== 'failed');
+  if (!items.length) return;
+  flushingOfflineQueue = true;
+  try {
+    for (const item of items) {
+      if (!navigator.onLine) break;
+      // Chống trùng: tin đã nằm trong lịch sử (lượt trước đã gửi xong)
+      if (chatHistory.slice(-5).some(m => m.role === 'user' && m.text === item.text)) {
+        q.remove(item.id);
+        continue;
+      }
+      q.update(item.id, { status: 'sending' });
+      DOM.model.value = item.model || DOM.model.value;
+      DOM.input.value = item.text;
+      DOM.input.style.height = 'auto';
+      txtContent = item.txtContent || '';
+      await DOM.sendBtn.onclick();
+      const stillQueued = q.list(activeId).find(it => it.id === item.id);
+      if (!stillQueued) continue;
+      const sentOk = chatHistory.slice(-3).some(m => m.role === 'user' && m.text === item.text);
+      if (sentOk) {
+        q.remove(item.id);
+      } else {
+        const attempts = (stillQueued.attempts || 0) + 1;
+        q.update(item.id, {
+          status: attempts >= q.MAX_ATTEMPTS ? 'failed' : 'queued',
+          attempts,
+          lastError: stillQueued.lastError || 'Không gửi được',
+        });
+        break; // lỗi thì dừng, không đẩy các tin sau vào tình trạng lỗi dây chuyền
+      }
+      if (onlyFirst) break;
+    }
+  } finally {
+    flushingOfflineQueue = false;
+    renderPendingQueue();
+  }
+}
+
+window.addEventListener('online', () => {
+  renderPendingQueue();
+  flushOfflineQueue();
+});
+window.addEventListener('offline', renderPendingQueue);
+window.addEventListener('jarvis:queue-changed', () => renderPendingQueue());
+// Lần đầu mở app: vẽ lại tin đang chờ và thử gửi nếu đang có mạng.
+setTimeout(() => {
+  renderPendingQueue();
+  flushOfflineQueue();
+}, 1500);
+
 // --- SEND MESSAGE (STREAM / INTERACTIONS) ---
 DOM.sendBtn.onclick = async () => {
   // bD (bong bóng trả lời) phải khai báo TRƯỚC khối chọn key: các nhánh "thiếu key"
@@ -3066,6 +3185,42 @@ DOM.sendBtn.onclick = async () => {
 
   const cs = sessions.find(x => x.id === activeId);
   const currentEngine = cs?.engine || DOM.engineSel?.value || 'stream';
+
+  // --- OFFLINE: không có mạng thì xếp tin nhắn vào hàng đợi và hiện ngay trong
+  // khung chat (optimistic UI) thay vì báo lỗi rồi mất nội dung đã gõ. ---
+  if (window.JarvisOfflineQueue && !flushingOfflineQueue && !window.JarvisOfflineQueue.isOnline()) {
+    if ((filesData || []).some(f => !/^text\//.test(f.type || ''))) {
+      showToast(
+        '📴 Đang ngoại tuyến — chỉ xếp hàng được tin nhắn văn bản, hãy bỏ ảnh/tệp đính kèm.',
+        'warning'
+      );
+      return;
+    }
+    if (!msg) {
+      showToast('📴 Đang ngoại tuyến — chưa có nội dung để xếp hàng.', 'warning');
+      return;
+    }
+    const queuedItem = window.JarvisOfflineQueue.enqueue({
+      sessionId: activeId,
+      text: msg,
+      txtContent,
+      model: am,
+      engine: currentEngine,
+    });
+    if (!queuedItem) {
+      showToast('Hàng đợi ngoại tuyến đã đầy (20 tin) — hãy xoá bớt rồi thử lại.', 'danger');
+      return;
+    }
+    appendMsg('user', msg, chatHistory.length, false);
+    DOM.input.value = '';
+    DOM.input.style.height = '38px';
+    ls.removeItem('jarvis_draft');
+    updateTokenCount();
+    if (filesData.length) DOM.clearFilesBtn.click();
+    renderPendingQueue();
+    showToast('📴 Đã xếp hàng — tin sẽ tự gửi khi có mạng trở lại.', 'info');
+    return;
+  }
   // DEBUG: dấu vết lượt gửi (đọc bằng: copy(JSON.stringify(window.__jarvisTurnDebug)))
   window.__jarvisTurnDebug = {
     model: am,
@@ -3327,6 +3482,91 @@ DOM.sendBtn.onclick = async () => {
   let ragMatches = [];
   const startTime = performance.now();
 
+  // --- FAILOVER MODEL DỰ PHÒNG ---------------------------------------------
+  // Provider hết quota / quá tải (429, 503) / không kết nối được thì tự chuyển
+  // sang model kế tiếp (Gemini → Gemini Flash Lite, model gateway → Gemini Flash
+  // Lite) thay vì bỏ cả lượt. Logic chuỗi/ngân sách nằm ở js/failover.js.
+  // forceStreamEngine: khi đã đổi model thì bỏ qua Interactions API cho lượt này,
+  // tránh gửi previous_interaction_id của model cũ sang model mới.
+  let forceStreamEngine = false;
+  const failoverState = window.JarvisFailover?.createState
+    ? window.JarvisFailover.createState(am)
+    : { startedAt: Date.now(), budgetMs: 22000, tried: new Set([am]) };
+
+  // Badge nhỏ trên header tin nhắn khi app tự đổi model (dùng cho mọi nhánh gửi).
+  const showTurnModelBadge = (model, tone, title) => {
+    const tones = {
+      amber: ['#f59e0b', 'rgba(245,158,11,.15)', 'rgba(245,158,11,.4)', '🔁'],
+      sky: ['#38bdf8', 'rgba(56,189,248,.15)', 'rgba(56,189,248,.4)', '⚡'],
+    };
+    const [color, bg, border, icon] = tones[tone] || tones.amber;
+    try {
+      const header = bD?.querySelector('.message-header');
+      if (!header || header.querySelector('.model-fallback-badge')) return;
+      const badge = document.createElement('span');
+      badge.className = 'model-fallback-badge';
+      badge.style.cssText = `font-size:.68rem;font-weight:700;padding:2px 6px;border-radius:6px;background:${bg};color:${color};border:1px solid ${border};margin-left:6px;white-space:nowrap;`;
+      badge.title = title;
+      badge.innerText = icon + ' ' + model;
+      header.appendChild(badge);
+    } catch (_) {}
+  };
+
+  // Chuyển sang model dự phòng kế tiếp nếu lỗi thuộc dạng tạm thời và còn ngân sách.
+  // Trả true khi đã đổi model (luồng gửi tiếp tục với model mới).
+  const switchToFailoverModel = (status, message, tone = 'amber') => {
+    const api = window.JarvisFailover;
+    if (!api || typeof api.nextTarget !== 'function') return false;
+    if (abortController?.signal?.aborted) return false;
+    if (!api.isFailoverable(status, message)) return false;
+    if (!api.withinBudget(failoverState)) {
+      console.warn('[Failover] Hết ngân sách chờ, giữ nguyên model hiện tại.');
+      return false;
+    }
+    const next = api.nextTarget(am, failoverState.tried);
+    if (!next) return false;
+    // Chuyển sang Gemini chỉ khả thi khi còn key Google dùng được.
+    const googleKey =
+      (cs?.assignedApiKey && apiKeys.includes(cs.assignedApiKey) && cs.assignedApiKey) ||
+      getSessionApiKey(cs, false) ||
+      apiKeys[0] ||
+      '';
+    if (!googleKey) {
+      console.warn('[Failover] Không có Google API Key để chuyển sang', next);
+      return false;
+    }
+    const fromLabel = modelLabelOf(am);
+    failoverState.tried.add(next);
+    am = next;
+    effectiveModel = next;
+    gKey = googleKey;
+    keyIndexNum = findSlotIndexForKey(gKey);
+    forceStreamEngine = true;
+    // Dựng lại nhãn chờ (các nhánh gateway/Explabs đã gỡ .typing-bubble của họ)
+    const failoverHeader = bD?.querySelector('.message-header');
+    if (failoverHeader && !failoverHeader.querySelector('.typing-bubble')) {
+      const tb = document.createElement('div');
+      tb.className = 'typing-bubble';
+      tb.innerHTML =
+        '<span class="wait-label">⏳ Đang chờ Google…</span>' +
+        '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+      failoverHeader.appendChild(tb);
+    }
+    const waitLabel = bD?.querySelector('.wait-label');
+    if (waitLabel) waitLabel.textContent = '⏳ Đang chờ Google…';
+    showTurnModelBadge(
+      next,
+      tone,
+      `Đã tự chuyển sang ${modelLabelOf(next)} vì: ${message || status}`
+    );
+    showToast(
+      `🔁 ${fromLabel} lỗi (${status ? 'HTTP ' + status : 'kết nối'}) — tự chuyển sang ${modelLabelOf(next)}`,
+      'warning'
+    );
+    console.warn('[Failover]', fromLabel, '->', next, '| lý do:', status, message);
+    return true;
+  };
+
   const saveTurn = async (suffix = '') => {
     if (!finalResp.trim()) return bD?.remove();
     chatHistory.push(
@@ -3454,9 +3694,9 @@ DOM.sendBtn.onclick = async () => {
     // Google thường giữ kết nối 5–17s trước byte đầu nên cần chỉ báo để không tưởng app treo.
     const waitProviderLabel = usesExplabs
       ? 'Experiential Labs'
-        : usesCompatGateway
-          ? window.COMPAT_PROVIDERS?.[providerId]?.label || providerId
-          : 'Google';
+      : usesCompatGateway
+        ? window.COMPAT_PROVIDERS?.[providerId]?.label || providerId
+        : 'Google';
     bD = document.createElement('div');
     bD.className = 'message-container';
     bD.innerHTML = `
@@ -3942,8 +4182,11 @@ DOM.sendBtn.onclick = async () => {
             finalResp = formatFinalThinkingResponse(currentThinking, currentContent, expModelName);
             await renderer.flush(finalResp);
           } else {
-            bD.remove();
-            return showToast(`Lỗi Experiential Labs: ${expErr.message}`, 'danger');
+            // Quá tải/mất mạng: thử model dự phòng thay vì bỏ lượt (rơi xuống ENGINE 2).
+            if (!switchToFailoverModel(0, expErr.message, 'amber')) {
+              bD.remove();
+              return showToast(`Lỗi Experiential Labs: ${expErr.message}`, 'danger');
+            }
           }
         }
       }
@@ -4174,10 +4417,20 @@ DOM.sendBtn.onclick = async () => {
         } else if (String(compatBase).toLowerCase().includes('kilo')) {
           compatFallbackBases.push('https://vercel-proxy-two-lake.vercel.app/api/kilo/v1');
           compatFallbackBases.push('https://jarvis-nvidia-proxy-9klgal.freebuff.site/kilo/v1');
-          compatFallbackBases.push('https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/kilo/v1');
+          compatFallbackBases.push(
+            'https://jarvis-nvidia-proxy-9klgal-preview.freebuff.site/kilo/v1'
+          );
         }
-        const compatBasesToTry = [_primaryBase, ...compatFallbackBases.filter(b => b && b !== _primaryBase)];
-        console.log(`[Gateway ${prov.keyLabel}] Endpoint:`, compatUrl, '| fallbacks:', compatBasesToTry.slice(1));
+        const compatBasesToTry = [
+          _primaryBase,
+          ...compatFallbackBases.filter(b => b && b !== _primaryBase),
+        ];
+        console.log(
+          `[Gateway ${prov.keyLabel}] Endpoint:`,
+          compatUrl,
+          '| fallbacks:',
+          compatBasesToTry.slice(1)
+        );
         const sendCompat = async () => {
           let lastErr = null;
           for (const _base of compatBasesToTry) {
@@ -4437,6 +4690,12 @@ DOM.sendBtn.onclick = async () => {
             formatFinalThinkingResponse(compatThinking, compatContent, compatLabel) +
             `\n\n*(⚠️ Quá trình stream bị ngắt: ${compatErr.message})*`;
           await renderer.flush(finalResp);
+        } else if (
+          // Quá tải / hết quota / không kết nối được: chuyển sang model dự phòng thay vì
+          // bỏ cả lượt. Khi đổi model, luồng rơi xuống ENGINE 2 với model mới.
+          switchToFailoverModel(compatRes?.status || 0, compatErr?.message || '', 'amber')
+        ) {
+          // ENGINE 2 sẽ chạy với model dự phòng.
         } else {
           bD.remove();
           const networkLike = /failed to fetch|networkerror|load failed/i.test(
@@ -4467,7 +4726,9 @@ DOM.sendBtn.onclick = async () => {
     }
 
     // ENGINE 1: INTERACTIONS API
-    if (currentEngine === 'interactions') {
+    // forceStreamEngine = vừa failover từ provider khác -> bỏ qua Interactions để tránh
+    // dùng previous_interaction_id của model cũ.
+    if (currentEngine === 'interactions' && !forceStreamEngine) {
       const interactionParams = {
         model: am,
         input: imgs.length ? interactionInput : promptWithTime,
@@ -5116,6 +5377,21 @@ DOM.sendBtn.onclick = async () => {
               );
               continue;
             }
+
+            // D. Đã hết lượt thử / hết key mà vẫn lỗi tạm thời: chuyển model dự phòng
+            if (switchToFailoverModel(0, e.message, 'sky')) {
+              liteSwitched = true;
+              config.maxOutputTokens = Math.max(Number(config.maxOutputTokens) || 0, 32768);
+              if (config.thinkingConfig) {
+                config.thinkingConfig = {
+                  thinkingLevel: resolveThinkingLevel(am, thk) || thk,
+                  includeThoughts: true,
+                };
+              }
+              // Lượt chạy lại bằng model mới có ngân sách thử riêng
+              maxStreamAttempts += 1;
+              continue;
+            }
             break;
           }
 
@@ -5300,6 +5576,27 @@ DOM.sendBtn.onclick = async () => {
     if (err.name === 'AbortError' || abortController?.signal.aborted) {
       showToast('Đã dừng phản hồi!', 'warning');
       await saveTurn(' (Đã dừng)');
+    } else if (
+      !pS &&
+      !flushingOfflineQueue &&
+      window.JarvisOfflineQueue &&
+      window.JarvisOfflineQueue.isOfflineError(err)
+    ) {
+      // Mất mạng giữa chừng: giữ tin trong hàng đợi thay vì mất nội dung đã gõ.
+      const queued = window.JarvisOfflineQueue.enqueue({
+        sessionId: activeId,
+        text: fP,
+        model: effectiveModel,
+        engine: currentEngine,
+      });
+      bD?.remove();
+      renderPendingQueue();
+      showToast(
+        queued
+          ? '📴 Mất kết nối — tin đã được xếp hàng, sẽ tự gửi lại khi có mạng.'
+          : '📴 Mất kết nối và hàng đợi đã đầy (20 tin).',
+        queued ? 'warning' : 'danger'
+      );
     } else {
       showToast('Lỗi: ' + err.message, 'danger');
       bD?.remove();
@@ -5313,6 +5610,16 @@ DOM.sendBtn.onclick = async () => {
     abortController = null;
     DOM.sendBtn.innerHTML = `<span>Gửi</span> <svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
     DOM.sendBtn.style.background = 'var(--primary)';
+
+    // Còn tin trong hàng đợi mà đang có mạng (vd vừa gửi xong 1 tin) thì gửi tiếp
+    if (
+      !flushingOfflineQueue &&
+      !isHandsFreeActive &&
+      navigator.onLine &&
+      window.JarvisOfflineQueue?.count()
+    ) {
+      setTimeout(() => flushOfflineQueue(), 800);
+    }
 
     // --- HANDS-FREE VOICE FLOW COMPLETION HOOK ---
     if (isHandsFreeActive) {

@@ -16,6 +16,17 @@
   const FLASH_LITE_MODEL = 'gemini-3.5-flash-lite';
   const AUX_FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
 
+  // --- CHUỖI DỰ PHÒNG KHI PROVIDER QUÁ TẢI (failover, xem js/failover.js) ---
+  // Thứ tự = thứ tự thử. Model không khai báo ở đây (mọi model gateway) dùng
+  // chuỗi mặc định Gemini Flash Lite trong js/failover.js.
+  const FAILOVER_CHAINS = {
+    'gemini-4-hydrogen': ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'],
+    'gemini-3.8-flash': ['gemini-3.6-flash', 'gemini-3.5-flash-lite'],
+    'gemini-3.7-flash': ['gemini-3.6-flash', 'gemini-3.5-flash-lite'],
+    'gemini-3.6-flash': ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'],
+    'gemma-4': ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'],
+  };
+
   // --- MỨC SUY LUẬN (thinkingLevel) HỢP LỆ CỦA TỪNG MODEL ---
   // Nguồn: ai.google.dev/gemini-api/docs/generate-content/thinking (bảng thinkingLevel)
   // + ai.google.dev/gemini-api/docs/thinking (mức mặc định từng model).
@@ -174,6 +185,7 @@
   // --- XUẤT RA WINDOW CHO CÁC MODULE KHÁC & CHO CÁC ALIAS BÊN APP.JS ---
   window.FLASH_LITE_MODEL = FLASH_LITE_MODEL;
   window.AUX_FALLBACK_MODELS = AUX_FALLBACK_MODELS;
+  window.FAILOVER_CHAINS = FAILOVER_CHAINS;
   window.THINKING_LEVELS_BY_MODEL = THINKING_LEVELS_BY_MODEL;
   window.THINKING_LEVEL_LABELS = THINKING_LEVEL_LABELS;
   window.DEFAULT_THINKING_LEVELS = DEFAULT_THINKING_LEVELS;

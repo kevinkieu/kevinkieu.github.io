@@ -3101,3 +3101,62 @@ think {
     font-size: 1rem;
   }
 }
+
+/* ===== Hàng đợi tin nhắn ngoại tuyến (js/offline-queue.js) ===== */
+.offline-queue-badge {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  margin: 0 10px 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  width: fit-content;
+}
+.pending-queue-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 0 10px;
+}
+.pending-queue-card {
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  border-radius: var(--radius-sm, 8px);
+  background: rgba(245, 158, 11, 0.07);
+  padding: 8px 10px;
+  font-size: 0.82rem;
+}
+.pending-queue-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.pending-queue-actions {
+  display: flex;
+  gap: 6px;
+}
+.pending-queue-actions button {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border, #334155);
+  background: transparent;
+  color: var(--text, #e2e8f0);
+  cursor: pointer;
+}
+.pending-queue-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  opacity: 0.9;
+}
+.pending-queue-error {
+  margin-top: 4px;
+  font-size: 0.7rem;
+  color: #ef4444;
+}

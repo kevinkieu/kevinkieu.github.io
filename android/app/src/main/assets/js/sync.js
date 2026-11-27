@@ -172,8 +172,19 @@
   const oLay = $('modal-overlay');
 
   // ===== 3-WAY MERGE CHO CẤU HÌNH & KEY (thay luật "ô trống thì nhận") =====
-  const readSyncMap = key => { try { const o = JSON.parse(ls.getItem(key) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (_) { return {}; } };
-  const writeSyncMap = (key, obj) => { try { ls.setItem(key, JSON.stringify(obj || {})); } catch (_) {} };
+  const readSyncMap = key => {
+    try {
+      const o = JSON.parse(ls.getItem(key) || '{}');
+      return o && typeof o === 'object' ? o : {};
+    } catch (_) {
+      return {};
+    }
+  };
+  const writeSyncMap = (key, obj) => {
+    try {
+      ls.setItem(key, JSON.stringify(obj || {}));
+    } catch (_) {}
+  };
   const normVal = v => (v === undefined || v === null ? '' : String(v));
   const decVal = v => {
     let s = normVal(v);
@@ -181,7 +192,9 @@
     return s;
   };
   const resolveSyncValue = (local, remote, base, localTs, remoteTs) => {
-    const L = normVal(local), R = normVal(remote), B = (base === undefined || base === null) ? null : normVal(base);
+    const L = normVal(local),
+      R = normVal(remote),
+      B = base === undefined || base === null ? null : normVal(base);
     if (L === R) return { value: L, changed: false };
     if (B === null) {
       if (R) return { value: R, changed: true };
@@ -193,9 +206,18 @@
     return { value: L, changed: false };
   };
   const SETTINGS_SYNC_KEYS = [
-    'model','temperature','searchEngine','systemInstruction','theme',
-    'personaConfig','personaProfile','factsStore','uiDensity','gestureConfig',
-    'ragEnabled','autoLearnMemory',
+    'model',
+    'temperature',
+    'searchEngine',
+    'systemInstruction',
+    'theme',
+    'personaConfig',
+    'personaProfile',
+    'factsStore',
+    'uiDensity',
+    'gestureConfig',
+    'ragEnabled',
+    'autoLearnMemory',
   ];
   const collectSettingsSnapshot = () => {
     const d = getDOM();
@@ -229,17 +251,52 @@
         if (!applied) d.model.value = mid;
         return true;
       }
-      case 'temperature': if (!d.temp) return false; d.temp.value = v; if (d.tempVal) d.tempVal.innerText = v; return true;
-      case 'searchEngine': if (!d.searchEngineSel) return false; d.searchEngineSel.value = v; return true;
-      case 'systemInstruction': if (!d.sysInst) return false; d.sysInst.value = v; return true;
-      case 'theme': ls.setItem('jarvis_theme', v); ls.setItem('theme', v); if (window.ThemeScheduler && typeof window.ThemeScheduler.setMode === 'function') window.ThemeScheduler.setMode(v); return true;
-      case 'personaConfig': ls.setItem('jarvis_persona_config', v); if (window.PersonaConfig && typeof window.PersonaConfig.refreshUI === 'function') window.PersonaConfig.refreshUI(); return true;
-      case 'personaProfile': ls.setItem('jarvis_persona_profile', v); return true;
-      case 'factsStore': ls.setItem('jarvis_facts', v); return true;
-      case 'uiDensity': ls.setItem('jarvis_ui_density', v); if (window.Personalization && typeof window.Personalization.setDensity === 'function') window.Personalization.setDensity(v); return true;
-      case 'gestureConfig': ls.setItem('jarvis_gesture_config', v); if (window.GestureManager && typeof window.GestureManager.init === 'function') window.GestureManager.init(); return true;
-      case 'ragEnabled': ls.setItem('jarvis_rag_enabled', v); return true;
-      case 'autoLearnMemory': ls.setItem('jarvis_auto_learn_memory', v); return true;
+      case 'temperature':
+        if (!d.temp) return false;
+        d.temp.value = v;
+        if (d.tempVal) d.tempVal.innerText = v;
+        return true;
+      case 'searchEngine':
+        if (!d.searchEngineSel) return false;
+        d.searchEngineSel.value = v;
+        return true;
+      case 'systemInstruction':
+        if (!d.sysInst) return false;
+        d.sysInst.value = v;
+        return true;
+      case 'theme':
+        ls.setItem('jarvis_theme', v);
+        ls.setItem('theme', v);
+        if (window.ThemeScheduler && typeof window.ThemeScheduler.setMode === 'function')
+          window.ThemeScheduler.setMode(v);
+        return true;
+      case 'personaConfig':
+        ls.setItem('jarvis_persona_config', v);
+        if (window.PersonaConfig && typeof window.PersonaConfig.refreshUI === 'function')
+          window.PersonaConfig.refreshUI();
+        return true;
+      case 'personaProfile':
+        ls.setItem('jarvis_persona_profile', v);
+        return true;
+      case 'factsStore':
+        ls.setItem('jarvis_facts', v);
+        return true;
+      case 'uiDensity':
+        ls.setItem('jarvis_ui_density', v);
+        if (window.Personalization && typeof window.Personalization.setDensity === 'function')
+          window.Personalization.setDensity(v);
+        return true;
+      case 'gestureConfig':
+        ls.setItem('jarvis_gesture_config', v);
+        if (window.GestureManager && typeof window.GestureManager.init === 'function')
+          window.GestureManager.init();
+        return true;
+      case 'ragEnabled':
+        ls.setItem('jarvis_rag_enabled', v);
+        return true;
+      case 'autoLearnMemory':
+        ls.setItem('jarvis_auto_learn_memory', v);
+        return true;
     }
     return false;
   }
@@ -251,9 +308,12 @@
     let changedLocal = 0;
     let localAhead = false;
     SETTINGS_SYNC_KEYS.forEach(key => {
-      const remoteVal = (key === 'model')
-        ? (remoteSettings.model ? (remoteSettings.model + '||' + (remoteSettings.modelProvider || '')) : '')
-        : remoteSettings[key];
+      const remoteVal =
+        key === 'model'
+          ? remoteSettings.model
+            ? remoteSettings.model + '||' + (remoteSettings.modelProvider || '')
+            : ''
+          : remoteSettings[key];
       const r = resolveSyncValue(local[key], remoteVal, base[key], localTs[key], rt[key]);
       if (r.value !== normVal(local[key])) {
         applySyncedSetting(key, r.value);
@@ -266,18 +326,22 @@
     const newTs = Object.assign({}, localTs);
     SETTINGS_SYNC_KEYS.forEach(key => {
       newBase[key] = newLocal[key];
-      if (rt[key] && (rt[key] > (newTs[key] || 0))) newTs[key] = rt[key];
+      if (rt[key] && rt[key] > (newTs[key] || 0)) newTs[key] = rt[key];
     });
     writeSyncMap('jarvis_settings_snapshot', newBase);
     writeSyncMap('jarvis_settings_updated_at', newTs);
     return { changedLocal, localAhead };
   }
-  const BUILTIN_KEY_PROVIDERS = ['openrouter','explabs','nvidia','cohere'];
+  const BUILTIN_KEY_PROVIDERS = ['openrouter', 'explabs', 'nvidia', 'cohere'];
   function collectKeySnapshot() {
     const out = {};
     for (let i = 1; i <= 10; i++) {
-      out['jarvis_api_' + i] = normVal(ls.getItem('jarvis_api_' + i) || ls.getItem('huanmu_api_' + i) || '');
-      out['jarvis_api_name_' + i] = normVal(ls.getItem('jarvis_api_name_' + i) || ls.getItem('huanmu_api_name_' + i) || '');
+      out['jarvis_api_' + i] = normVal(
+        ls.getItem('jarvis_api_' + i) || ls.getItem('huanmu_api_' + i) || ''
+      );
+      out['jarvis_api_name_' + i] = normVal(
+        ls.getItem('jarvis_api_name_' + i) || ls.getItem('huanmu_api_name_' + i) || ''
+      );
     }
     BUILTIN_KEY_PROVIDERS.forEach(pid => {
       const cnt = getProviderKeyCount(pid);
@@ -301,7 +365,9 @@
       });
     } catch (_) {}
     try {
-      Object.entries(getExternalConfigsObj(false) || {}).forEach(([k, v]) => { out[k] = normVal(v); });
+      Object.entries(getExternalConfigsObj(false) || {}).forEach(([k, v]) => {
+        out[k] = normVal(v);
+      });
     } catch (_) {}
     return out;
   }
@@ -330,8 +396,8 @@
     const dp = s.dynamicProviders || {};
     Object.entries(dp.providers || {}).forEach(([id, p]) => {
       const cnt = Math.min(Math.max(parseInt(p.keyCount, 10) || 0, 0), 10);
-      const kp = (p.keyPrefix || 'jarvis_provider_' + id + '_api');
-      const np = (p.keyNamePrefix || 'jarvis_provider_' + id + '_name');
+      const kp = p.keyPrefix || 'jarvis_provider_' + id + '_api';
+      const np = p.keyNamePrefix || 'jarvis_provider_' + id + '_name';
       const keys = p.keys || [];
       const names = p.keyNames || [];
       for (let i = 0; i < cnt; i++) {
@@ -382,7 +448,10 @@
     Object.keys(remote).forEach(k => {
       if (k in local) return;
       const r = resolveSyncValue('', remote[k], undefined, 0, rt[k]);
-      if (r.value !== '') { applySyncedKey(k, r.value); changedLocal++; }
+      if (r.value !== '') {
+        applySyncedKey(k, r.value);
+        changedLocal++;
+      }
       if (r.value !== normVal(remote[k])) localAhead = true;
     });
     const newLocal = collectKeySnapshot();
@@ -390,7 +459,7 @@
     const newTs = Object.assign({}, localTs);
     Object.keys(newLocal).forEach(k => {
       newBase[k] = newLocal[k];
-      if (rt[k] && (rt[k] > (newTs[k] || 0))) newTs[k] = rt[k];
+      if (rt[k] && rt[k] > (newTs[k] || 0)) newTs[k] = rt[k];
     });
     writeSyncMap('jarvis_key_snapshot', newBase);
     writeSyncMap('jarvis_key_updated_at', newTs);
@@ -406,8 +475,15 @@
     const ts = readSyncMap('jarvis_key_updated_at');
     const hasSnap = Object.keys(snap).length > 0;
     Object.keys(cur).forEach(k => {
-      if (!hasSnap) { snap[k] = cur[k]; if (ts[k] === undefined) ts[k] = 0; return; }
-      if (normVal(snap[k]) !== normVal(cur[k])) { ts[k] = Date.now(); snap[k] = cur[k]; }
+      if (!hasSnap) {
+        snap[k] = cur[k];
+        if (ts[k] === undefined) ts[k] = 0;
+        return;
+      }
+      if (normVal(snap[k]) !== normVal(cur[k])) {
+        ts[k] = Date.now();
+        snap[k] = cur[k];
+      }
     });
     writeSyncMap('jarvis_key_snapshot', snap);
     writeSyncMap('jarvis_key_updated_at', ts);
@@ -419,18 +495,32 @@
     const ts = readSyncMap('jarvis_settings_updated_at');
     const hasSnap = Object.keys(snap).length > 0;
     Object.keys(cur).forEach(k => {
-      if (!hasSnap) { snap[k] = cur[k]; if (ts[k] === undefined) ts[k] = 0; return; }
-      if (normVal(snap[k]) !== normVal(cur[k])) { ts[k] = Date.now(); snap[k] = cur[k]; }
+      if (!hasSnap) {
+        snap[k] = cur[k];
+        if (ts[k] === undefined) ts[k] = 0;
+        return;
+      }
+      if (normVal(snap[k]) !== normVal(cur[k])) {
+        ts[k] = Date.now();
+        snap[k] = cur[k];
+      }
     });
     writeSyncMap('jarvis_settings_snapshot', snap);
     writeSyncMap('jarvis_settings_updated_at', ts);
     return ts;
   }
   function readDeletedVectorIds() {
-    try { return new Set(JSON.parse(ls.getItem('jarvis_deleted_vector_ids') || '[]')); } catch (_) { return new Set(); }
+    try {
+      return new Set(JSON.parse(ls.getItem('jarvis_deleted_vector_ids') || '[]'));
+    } catch (_) {
+      return new Set();
+    }
   }
   function writeDeletedVectorIds(set) {
-    try { ls.setItem('jarvis_deleted_vector_ids', JSON.stringify(Array.from(set).slice(-500))); } catch (_) {} }
+    try {
+      ls.setItem('jarvis_deleted_vector_ids', JSON.stringify(Array.from(set).slice(-500)));
+    } catch (_) {}
+  }
 
   // --- GITHUB GIST CLOUD SYNC CONTROLLER (2-WAY SMART MERGE & AUTO SYNC) ---
   const cloudSyncModal = $('cloud-sync-modal');
@@ -704,11 +794,18 @@
           // A0b. Tombstone tri thức từ Cloud
           if (Array.isArray(cloudData.deletedVectorIds) && cloudData.deletedVectorIds.length) {
             const beforeSize = deletedVectorIds.size;
-            cloudData.deletedVectorIds.forEach(id => { if (id) deletedVectorIds.add(id); });
+            cloudData.deletedVectorIds.forEach(id => {
+              if (id) deletedVectorIds.add(id);
+            });
             if (deletedVectorIds.size !== beforeSize) {
               vectorTombstoneChanged = true;
               hasChanges = true;
-              try { ls.setItem('jarvis_deleted_vector_ids', JSON.stringify(Array.from(deletedVectorIds).slice(-500))); } catch (_) {}
+              try {
+                ls.setItem(
+                  'jarvis_deleted_vector_ids',
+                  JSON.stringify(Array.from(deletedVectorIds).slice(-500))
+                );
+              } catch (_) {}
             }
           }
 
@@ -842,12 +939,18 @@
           }
 
           // D. 3-WAY MERGE cho key + tên + externalConfigs (base snapshot + timestamp)
-          const keyMerge = mergeRemoteKeySettings(cloudData.settings || {}, cloudData.settings?.keyUpdatedAt || {});
+          const keyMerge = mergeRemoteKeySettings(
+            cloudData.settings || {},
+            cloudData.settings?.keyUpdatedAt || {}
+          );
           if (keyMerge.changedLocal > 0) hasChanges = true;
           keysNeedPush = keyMerge.localAhead;
 
           // D2. 3-WAY MERGE cho settings (model/theme/persona/system instruction/...)
-          const setMerge = mergeRemoteSettings(cloudData.settings || {}, cloudData.settings?.settingsUpdatedAt || {});
+          const setMerge = mergeRemoteSettings(
+            cloudData.settings || {},
+            cloudData.settings?.settingsUpdatedAt || {}
+          );
           if (setMerge.changedLocal > 0) hasChanges = true;
           settingsNeedPush = setMerge.localAhead;
 
@@ -1714,7 +1817,9 @@
       }
       if (parsed.deletedVectorIds && Array.isArray(parsed.deletedVectorIds)) {
         const cur = new Set(JSON.parse(ls.getItem('jarvis_deleted_vector_ids') || '[]'));
-        parsed.deletedVectorIds.forEach(id => { if (id) cur.add(id); });
+        parsed.deletedVectorIds.forEach(id => {
+          if (id) cur.add(id);
+        });
         ls.setItem('jarvis_deleted_vector_ids', JSON.stringify(Array.from(cur).slice(-500)));
       }
       if (typeof window.reloadMaxMedicationsFromStorage === 'function') {
@@ -1795,13 +1900,20 @@
           ls.setItem('jarvis_auto_learn_memory', parsed.settings.autoLearnMemory);
         if (parsed.settings.ragEnabled)
           ls.setItem('jarvis_rag_enabled', parsed.settings.ragEnabled);
-        if (parsed.settings.settingsUpdatedAt && typeof parsed.settings.settingsUpdatedAt === 'object')
+        if (
+          parsed.settings.settingsUpdatedAt &&
+          typeof parsed.settings.settingsUpdatedAt === 'object'
+        )
           writeSyncMap('jarvis_settings_updated_at', parsed.settings.settingsUpdatedAt);
         if (parsed.settings.keyUpdatedAt && typeof parsed.settings.keyUpdatedAt === 'object')
           writeSyncMap('jarvis_key_updated_at', parsed.settings.keyUpdatedAt);
         // Làm mới snapshot để không bị coi là thay đổi local sau khi restore
-        try { writeSyncMap('jarvis_settings_snapshot', collectSettingsSnapshot()); } catch (_) {}
-        try { writeSyncMap('jarvis_key_snapshot', collectKeySnapshot()); } catch (_) {}
+        try {
+          writeSyncMap('jarvis_settings_snapshot', collectSettingsSnapshot());
+        } catch (_) {}
+        try {
+          writeSyncMap('jarvis_key_snapshot', collectKeySnapshot());
+        } catch (_) {}
       }
 
       if (parsed.keyUsageFlash && typeof window.setKeyUsageData === 'function') {
