@@ -19,6 +19,11 @@
   xong). Thêm `onclick="openLiveTranslateModal()"` trong `index.html` để cú bấm đầu tiên đi qua stub
   của `module-loader.js`. Đã bấm thử cả 3 nút (TTS Studio, Phiên dịch trực tiếp, Knowledge) ở trạng
   thái module **chưa** nạp: module tự tải rồi modal mở bình thường.
+- **Sửa nút "Đồng bộ Cloud" ở header** (và nút cùng chức năng ở chân sidebar) bị cùng lỗi: `sync.js`
+  chỉ gắn handler khi chính nó được nạp. Nay `sync.js` công khai `window.openCloudSyncModal`,
+  `module-loader.js` cài stub cho hàm này và hai nút có `onclick="openCloudSyncModal()"` — cú bấm
+  đầu tiên tự nạp module rồi mở modal. Bump `module-loader.js?v=2`, `sync.js?v=85`, SW cache
+  `jarvis-ai-pwa-v93`.
 - **Tách `app.js`** (6.146 → 5.741 dòng): `js/chat-format.js` (stream renderer + format
   thinking/lỗi), `js/uploads.js` (PDF/nén ảnh/xem trước tệp), `js/msg-actions.js` (tombstone +
   xoá/thử lại/sửa/ghim/ rẽ nhánh). `app.js` alias lại các hàm và giữ nguyên mọi điểm gọi cũ.

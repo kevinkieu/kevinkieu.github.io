@@ -1616,6 +1616,9 @@
     }
   };
 
+  // Inline onclick (và stub của module-loader) cần hàm này ở phạm vi window
+  window.openCloudSyncModal = openCloudSyncModal;
+
   $('btn-open-cloud-sync').onclick = openCloudSyncModal;
   if ($('btn-cloud-sync-header')) $('btn-cloud-sync-header').onclick = openCloudSyncModal;
   if ($('btn-cloud-sync-chip')) $('btn-cloud-sync-chip').onclick = openCloudSyncModal;
