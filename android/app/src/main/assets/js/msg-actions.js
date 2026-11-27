@@ -133,7 +133,7 @@ window.jarvisMsgTombstones = {
 };
 
 window.deleteMsg = async i => {
-  if (confirm('Xóa tin nhắn này?')) {
+  if (await window.appConfirm('Xóa tin nhắn này?')) {
     // Ghi tombstone để Smart Sync không hồi sinh tin vừa xóa từ Cloud
     if (window.jarvisMsgTombstones && chatHistory[i])
       window.jarvisMsgTombstones.add(activeId, [chatHistory[i]]);

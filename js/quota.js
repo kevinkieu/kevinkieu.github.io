@@ -578,8 +578,12 @@
       };
     }
 
-    $('btn-reset-quota-manual')?.addEventListener('click', () => {
-      if (confirm('Bạn có chắc chắn muốn reset bộ đếm hôm nay của tất cả các key về 0/20 không?')) {
+    $('btn-reset-quota-manual')?.addEventListener('click', async () => {
+      if (
+        await window.appConfirm(
+          'Bạn có chắc chắn muốn reset bộ đếm hôm nay của tất cả các key về 0/20 không?'
+        )
+      ) {
         resetKeyUsageToday();
         updateKeyQuotaUI();
         showToast('🔄 Đã reset bộ đếm hôm nay về 0/20!', 'success');

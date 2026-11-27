@@ -258,7 +258,7 @@
           stack: err?.stack || '',
           name: err?.name || 'Error',
           url: window.location.href,
-          userAgent: navigator.userAgent,
+          clientPlatform: navigator.userAgentData?.platform || 'unknown',
         };
         const t = db.transaction(ERROR_LOG_STORE, 'readwrite');
         t.objectStore(ERROR_LOG_STORE).put(entry);

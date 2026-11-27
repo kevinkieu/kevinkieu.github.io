@@ -54,7 +54,8 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             // Không có keystore riêng thì KÝ BẰNG DEBUG KEY: APK release vẫn cài được
             // (trước đây rơi vào trạng thái unsigned, cài sẽ báo "App not installed").
             signingConfig canSignRelease ? signingConfigs.release : signingConfigs.debug

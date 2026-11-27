@@ -110,19 +110,39 @@ if (typeof formatUpstreamError !== 'undefined') window.formatUpstreamError = for
 // [Đã tách sang js/database.js: IndexedDB engine (db, initDB, saveToDB, getAllFromDB, clearAllDB, file/TTS stores)]
 // Giữ lại: syncSessionsToNative (native-only) + expose window.db/getDB do js/database.js gán khi initDB xong
 let _nativeSyncTimer = null;
-function syncSessionsToNative() {
-  if (!window.JarvisNativeBridge) return;
-  clearTimeout(_nativeSyncTimer);
-  _nativeSyncTimer = setTimeout(async () => {
-    try {
-      const all = await getAllFromDB();
-      if (all && all.length > 0) {
-        saveToNativeBridge('jarvis_sessions_backup', JSON.stringify(all));
-      }
-    } catch {}
-  }, 300);
-}
-if (typeof syncSessionsToNative !== 'undefined') window.syncSessionsToNative = syncSessionsToNative;
+
+// --- NATIVE SYNC ALIASES (js/native-sync.js) ---
+const syncSessionsToNative = window.syncSessionsToNative;
+const updateConfig = window.updateConfig;
+
+// --- OFFLINE QUEUE UI ALIASES (js/offline-queue-ui.js) ---
+const renderPendingQueue = window.renderPendingQueue;
+const flushOfflineQueue = window.flushOfflineQueue;
+const dropQueuedItem = window.dropQueuedItem;
+const sendQueuedNow = window.sendQueuedNow;
+
+// --- HANDS-FREE ALIASES (js/hands-free.js) ---
+const stopHandsFreeVoice = window.stopHandsFreeVoice;
+const processHandsFreeAudioBlob = window.processHandsFreeAudioBlob;
+const startHandsFreeRecorder = window.startHandsFreeRecorder;
+const commitAndSendHandsFree = window.commitAndSendHandsFree;
+const toggleHandsFreeVoice = window.toggleHandsFreeVoice;
+
+// --- MESSAGE TTS ALIASES (js/message-tts.js) ---
+const stopCurrentSpeaking = window.stopCurrentSpeaking;
+const playTextAudio = window.playTextAudio;
+
+// --- SESSION MANAGER ALIASES (js/session-manager.js) ---
+const tryAutoNameSession = window.tryAutoNameSession;
+const renderCompactSummary = window.renderCompactSummary;
+const condenseSessionMemory = window.condenseSessionMemory;
+const renderTabs = window.renderTabs;
+const renderFolders = window.renderFolders;
+const loadSess = window.loadSess;
+const newSess = window.newSess;
+const switchSess = window.switchSess;
+const sessionMatchesFilter = window.sessionMatchesFilter;
+const renderSel = window.renderSel;
 
 // --- DOM REFERENCES ---
 DOM = {
@@ -345,103 +365,9 @@ window.updateTokenCount = () => updateTokenCount();
 window.newSess = () => newSess();
 
 // --- TIỆN ÍCH CUỘN VÀ KÉO NGANG BẰNG CHUỘT TRÊN PC (HORIZONTAL MOUSE WHEEL & SAFE GRAB SCROLL) ---
-function enableHorizontalScrollAndDrag(el) {
-  if (!el || el._hScrollInit) return;
-  el._hScrollInit = true;
-
-  // 1. Chặn trình duyệt kéo chữ mặc định (HTML5 drag) làm đơ chuột khi rê qua tab
-  el.addEventListener('dragstart', e => {
-    e.preventDefault();
-  });
-
-  // 2. Chuyển đổi con lăn chuột dọc sang cuộn ngang mượt mà trên PC
-  el.addEventListener(
-    'wheel',
-    e => {
-      if (e.deltaY !== 0) {
-        if (el.scrollWidth > el.clientWidth) {
-          e.preventDefault();
-          el.scrollLeft += e.deltaY * 1.2;
-        }
-      } else if (e.deltaX !== 0) {
-        el.scrollLeft += e.deltaX;
-      }
-    },
-    { passive: false }
-  );
-
-  // 3. Kéo thả chuột ngang an toàn (Grab-to-scroll, không chặn click thông thường)
-  let isDown = false;
-  let isDragging = false;
-  let suppressClick = false;
-  let startX = 0;
-  let scrollStart = 0;
-
-  el.addEventListener('mousedown', e => {
-    if (e.button !== 0) return; // Chỉ nhận chuột trái
-    if (e.target.tagName === 'INPUT' || e.target.classList.contains('tab-close')) return;
-
-    isDown = true;
-    isDragging = false;
-    suppressClick = false;
-    startX = e.pageX;
-    scrollStart = el.scrollLeft;
-  });
-
-  window.addEventListener('mousemove', e => {
-    if (!isDown) return;
-    const dx = e.pageX - startX;
-
-    // Chỉ chuyển sang trạng thái Drag khi rê chuột vượt quá 10px (tránh kích hoạt nhầm khi bấm click)
-    if (!isDragging && Math.abs(dx) > 10) {
-      isDragging = true;
-      suppressClick = true;
-      el.classList.add('is-dragging-scroll');
-    }
-
-    if (isDragging) {
-      el.scrollLeft = scrollStart - dx;
-    }
-  });
-
-  const endDrag = () => {
-    if (!isDown) return;
-    isDown = false;
-    if (isDragging) {
-      el.classList.remove('is-dragging-scroll');
-      // Giữ cờ chặn click trong 80ms để hủy sự kiện click xuất hiện ngay sau khi thả chuột
-      setTimeout(() => {
-        isDragging = false;
-        suppressClick = false;
-      }, 80);
-    } else {
-      isDragging = false;
-      suppressClick = false;
-    }
-  };
-
-  window.addEventListener('mouseup', endDrag);
-
-  // Chặn sự kiện click DUY NHẤT khi người dùng thực hiện thao tác kéo rê chuột
-  el.addEventListener(
-    'click',
-    e => {
-      if (suppressClick) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        suppressClick = false;
-      }
-    },
-    true
-  );
-}
-
-if (typeof enableHorizontalScrollAndDrag !== 'undefined')
-  window.enableHorizontalScrollAndDrag = enableHorizontalScrollAndDrag;
-enableHorizontalScrollAndDrag(DOM.tabsContainer);
-enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
-enableHorizontalScrollAndDrag($('image-preview-grid'));
+window.enableHorizontalScrollAndDrag(DOM.tabsContainer);
+window.enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
+window.enableHorizontalScrollAndDrag($('image-preview-grid'));
 
 Object.defineProperty(window, 'apiKeys', {
   get: () => apiKeys,
@@ -546,186 +472,7 @@ window.addEventListener(
 );
 
 // --- LOCAL FALLBACK TITLE GENERATOR ---
-function generateLocalFallbackTitle(text) {
-  if (!text) return '';
-  let clean = text
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/https?:\/\/\S+/g, '')
-    .replace(/["'“”«»#*_\n\r\t]/g, ' ')
-    .trim();
-  let prev;
-  do {
-    prev = clean;
-    clean = clean
-      .replace(
-        /^(hãy|bạn hãy|xin hãy|cho tôi hỏi|cho hỏi|nhờ bạn|giúp tôi|làm sao để|làm thế nào để|hướng dẫn|giải thích|tóm tắt|viết|tạo|cách|tìm|so sánh|vui lòng|please|how to|can you|explain|what is)\s+/i,
-        ''
-      )
-      .trim();
-  } while (clean !== prev);
-
-  const words = clean.split(/\s+/).filter(Boolean);
-  if (!words.length) return '';
-  const title = words.slice(0, 5).join(' ');
-  return title.charAt(0).toUpperCase() + title.slice(1);
-}
-if (typeof generateLocalFallbackTitle !== 'undefined')
-  window.generateLocalFallbackTitle = generateLocalFallbackTitle;
-
 // --- AUTO-NAME SESSION ---
-async function tryAutoNameSession(sessionObj, userText, botText, preferredKey = null) {
-  if (!sessionObj) return;
-  const normName = (sessionObj.name || '').normalize('NFC').trim();
-  const isDefault = !normName || /^(hội thoại|phiên|cuộc trò chuyện|new session)/i.test(normName);
-  if (!isDefault || sessionObj.isCustomNamed || sessionObj.isAutoNamed) return;
-
-  const k = preferredKey || getSessionApiKey(sessionObj) || (apiKeys.length ? apiKeys[0] : '');
-  if (!k) return;
-
-  const promptUserPart = (userText || '').slice(0, 180).trim();
-  const promptBotPart = (botText || '').slice(0, 180).trim();
-  const promptText = `Tóm tắt chủ đề chính của câu hỏi người dùng thành một tiêu đề ngắn gọn súc tích từ 3 đến 6 từ bằng tiếng Việt (chỉ trả về đúng tiêu đề, không dùng dấu ngoặc kép, không thêm lời giải thích hay tiền tố):\nNgười dùng: "${promptUserPart}"\nAI: "${promptBotPart}"`;
-
-  let title = '';
-
-  // Cố gắng gọi AI: Bắt buộc dùng Flash-Lite với thinking tắt hoàn toàn để tiết kiệm quota
-  const candidateModels = AUX_FALLBACK_MODELS;
-
-  for (const mod of candidateModels) {
-    if (!mod) continue;
-    try {
-      const ai = new GoogleGenAI({ apiKey: k });
-      const res = await ai.models.generateContent({
-        model: mod,
-        contents: promptText,
-        config: {
-          safetySettings: SAFETY,
-          maxOutputTokens: 100,
-          temperature: 0.4,
-        },
-      });
-
-      let raw = '';
-      try {
-        raw = res.text || '';
-      } catch (_) {}
-      if (!raw && res.candidates?.[0]?.content?.parts) {
-        raw = res.candidates[0].content.parts
-          .filter(p => !p.thought && typeof p.text === 'string')
-          .map(p => p.text)
-          .join(' ')
-          .trim();
-      }
-
-      raw = raw
-        .replace(/["“«»”*\n#:]/g, '')
-        .replace(/^(tiêu đề|chủ đề|tóm tắt):\s*/i, '')
-        .trim();
-
-      if (raw && raw.length >= 2) {
-        title = raw;
-        break;
-      }
-    } catch (mErr) {
-      console.warn(`[Auto-Name] Thử model ${mod} không thành công:`, mErr?.message || mErr);
-    }
-  }
-
-  // Nếu tất cả AI models đều không trả về được, dùng Local Fallback từ câu hỏi đầu tiên
-  if (!title || title.length < 2) {
-    title = generateLocalFallbackTitle(userText);
-  }
-
-  if (title.length > 35) title = title.slice(0, 35).trim() + '...';
-
-  if (title && title.length >= 2) {
-    sessionObj.name = title;
-    sessionObj.isAutoNamed = true;
-    await saveToDB(sessionObj);
-    renderSel();
-    renderTabs();
-    showToast(`🏷️ Đã tự động đặt tên: "${title}"`, 'info');
-  }
-}
-
-// --- HIỂN THỊ BỘ NHỚ TÓM TẮT CỦA PHIÊN ĐANG MỞ ---
-function renderCompactSummary() {
-  const box = DOM.compactSummaryPreview;
-  if (!box) return;
-  const cs = sessions.find(x => x.id === activeId);
-  const txt = (cs?.summaryMemory || '').trim();
-  box.textContent = txt || 'Chưa có bộ nhớ tóm tắt cho phiên này.';
-  box.style.fontStyle = txt ? 'normal' : 'italic';
-  box.style.opacity = txt ? '1' : '0.7';
-}
-
-// --- AUTO-SUMMARY LONG-TERM MEMORY (NÉN LỊCH SỬ DÀI) ---
-// force = true khi người dùng bấm nút nén thủ công (bỏ qua ngưỡng + checkbox)
-async function condenseSessionMemory(sessionObj, force = false) {
-  if (!sessionObj || !chatHistory || chatHistory.length < 4) return false;
-  if (
-    !force &&
-    (chatHistory.length <= autoSummaryThreshold || DOM.toggleAutoSummary?.checked === false)
-  )
-    return false;
-  const lastCond = sessionObj.lastCondensedLength || 0;
-  if (!force && chatHistory.length - lastCond < 10) return false;
-
-  const k = getSessionApiKey(sessionObj);
-  if (!k) {
-    if (force) showToast('⚠️ Cần Google API Key để nén ngữ cảnh!', 'warning');
-    return false;
-  }
-
-  const keepRecent = Math.min(10, Math.max(2, chatHistory.length - 2));
-  try {
-    const toSummarize = chatHistory
-      .slice(0, chatHistory.length - keepRecent)
-      .map(
-        m => `${m.role === 'model' ? 'AI' : 'User'}: ${stripThinkingForCopy(m.text).slice(0, 300)}`
-      )
-      .join('\n');
-    const prevSummary = sessionObj.summaryMemory
-      ? `[Bối cảnh cốt lõi trước đó]:\n${sessionObj.summaryMemory}\n\n[Diễn biến mới cần cập nhật]:\n`
-      : '';
-    const promptText = `Hãy cập nhật và cô đọng các thông tin quan trọng, ngữ cảnh và các quyết định cốt lõi trong đoạn hội thoại sau thành 1 đoạn ngắn gọn (khoảng 3-5 gạch đầu dòng):\n\n${prevSummary}${toSummarize}`;
-
-    const ai = new GoogleGenAI({ apiKey: k });
-    let res = null;
-    for (const m of AUX_FALLBACK_MODELS) {
-      try {
-        res = await ai.models.generateContent({
-          model: m,
-          contents: promptText,
-          config: {
-            safetySettings: SAFETY,
-            temperature: 0.3,
-          },
-        });
-        if (res && res.text) break;
-      } catch (mErr) {
-        console.warn(`[Auto-Summary] Model ${m} lỗi:`, mErr?.message || mErr);
-      }
-    }
-
-    if (res && res.text) {
-      sessionObj.summaryMemory = res.text.trim();
-      sessionObj.lastCondensedLength = chatHistory.length;
-      await saveToDB(sessionObj);
-      console.log('[Auto-Summary] Đã nén trí nhớ dài hạn thành công:', sessionObj.summaryMemory);
-      if (force) showToast('🗜️ Đã nén ngữ cảnh thành công!', 'success');
-      renderCompactSummary();
-      return true;
-    }
-    if (force) showToast('⚠️ Model không trả về nội dung tóm tắt.', 'warning');
-    return false;
-  } catch (e) {
-    console.warn('Lỗi tóm tắt bộ nhớ dài:', e);
-    if (force) showToast('⚠️ Lỗi khi nén ngữ cảnh: ' + (e?.message || e), 'danger');
-    return false;
-  }
-}
-
 // --- CONVERSATION BRANCHING (RẼ NHÁNH HỘI THOẠI) ---
 // --- FEATURE 2: DAILY BRIEFING (Đã chuyển sang js/briefing.js) ---
 
@@ -741,488 +488,6 @@ let handsFreeVadInterval = null;
 let isHandsFreeUserTalking = false;
 let handsFreeSpeechStartTime = 0;
 let handsFreeTranscribeController = null;
-
-function stopHandsFreeVoice() {
-  if (typeof window.isLiveActive === 'function' && window.isLiveActive()) {
-    if (typeof window.endLiveCall === 'function') window.endLiveCall();
-  }
-  isHandsFreeActive = false;
-  isHandsFreeSpeaking = false;
-  isHandsFreeUserTalking = false;
-  handsFreeSpeechStartTime = 0;
-
-  if (handsFreeVadInterval) {
-    clearInterval(handsFreeVadInterval);
-    handsFreeVadInterval = null;
-  }
-
-  if (handsFreeTranscribeController) {
-    try {
-      handsFreeTranscribeController.abort();
-    } catch (_) {}
-    handsFreeTranscribeController = null;
-  }
-
-  if (handsFreeRecorder && handsFreeRecorder.state !== 'inactive') {
-    try {
-      handsFreeRecorder.onstop = null;
-      handsFreeRecorder.stop();
-    } catch (_) {}
-  }
-  handsFreeRecorder = null;
-  handsFreeAudioChunks = [];
-
-  if (handsFreeMediaStream) {
-    try {
-      handsFreeMediaStream.getTracks().forEach(track => track.stop());
-    } catch (_) {}
-    handsFreeMediaStream = null;
-  }
-
-  if (handsFreeAudioCtx && handsFreeAudioCtx.state !== 'closed') {
-    try {
-      handsFreeAudioCtx.close();
-    } catch (_) {}
-    handsFreeAudioCtx = null;
-  }
-  handsFreeAnalyser = null;
-  stopCurrentSpeaking();
-
-  const banner = $('hands-free-banner');
-  if (banner) banner.style.display = 'none';
-
-  const micBtn = $('btn-hands-free-voice');
-  if (micBtn) micBtn.classList.remove('active');
-
-  const chipBtn = $('btn-toggle-hands-free-chip');
-  if (chipBtn) chipBtn.classList.remove('active');
-
-  const btnSendHf = $('btn-send-hands-free');
-  if (btnSendHf) btnSendHf.style.display = 'none';
-}
-if (typeof stopHandsFreeVoice !== 'undefined') window.stopHandsFreeVoice = stopHandsFreeVoice;
-
-async function processHandsFreeAudioBlob(blob) {
-  if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing) return;
-  const statusText = $('hf-status-text');
-  const preview = $('hf-transcript-preview');
-  const btnSendHf = $('btn-send-hands-free');
-  if (btnSendHf) btnSendHf.style.display = 'none';
-
-  try {
-    if (statusText)
-      statusText.innerHTML =
-        '<span style="color:#8b5cf6;font-weight:600;">⚡ Đang chuyển giọng nói thành chữ...</span>';
-
-    // 1. Chuyển Blob sang base64
-    const reader = new FileReader();
-    const base64Promise = new Promise((resolve, reject) => {
-      reader.onloadend = () => {
-        const res = reader.result;
-        const b64 = typeof res === 'string' ? res.split(',')[1] : '';
-        resolve(b64);
-      };
-      reader.onerror = reject;
-    });
-    reader.readAsDataURL(blob);
-    const base64Data = await base64Promise;
-
-    if (!base64Data) throw new Error('Không thể đọc dữ liệu âm thanh');
-
-    // 2. Chuẩn hóa MIME type bare (Gemini API bắt buộc MIME type thuần, không có tham số ;codecs=...)
-    let rawType = (blob.type || handsFreeRecorder?.mimeType || 'audio/webm').toLowerCase();
-    let cleanMime = rawType.split(';')[0].trim();
-    if (cleanMime.includes('webm')) cleanMime = 'audio/webm';
-    else if (cleanMime.includes('mp4') || cleanMime.includes('m4a') || cleanMime.includes('aac'))
-      cleanMime = 'audio/mp4';
-    else if (cleanMime.includes('wav')) cleanMime = 'audio/wav';
-    else if (cleanMime.includes('ogg')) cleanMime = 'audio/ogg';
-    else cleanMime = 'audio/webm';
-
-    // 3. Lấy danh sách API Key hợp lệ (Giải mã nếu có tiền tố mã hóa, tuyệt đối không gọi getGoogleKeysList(true))
-    let availableKeys =
-      typeof apiKeys !== 'undefined' && Array.isArray(apiKeys) && apiKeys.length
-        ? [...apiKeys]
-        : [];
-    if (!availableKeys.length) {
-      const raw = window.getGoogleKeysList(false).filter(Boolean);
-      availableKeys = raw
-        .map(k => {
-          let clean = (k || '').trim();
-          if (clean.startsWith('JVENC_') || clean.startsWith('ENC_')) clean = deobfuscateKey(clean);
-          return clean;
-        })
-        .filter(Boolean);
-    }
-
-    if (!availableKeys.length) {
-      showToast('Cần ít nhất 1 Google API Key trong Cài đặt!', 'danger');
-      stopHandsFreeVoice();
-      return;
-    }
-
-    // Ưu tiên key đang gán cho phiên hiện tại, sau đó đến các key còn lại
-    const currentSession = sessions.find(x => x.id === activeId);
-    const preferredKey =
-      typeof getSessionApiKey === 'function' ? getSessionApiKey(currentSession) : null;
-    const candidateKeys = [];
-    if (preferredKey && availableKeys.includes(preferredKey)) candidateKeys.push(preferredKey);
-    for (const k of availableKeys) {
-      if (!candidateKeys.includes(k)) candidateKeys.push(k);
-    }
-
-    // 4. Chuyển giọng nói sang văn bản tiếng Việt với cơ chế Xoay Key & Fallback Model Flash-Lite (thinking tắt hoàn toàn)
-    handsFreeTranscribeController = new AbortController();
-    const candidateTranscribeModels = AUX_FALLBACK_MODELS;
-    let spokenText = '';
-    let lastErr = null;
-
-    keyLoop: for (let kIdx = 0; kIdx < candidateKeys.length; kIdx++) {
-      const activeKey = candidateKeys[kIdx];
-      let ai;
-      try {
-        ai = new GoogleGenAI({ apiKey: activeKey });
-      } catch (initErr) {
-        lastErr = initErr;
-        continue;
-      }
-
-      for (const mod of candidateTranscribeModels) {
-        try {
-          const res = await ai.models.generateContent({
-            model: mod,
-            contents: [
-              {
-                role: 'user',
-                parts: [
-                  {
-                    inlineData: {
-                      mimeType: cleanMime,
-                      data: base64Data,
-                    },
-                  },
-                  {
-                    text: 'Nghe đoạn ghi âm tiếng Việt này và chỉ chép lại đúng văn bản những gì người nói. Tuyệt đối không thêm lời dẫn, không giải thích, không dùng ngoặc kép.',
-                  },
-                ],
-              },
-            ],
-            config: {
-              maxOutputTokens: 500,
-            },
-          });
-          spokenText = (res.text || '').trim();
-          if (!spokenText && res.candidates?.[0]?.content?.parts) {
-            spokenText = res.candidates[0].content.parts
-              .map(p => p.text || '')
-              .join('')
-              .trim();
-          }
-          if (spokenText) break keyLoop;
-        } catch (tErr) {
-          lastErr = tErr;
-          console.warn(
-            `[HandsFree STT] Key #${kIdx + 1} (${activeKey.substring(0, 6)}...) - Model ${mod} lỗi (${cleanMime}):`,
-            tErr.message
-          );
-        }
-      }
-    }
-
-    // Nếu tất cả key & model đều lỗi (ví dụ rớt mạng hoàn toàn)
-    if (!spokenText && lastErr) {
-      console.error('[HandsFree STT] Thất bại chuyển âm thanh:', lastErr);
-      if (statusText)
-        statusText.innerHTML = `<span style="color:#ef4444;font-weight:600;">❌ Lỗi: ${lastErr.message || 'Thất bại'}</span>`;
-      setTimeout(() => {
-        if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
-          startHandsFreeRecorder();
-        }
-      }, 1200);
-      return;
-    }
-
-    spokenText = spokenText
-      .replace(
-        /^(người dùng nói|người nói|câu nói|văn bản|nội dung|bản chép|transcript|transcription):\s*/i,
-        ''
-      )
-      .replace(/^["'“”«»]+|["'“”«»]+$/g, '')
-      .trim();
-
-    // 5. Nếu không có từ nào rõ ràng (tiếng thở, tiếng ồn nhẹ): Tiếp tục lắng nghe
-    if (!spokenText) {
-      console.info('[HandsFree] Không phát hiện từ ngữ rõ ràng.');
-      if (statusText)
-        statusText.innerHTML =
-          '<span style="color:var(--text-muted);">👂 Chưa nghe rõ, đang lắng nghe lại...</span>';
-      setTimeout(() => {
-        if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
-          startHandsFreeRecorder();
-        }
-      }, 350);
-      return;
-    }
-
-    // 6. Cập nhật giao diện & gán nội dung vào ô nhập text
-    if (preview) {
-      preview.innerText = `"${spokenText}"`;
-      preview.title = spokenText;
-    }
-    if (statusText) {
-      statusText.innerHTML = `<span style="color:#6366f1;font-weight:600;">✍️ Đã nghe: "${spokenText.slice(0, 32)}${spokenText.length > 32 ? '...' : ''}"</span>`;
-    }
-
-    DOM.input.value = spokenText;
-    DOM.input.style.height = 'auto';
-    DOM.input.style.height = Math.min(DOM.input.scrollHeight, 180) + 'px';
-    DOM.input.dispatchEvent(new Event('input'));
-
-    if (statusText)
-      statusText.innerHTML =
-        '<span style="color:#8b5cf6;font-weight:600;">🚀 Đang gửi cho Jarvis...</span>';
-    DOM.sendBtn.click();
-  } catch (err) {
-    console.error('Lỗi chuyển đổi giọng nói rảnh tay:', err);
-    if (statusText)
-      statusText.innerHTML = `<span style="color:#ef4444;font-weight:600;">⚠️ Lỗi: ${err.message || 'Thử lại'}</span>`;
-    setTimeout(() => {
-      if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
-        startHandsFreeRecorder();
-      }
-    }, 800);
-  } finally {
-    handsFreeTranscribeController = null;
-  }
-}
-
-async function startHandsFreeRecorder() {
-  if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing) return;
-
-  const statusText = $('hf-status-text');
-  const btnSendHf = $('btn-send-hands-free');
-
-  try {
-    // Dừng recorder cũ nếu còn đang chạy
-    if (handsFreeRecorder && handsFreeRecorder.state !== 'inactive') {
-      try {
-        handsFreeRecorder.onstop = null;
-        handsFreeRecorder.stop();
-      } catch (_) {}
-    }
-    if (handsFreeVadInterval) {
-      clearInterval(handsFreeVadInterval);
-      handsFreeVadInterval = null;
-    }
-
-    // Khởi tạo MediaStream (chuẩn micro phần cứng, chạy mượt trên Android/iOS Safari/PWA)
-    if (!handsFreeMediaStream || !handsFreeMediaStream.active) {
-      handsFreeMediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
-    }
-
-    // Khởi tạo AudioContext để phân tích năng lượng giọng nói thời gian thực (VAD)
-    if (!handsFreeAudioCtx || handsFreeAudioCtx.state === 'closed') {
-      handsFreeAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (handsFreeAudioCtx.state === 'suspended') {
-      await handsFreeAudioCtx.resume();
-    }
-
-    const source = handsFreeAudioCtx.createMediaStreamSource(handsFreeMediaStream);
-    handsFreeAnalyser = handsFreeAudioCtx.createAnalyser();
-    handsFreeAnalyser.fftSize = 512;
-    source.connect(handsFreeAnalyser);
-
-    // Tìm mimeType hỗ trợ trên thiết bị (ưu tiên Opus WebM, fallback MP4 cho iOS)
-    let mimeType = 'audio/webm;codecs=opus';
-    if (typeof MediaRecorder !== 'undefined') {
-      if (!MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-        if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
-        else if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
-        else mimeType = '';
-      }
-    }
-
-    handsFreeAudioChunks = [];
-    const options = mimeType ? { mimeType } : undefined;
-    handsFreeRecorder = new MediaRecorder(handsFreeMediaStream, options);
-
-    handsFreeRecorder.ondataavailable = e => {
-      if (e.data && e.data.size > 0) {
-        handsFreeAudioChunks.push(e.data);
-      }
-    };
-
-    handsFreeRecorder.onstop = async () => {
-      if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing) return;
-      const blobType = handsFreeRecorder?.mimeType || mimeType || 'audio/webm';
-      const recordedBlob = new Blob(handsFreeAudioChunks, { type: blobType });
-      handsFreeAudioChunks = [];
-
-      if (recordedBlob.size > 300 && isHandsFreeUserTalking) {
-        await processHandsFreeAudioBlob(recordedBlob);
-      } else {
-        // Chưa có âm thanh hợp lệ, tiếp tục lượt nghe mới
-        if (isHandsFreeActive && !isHandsFreeSpeaking && !isProcessing) {
-          setTimeout(() => startHandsFreeRecorder(), 150);
-        }
-      }
-    };
-
-    handsFreeRecorder.start(250);
-    isHandsFreeUserTalking = false;
-    handsFreeSpeechStartTime = 0;
-
-    if (statusText)
-      statusText.innerHTML =
-        '<span style="color:#10b981;font-weight:600;">🟢 Đang lắng nghe... (Hãy nói)</span>';
-    if (btnSendHf) btnSendHf.style.display = 'none';
-
-    // Voice Activity Detection (VAD) Loop: kiểm tra mỗi 60ms
-    const pcmData = new Uint8Array(handsFreeAnalyser.frequencyBinCount);
-    let consecutiveSilenceMs = 0;
-    const VAD_THRESHOLD = 7; // Ngưỡng âm lượng nhạy cho dải tần số tiếng người (80Hz - 3800Hz)
-    const SILENCE_COMMIT_MS = 950; // Gần 1 giây im lặng là hoàn tất câu nói
-
-    handsFreeVadInterval = setInterval(() => {
-      if (!isHandsFreeActive || isHandsFreeSpeaking || isProcessing || !handsFreeAnalyser) {
-        return;
-      }
-
-      handsFreeAnalyser.getByteFrequencyData(pcmData);
-      // Tập trung vào dải tần số tiếng người (80Hz - 3800Hz, bins 1 đến 45)
-      let voiceSum = 0;
-      const voiceBins = Math.min(45, pcmData.length);
-      for (let i = 1; i < voiceBins; i++) voiceSum += pcmData[i];
-      const voiceEnergy = voiceSum / (voiceBins - 1);
-
-      if (voiceEnergy > VAD_THRESHOLD) {
-        consecutiveSilenceMs = 0;
-        if (!isHandsFreeUserTalking) {
-          isHandsFreeUserTalking = true;
-          handsFreeSpeechStartTime = Date.now();
-          if (statusText)
-            statusText.innerHTML =
-              '<span style="color:#3b82f6;font-weight:600;">🎙️ Đang nghe giọng nói...</span>';
-          if (btnSendHf) btnSendHf.style.display = 'inline-flex';
-        }
-      } else if (isHandsFreeUserTalking) {
-        consecutiveSilenceMs += 60;
-        const isOverMax = Date.now() - handsFreeSpeechStartTime > 25000;
-        if (consecutiveSilenceMs >= SILENCE_COMMIT_MS || isOverMax) {
-          clearInterval(handsFreeVadInterval);
-          handsFreeVadInterval = null;
-          if (statusText)
-            statusText.innerHTML =
-              '<span style="color:#f59e0b;font-weight:600;">⏳ Đang hoàn tất câu nói...</span>';
-          if (handsFreeRecorder && handsFreeRecorder.state === 'recording') {
-            handsFreeRecorder.stop();
-          }
-        }
-      }
-    }, 60);
-  } catch (err) {
-    console.error('Lỗi bật micro phần cứng:', err);
-    if (statusText)
-      statusText.innerHTML = `<span style="color:#ef4444;font-weight:600;">❌ Lỗi Micro: ${err.message || 'Bị chặn quyền'}</span>`;
-    showToast(
-      'Không thể truy cập Microphone! Hãy cấp quyền micro trong cài đặt điện thoại hoặc trình duyệt.',
-      'danger'
-    );
-    stopHandsFreeVoice();
-  }
-}
-if (typeof startHandsFreeRecorder !== 'undefined')
-  window.startHandsFreeRecorder = startHandsFreeRecorder;
-window.startHandsFreeListener = startHandsFreeRecorder;
-
-function commitAndSendHandsFree() {
-  if (handsFreeVadInterval) {
-    clearInterval(handsFreeVadInterval);
-    handsFreeVadInterval = null;
-  }
-  isHandsFreeUserTalking = true;
-  if (handsFreeRecorder && handsFreeRecorder.state === 'recording') {
-    const statusText = $('hf-status-text');
-    if (statusText)
-      statusText.innerHTML =
-        '<span style="color:#f59e0b;font-weight:600;">⏳ Đang gửi ngay...</span>';
-    handsFreeRecorder.stop();
-  }
-}
-if (typeof commitAndSendHandsFree !== 'undefined')
-  window.commitAndSendHandsFree = commitAndSendHandsFree;
-
-async function toggleHandsFreeVoice(forceState) {
-  if (typeof window.isLiveActive === 'function' && window.isLiveActive()) {
-    if (typeof window.endLiveCall === 'function') window.endLiveCall();
-    showToast('Đã dừng đàm thoại Live rảnh tay.', 'info');
-    return;
-  }
-
-  if (forceState === false) {
-    if (typeof window.endLiveCall === 'function') window.endLiveCall();
-    stopHandsFreeVoice();
-    return;
-  }
-
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    return showToast('Thiết bị không hỗ trợ truy cập Microphone phần cứng!', 'warning');
-  }
-
-  if (window.isSecureContext === false && window.location.hostname !== 'localhost') {
-    return showToast('Microphone yêu cầu kết nối bảo mật (HTTPS hoặc localhost)!', 'warning');
-  }
-
-  // Kích hoạt engine Live Call dạng Mini-Bar trực tiếp trong giao diện chat
-  if (typeof window.startLiveVoiceCall === 'function') {
-    window.startLiveVoiceCall({ miniBar: true });
-    showToast('⚡ Đã bật Đàm thoại Live siêu tốc (WebSocket 2 chiều)!', 'success');
-    return;
-  }
-
-  // Dự phòng nếu Live Call chưa sẵn sàng
-  stopHandsFreeVoice();
-  isHandsFreeActive = true;
-
-  const banner = $('hands-free-banner');
-  if (banner) banner.style.display = 'flex';
-
-  const micBtn = $('btn-hands-free-voice');
-  if (micBtn) micBtn.classList.add('active');
-
-  const chipBtn = $('btn-toggle-hands-free-chip');
-  if (chipBtn) chipBtn.classList.add('active');
-
-  const statusText = $('hf-status-text');
-  if (statusText)
-    statusText.innerHTML =
-      '<span style="color:#10b981;font-weight:600;">🟢 Đang kết nối micro...</span>';
-
-  const preview = $('hf-transcript-preview');
-  if (preview) preview.innerText = '';
-
-  const btnSendHf = $('btn-send-hands-free');
-  if (btnSendHf) btnSendHf.style.display = 'none';
-
-  // Mở khóa âm thanh trước cho trình duyệt điện thoại (iOS Safari & Android Chrome)
-  try {
-    const unlockAudio = new Audio(
-      'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA'
-    );
-    unlockAudio.play().catch(() => {});
-  } catch (_) {}
-
-  await startHandsFreeRecorder();
-  showToast('🎙️ Đã bật Đàm thoại Rảnh tay 2 chiều liên tục!', 'success');
-}
-if (typeof toggleHandsFreeVoice !== 'undefined') window.toggleHandsFreeVoice = toggleHandsFreeVoice;
 
 // Hands-Free triggers
 const btnHandsFreeVoice = $('btn-hands-free-voice');
@@ -1605,7 +870,7 @@ DOM.fileUpload.onchange = async e => {
 };
 
 DOM.btnAddUrl.onclick = async () => {
-  const u = prompt('Nhập link URL website hoặc YouTube:');
+  const u = await window.appPrompt('Nhập link URL website hoặc YouTube:');
   if (!u?.match(/https?:\/\//)) return;
   DOM.btnAddUrl.innerHTML = '⏳...';
   try {
@@ -1815,267 +1080,13 @@ window.addFileFromLib = async id => {
 };
 
 // --- SESSIONS & TABS CONTROLLER ---
-function renderTabs() {
-  DOM.tabsContainer.innerHTML = openTabs
-    .map(tId => {
-      const s = sessions.find(x => x.id === tId);
-      const dot = s?.color ? `<span class="color-dot" style="background:${s.color};"></span>` : '';
-      return s
-        ? `<div class="tab-item ${tId === activeId ? 'active' : ''}" onclick="window.switchSess('${tId}')" title="${escapeHtml(s.name)}">
-          ${dot}
-          <span>${escapeHtml(s.name.substring(0, 16))}</span>
-          <span class="tab-close" onclick="window.closeTab('${tId}', event)" title="Đóng tab">×</span>
-        </div>`
-        : '';
-    })
-    .join('');
-  ls.setItem('jarvis_tabs', JSON.stringify(openTabs));
-  requestAnimationFrame(() => {
-    const activeTab = DOM.tabsContainer?.querySelector('.tab-item.active');
-    if (activeTab) {
-      activeTab.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
-    }
-  });
-}
-
-if (typeof switchSess !== 'undefined') window.switchSess = switchSess;
-window.closeTab = (id, e) => {
-  e.stopPropagation();
-  openTabs = openTabs.filter(x => x !== id);
-  id === activeId ? (openTabs.length ? switchSess(openTabs[0]) : newSess()) : renderTabs();
-};
-
-function renderFolders() {
-  // Folders system pruned for simplicity & performance
-}
-
-async function loadSess() {
-  try {
-    await initDB();
-    let d = await getAllFromDB();
-    if ((!d || d.length === 0) && window.JarvisNativeBridge) {
-      try {
-        const raw = window.JarvisNativeBridge.getItem('jarvis_sessions_backup');
-        if (raw) {
-          const nativeSessions = JSON.parse(raw);
-          if (Array.isArray(nativeSessions) && nativeSessions.length > 0) {
-            for (const s of nativeSessions) await saveToDB(s);
-            d = await getAllFromDB();
-          }
-        }
-      } catch (e) {
-        console.warn('Khôi phục phiên từ native bridge lỗi:', e);
-      }
-    }
-    if (d && d.length > 0) {
-      sessions = d.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
-      try {
-        renderFolders();
-      } catch (_) {}
-      try {
-        if (typeof window.renderSnippets === 'function') window.renderSnippets();
-      } catch (_) {}
-      activeId =
-        ls.getItem('jarvis_active_id') ||
-        ls.getItem('huanmu_active_id') ||
-        ls.getItem('javiss_active_id') ||
-        sessions[0].id;
-      if (!sessions.find(s => s.id === activeId)) activeId = sessions[0].id;
-      await switchSess(activeId);
-    } else {
-      try {
-        renderFolders();
-      } catch (_) {}
-      try {
-        if (typeof window.renderSnippets === 'function') window.renderSnippets();
-      } catch (_) {}
-      await newSess();
-    }
-  } catch (e) {
-    console.error('Lỗi khởi động loadSess:', e);
-    try {
-      renderFolders();
-    } catch (_) {}
-    try {
-      if (typeof window.renderSnippets === 'function') window.renderSnippets();
-    } catch (_) {}
-  }
-}
-
-async function newSess(n) {
-  const id = 's_' + Date.now(),
-    s = {
-      id,
-      name: n || `Hội thoại ${sessions.length + 1}`,
-      folder: 'Mặc định',
-      his: [],
-      sys: '',
-      mod: 'gemini-4-hydrogen',
-      engine: 'stream',
-      lastInteractionId: null,
-      assignedApiKey: null,
-      keySel: 'auto',
-      color: null,
-      summaryMemory: '',
-      lastCondensedLength: 0,
-      tmp: 0.5,
-      tpp: 0.9,
-      top: 40,
-      thk: 'minimal',
-      thkMap: {},
-      sch: false,
-      schEngine: 'tavily',
-      mem: true,
-      rag: true,
-      useGlob: true,
-      updatedAt: Date.now(),
-      orderIndex: 0,
-    };
-  sessions.forEach(sess => {
-    if (typeof sess.orderIndex === 'number') sess.orderIndex++;
-  });
-  sessions.unshift(s);
-  await saveToDB(s);
-  await switchSess(id);
-  showToast('➕ Đã tạo phiên mới!');
-  if (window.innerWidth <= 768) {
-    $('sidebar').classList.remove('active');
-    $('sidebar-overlay').classList.remove('active');
-  }
-}
-
-async function switchSess(id) {
-  activeId = id;
-  ls.setItem('jarvis_active_id', id);
-  ls.setItem('huanmu_active_id', id);
-  const s = sessions.find(x => x.id === id);
-  chatHistory = s && Array.isArray(s.his) ? [...s.his] : [];
-
-  if (s) {
-    DOM.sysInst.value = s.sys || '';
-    // Khôi phục model theo cả provider: model id có thể trùng giữa nhiều provider
-    // (vd particle-ai/particle-1:free ở OpenRouter và Kilo), chỉ gán .value sẽ chọn
-    // nhầm option đầu tiên.
-    if (!window.DynamicProviders?.selectModelOption?.(s.mod, s.modProvider)) {
-      DOM.model.value = s.mod || 'gemini-4-hydrogen';
-    }
-    DOM.engineSel.value = s.engine || 'stream';
-    setGoogleKeySlot(s.keySel || 'auto');
-    // Menu key dùng chung phải theo model của phiên vừa mở (không có sự kiện change)
-    if (typeof window.renderKeyPoolMenu === 'function') window.renderKeyPoolMenu();
-    DOM.temp.value = s.tmp || 0.5;
-    DOM.tempVal.innerText = DOM.temp.value;
-    DOM.topP.value = s.tpp || 0.9;
-    DOM.toppVal.innerText = DOM.topP.value;
-    DOM.topK.value = s.top || 40;
-    if (DOM.topkVal) DOM.topkVal.innerText = DOM.topK.value;
-    updateThinkingVisibility();
-    // s.thk luôn tương ứng với s.mod; thkMap chỉ dùng khi chuyển model trong cùng phiên
-    DOM.thinking.value = s.thk || (s.thkMap && s.mod ? s.thkMap[s.mod] : '') || 'minimal';
-    // Nếu phiên cũ lưu mức thinking không còn tồn tại (vd 'none' của Flash Lite), rơi về mức hợp lệ đầu tiên
-    if (!DOM.thinking.value) DOM.thinking.value = DOM.thinking.options[0]?.value || 'minimal';
-    DOM.toggleGlob.checked = s.useGlob !== false;
-    DOM.toggleSearch.checked = s.sch || false;
-    DOM.searchEngineBox.style.display = s.sch ? 'block' : 'none';
-    DOM.searchEngineSel.value = s.schEngine || 'tavily';
-    const isMem = s.mem !== false;
-    const isRag = s.rag !== false;
-    DOM.toggleMemory.checked = isMem;
-    if (DOM.sessionMemState) {
-      DOM.sessionMemState.innerText = isMem ? 'BẬT' : 'TẮT';
-      DOM.sessionMemState.style.color = isMem ? 'var(--success)' : 'var(--text-muted)';
-    }
-    if (DOM.toggleRagEmbedding) DOM.toggleRagEmbedding.checked = isRag;
-    if (DOM.ragMemoryState) {
-      DOM.ragMemoryState.innerText = isRag ? 'BẬT' : 'TẮT';
-      DOM.ragMemoryState.style.color = isRag ? 'var(--success)' : 'var(--text-muted)';
-    }
-    if (window.JarvisRAG && typeof window.JarvisRAG.updateRagUI === 'function') {
-      window.JarvisRAG.updateRagUI(isRag);
-    }
-    updateColorPickerUI();
-  }
-
-  DOM.chat.innerHTML = '';
-  for (let j = 0; j < chatHistory.length; j++) {
-    try {
-      await appendMsg(
-        chatHistory[j].role === 'model' ? 'bot' : 'user',
-        chatHistory[j].text || '',
-        j,
-        true
-      );
-    } catch (err) {
-      console.error('Lỗi vẽ tin nhắn ' + j, err);
-    }
-  }
-  DOM.chat.scrollTop = DOM.chat.scrollHeight;
-  if (window.JarvisPerf && !window.JarvisPerf.marks['first-render'])
-    window.JarvisPerf.mark('first-render');
-  renderPendingQueue();
-  renderSel();
-  if (!openTabs.includes(id)) openTabs.push(id);
-  renderTabs();
-}
-
-DOM.selSession.onchange = e => switchSess(e.target.value);
-
-// Lọc phiên theo từ khoá gõ ở ô tìm kiếm sidebar (tên phiên, model đã dùng, nội dung tin nhắn)
-let sessionFilter = '';
-function sessionMatchesFilter(s, q) {
-  if (!s) return false;
-  if (
-    String(s.name || '')
-      .toLowerCase()
-      .includes(q)
-  )
-    return true;
-  return (s.his || []).some(m => {
-    if (
-      String(m.model || '')
-        .toLowerCase()
-        .includes(q)
-    )
-      return true;
-    return String(m.text || '')
-      .toLowerCase()
-      .includes(q);
-  });
-}
-
-function renderSel() {
-  const q = sessionFilter.trim().toLowerCase();
-  let v = sessions;
-  if (q) {
-    const matched = sessions.filter(s => sessionMatchesFilter(s, q));
-    // Luôn giữ phiên đang mở trong danh sách để ô select không bị trống
-    const active = sessions.find(s => s.id === activeId);
-    v = active && !matched.includes(active) ? [active, ...matched] : matched;
-  }
-  DOM.selSession.innerHTML = v.length
-    ? v
-        .map(s => {
-          const dot = s.pinned ? '📌 ' : s.color ? '● ' : '';
-          return `<option value="${escapeHtml(s.id)}" ${s.id === activeId ? 'selected' : ''}>${dot}${escapeHtml(s.name)}</option>`;
-        })
-        .join('')
-    : '<option value="">(Không có phiên khớp)</option>';
-  if (activeId) DOM.selSession.value = activeId;
-  const curS = sessions.find(x => x.id === activeId);
-  const kInfo =
-    curS?.engine === 'interactions' && curS?.assignedApiKey
-      ? ` • 🔒 Ghim Key ${apiKeys.indexOf(curS.assignedApiKey) + 1}`
-      : '';
-  $('session-msg-count').innerText = `${chatHistory.length} tin nhắn${kInfo}`;
-  updateColorPickerUI();
-}
 
 $('btn-new-session').onclick = () => newSess();
 
 $('btn-rename-session').onclick = async () => {
   const s = sessions.find(x => x.id === activeId);
   if (!s) return;
-  const n = prompt('Nhập tên mới cho phiên:', s.name);
+  const n = await window.appPrompt('Nhập tên mới cho phiên:', s.name);
   if (n && n.trim()) {
     s.name = n.trim();
     s.isCustomNamed = true;
@@ -2097,7 +1108,7 @@ window.continueMsg = () => {
 $('btn-delete-session').onclick = async () => {
   if (sessions.length <= 1) return showToast('Cần giữ lại ít nhất 1 phiên!', 'warning');
   const s = sessions.find(x => x.id === activeId);
-  if (confirm(`Bạn có chắc muốn xóa phiên "${s?.name || ''}"?`)) {
+  if (await window.appConfirm(`Bạn có chắc muốn xóa phiên "${s?.name || ''}"?`)) {
     // Ghi tombstone phiên đã xóa để Cloud không tải lại phiên này
     try {
       const ids = JSON.parse(ls.getItem('jarvis_deleted_session_ids') || '[]');
@@ -2181,7 +1192,7 @@ $('btn-delete-selected-bulk').onclick = async () => {
     .map(ck => parseInt(ck.value))
     .sort((a, b) => b - a);
   if (!selected.length) return showToast('Chưa chọn tin nhắn nào!', 'warning');
-  if (confirm(`Bạn có chắc muốn xóa ${selected.length} tin nhắn đã chọn?`)) {
+  if (await window.appConfirm(`Bạn có chắc muốn xóa ${selected.length} tin nhắn đã chọn?`)) {
     selected.forEach(idx => chatHistory.splice(idx, 1));
     const s = sessions.find(x => x.id === activeId);
     if (s) {
@@ -2193,94 +1204,6 @@ $('btn-delete-selected-bulk').onclick = async () => {
     showToast(`🗑️ Đã xóa ${selected.length} tin nhắn!`);
   }
 };
-
-async function updateConfig() {
-  const s = sessions.find(x => x.id === activeId);
-  if (s) {
-    Object.assign(s, {
-      sys: DOM.sysInst.value,
-      mod: DOM.model.value,
-      // Lưu kèm provider đã chọn để lần mở lại khôi phục đúng option khi trùng model id
-      modProvider: window.DynamicProviders?.getSelectedModelProvider?.() || null,
-      engine: DOM.engineSel.value,
-      keySel: getGoogleKeySlot(),
-      tmp: DOM.temp.value,
-      tpp: DOM.topP.value,
-      top: DOM.topK.value,
-      thk: DOM.thinking.value,
-      useGlob: DOM.toggleGlob.checked,
-      sch: DOM.toggleSearch.checked,
-      schEngine: DOM.searchEngineSel.value,
-      mem: DOM.toggleMemory.checked,
-      rag: DOM.toggleRagEmbedding ? DOM.toggleRagEmbedding.checked : true,
-    });
-    if (DOM.engineSel.value === 'stream') {
-      s.assignedApiKey = null;
-    } else if (DOM.engineSel.value === 'interactions') {
-      const sel = getGoogleKeySlot();
-      if (sel !== 'auto') {
-        const idx = parseInt(sel, 10) + 1;
-        let mk = (
-          ls.getItem(`jarvis_api_${idx}`) ||
-          ls.getItem(`huanmu_api_${idx}`) ||
-          ls.getItem(`javiss_api_${idx}`) ||
-          ''
-        ).trim();
-        if (mk.startsWith('JVENC_') || mk.startsWith('ENC_')) mk = deobfuscateKey(mk);
-        if (mk) s.assignedApiKey = mk;
-      }
-    }
-    await saveToDB(s);
-    renderSel();
-  }
-  DOM.searchEngineBox.style.display = DOM.toggleSearch.checked ? 'block' : 'none';
-}
-
-DOM.model.addEventListener('change', () => {
-  const s = sessions.find(x => x.id === activeId);
-  const nextMod = DOM.model.value;
-  // Mỗi model có bộ mức Think Depth khác nhau (effort / bật-tắt / ngân sách token)
-  // -> nhớ mức của model vừa rời đi để quay lại không bị mất cấu hình.
-  if (s && s.mod && s.mod !== nextMod) {
-    s.thkMap = Object.assign({}, s.thkMap || {}, { [s.mod]: s.thk || DOM.thinking.value });
-  }
-  updateThinkingVisibility();
-  // Qwen4 Max mặc định Think Depth = Low khi chọn model này
-  if (nextMod === 'qwen4-max:free' && DOM.thinking) DOM.thinking.value = 'low';
-  // Khôi phục mức đã lưu cho model này nếu model đó có lưu và mức còn hợp lệ
-  const savedThk = s && s.thkMap ? s.thkMap[nextMod] : null;
-  if (savedThk && Array.from(DOM.thinking.options).some(o => o.value === savedThk)) {
-    DOM.thinking.value = savedThk;
-  }
-  updateConfig();
-  updateKeyQuotaUI();
-});
-DOM.engineSel.addEventListener('change', updateConfig);
-[DOM.sysInst, DOM.toggleGlob, DOM.toggleSearch, DOM.searchEngineSel, DOM.thinking].forEach(el =>
-  el?.addEventListener?.('change', updateConfig)
-);
-// key-pool-select has its own change handler in renderKeyPoolMenu which calls setGoogleKeySlot
-
-if (DOM.btnToggleSessionMem) {
-  DOM.btnToggleSessionMem.onclick = () => {
-    const s = sessions.find(x => x.id === activeId);
-    const cur = s ? s.mem !== false : DOM.toggleMemory.checked;
-    const next = !cur;
-    DOM.toggleMemory.checked = next;
-    if (DOM.sessionMemState) {
-      DOM.sessionMemState.innerText = next ? 'BẬT' : 'TẮT';
-      DOM.sessionMemState.style.color = next ? 'var(--success)' : 'var(--text-muted)';
-    }
-    if (s) {
-      s.mem = next;
-      saveToDB(s);
-    }
-    showToast(
-      `Ngữ cảnh trò chuyện [Phiên này]: ${next ? 'ĐÃ BẬT' : 'ĐÃ TẮT'}`,
-      next ? 'success' : 'warning'
-    );
-  };
-}
 
 DOM.toggleMemory?.addEventListener('change', () => {
   const next = DOM.toggleMemory.checked;
@@ -2311,18 +1234,6 @@ let currentSpeakingBtn = null;
 let currentSpeakingAudio = null;
 let currentSpeechUtterance = null;
 
-function sanitizeTranscript(text) {
-  if (!text) return '';
-  return text
-    .replace(/```[\s\S]*?```/g, ' [đoạn mã] ')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
-    .replace(/[#*_~>]/g, '')
-    .replace(/https?:\/\/\S+/g, '')
-    .trim();
-}
-if (typeof sanitizeTranscript !== 'undefined') window.sanitizeTranscript = sanitizeTranscript;
-
 window.openMsgInTTSStudio = (btnOrIdx, directIdx) => {
   let raw = '';
   let idx = directIdx;
@@ -2342,7 +1253,7 @@ window.openMsgInTTSStudio = (btnOrIdx, directIdx) => {
     if (lastBot) raw = lastBot.text || '';
   }
   const cleanRaw = stripThinkingForCopy(raw);
-  const clean = sanitizeTranscript(cleanRaw);
+  const clean = window.sanitizeTranscript(cleanRaw);
   const textToSend = clean || cleanRaw;
   if (!textToSend.trim()) {
     showToast('Không tìm thấy nội dung tin nhắn để mở Studio!', 'warning');
@@ -2360,300 +1271,11 @@ window.openMsgInTTSStudio = (btnOrIdx, directIdx) => {
   }
 };
 
-function splitTextIntoSmartChunks(text, maxChars = 850) {
-  if (!text || text.length <= maxChars) return [text || ''];
-  const chunks = [];
-  const sentences = text.match(/[^.!?\n]+[.!?\n]+|[^.!?\n]+$/g) || [text];
-  let cur = '';
-  for (const s of sentences) {
-    if ((cur + s).length > maxChars && cur.trim()) {
-      chunks.push(cur.trim());
-      cur = s;
-    } else {
-      cur += s;
-    }
-  }
-  if (cur.trim()) chunks.push(cur.trim());
-  return chunks.length ? chunks : [text];
-}
-if (typeof splitTextIntoSmartChunks !== 'undefined')
-  window.splitTextIntoSmartChunks = splitTextIntoSmartChunks;
-
 let currentSpeakingAbort = false;
 let currentSpeakingUrls = [];
 
-function stopCurrentSpeaking() {
-  currentSpeakingAbort = true;
-  if (currentSpeakingAudio) {
-    try {
-      currentSpeakingAudio.pause();
-      currentSpeakingAudio.currentTime = 0;
-      currentSpeakingAudio.src = '';
-    } catch {}
-    currentSpeakingAudio = null;
-  }
-  currentSpeakingUrls.forEach(u => {
-    try {
-      URL.revokeObjectURL(u);
-    } catch {}
-  });
-  currentSpeakingUrls = [];
-  if (window.speechSynthesis && window.speechSynthesis.speaking) {
-    try {
-      window.speechSynthesis.cancel();
-    } catch {}
-  }
-  if (currentSpeakingBtn) {
-    currentSpeakingBtn.innerHTML =
-      currentSpeakingBtn.getAttribute('data-original-html') || '🔊 Nghe';
-    currentSpeakingBtn.classList.remove('speaking-active');
-    currentSpeakingBtn = null;
-  }
-}
-if (typeof stopCurrentSpeaking !== 'undefined') window.stopCurrentSpeaking = stopCurrentSpeaking;
-
-async function playTextAudio(rawText, options = {}) {
-  const { btn = null, onStart = null, onEnd = null, onError = null } = options;
-  stopCurrentSpeaking();
-
-  const clean = sanitizeTranscript(rawText);
-  if (!clean) {
-    if (btn) showToast('Không có nội dung văn bản để đọc!', 'warning');
-    if (onError) onError(new Error('Empty text'));
-    return;
-  }
-
-  if (btn) {
-    if (!btn.getAttribute('data-original-html')) {
-      btn.setAttribute('data-original-html', btn.innerHTML);
-    }
-    btn.innerHTML = '⏳ Đang nạp...';
-    btn.classList.add('speaking-active');
-    currentSpeakingBtn = btn;
-  }
-  if (onStart) onStart();
-
-  currentSpeakingAbort = false;
-  const chunks = splitTextIntoSmartChunks(clean, 850);
-  const isVietnamese =
-    /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(clean);
-  const activeKeys = window.getGoogleKeysList().filter(Boolean);
-
-  // 1. Thử đọc bằng Gemini TTS chất lượng cao với chuỗi đoạn liên tục (Pipeline Streaming Queue)
-  if (activeKeys.length > 0) {
-    try {
-      const voicePref = $('tts-voice-select')?.value || ls.getItem('jarvis_tts_voice') || 'Charon';
-      const ttsModel = $('tts-model-select')?.value || 'gemini-3.8-flash-lite-tts';
-
-      const reqFn =
-        typeof window.requestGeminiAudioWithFailover === 'function'
-          ? window.requestGeminiAudioWithFailover
-          : null;
-      if (!reqFn) throw new Error('Thư viện Gemini TTS chưa sẵn sàng');
-
-      const fetchChunkAudioUrl = async textChunk => {
-        if (currentSpeakingAbort) return null;
-        const payload = {
-          systemInstruction: {
-            parts: [
-              {
-                text: 'Bạn là trợ lý AI Jarvis với giọng nam giới Nam Bộ. Hãy đọc toàn bộ văn bản được cung cấp với phát âm tiếng Việt chuẩn phương ngữ Nam Bộ (miền Nam Việt Nam), ngữ điệu tự nhiên, ấm áp, thân thiện, gần gũi, rõ ràng từng chữ, tuyệt đối không dùng giọng robot hay giọng người nước ngoài.',
-              },
-            ],
-          },
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: textChunk }],
-            },
-          ],
-          generationConfig: {
-            responseModalities: ['AUDIO'],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName: voicePref,
-                },
-              },
-            },
-          },
-        };
-        const res = await reqFn(payload, ttsModel, activeKeys, 0);
-        let base64Audio = res.outputAudioData || res.data?.output_audio?.data || null;
-        if (!base64Audio) {
-          const parts = res.data?.candidates?.[0]?.content?.parts || [];
-          for (let p of parts) {
-            if (
-              p.inlineData &&
-              p.inlineData.mimeType &&
-              p.inlineData.mimeType.startsWith('audio/')
-            ) {
-              base64Audio = p.inlineData.data;
-              break;
-            }
-          }
-        }
-        if (!base64Audio) throw new Error('Không nhận được dữ liệu âm thanh');
-
-        let cleanB64 = base64Audio.replace(/-/g, '+').replace(/_/g, '/');
-        while (cleanB64.length % 4) cleanB64 += '=';
-        const binary = atob(cleanB64);
-        const bytes = new Uint8Array(binary.length);
-        for (let b = 0; b < binary.length; b++) bytes[b] = binary.charCodeAt(b);
-
-        const wavBlob = new Blob([bytes], { type: 'audio/wav' });
-        const url = URL.createObjectURL(wavBlob);
-        currentSpeakingUrls.push(url);
-        return url;
-      };
-
-      // Tải trước đoạn 1
-      let currentAudioUrl = await fetchChunkAudioUrl(chunks[0]);
-      if (currentSpeakingAbort || !currentAudioUrl) return;
-
-      let currentChunkIdx = 0;
-      let nextChunkPromise = chunks.length > 1 ? fetchChunkAudioUrl(chunks[1]) : null;
-
-      const playCurrentChunk = async () => {
-        if (currentSpeakingAbort) return;
-
-        const audio = new Audio(currentAudioUrl);
-        currentSpeakingAudio = audio;
-        if (btn) {
-          btn.innerHTML =
-            chunks.length > 1 ? `⏹️ Dừng (${currentChunkIdx + 1}/${chunks.length})` : `⏹️ Dừng`;
-        }
-
-        audio.onended = async () => {
-          if (currentSpeakingAbort) return;
-          currentChunkIdx++;
-          if (currentChunkIdx < chunks.length) {
-            try {
-              currentAudioUrl = nextChunkPromise
-                ? await nextChunkPromise
-                : await fetchChunkAudioUrl(chunks[currentChunkIdx]);
-            } catch (cErr) {
-              console.warn(`Lỗi nạp đoạn âm thanh ${currentChunkIdx + 1}:`, cErr);
-              currentAudioUrl = null;
-            }
-
-            if (currentChunkIdx + 1 < chunks.length) {
-              nextChunkPromise = fetchChunkAudioUrl(chunks[currentChunkIdx + 1]).catch(() => null);
-            } else {
-              nextChunkPromise = null;
-            }
-
-            if (currentAudioUrl && !currentSpeakingAbort) {
-              await playCurrentChunk();
-            } else {
-              stopCurrentSpeaking();
-              if (onEnd) onEnd();
-            }
-          } else {
-            stopCurrentSpeaking();
-            if (onEnd) onEnd();
-          }
-        };
-
-        audio.onerror = e => {
-          stopCurrentSpeaking();
-          if (onError) onError(e);
-        };
-
-        await audio.play();
-      };
-
-      await playCurrentChunk();
-      return;
-    } catch (e) {
-      console.warn('Gemini TTS phát nhanh lỗi, chuyển sang Web Speech API:', e);
-    }
-  }
-
-  // 2. Dự phòng: Web Speech API của trình duyệt (đọc tuần tự từng đoạn, không bao giờ ngắt ngang)
-  if (!('speechSynthesis' in window)) {
-    stopCurrentSpeaking();
-    if (onError) onError(new Error('No Web Speech'));
-    return showToast('Trình duyệt không hỗ trợ đọc giọng nói!', 'warning');
-  }
-
-  const voices = window.speechSynthesis.getVoices();
-  let viVoice = null;
-  if (isVietnamese) {
-    viVoice = voices.find(
-      v =>
-        (v.lang && (v.lang.startsWith('vi') || v.lang.includes('vi'))) ||
-        (v.name &&
-          (v.name.toLowerCase().includes('vietnam') ||
-            v.name.toLowerCase().includes('vietnamese') ||
-            v.name.toLowerCase().includes('tiếng việt') ||
-            v.name.toLowerCase().includes('an') ||
-            v.name.toLowerCase().includes('linh') ||
-            v.name.toLowerCase().includes('mai')))
-    );
-    if (!viVoice) {
-      stopCurrentSpeaking();
-      if (onError) onError(new Error('Không có giọng đọc tiếng Việt'));
-      return showToast(
-        '⚠️ Trình duyệt chưa có sẵn giọng đọc tiếng Việt và Gemini TTS chưa phản hồi. Vui lòng kiểm tra kết nối API Key!',
-        'warning'
-      );
-    }
-  }
-
-  let wsIdx = 0;
-  const playNextWebSpeech = () => {
-    if (currentSpeakingAbort || wsIdx >= chunks.length) {
-      stopCurrentSpeaking();
-      if (onEnd) onEnd();
-      return;
-    }
-
-    const utter = new SpeechSynthesisUtterance(chunks[wsIdx]);
-    if (isVietnamese) {
-      utter.lang = 'vi-VN';
-      if (viVoice) utter.voice = viVoice;
-    } else {
-      utter.lang = 'en-US';
-      const enVoice = voices.find(v => v.lang && v.lang.startsWith('en'));
-      if (enVoice) utter.voice = enVoice;
-    }
-    utter.rate = 1.05;
-
-    utter.onend = () => {
-      if (currentSpeakingAbort) return;
-      wsIdx++;
-      playNextWebSpeech();
-    };
-
-    utter.onerror = e => {
-      stopCurrentSpeaking();
-      if (onError) onError(e);
-    };
-
-    if (btn) {
-      btn.innerHTML = chunks.length > 1 ? `⏹️ Dừng (${wsIdx + 1}/${chunks.length})` : `⏹️ Dừng`;
-    }
-
-    window.speechSynthesis.speak(utter);
-  };
-
-  playNextWebSpeech();
-}
-if (typeof playTextAudio !== 'undefined') window.playTextAudio = playTextAudio;
-
-window.toggleSpeakMsg = async (btn, i) => {
-  if (currentSpeakingBtn === btn) {
-    stopCurrentSpeaking();
-    return;
-  }
-  const raw = chatHistory[i]?.text || '';
-  const cleanRaw = stripThinkingForCopy(raw);
-  playTextAudio(cleanRaw, { btn });
-};
-
 window.clearActiveSession = async () => {
-  if (confirm('Bạn có chắc muốn xóa sạch toàn bộ tin nhắn trong phiên này?')) {
+  if (await window.appConfirm('Bạn có chắc muốn xóa sạch toàn bộ tin nhắn trong phiên này?')) {
     if (window.jarvisMsgTombstones) window.jarvisMsgTombstones.add(activeId, chatHistory.slice());
     chatHistory = [];
     const s = sessions.find(x => x.id === activeId);
@@ -2671,128 +1293,6 @@ window.clearActiveSession = async () => {
 // Tin văn bản gửi lúc mất mạng được giữ lại và tự gửi khi có mạng. Chỉ xếp tin
 // văn bản: ảnh/file base64 sẽ làm đầy quota localStorage 5MB của app.
 let flushingOfflineQueue = false;
-
-function renderPendingQueue() {
-  const q = window.JarvisOfflineQueue;
-  if (!q) return;
-  const badge = $('offline-queue-badge');
-  const total = q.count();
-  if (badge) {
-    badge.style.display = total ? 'inline-flex' : 'none';
-    badge.textContent = navigator.onLine
-      ? `⏳ ${total} tin chờ gửi`
-      : `📴 Ngoại tuyến · ${total} tin chờ`;
-    badge.title = navigator.onLine
-      ? 'Tin đã xếp hàng, đang chờ gửi lại'
-      : 'Mất mạng — tin sẽ tự gửi khi có mạng trở lại';
-  }
-  document.querySelectorAll('.pending-queue-item').forEach(el => el.remove());
-  const items = q.list(activeId);
-  if (!items.length || !DOM.chat) return;
-  const wrap = document.createElement('div');
-  wrap.className = 'pending-queue-item';
-  wrap.innerHTML = items
-    .map(it => {
-      const failed = it.status === 'failed';
-      const tone = failed ? '#ef4444' : '#f59e0b';
-      return `
-        <div class="pending-queue-card" style="border-color:${tone};">
-          <div class="pending-queue-head">
-            <span style="color:${tone};font-weight:700;">${failed ? '⚠️ Gửi lỗi' : '🕓 Chờ gửi'}</span>
-            <span class="pending-queue-actions">
-              <button type="button" onclick="sendQueuedNow('${it.id}')">Gửi ngay</button>
-              <button type="button" onclick="dropQueuedItem('${it.id}')">Xóa</button>
-            </span>
-          </div>
-          <div class="pending-queue-text">${escapeHtml(it.text).slice(0, 500)}</div>
-          ${
-            it.lastError
-              ? `<div class="pending-queue-error">${escapeHtml(it.lastError).slice(0, 160)}</div>`
-              : ''
-          }
-        </div>`;
-    })
-    .join('');
-  DOM.chat.appendChild(wrap);
-  DOM.chat.scrollTop = DOM.chat.scrollHeight;
-}
-
-window.dropQueuedItem = id => {
-  window.JarvisOfflineQueue?.remove(id);
-  renderPendingQueue();
-};
-
-window.sendQueuedNow = id => {
-  if (!navigator.onLine) {
-    showToast('Vẫn chưa có mạng — thử lại khi kết nối trở lại.', 'warning');
-    return;
-  }
-  window.JarvisOfflineQueue?.update(id, { status: 'queued', attempts: 0, lastError: '' });
-  flushOfflineQueue(true);
-};
-
-async function flushOfflineQueue(onlyFirst = false) {
-  const q = window.JarvisOfflineQueue;
-  if (!q || flushingOfflineQueue || isProcessing || !navigator.onLine) return;
-  const items = q.list(activeId).filter(it => it.status !== 'failed');
-  if (!items.length) return;
-  flushingOfflineQueue = true;
-  try {
-    for (const item of items) {
-      if (!navigator.onLine) break;
-      // Chống trùng: tin đã nằm trong lịch sử (lượt trước đã gửi xong)
-      if (chatHistory.slice(-5).some(m => m.role === 'user' && m.text === item.text)) {
-        q.remove(item.id);
-        continue;
-      }
-      q.update(item.id, { status: 'sending' });
-      DOM.model.value = item.model || DOM.model.value;
-      DOM.input.value = item.text;
-      DOM.input.style.height = 'auto';
-      txtContent = item.txtContent || '';
-      await DOM.sendBtn.onclick();
-      const stillQueued = q.list(activeId).find(it => it.id === item.id);
-      if (!stillQueued) continue;
-      const sentOk = chatHistory.slice(-3).some(m => m.role === 'user' && m.text === item.text);
-      if (sentOk) {
-        q.remove(item.id);
-      } else {
-        const attempts = (stillQueued.attempts || 0) + 1;
-        q.update(item.id, {
-          status: attempts >= q.MAX_ATTEMPTS ? 'failed' : 'queued',
-          attempts,
-          lastError: stillQueued.lastError || 'Không gửi được',
-        });
-        break; // lỗi thì dừng, không đẩy các tin sau vào tình trạng lỗi dây chuyền
-      }
-      if (onlyFirst) break;
-    }
-  } finally {
-    flushingOfflineQueue = false;
-    renderPendingQueue();
-  }
-}
-
-window.addEventListener('online', () => {
-  renderPendingQueue();
-  flushOfflineQueue();
-});
-// Background Sync từ Service Worker: khi mạng trở lại, SW báo app flush queue
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.addEventListener('message', ev => {
-    if (ev && ev.data && ev.data.type === 'FLUSH_OFFLINE_QUEUE') {
-      renderPendingQueue();
-      flushOfflineQueue();
-    }
-  });
-}
-window.addEventListener('offline', renderPendingQueue);
-window.addEventListener('jarvis:queue-changed', () => renderPendingQueue());
-// Lần đầu mở app: vẽ lại tin đang chờ và thử gửi nếu đang có mạng.
-setTimeout(() => {
-  renderPendingQueue();
-  flushOfflineQueue();
-}, 1500);
 
 // --- SEND MESSAGE (STREAM / INTERACTIONS) ---
 DOM.sendBtn.onclick = async () => {
@@ -5517,13 +4017,13 @@ const sideSearchInput = $('sidebar-search-input');
 if (sideSearchInput) {
   // Gõ là lọc ngay danh sách phiên (tên, model, nội dung tin nhắn)
   sideSearchInput.addEventListener('input', () => {
-    sessionFilter = sideSearchInput.value;
+    window.sessionFilter = sideSearchInput.value;
     renderSel();
   });
   sideSearchInput.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       sideSearchInput.value = '';
-      sessionFilter = '';
+      window.sessionFilter = '';
       renderSel();
       sideSearchInput.blur();
       return;
@@ -5699,14 +4199,14 @@ window.addEventListener('visibilitychange', () => {
 // Đảm bảo cuộn chuột & kéo thả ngang PC được gắn đầy đủ
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    enableHorizontalScrollAndDrag($('tabs-container'));
-    enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
-    enableHorizontalScrollAndDrag($('image-preview-grid'));
+    window.enableHorizontalScrollAndDrag($('tabs-container'));
+    window.enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
+    window.enableHorizontalScrollAndDrag($('image-preview-grid'));
   });
 } else {
-  enableHorizontalScrollAndDrag($('tabs-container'));
-  enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
-  enableHorizontalScrollAndDrag($('image-preview-grid'));
+  window.enableHorizontalScrollAndDrag($('tabs-container'));
+  window.enableHorizontalScrollAndDrag(document.querySelector('.input-tools-scroll'));
+  window.enableHorizontalScrollAndDrag($('image-preview-grid'));
 }
 
 // ==========================================

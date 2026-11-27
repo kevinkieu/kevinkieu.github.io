@@ -1207,7 +1207,7 @@ function initTTSStudio() {
   // Clear history
   if ($('btn-clear-tts-history')) {
     $('btn-clear-tts-history').onclick = async () => {
-      if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử âm thanh?')) return;
+      if (!(await window.appConfirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử âm thanh?'))) return;
       await ttsDbClearAll();
       renderTTSHistory();
       showToast('Đã xóa toàn bộ thư viện âm thanh.', 'info');

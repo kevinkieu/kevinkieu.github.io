@@ -376,7 +376,7 @@
     const taskType = typeof options === 'string' ? null : options?.taskType || null;
     const title = typeof options === 'string' ? null : options?.title || null;
     const outputDimensionality =
-      (typeof options === 'object' && options?.outputDimensionality) || 768;
+      (typeof options === 'object' && /** @type {any} */ (options)?.outputDimensionality) || 768;
 
     const apiKey = customApiKey || getActiveApiKey();
     if (!apiKey) {
@@ -590,7 +590,7 @@
       console.warn('[Memory] Bỏ qua kiểm tra trùng lặp:', dupErr);
     }
 
-    const id = `mem_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const id = `mem_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const item = {
       id,
       type: 'memory',
@@ -610,7 +610,7 @@
     const chunks = chunkText(text, 750, 100);
     if (!chunks.length) throw new Error('Tài liệu không có nội dung hợp lệ.');
 
-    const docId = `doc_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const docId = `doc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     let completed = 0;
 
     // Batch embedding: gộp chunks thành lô 8 để giảm số request & latency.
@@ -1845,7 +1845,7 @@ Giọng văn ấm áp, thông minh, tôn trọng, đúng chuẩn Jarvis. Không 
                   ? 'Âm thanh'
                   : 'Video';
             const item = {
-              id: `media_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+              id: `media_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
               type: 'doc',
               docName,
               chunkIndex: 0,
@@ -1928,7 +1928,7 @@ Giọng văn ấm áp, thông minh, tôn trọng, đúng chuẩn Jarvis. Không 
             const b64 = await fileToBase64(file);
             const vector = await getEmbedding({ inlineData: b64 }, { title: docName });
             const item = {
-              id: `pdf_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+              id: `pdf_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
               type: 'doc',
               docName,
               chunkIndex: 0,
@@ -2395,7 +2395,7 @@ Giọng văn ấm áp, thông minh, tôn trọng, đúng chuẩn Jarvis. Không 
       if (typeof window.showToast === 'function') window.showToast('Đã xóa mẩu trí nhớ!', 'info');
     },
     deleteDoc: async docName => {
-      if (confirm(`Bạn có chắc muốn xóa tài liệu "${docName}" khỏi RAG Studio?`)) {
+      if (await window.appConfirm(`Bạn có chắc muốn xóa tài liệu "${docName}" khỏi RAG Studio?`)) {
         await deleteDocumentVectors(docName);
         await renderDocsList();
         if (typeof window.showToast === 'function')

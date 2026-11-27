@@ -38,6 +38,13 @@
     "test/**/*.js",
     "scratch/**/*.js",
     "worker/**/*.js",
+    "js/chat-ui-helpers.js",
+    "js/session-manager.js",
+    "js/hands-free.js",
+    "js/message-tts.js",
+    "js/native-sync.js",
+    "js/offline-queue-ui.js",
+    "js/confirm-modal.js",
     "build*.js",
     "bump-version.js"
   ]

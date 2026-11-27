@@ -970,7 +970,7 @@
             cloudData.settings.globalContext &&
             !(ls.getItem('jarvis_global_context') || '').trim()
           ) {
-            var _gc = String(cloudData.settings.globalContext).trim();
+            const _gc = String(cloudData.settings.globalContext).trim();
             if (_gc) {
               ls.setItem('jarvis_global_context', _gc);
               ls.setItem('huanmu_global_context', _gc);
@@ -1799,9 +1799,9 @@
     if (!gistId) return showToast('Vui lòng nhập Gist ID cần tải về!', 'warning');
 
     if (
-      !confirm(
+      !(await window.appConfirm(
         "Thao tác này sẽ GHI ĐÈ toàn bộ lịch sử và cài đặt máy này bằng dữ liệu trên Cloud. Bạn có muốn tiếp tục? (Để gộp cả hai bên mà không mất dữ liệu, hãy dùng nút 'Đồng bộ 2 chiều')"
-      )
+      ))
     )
       return;
 

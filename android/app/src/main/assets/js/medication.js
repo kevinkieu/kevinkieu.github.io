@@ -20,10 +20,10 @@
           m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]
         );
 
-  var maxMedications = [];
-  var maxMedHistory = [];
-  var maxFormSelectedTimes = ['08:00'];
-  var maxEditingMedId = null;
+  let maxMedications = [];
+  let maxMedHistory = [];
+  let maxFormSelectedTimes = ['08:00'];
+  let maxEditingMedId = null;
 
   function isNativeAndroidApp() {
     return Boolean(
@@ -666,8 +666,9 @@
     });
 
     // Xóa toàn bộ lịch sử
-    $('btn-clear-med-history')?.addEventListener('click', () => {
-      if (!confirm('Bạn có chắc muốn xóa toàn bộ lịch sử uống thuốc không?')) return;
+    $('btn-clear-med-history')?.addEventListener('click', async () => {
+      if (!(await window.appConfirm('Bạn có chắc muốn xóa toàn bộ lịch sử uống thuốc không?')))
+        return;
       maxMedHistory = [];
       saveMedicationData(false);
       renderMaxHistoryList();
@@ -856,10 +857,11 @@
     );
   };
 
-  window.maxDeleteMedicine = function (medId) {
+  window.maxDeleteMedicine = async function (medId) {
     const med = maxMedications.find(m => m.id === medId);
     if (!med) return;
-    if (!confirm(`Bạn có chắc muốn xóa "${med.name}" khỏi Tủ thuốc không?`)) return;
+    if (!(await window.appConfirm(`Bạn có chắc muốn xóa "${med.name}" khỏi Tủ thuốc không?`)))
+      return;
 
     // Hủy toàn bộ alarm trên Android native
     if (

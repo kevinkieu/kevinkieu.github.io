@@ -502,9 +502,9 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
 
     const btnChangeLocation = $('btn-change-location');
     if (btnChangeLocation) {
-      btnChangeLocation.onclick = () => {
+      btnChangeLocation.onclick = async () => {
         const currentCity = ls.getItem('jarvis_user_city') || 'Hà Nội';
-        const newCity = prompt(
+        const newCity = await window.appPrompt(
           'Nhập tên thành phố / tỉnh của bạn để nhận dự báo thời tiết chính xác:\n(Ví dụ: Hà Nội, TP. Hồ Chí Minh, Đà Nẵng, Cần Thơ, Hải Phòng, Nha Trang, Huế...)',
           currentCity
         );

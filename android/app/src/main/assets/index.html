@@ -12,7 +12,7 @@
          mà app đang dùng; lá chắn XSS chính là js/sanitize.js (allowlist). -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; media-src 'self' https: data: blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:*; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-src 'self' https:;"
+      content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; media-src 'self' https: data: blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:*; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-src 'self' https:;"
     />
 
     <!-- PWA META & MANIFEST -->
@@ -24,10 +24,17 @@
     <link rel="apple-touch-icon" href="./icon-180.png" />
 
     <!-- CDN STYLESHEETS (nhẹ, cần cho hiển thị công thức và tô màu code) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+      integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV"
+      crossorigin="anonymous"
+    />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css"
+      integrity="sha384-oaMLBGEzBOJx3UHwac0cVndtX5fxGQIfnAeFZ35RTgqPcYlbprH9o9PUV/F8Le07"
+      crossorigin="anonymous"
     />
     <!-- CDN JS: KHÔNG còn nằm trong <head>. marked nạp cuối <body> (không chặn render);
          katex / highlight.js / lamejs / pdf.js / html2pdf nạp theo nhu cầu qua js/lazy-libs.js.
@@ -3755,12 +3762,25 @@
     <!-- JAVASCRIPT APPLICATION MODULES -->
     <!-- CDN JS nạp cuối body: không chặn first paint. marked phải có trước globals.js
          vì globals.js đặt marked.use({ breaks: true }). -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"
+      integrity="sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+"
+      crossorigin="anonymous"
+    ></script>
     <script src="./js/perf-marks.js?v=1"></script>
     <script src="./js/sanitize.js?v=1"></script>
     <script src="./js/backoff.js?v=1"></script>
     <script src="./js/sync-merge.js?v=1"></script>
     <script src="./js/globals.js?v=77"></script>
+    <script src="./js/chat-ui-helpers.js?v=1"></script>
+    <script src="./js/session-manager.js?v=1"></script>
+    <script src="./js/hands-free.js?v=1"></script>
+    <script src="./js/message-tts.js?v=1"></script>
+    <script src="./js/native-sync.js?v=1"></script>
+    <script src="./js/offline-queue-ui.js?v=1"></script>
+    <script src="./js/native-sync.js?v=1"></script>
+    <script src="./js/offline-queue-ui.js?v=1"></script>
+    <script src="./js/confirm-modal.js?v=1"></script>
     <script src="./js/lazy-libs.js?v=78"></script>
     <script src="./js/module-loader.js?v=2"></script>
     <link rel="stylesheet" href="./css/debug-overlay.css?v=1" />

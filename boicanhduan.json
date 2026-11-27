@@ -99,6 +99,13 @@
       "name": "Bootstrap toàn cục và các helper UI tách rời",
       "files": {
         "js/globals.js": "Nạp ĐẦU TIÊN (classic script): $ / $$ / ls / ss, window bindings, toàn bộ biến trạng thái dùng chung (sessions, activeId, chatHistory, DOM, cfgMap, SAFETY, apiKeys, key index, med data...) publish qua window bằng defineProperty, kèm utility sớm (escapeHtml...).",
+        "js/confirm-modal.js": "Modal confirm/prompt tuỳ chỉnh (Promise-based) thay thế window.confirm/prompt blocking; window.appConfirm/appPrompt. Classic script, nạp sớm trước app.js.",
+        "js/chat-ui-helpers.js": "Helper UI thuần tách từ app.js (Giai đoạn 1): enableHorizontalScrollAndDrag, generateLocalFallbackTitle, sanitizeTranscript, splitTextIntoSmartChunks. Classic script, expose qua window.",
+        "js/session-manager.js": "Quản lý phiên tách từ app.js (Giai đoạn 2): renderTabs, renderFolders, loadSess, newSess, switchSess, sessionMatchesFilter, renderSel, tryAutoNameSession, renderCompactSummary, condenseSessionMemory. Classic script, expose qua window.",
+        "js/hands-free.js": "Hands-free voice tách từ app.js (Giai đoạn 3): stopHandsFreeVoice, processHandsFreeAudioBlob, startHandsFreeRecorder, commitAndSendHandsFree, toggleHandsFreeVoice. Classic script, expose qua window.",
+        "js/message-tts.js": "TTS trên tin nhắn tách từ app.js (Giai đoạn 3): stopCurrentSpeaking, playTextAudio, toggleSpeakMsg. Classic script, expose qua window.",
+        "js/native-sync.js": "Đồng bộ native/config tách từ app.js (Giai đoạn 4): syncSessionsToNative, updateConfig. Classic script, expose qua window.",
+        "js/offline-queue-ui.js": "UI hàng đợi ngoại tuyến tách từ app.js (Giai đoạn 4): renderPendingQueue, dropQueuedItem, sendQueuedNow, flushOfflineQueue + event listeners. Classic script, expose qua window.",
         "js/perf-marks.js": "Đo hiệu năng khởi động (classic script, nạp ngay sau <body> scripts, trước globals): mốc html/globals-ready/app-ready/first-render + mark lazy:*, đếm long task, và JarvisPerf.report() trả số file/byte JS nội bộ + CDN. Dùng để so sánh trước/sau khi tối ưu.",
         "js/module-loader.js": "Nạp module nặng theo nhu cầu: ensureModule('tts'|'translate'|'rag'|'sync') chèn <script type=module> đúng thứ tự (rag-core trước rag), cài stub cho các hàm onclick (openTTSStudioModal, openKnowledgeModal, openLiveTranslateModal...) để cú bấm đầu tiên tự nạp rồi gọi lại, và preloadIdle() nạp lúc rảnh (requestIdleCallback, fallback 2s).",
         "js/lazy-libs.js": "Loader CDN theo nhu cầu: window.ensureLib('pdfjs' | 'html2pdf') chỉ tải thư viện nặng khi thật sự dùng (đọc PDF, xuất PDF), giảm script phải tải lúc mở app.",
@@ -209,8 +216,8 @@
         "android/gradle.properties": "JVM args và cấu hình AndroidX/R class.",
         "android/app/build.gradle": "Cấu hình module app: versionCode/versionName, quyền, packaging, asset WebView.",
         "android/app/src/main/AndroidManifest.xml": "Quyền và component: alarm, notification, boot receiver, WebView activity.",
-        "android/app/src/main/java/com/kevinkieu/jarvisai/MainActivity.java": "Thiết lập WebView, JS bridge cho lưu trữ native/alarm, tích hợp nhắc uống thuốc.",
-        "android/app/src/main/java/com/kevinkieu/jarvisai/MedicationAlarmReceiver.java": "Logic alarm/receiver cho thông báo uống thuốc.",
+        "android/app/src/main/java/com/kevinkieu/jarvisai/MainActivity.kt": "Thiết lập WebView, JS bridge cho lưu trữ native/alarm, tích hợp nhắc uống thuốc (Kotlin).",
+        "android/app/src/main/java/com/kevinkieu/jarvisai/MedicationAlarmReceiver.kt": "Logic alarm/receiver cho thông báo uống thuốc (Kotlin).",
         "android/app/src/main/res/*": "Tài nguyên UI: layout, strings, colors, themes, icon.",
         "android/app/src/main/assets/*": "Bộ asset web đóng gói cho APK offline (index.html, manifest, sw.js, css/, js/ gồm mọi module + worker + mirror model-registry/chat-render/globals, icon). Đồng bộ bằng scripts/sync-web-assets.js (43 file, gọi từ CI), có --check để phát hiện lệch.",
         ".github/workflows/build-apk.yml": "CI GitHub Actions build APK (chi tiết ở developer_workflow.ci_cd).",
@@ -317,6 +324,6 @@
     "note": "Lịch sử thay đổi chi tiết đã chuyển từ recent_changes sang CHANGELOG.md để boicanhduan.json chỉ còn mô tả kiến trúc.",
     "entries": 53,
     "last_change_date": "2026-11-28",
-    "latest_summary": "Phase 1 security hardening + keystore rotation + git history cleaned; Phase 3 PWA modernization (apple-touch-icon, theme-color dynamic, a11y, Background Sync, Notification); Phase 4 performance (AudioWorklet, embedding batch, backoff reconnect, CI web job, Android stack upgrade, cache v98). See CHANGELOG.md."
+    "latest_summary": "Phase 1 security hardening + keystore rotation + git history cleaned; Phase 3 PWA modernization; Phase 4 performance; modularization of js/app.js (Giai đoạn 1-4) into chat-ui-helpers/session-manager/hands-free/message-tts/native-sync/offline-queue-ui; MedicationAlarmReceiver + MainActivity migrated to Kotlin; R8/minify enabled. See CHANGELOG.md."
   }
 }

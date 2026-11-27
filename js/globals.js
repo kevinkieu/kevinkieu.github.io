@@ -538,7 +538,38 @@ if ('serviceWorker' in navigator) {
       })
       .catch(function () {});
   } else {
-    navigator.serviceWorker.register('./sw.js').catch(function () {});
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      window.location.reload();
+    });
+    navigator.serviceWorker
+      .register('./sw.js')
+      .then(function (reg) {
+        reg.addEventListener('updatefound', function () {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', function () {
+            if (newWorker.state === 'installed') {
+              if (!navigator.serviceWorker.controller) {
+                // Lần cài đặt đầu: kích hoạt ngay
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                return;
+              }
+              // Có bản cập nhật mới: hỏi người dùng trước khi áp dụng
+              const doUpdate = function () {
+                if (typeof window.appConfirm === 'function') {
+                  window.appConfirm('Có bản cập nhật mới. Tải lại để áp dụng?').then(function (ok) {
+                    if (ok) newWorker.postMessage({ type: 'SKIP_WAITING' });
+                  });
+                } else {
+                  newWorker.postMessage({ type: 'SKIP_WAITING' });
+                }
+              };
+              doUpdate();
+            }
+          });
+        });
+      })
+      .catch(function () {});
   }
 }
 

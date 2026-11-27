@@ -257,8 +257,8 @@
       title: 'Ghi nhớ nhanh một thông tin (/remember <nội dung>)',
       shortcut: '/remember',
       icon: '🧠',
-      run: () => {
-        const text = window.prompt('Nội dung cần Jarvis ghi nhớ lâu dài:');
+      run: async () => {
+        const text = await window.appPrompt('Nội dung cần Jarvis ghi nhớ lâu dài:');
         if (text) quickRemember(text);
       },
     },

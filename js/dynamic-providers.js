@@ -1047,10 +1047,12 @@
       };
     });
     box.querySelectorAll('.dp-btn-del').forEach(btn => {
-      btn.onclick = e => {
+      btn.onclick = async e => {
         const id = e.currentTarget.dataset.id;
         if (
-          confirm(`Xoá provider "${escapeHtml(id)}? Các model thuộc provider này cũng sẽ bị xoá.`)
+          await window.appConfirm(
+            `Xoá provider "${escapeHtml(id)}? Các model thuộc provider này cũng sẽ bị xoá.`
+          )
         ) {
           deleteProvider(id);
           dpToast('Đã xoá provider ' + escapeHtml(id), 'success');
@@ -1095,9 +1097,9 @@
       };
     });
     box.querySelectorAll('.dp-btn-del').forEach(btn => {
-      btn.onclick = e => {
+      btn.onclick = async e => {
         const mkey = e.currentTarget.dataset.mkey;
-        if (confirm(`Xoá model "${escapeHtml(mkey)}"?`)) {
+        if (await window.appConfirm(`Xoá model "${escapeHtml(mkey)}"?`)) {
           deleteModel(mkey);
           dpToast('Đã xoá model ' + escapeHtml(mkey), 'success');
           renderAll();

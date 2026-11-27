@@ -86,7 +86,6 @@ async function discoverAssets() {
 }
 
 self.addEventListener('install', event => {
-  self.skipWaiting();
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
@@ -242,6 +241,14 @@ self.addEventListener('notificationclick', event => {
       return self.clients.openWindow('./');
     })
   );
+});
+
+// Allow a waiting service worker to activate immediately when the user accepts an update
+self.addEventListener('message', event => {
+  if (event && event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
 });
 
 // Allow clients to trigger a notification via message

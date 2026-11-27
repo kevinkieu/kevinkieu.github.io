@@ -77,7 +77,6 @@
               const isWebView =
                 (typeof JarvisNativeBridge !== 'undefined' &&
                   JarvisNativeBridge.isNativeApp === true) ||
-                /wv\)/.test(navigator.userAgent.toLowerCase()) ||
                 location.origin === 'https://appassets.androidplatform.net';
 
               if (isWebView) {
@@ -118,14 +117,12 @@
     function bindEvents() {
       // Helper: phát hiện TWA/WebView (APK cài từ Play/store)
       function isTwaOrWebView() {
-        const ua = navigator.userAgent.toLowerCase();
         const origin = location.origin;
         // TWA dùng origin https://appassets.androidplatform.net
-        // WebView thường có user agent chứa 'wv' hoặc 'android' nhưng không phải Chrome app
+        // WebView được nhận diện qua native bridge hoặc origin nội bộ (không dựa vào UA).
         return (
           origin === 'https://appassets.androidplatform.net' ||
-          /wv\)/.test(ua) ||
-          (ua.includes('android') && !ua.includes('chrome'))
+          (typeof JarvisNativeBridge !== 'undefined' && JarvisNativeBridge.isNativeApp === true)
         );
       }
 
@@ -142,7 +139,6 @@
 
         const isWebView =
           (typeof JarvisNativeBridge !== 'undefined' && JarvisNativeBridge.isNativeApp === true) ||
-          /wv\)/.test(navigator.userAgent.toLowerCase()) ||
           location.origin === 'https://appassets.androidplatform.net';
 
         if (isWebView) {
@@ -182,18 +178,8 @@
         if (ok) {
           showToast('🛡️ Đã kích hoạt Lưu trữ Vĩnh viễn (Persistent Storage)!', 'success');
         } else {
-          const ua = navigator.userAgent.toLowerCase();
-          let hint = 'Trình duyệt chưa cho phép cấp quyền vĩnh viễn.';
-          if (/android.*chrome/i.test(ua) || /android.*crios/i.test(ua)) {
-            hint +=
-              " Trên Chrome Android: ⋮ Menu → Cài đặt → Quyền riêng tư & bảo mật → Cài đặt trang web → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
-          } else if (ua.includes('chrome') || ua.includes('edg')) {
-            hint +=
-              " Hãy vào chrome://site-settings → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
-          } else if (ua.includes('firefox')) {
-            hint +=
-              " Hãy vào about:preferences#privacy → Dữ liệu trang web → cho phép 'Lưu trữ vĩnh viễn'.";
-          }
+          const hint =
+            'Trình duyệt chưa cho phép cấp quyền vĩnh viễn. Hãy mở cài đặt trang web/trình duyệt và cho phép "Lưu trữ vĩnh viễn" cho trang này.';
           showToast(hint, 'warning');
         }
         updateStorageStatus();
@@ -216,7 +202,7 @@
           if (statusEl) statusEl.innerText = `✅ Đã phục hồi ${res.restored} phiên.`;
           showToast(`♻️ Đã phục hồi ${res.restored} phiên từ bản sao lưu!`, 'success');
           if (
-            confirm(
+            await window.appConfirm(
               `Đã phục hồi ${res.restored} phiên từ bản sao lưu IndexedDB.\nTải lại trang để thấy đầy đủ?`
             )
           ) {
@@ -228,9 +214,9 @@
         }
       });
 
-      $('btn-clear-temp-cache')?.addEventListener('click', () => {
+      $('btn-clear-temp-cache')?.addEventListener('click', async () => {
         if (
-          confirm(
+          await window.appConfirm(
             'Bạn có muốn dọn sạch bộ nhớ đệm tìm kiếm (search cache) và dữ liệu tạm thời không?\n(Toàn bộ Lịch sử chat và API keys sẽ được BẢO TỒN NGUYÊN VẸN 100%)'
           )
         ) {

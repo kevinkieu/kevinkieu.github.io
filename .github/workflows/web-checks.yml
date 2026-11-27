@@ -19,6 +19,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: 📦 Install dependencies
+        run: npm ci
+
       - name: 🔍 node --check (toàn bộ JS)
         run: |
           set -e
@@ -26,6 +29,15 @@ jobs:
             node --check "$f" || { echo "FAIL: $f"; exit 1; }
           done
           echo "OK: all JS pass node --check"
+
+      - name: 🧪 typecheck
+        run: npm run typecheck
+
+      - name: 🧹 lint
+        run: npm run lint
+
+      - name: 🧪 tests
+        run: npm test
 
       - name: 🔄 Đồng bộ assets + kiểm tra lệch
         run: |

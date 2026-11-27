@@ -42,4 +42,14 @@ interface Permissions {
 }
 interface Navigator {
   standalone?: boolean;
+  userAgentData?: { platform?: string };
 }
+
+// --- AudioWorklet (worker scope) ---
+declare class AudioWorkletProcessor {
+  constructor();
+  readonly port: MessagePort;
+  process(inputs: any, outputs?: any, parameters?: any): boolean;
+}
+declare const sampleRate: number;
+declare function registerProcessor(name: string, processorCtor: any): void;

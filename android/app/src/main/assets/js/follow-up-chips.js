@@ -37,15 +37,15 @@
       btn.onclick = function (e) {
         e.preventDefault();
         e.stopPropagation();
-        var query = btn.innerText.replace(/^👉\s*/, '').trim();
+        const query = btn.innerText.replace(/^👉\s*/, '').trim();
         fBox.remove();
-        var input = $('user-input');
+        const input = $('user-input');
         if (input) {
           input.value = query;
           input.dispatchEvent(new Event('input'));
           input.focus();
         }
-        var sendBtn = $('send-button');
+        const sendBtn = $('send-button');
         if (sendBtn) sendBtn.click();
       };
     });
@@ -110,7 +110,7 @@
           .trim();
       }
 
-      var lines = text
+      const lines = text
         .split('\n')
         .map(function (l) {
           return l.replace(/^[-*0-9.)\s👉💡]+/, '').trim();
@@ -124,9 +124,9 @@
         document.querySelectorAll('.follow-up-container').forEach(function (el) {
           el.remove();
         });
-        var fBox = renderFollowUpChips(lines);
-        var container = botContainer || DOM.chat.querySelector('.message-container:last-child');
-        var target =
+        const fBox = renderFollowUpChips(lines);
+        const container = botContainer || DOM.chat.querySelector('.message-container:last-child');
+        const target =
           (container && container.querySelector('.msg-content')) ||
           (container && container.querySelector('.bot-message')) ||
           container;

@@ -25,6 +25,23 @@ Dual-Screen Face-to-Face Interpreter, and Real-Time Web Search._
 
 ---
 
+## 🧩 Module hóa `js/app.js` (cập nhật 2026-11-28)
+
+Đã tách `js/app.js` (từ ~5.800 dòng xuống ~4.300 dòng) thành các module classic script nạp trước
+`app.js`:
+
+- `js/chat-ui-helpers.js` — helper UI thuần (cuộn ngang, tiêu đề fallback, sanitize transcript, chia
+  chunk TTS).
+- `js/session-manager.js` — quản lý phiên (load/new/switch, render tabs/folders/select, auto-name,
+  tóm tắt bộ nhớ).
+- `js/hands-free.js` — điều khiển voice rảnh tay.
+- `js/message-tts.js` — TTS trên tin nhắn.
+- `js/native-sync.js` — đồng bộ native + cấu hình.
+- `js/offline-queue-ui.js` — UI hàng đợi ngoại tuyến.
+
+`app.js` giữ vai trò shell: alias `window.*` cho các hàm đã tách, wiring DOM và luồng gửi tin (chưa
+tách ở Giai đoạn 5).
+
 ## 🔐 Bảo mật, đồng bộ & build (cập nhật 2026-11-27)
 
 ### Chặn XSS
