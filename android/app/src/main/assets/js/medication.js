@@ -357,11 +357,11 @@
               <div class="max-badge-taken">
                 ✓ Đã uống (${takenTimeDisplay})
               </div>
-              <button class="max-btn-undo-pill" title="Hoàn tác (chưa uống)" onclick="window.maxUndoTaken('${m.id}', '${item.timeStr}')">↩️ Hoàn tác</button>
+              <button class="max-btn-undo-pill" title="Hoàn tác (chưa uống)" data-med-id="${encodeURIComponent(m.id)}" data-time-str="${encodeURIComponent(item.timeStr)}" onclick="window.maxUndoTaken(decodeURIComponent(this.dataset.medId), decodeURIComponent(this.dataset.timeStr))">↩️ Hoàn tác</button>
           `;
         } else {
           html += `
-              <button class="max-btn-taken" onclick="window.maxMarkTaken('${m.id}', '${item.timeStr}')">
+              <button class="max-btn-taken" data-med-id="${encodeURIComponent(m.id)}" data-time-str="${encodeURIComponent(item.timeStr)}" onclick="window.maxMarkTaken(decodeURIComponent(this.dataset.medId), decodeURIComponent(this.dataset.timeStr))">
                 ✅ Đã uống cữ này
               </button>
           `;
@@ -416,11 +416,11 @@
           </div>
           <div class="max-cab-controls">
             <label class="max-switch" title="Bật/Tắt chuông nhắc thuốc này">
-              <input type="checkbox" ${m.active ? 'checked' : ''} onchange="window.maxToggleActive('${m.id}', this.checked)">
+              <input type="checkbox" ${m.active ? 'checked' : ''} data-med-id="${encodeURIComponent(m.id)}" onchange="window.maxToggleActive(decodeURIComponent(this.dataset.medId), this.checked)">
               <span class="max-slider"></span>
             </label>
-            <button class="max-icon-btn" title="Chỉnh sửa thuốc" onclick="window.maxEditMedicine('${m.id}')">✏️</button>
-            <button class="max-icon-btn" title="Xóa thuốc khỏi tủ" onclick="window.maxDeleteMedicine('${m.id}')">🗑️</button>
+            <button class="max-icon-btn" title="Chỉnh sửa thuốc" data-med-id="${encodeURIComponent(m.id)}" onclick="window.maxEditMedicine(decodeURIComponent(this.dataset.medId))">✏️</button>
+            <button class="max-icon-btn" title="Xóa thuốc khỏi tủ" data-med-id="${encodeURIComponent(m.id)}" onclick="window.maxDeleteMedicine(decodeURIComponent(this.dataset.medId))">🗑️</button>
           </div>
         </div>
       `;
@@ -476,7 +476,7 @@
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <span class="max-hist-status">✓ Đã uống</span>
-            <button class="max-hist-delete-btn" title="Xóa cữ này khỏi lịch sử" onclick="window.maxDeleteHistoryItem('${h.id || ''}', '${h.medId || ''}', ${h.timestamp || 0})">🗑️</button>
+            <button class="max-hist-delete-btn" title="Xóa cữ này khỏi lịch sử" data-hist-id="${encodeURIComponent(h.id || '')}" data-med-id="${encodeURIComponent(h.medId || '')}" data-ts="${h.timestamp || 0}" onclick="window.maxDeleteHistoryItem(decodeURIComponent(this.dataset.histId), decodeURIComponent(this.dataset.medId), Number(this.dataset.ts))">🗑️</button>
           </div>
         </div>
       `;

@@ -10,53 +10,40 @@
   'use strict';
 
   const listeners = new Map(); // eventName -> Set<{fn, once}>
-  const toposort = [];
 
   function on(event, fn, { once = false } = {}) {
     if (!listeners.has(event)) listeners.set(event, new Set());
     const entry = { fn, once };
     listeners.get(event).add(entry);
-    if (!toposort.includes(entry)) toposort.push(entry);
     return entry;
   }
 
   function off(event, fn) {
     const set = listeners.get(event);
     if (!set) return;
-    for (const entry of set) {
+    for (const entry of Array.from(set)) {
       if (entry.fn === fn) set.delete(entry);
     }
-    const idx = toposort.indexOf(entry);
-    if (idx >= 0) toposort.splice(idx, 1);
   }
 
   function offEntry(entry) {
     for (const [, set] of listeners) {
       if (set.has(entry)) set.delete(entry);
     }
-    const idx = toposort.indexOf(entry);
-    if (idx >= 0) toposort.splice(idx, 1);
   }
 
-  // emit: sync, thể hiện thứ tự đăng ký, trả về boolean có listeners không
+  // emit: sync, trả về boolean có listeners không
   function emit(event, payload) {
     const set = listeners.get(event);
     if (!set || set.size === 0) return false;
     const entries = Array.from(set);
-    const fired = [];
     for (const entry of entries) {
       try {
         entry.fn.call(null, payload);
-        fired.push(entry);
       } catch (err) {
         console.warn('[EventBus] listener error on `' + event + '`:', err);
       }
-      if (entry.once) fired.push(entry);
-    }
-    for (const e of fired) {
-      set.delete(e);
-      const idx = toposort.indexOf(e);
-      if (idx >= 0) toposort.splice(idx, 1);
+      if (entry.once) set.delete(entry);
     }
     return true;
   }
@@ -71,17 +58,19 @@
   function asyncEmit(event, payload) {
     const set = listeners.get(event);
     if (!set || set.size === 0) return Promise.resolve();
+    const entries = Array.from(set);
     const promises = [];
-    for (const entry of Array.from(set)) {
+    for (const entry of entries) {
       try {
         const r = entry.fn.call(null, payload);
         if (r && typeof r.then === 'function') promises.push(r);
       } catch (err) {
         console.warn('[EventBus] async listener error on `' + event + '`:', err);
       }
+      if (entry.once) set.delete(entry);
     }
     if (promises.length === 0) return Promise.resolve();
-    return Promise.all(promises);
+    return Promise.allSettled(promises);
   }
 
   // Dọn listener khi module hủy (VD: modal đóng, component unmount)

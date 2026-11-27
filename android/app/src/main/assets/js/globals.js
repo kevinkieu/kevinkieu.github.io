@@ -487,7 +487,12 @@ localStorage.setItem = function (k, v) {
     }
   }
   if (window.JarvisNativeBridge) {
-    saveToNativeBridge(k, v);
+    const isSecret =
+      /_api(_|$)/.test(k) ||
+      k.includes('api_key') ||
+      k === 'jarvis_gist_pat' ||
+      k === 'jarvis_gist_token';
+    if (!isSecret) saveToNativeBridge(k, v);
   }
 };
 localStorage.removeItem = function (k) {
@@ -495,7 +500,12 @@ localStorage.removeItem = function (k) {
     _nativeOrigRemoveItem(k);
   } catch {}
   if (window.JarvisNativeBridge) {
-    saveToNativeBridge(k, null);
+    const isSecret =
+      /_api(_|$)/.test(k) ||
+      k.includes('api_key') ||
+      k === 'jarvis_gist_pat' ||
+      k === 'jarvis_gist_token';
+    if (!isSecret) saveToNativeBridge(k, null);
   }
 };
 

@@ -191,6 +191,8 @@ function appendLiveUserText(delta) {
   }
 }
 
+let appendFn = appendLiveUserText;
+
 function appendLiveAiText(delta) {
   if (!delta || typeof delta !== 'string') return;
   const cleanDelta = delta.trim();
@@ -247,7 +249,7 @@ function startLiveSpeechRec() {
       }
       const recognized = (finalTranscript || interimTranscript).trim();
       if (recognized) {
-        appendLiveUserText(recognized);
+        appendFn(recognized);
       }
     };
 
@@ -802,7 +804,7 @@ async function startLiveVoiceCall(options = {}) {
             sc.interim_input_transcription?.text ||
             sc.interimTranscript;
           if (userTxt) {
-            appendLiveUserText(userTxt);
+            appendFn(userTxt);
           }
 
           // Audio & Text parts từ model
@@ -1018,8 +1020,8 @@ window.isLiveActive = () =>
 // BARGE-IN: khi user nói (speech rec hoặc VAD) trong lúc Jarvis đang nói -> dừng TTS + interrupt live playback
 function enableBargeIn() {
   // Interrupt live audio playback
-  const originalAppendLiveUserText = window.appendLiveUserText;
-  window.appendLiveUserText = function (delta) {
+  const originalAppend = appendFn;
+  appendFn = function (delta) {
     if (livePlaybackState && livePlaybackState.activeSources.length > 0) {
       // User nói trong lúc Jarvis đang nói -> barge-in
       console.log('[Live] Barge-in detected, interrupting AI speech');
@@ -1038,7 +1040,7 @@ function enableBargeIn() {
         window.stopSpeaking();
       }
     }
-    return originalAppendLiveUserText(delta);
+    return originalAppend(delta);
   };
 }
 

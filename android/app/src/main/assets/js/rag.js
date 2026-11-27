@@ -1401,7 +1401,7 @@ Nhiệm vụ:
           title: newTitle || 'Ghi nhớ',
           category: newCat,
           text: newText,
-          embedding: newEmbedding,
+          vector: newEmbedding,
           updatedAt: Date.now(),
         };
 
@@ -1554,7 +1554,7 @@ Giọng văn ấm áp, thông minh, tôn trọng, đúng chuẩn Jarvis. Không 
                 <span>📅 ${dateStr}</span>
               </span>
             </div>
-            <button class="btn danger" style="padding:4px 10px;font-size:0.75rem;" onclick="window.JarvisRAG.deleteDoc('${escapeHtml(doc.name)}')">
+            <button class="btn danger" style="padding:4px 10px;font-size:0.75rem;" data-doc-name="${encodeURIComponent(doc.name)}" onclick="window.JarvisRAG.deleteDoc(decodeURIComponent(this.dataset.docName))">
               🗑️ Xóa tệp
             </button>
           </div>

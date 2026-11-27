@@ -773,12 +773,20 @@
       };
     });
 
-    // EXPLABS_MODELS
+    // EXPLABS_MODELS — gộp cả model built-in trong DEFAULT_PROVIDERS.explabs
+    // (vì models map seed từ DEFAULT_MODELS không chứa model Explabs).
     const explabsProvider = providers.explabs;
     const explabsModels = explabsProvider
-      ? Object.values(models)
-          .filter(m => m.provider === 'explabs')
-          .map(m => m.id)
+      ? [
+          ...new Set([
+            ...Object.values(models)
+              .filter(m => m.provider === 'explabs')
+              .map(m => m.id),
+            ...(Array.isArray(explabsProvider.models)
+              ? explabsProvider.models.map(m => m.id)
+              : []),
+          ]),
+        ]
       : [];
 
     // Also expose a map from composite key to model for internal use

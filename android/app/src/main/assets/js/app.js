@@ -1794,10 +1794,10 @@ async function renderLibrary() {
           f => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:var(--radius-md);background:var(--input-bg);border:1px solid var(--border);">
           <div>
-            <strong>${f.name}</strong><br>
+            <strong>${escapeHtml(f.name)}</strong><br>
             <small style="color:var(--text-muted);">${(f.size / 1024).toFixed(1)} KB • ${new Date(f.added).toLocaleDateString('vi-VN')}</small>
           </div>
-          <button class="btn primary" onclick="addFileFromLib('${f.id}')">➕ Đính</button>
+          <button class="btn primary" data-file-id="${encodeURIComponent(f.id)}" onclick="addFileFromLib(decodeURIComponent(this.dataset.fileId))">➕ Đính</button>
         </div>
       `
         )
@@ -2056,7 +2056,7 @@ function renderSel() {
     ? v
         .map(s => {
           const dot = s.pinned ? '📌 ' : s.color ? '● ' : '';
-          return `<option value="${s.id}" ${s.id === activeId ? 'selected' : ''}>${dot}${s.name}</option>`;
+          return `<option value="${escapeHtml(s.id)}" ${s.id === activeId ? 'selected' : ''}>${dot}${escapeHtml(s.name)}</option>`;
         })
         .join('')
     : '<option value="">(Không có phiên khớp)</option>';
@@ -3522,9 +3522,8 @@ DOM.sendBtn.onclick = async () => {
 
     const thk = DOM.thinking.value;
 
-    // --- ENGINE 0: EXPERIENTIAL LABS GATEWAY (gpt-6-luna, deepseek-v4.1-flash, clef) ---
-    const isExplabsModel =
-      am === 'gpt-6-luna' || am === 'deepseek-v4.1-flash' || am === 'qwen4-max:free';
+    // --- ENGINE 0: EXPERIENTIAL LABS GATEWAY ---
+    const isExplabsModel = usesExplabs;
     if (isExplabsModel) {
       let expKey = gKey;
       if (!expKey) {
@@ -5335,6 +5334,25 @@ $('import-all-input').onchange = e => {
         }
         if (d.configs) {
           Object.entries(d.configs).forEach(([k, v]) => {
+            // Chỉ nhận key nằm trong danh sách cho phép — chặn file backup bị làm nhọ
+            // ghi đè jarvis_gist_pat / key lạ / biến hệ thống.
+            const allowed =
+              k === 'chat_font_size' ||
+              k === 'tavily_api_key' ||
+              k === 'serper_api_key' ||
+              k === 'brave_api_key' ||
+              k === 'groq_api_key' ||
+              k === 'deepseek_api_key' ||
+              k === 'jina_api_key' ||
+              k === 'brave_worker_url' ||
+              /^jarvis_/.test(k) ||
+              /^huanmu_/.test(k) ||
+              /^javiss_/.test(k);
+            const blocked = k === 'jarvis_gist_pat';
+            if (!allowed || blocked) {
+              console.warn('[Backup] Bỏ qua key không được phép:', k);
+              return;
+            }
             let val = v;
             if (typeof val === 'string' && (val.startsWith('JVENC_') || val.startsWith('ENC_'))) {
               val = deobfuscateKey(val);

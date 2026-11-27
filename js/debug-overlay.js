@@ -133,11 +133,11 @@
 
   function escapeHtml(str) {
     return String(str)
-      .replace(/&/g, '&')
-      .replace(/</g, '<')
-      .replace(/>/g, '>')
-      .replace(/"/g, '"')
-      .replace(/'/g, '&apos;');
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function renderAll() {
@@ -323,10 +323,6 @@
     panel.style.display = 'flex';
     isVisible = true;
     renderAll();
-    // Register with GestureManager
-    if (window.GestureManager) {
-      window.GestureManager.executeAction('debug-overlay', { source: 'panel-show' });
-    }
   }
 
   function hide() {
