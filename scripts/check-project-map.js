@@ -28,10 +28,10 @@ const ROOT_FILES = [
   'manifest.json',
   'sw.js',
   'package.json',
-  'build.js',
-  'build-apk.bat',
   'bump-version.js',
   'CHANGELOG.md',
+  'install-phone.bat',
+  'install-phone-wifi.bat',
 ];
 
 const argv = process.argv.slice(2);

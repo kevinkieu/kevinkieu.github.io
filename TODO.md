@@ -16,7 +16,9 @@
 - [ ] Wake word on-device thật sự (`@picovoice/porcupine-web` hoặc tương đương) + AudioWorklet, thay
       cho việc phải bấm nút / dùng Quick Settings Tile.
 - [ ] VAD chính xác hơn (silero-vad WASM), tự ngắt sau ~1.5s im lặng, tự thêm dấu câu.
-- [ ] Kiểm tra lại barge-in: đang đọc TTS mà người dùng nói thì cắt ngay và bắt đầu lượt mới.
+- [x] Kiểm tra lại barge-in: đang đọc TTS mà người dùng nói thì cắt ngay và bắt đầu lượt mới.
+      (2026-11-27: đã sửa — barge-in trước đây chết im lặng do module scope; nay rebind qua
+      appendFn.)
 
 ### 3. 🧠 Trí nhớ & chống bịa
 
@@ -38,12 +40,19 @@
       luồng gửi tin. Các phần an toàn (render lịch sử, RAG worker, merge thuần) đã tách trước.
 - [ ] `local-llm.js`, `persona-config.js` chưa có test riêng.
 
-## Vừa hoàn thành (2026-11-27)
-
-- [x] Chặn XSS: thêm `js/sanitize.js` (allowlist thẻ/thuộc tính, chặn `javascript:`/`data:`/
-      `on*`/style nguy hiểm) và áp dụng cho chat render, stream renderer, briefing, export PDF/Word,
-      prompt library, tên tệp đính kèm; thêm CSP trong `index.html`; sửa `escapeHtml` trong
-      `markdown.worker.js` (trước đây là no-op nên `data-code` bị vỡ).
+- [x] Phase 1 security hardening (2026-11-27): XSS (session/file/doc/medication names), eventBus
+      off() crash, barge-in dead code, Explabs 2 nguồn sự thật, không mirror secret sang native
+      bridge, whitelist import backup JSON, RAG editMemory ghi đúng trường vector, debug-overlay
+      escapeHtml no-op + vòng lặp gesture shake.
+- [x] Rotate keystore (2026-11-27): key ký release cũ lộ công khai → tạo key mới, cập nhật 4 GitHub
+      Secrets, CI build APK mới, dọn git history (xoá keystore + build.gradle chứa mật khẩu khỏi mọi
+      commit, xoá 142 tag, force-push).
+- [x] Phase 3 PWA (2026-11-27): apple-touch-icon PNG thật (iOS), theme-color động, input 16px,
+      overscroll-behavior, manifest hiện đại (id relative, orientation any, maskable tách), a11y
+      (role/aria-label/prefers-reduced-motion), Background Sync + Notification infra, cache v97,
+      ?v=82 cho 4 CSS còn thiếu. `on*`/style nguy hiểm) và áp dụng cho chat render, stream renderer,
+      briefing, export PDF/Word, prompt library, tên tệp đính kèm; thêm CSP trong `index.html`; sửa
+      `escapeHtml` trong `markdown.worker.js` (trước đây là no-op nên `data-code` bị vỡ).
 - [x] Khóa WebView bridge: chỉ nạp từ `https://appassets.androidplatform.net`, chặn điều hướng
       remote trong WebView (mở bằng trình duyệt), chỉ cấp Micro/Camera cho origin nội bộ, tắt
       `allowFileAccess`/universal access/third-party cookie/cleartext, validate tên tệp + MIME khi
@@ -53,9 +62,9 @@
       có `updatedAt` + tombstone `jarvis_deleted_med_ids`, lịch sử uống thuốc có tombstone riêng nên
       không hồi sinh từ Cloud.
 - [x] Android: sửa thứ tự tham số `saveBase64File(base64, filename, mime)`; release build luôn được
-      ký (keystore riêng, không có thì debug key) và `build.js` kiểm tra bằng `apksigner`; thêm
-      Kotlin plugin nên `JarvisTileService` thực sự được biên dịch; Tile mở Live Call hands-free
-      thay vì wake word đã gỡ; script build tự chọn JDK 17 (Gradle 8.2 không chạy JDK 25).
+      ký (keystore riêng, không có thì debug key) và CI kiểm tra bằng `apksigner`; thêm Kotlin
+      plugin nên `JarvisTileService` thực sự được biên dịch; Tile mở Live Call hands-free thay vì
+      wake word đã gỡ; Gradle 8.2 yêu cầu JDK 17 (không chạy JDK 25).
 - [x] Build/test: `build:web --check` giờ build thật vào thư mục tạm; `dist/` có đủ file
       (`sanitize.min.js`, `sync-merge.min.js`, `rag.worker.js`); Service Worker tự dò asset từ
       `index.html`, precache từng file và chuẩn hoá cache key `?v=`.

@@ -219,15 +219,13 @@ self.addEventListener('fetch', event => {
 self.addEventListener('sync', event => {
   if (event.tag === 'flush-offline-queue') {
     event.waitUntil(
-      self.clients
-        .matchAll({ type: 'window', includeUncontrolled: true })
-        .then(clients => {
-          clients.forEach(c => {
-            try {
-              c.postMessage({ type: 'FLUSH_OFFLINE_QUEUE' });
-            } catch (_) {}
-          });
-        })
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+        clients.forEach(c => {
+          try {
+            c.postMessage({ type: 'FLUSH_OFFLINE_QUEUE' });
+          } catch (_) {}
+        });
+      })
     );
   }
 });
@@ -248,7 +246,11 @@ self.addEventListener('notificationclick', event => {
 // Allow clients to trigger a notification via message
 self.addEventListener('message', event => {
   const data = event.data || {};
-  if (data.type === 'SHOW_NOTIFICATION' && self.Notification && Notification.permission === 'granted') {
+  if (
+    data.type === 'SHOW_NOTIFICATION' &&
+    self.Notification &&
+    Notification.permission === 'granted'
+  ) {
     self.registration.showNotification(data.title || 'Jarvis AI', {
       body: data.body || '',
       icon: './icon-192.png',

@@ -62,13 +62,27 @@ npm run typecheck     # tsc --noEmit, checkJs: true, 0 lỗi
 npm run lint          # ESLint
 npm run build:web     # dist/ đầy đủ (bundle + classic .min.js + rag.worker.js)
 npm run check-assets  # mirror android/app/src/main/assets khớp web root
-node build.js         # APK release, kiểm tra chữ ký bằng apksigner
 ```
 
-- `build.js` tự chọn JDK 17 (Gradle 8.2 không chạy được JDK 25 của Android Studio).
+_APK được build tự động bởi GitHub Actions khi push lên main/master. Tải file `JarvisAI.apk` từ
+[GitHub Releases](https://github.com/kevinkieu/kevinkieu.github.io/releases)._
+
 - Release APK luôn được ký: dùng `android/keystore.properties` nếu có, không thì debug key.
 - Quick Settings Tile (`JarvisTileService.kt`) đã được biên dịch thật và mở Live Call hands-free
   (wake word phía web đã gỡ).
+
+### Cập nhật bảo mật 2026-11-27 (Phase 1 + keystore rotation)
+
+- **Rotate keystore**: key ký release cũ (`jarvis123`) đã lộ công khai trong git history của repo
+  public → đã tạo key mới, cập nhật GitHub Secrets, build APK mới với chữ ký mới, và dọn git history
+  (xoá keystore + `build.gradle` chứa mật khẩu khỏi mọi commit, xoá 142 tag, force-push).
+- **Phase 1 hardening** (đã commit): chặn XSS qua tên phiên/tệp/tài liệu/thuốc; sửa `eventBus.off()`
+  crash; barge-in live call (trước đây chết im lặng); Explabs 2 nguồn sự thật; không mirror secret
+  sang native bridge; whitelist import backup; RAG `editMemory` ghi đúng trường `vector`; sửa
+  `escapeHtml` no-op + vòng lặp gesture trong debug overlay.
+- **Phase 3 PWA**: apple-touch-icon PNG thật (iOS), theme-color động, input 16px,
+  overscroll-behavior, manifest hiện đại, a11y (role/aria-label/prefers-reduced-motion), Background
+  Sync + Notification infra, cache v97.
 
 ---
 
@@ -240,7 +254,6 @@ Jarvis AI/
 ├── index.html          # Giao diện chính của ứng dụng
 ├── manifest.json       # Cấu hình PWA (Progressive Web App)
 ├── sw.js               # Service Worker quản lý offline cache
-├── build-apk.bat       # Script đóng gói ứng dụng Android APK
 │
 ├── css/
 │   ├── style.css       # Giao diện chính Cyberpunk Glassmorphism
@@ -287,9 +300,12 @@ Jarvis AI/
 - Trên máy tính hoặc điện thoại, bấm vào biểu tượng **"Cài đặt ứng dụng"** (Install App) trên thanh
   địa chỉ trình duyệt để đưa Jarvis AI ra màn hình chính.
 
-#### Cách 3: Build file cài đặt Android (APK)
+#### Cách 3: Cài đặt file APK Android
 
-- Chạy file `build-apk.bat` trên Windows để tự động biên dịch mã nguồn thành file `JarvisAI.apk`.
+- Tải file `JarvisAI.apk` mới nhất từ
+  [GitHub Releases](https://github.com/kevinkieu/kevinkieu.github.io/releases).
+- Dùng `install-phone.bat` (USB) hoặc `install-phone-wifi.bat` (Wi-Fi debugging) để cài đặt vào điện
+  thoại.
 
 ---
 
@@ -492,9 +508,12 @@ Jarvis AI/
 - Click the **Install** button in your browser's address bar on desktop or tap **Add to Home
   Screen** on iOS/Android.
 
-#### Method 3: Build Android APK
+#### Method 3: Install Android APK
 
-- Execute `build-apk.bat` on Windows to generate `JarvisAI.apk`.
+- Download the latest `JarvisAI.apk` from
+  [GitHub Releases](https://github.com/kevinkieu/kevinkieu.github.io/releases).
+- Use `install-phone.bat` (USB) or `install-phone-wifi.bat` (Wi-Fi debugging) to install on your
+  device.
 
 ---
 

@@ -5,12 +5,12 @@
     "language": "JavaScript (ES modules, không bundler, không framework)",
     "purpose": "Multimodal AI assistant: chat đa model (Google Gemini + gateway OpenAI-compatible), live voice/video call, phiên dịch trực tiếp 2 màn hình, TTS studio, knowledge base + RAG, tìm kiếm web, tủ thuốc/nhắc uống thuốc và đồng bộ GitHub Gist 2 chiều.",
     "platforms": ["Web", "PWA", "Android (WebView + native medication alarms)"],
-    "versioning": "Android versionCode 76 / versionName 1.1.76 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=104, chat-render.js ?v=77, chat-format.js ?v=1, uploads.js ?v=1, msg-actions.js ?v=1, perf-marks.js ?v=1, module-loader.js ?v=2, failover.js ?v=1, offline-queue.js ?v=1, model-registry.js ?v=77, dynamic-providers.js ?v=83, sync.js ?v=85, api-keys.js ?v=80, provider-registry.js ?v=2, storage-manager.js ?v=80, export.js ?v=79, commands.js ?v=77, rag.js ?v=77, live.js ?v=77, lazy-libs.js ?v=77, persona-config.js ?v=2, gesture-manager.js ?v=2, gesture-settings.js ?v=2, debug-overlay.js ?v=1, globals.js ?v=76), sw cache jarvis-ai-pwa-v95, sanitize.js ?v=1, sync-merge.js ?v=1"
+    "versioning": "Android versionCode 76 / versionName 1.1.76 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=104, chat-render.js ?v=77, chat-format.js ?v=1, uploads.js ?v=1, msg-actions.js ?v=1, perf-marks.js ?v=1, module-loader.js ?v=2, failover.js ?v=1, offline-queue.js ?v=1, model-registry.js ?v=77, dynamic-providers.js ?v=83, sync.js ?v=85, api-keys.js ?v=80, provider-registry.js ?v=2, storage-manager.js ?v=80, export.js ?v=79, commands.js ?v=77, rag.js ?v=77, live.js ?v=77, lazy-libs.js ?v=77, persona-config.js ?v=2, gesture-manager.js ?v=2, gesture-settings.js ?v=2, debug-overlay.js ?v=1, globals.js ?v=76), sw cache jarvis-ai-pwa-v97, sanitize.js ?v=1, sync-merge.js ?v=1"
   },
   "runtime_entry": {
     "web": "index.html",
     "pwa": ["manifest.json", "sw.js"],
-    "build": ["package.json", "package-lock.json", "build.js", "build-apk.bat"],
+    "build": ["package.json", "package-lock.json"],
     "ci": ".github/workflows/build-apk.yml",
     "versioning_script": "bump-version.js",
     "asset_sync": "scripts/sync-web-assets.js",
@@ -63,7 +63,7 @@
     "lazy_cdn_libs": ["pdf.js (chỉ tải khi cần đọc PDF, qua js/lazy-libs.js)", "html2pdf.js (chỉ tải khi xuất PDF)"],
     "service_worker": {
       "file": "sw.js",
-      "cache": "jarvis-ai-pwa-v89",
+      "cache": "jarvis-ai-pwa-v97",
       "precache": "STATIC_ASSETS: index.html, manifest, icons, 5 file CSS, js/{model-registry,chat-render,persona-config,app,sync,live,tts,translate,rag,search,extract,blob,markdown.worker}.js + toàn bộ CDN_LIBS",
       "html": "network-first (để bản deploy GitHub Pages lên ngay), fallback cache → ./index.html",
       "js_css_cdn": "stale-while-revalidate",
@@ -210,12 +210,10 @@
         "android/app/src/main/java/com/kevinkieu/jarvisai/MainActivity.java": "Thiết lập WebView, JS bridge cho lưu trữ native/alarm, tích hợp nhắc uống thuốc.",
         "android/app/src/main/java/com/kevinkieu/jarvisai/MedicationAlarmReceiver.java": "Logic alarm/receiver cho thông báo uống thuốc.",
         "android/app/src/main/res/*": "Tài nguyên UI: layout, strings, colors, themes, icon.",
-        "android/app/src/main/assets/*": "Bộ asset web đóng gói cho APK offline (index.html, manifest, sw.js, css/, js/ gồm mọi module + worker + mirror model-registry/chat-render/globals, icon). Đồng bộ bằng scripts/sync-web-assets.js (43 file, gọi từ build.js, build-apk.bat và CI), có --check để phát hiện lệch.",
-        "build-apk.bat": "Script build Windows: node bump-version.js → sync assets → tự dò JAVA_HOME/ANDROID_HOME → gradlew.bat assembleRelease → copy APK ra gốc thành JarvisAI.apk / JarvisAI_Offline.apk.",
-        "build.js": "Script build Node đa nền tảng: bump-version, sync asset (dùng chung scripts/sync-web-assets.js), gradlew assembleRelease (gradlew.bat trên Windows), copy APK. Cần JDK 17 + Android SDK.",
+        "android/app/src/main/assets/*": "Bộ asset web đóng gói cho APK offline (index.html, manifest, sw.js, css/, js/ gồm mọi module + worker + mirror model-registry/chat-render/globals, icon). Đồng bộ bằng scripts/sync-web-assets.js (43 file, gọi từ CI), có --check để phát hiện lệch.",
         ".github/workflows/build-apk.yml": "CI GitHub Actions build APK (chi tiết ở developer_workflow.ci_cd).",
-        "install-phone.bat": "Cài APK qua ADB USB.",
-        "install-phone-wifi.bat": "Cài APK qua ADB Wi-Fi debugging."
+        "install-phone.bat": "Cài APK qua ADB USB (dùng APK tải từ GitHub Release).",
+        "install-phone-wifi.bat": "Cài APK qua ADB Wi-Fi debugging (dùng APK tải từ GitHub Release)."
       }
     },
     {
@@ -267,6 +265,7 @@
         "TODO.md": "Danh sách việc còn lại/đã xong gần nhất (ví dụ gỡ model Gemma & Experiential Labs).",
         "README.md": "Hướng dẫn tổng quan dự án.",
         "icon.png": "Icon app (nguồn).",
+        "icon-180.png": "Icon PWA apple-touch-icon 180x180 (tạo từ icon.png).",
         "icon-192.png": "Icon PWA/Android 192.",
         "icon-512.png": "Icon PWA/Android 512.",
         ".gitattributes": "Quy tắc thuộc tính git (line endings).",
@@ -303,10 +302,10 @@
     "local_run": "Chạy static server tại gốc dự án (ví dụ node scratch/static-server.js, python -m http.server hoặc npx serve) rồi mở index.html. Không cần build/bundler.",
     "pwa_install": "Cài từ trình duyệt qua manifest/Service Worker.",
     "testing": "npm test (vitest run). Sau mỗi thay đổi JS nên chạy npm run check-models nếu có đụng model, npm run check-assets để chắc mirror Android khớp, npm run check-map để chắc boicanhduan.json không lệch cây file.",
-    "asset_sync": "Sửa file web (index.html/js/css/sw.js/manifest/icon) thì chạy \"npm run sync-assets\" (hoặc node scripts/sync-web-assets.js) để mirror sang android/app/src/main/assets; \"npm run check-assets\" báo lệch (exit 1). Cả ba luồng build (build.js, build-apk.bat, CI) đều gọi chính script này.",
+    "asset_sync": "Sửa file web (index.html/js/css/sw.js/manifest/icon) thì chạy \"npm run sync-assets\" (hoặc node scripts/sync-web-assets.js) để mirror sang android/app/src/main/assets; \"npm run check-assets\" báo lệch (exit 1). CI workflow gọi script này khi build APK.",
     "cache_busting": "Khi sửa JS/CSS phải bump query ?v= của đúng file đó trong index.html (SW dùng stale-while-revalidate cho /js/ và /css/ nên không bump là trình duyệt chạy bản cũ), css/style.css dùng chung ?v=; sw.js bump CACHE_NAME khi cần xoá cache cũ.",
     "version_bump": "node bump-version.js: tăng versionCode/versionName trong android/app/build.gradle và đồng bộ cache buster.",
-    "android_build": "Ba cách: (1) node build.js đa nền tảng (cần JDK 17 + Android SDK; chmod +x gradlew lần đầu); (2) build-apk.bat trên Windows; (3) push lên main hoặc workflow_dispatch để GitHub Actions build (artifact JarvisAI-Android-App + GitHub Release). Môi trường không có Android SDK/Gradle thì không tạo được APK tại máy.",
+    "android_build": "Chỉ dùng GitHub Actions: push lên main/master hoặc chạy workflow_dispatch để build APK (artifact JarvisAI-Android-App + GitHub Release). Không còn script build local (build.js, build-apk.bat đã gỡ). Môi trường không có Android SDK/Gradle thì không tạo được APK tại máy.",
     "android_deploy": "Dùng install-phone.bat (ADB USB) hoặc install-phone-wifi.bat (ADB Wi-Fi debugging) để cài APK đã build.",
     "debug_latency": "Gửi một tin rồi xem window.__jarvisTurnDebug / jarvisDebug() trong Console: prepMs nhỏ nghĩa là app không chậm; headersMs lớn nghĩa là phía Google xếp hàng. Có thể hạ ngưỡng jarvis_lite_fallback_sec để buộc đổi model sớm.",
     "ci_cd": ".github/workflows/build-apk.yml build APK khi push lên main/master và có thay đổi ở android/**, js/**, css/**, index.html, manifest.json, sw.js, scripts/** hoặc chính workflow, hoặc chạy workflow_dispatch. Không còn job \"Run Tests\" — Build APK chạy ngay sau push. Version bump tất định (versionCode = hiện tại + 1 đọc bằng awk, versionName 1.1.X, không dùng github.run_number), ưu tiên assembleRelease, lỗi thì build debug và đặt tên JarvisAI-debug.apk; upload artifact JarvisAI-Android-App (giữ 30 ngày); tạo GitHub Release v1.1.X với notes tự động + generate_release_notes chỉ khi build release thành công. Push riêng boicanhduan.json KHÔNG kích hoạt workflow (không nằm trong paths filter)."
@@ -314,8 +313,8 @@
   "changelog": {
     "file": "CHANGELOG.md",
     "note": "Lịch sử thay đổi chi tiết đã chuyển từ recent_changes sang CHANGELOG.md để boicanhduan.json chỉ còn mô tả kiến trúc.",
-    "entries": 50,
-    "last_change_date": "2026-11-26",
-    "latest_summary": "Fix Gist Sync: 3-way merge cho key/settings (timestamp thay 'ô trống thì nhận'), Smart Sync kéo được model/theme/persona/system instruction toàn cục, đẩy tombstone tri thức lên Cloud. Bump sync.js v83."
+    "entries": 52,
+    "last_change_date": "2026-11-27",
+    "latest_summary": "Phase 1 security hardening + keystore rotation + git history cleaned; Phase 3 PWA modernization (apple-touch-icon, theme-color dynamic, a11y, Background Sync, Notification). See CHANGELOG.md."
   }
 }
