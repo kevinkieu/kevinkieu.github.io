@@ -28,7 +28,7 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.JarvisAI"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="false">
 
         <!-- MÀN HÌNH CHÍNH (JARVIS AI) -->
         <activity
@@ -47,7 +47,7 @@
         <receiver
             android:name=".MedicationAlarmReceiver"
             android:enabled="true"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="com.kevinkieu.jarvisai.ACTION_MEDICATION_ALARM" />
                 <action android:name="com.kevinkieu.jarvisai.ACTION_MEDICATION_TAKEN" />

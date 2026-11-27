@@ -757,6 +757,9 @@
 
       let hasRemoteData = false;
       let hasChanges = false;
+      // Hợp nhất theo từng tin nhắn/thuốc: cờ này báo "máy này có dữ liệu Cloud chưa có"
+      // để đẩy lên ngay, kể cả khi số lượng tin hai bên bằng nhau.
+      let syncMergeLocalAhead = false;
       let keysNeedPush = false;
       let settingsNeedPush = false;
       let vectorTombstoneChanged = false;
@@ -827,47 +830,31 @@
           }
 
           // A. HỢP NHẤT LỊCH SỬ PHIÊN CHAT (SESSIONS)
+          // Hợp nhất THEO TỪNG TIN NHẮN (id / chữ ký), không chọn cả phiên theo số lượng.
+          // Nhờ vậy hai máy cùng chat vẫn giữ đủ tin của cả hai, và tombstone được áp
+          // cho cả hai phía trước khi hợp nhất nên tin đã xóa không hồi sinh.
           if (Array.isArray(cloudData.sessions)) {
-            const sessionMap = new Map();
-            for (const lsess of localSessions) {
-              if (lsess && lsess.id && !deletedSessionIds.has(lsess.id)) {
-                sessionMap.set(lsess.id, lsess);
-              }
-            }
-            for (let csess of cloudData.sessions) {
-              if (!csess || !csess.id || deletedSessionIds.has(csess.id)) continue;
-              // Bỏ các tin nhắn đã xóa trên máy này (tombstone) TRƯỚC khi so sánh độ dài,
-              // nếu không bản Cloud dài hơn sẽ thắng và tin vừa xóa bị hồi sinh.
+            const prune = (sid, his) => {
               if (
                 window.jarvisMsgTombstones &&
                 typeof window.jarvisMsgTombstones.filter === 'function'
               ) {
-                const pruned = window.jarvisMsgTombstones.filter(csess.id, csess.his || []);
-                if (pruned.removed > 0) {
-                  csess = Object.assign({}, csess, { his: pruned.his });
-                  prunedRemoteByTombstone = true;
-                  hasChanges = true;
-                  console.log(
-                    `[SmartSync] Bỏ ${pruned.removed} tin nhắn đã xóa khỏi bản Cloud của phiên "${csess.name || csess.id}"`
-                  );
-                }
+                const pruned = window.jarvisMsgTombstones.filter(sid, his);
+                if (pruned.removed > 0) prunedRemoteByTombstone = true;
+                return pruned.his;
               }
-              if (!sessionMap.has(csess.id)) {
-                sessionMap.set(csess.id, csess);
-                hasChanges = true;
-              } else {
-                const existing = sessionMap.get(csess.id);
-                const lCount = (existing.his || []).length;
-                const cCount = (csess.his || []).length;
-                const lTime = existing.updatedAt || existing.timestamp || 0;
-                const cTime = csess.updatedAt || csess.timestamp || 0;
-                if (cCount > lCount || (cCount === lCount && cTime > lTime)) {
-                  sessionMap.set(csess.id, csess);
-                  hasChanges = true;
-                }
-              }
-            }
-            finalSessions = Array.from(sessionMap.values());
+              return his;
+            };
+            const mergedSessions =
+              window.SyncMerge && typeof window.SyncMerge.mergeSessions === 'function'
+                ? window.SyncMerge.mergeSessions(localSessions, cloudData.sessions, {
+                    deletedSessionIds,
+                    prune,
+                  })
+                : { sessions: localSessions, changed: false, localAhead: false };
+            finalSessions = mergedSessions.sessions;
+            if (mergedSessions.changed) hasChanges = true;
+            if (mergedSessions.localAhead) syncMergeLocalAhead = true;
             finalSessions.sort((a, b) => {
               if (a.pinned !== b.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
               const tA = a.updatedAt || a.orderIndex || 0;
@@ -1038,48 +1025,66 @@
           let localMeds = JSON.parse(ls.getItem('jarvis_medications') || '[]');
           let localHistory = JSON.parse(ls.getItem('jarvis_med_history') || '[]');
           let medChanged = false;
+          const deletedMedIds = new Set(JSON.parse(ls.getItem('jarvis_deleted_med_ids') || '[]'));
+          const deletedHistoryIds = new Set(
+            JSON.parse(ls.getItem('jarvis_deleted_med_history_ids') || '[]')
+          );
+
+          if (Array.isArray(cloudData.deletedMedIds)) {
+            cloudData.deletedMedIds.forEach(id => {
+              if (id) deletedMedIds.add(id);
+            });
+            ls.setItem(
+              'jarvis_deleted_med_ids',
+              JSON.stringify(Array.from(deletedMedIds).slice(-500))
+            );
+          }
+          if (Array.isArray(cloudData.deletedMedHistoryIds)) {
+            cloudData.deletedMedHistoryIds.forEach(id => {
+              if (id) deletedHistoryIds.add(id);
+            });
+            ls.setItem(
+              'jarvis_deleted_med_history_ids',
+              JSON.stringify(Array.from(deletedHistoryIds).slice(-500))
+            );
+          }
 
           if (Array.isArray(cloudData.medications) && cloudData.medications.length > 0) {
-            const medMap = new Map();
-            localMeds.forEach(m => {
-              if (m && m.id) medMap.set(m.id, m);
-            });
-            for (const cm of cloudData.medications) {
-              if (!cm || !cm.id) continue;
-              if (!medMap.has(cm.id)) {
-                medMap.set(cm.id, cm);
-                medChanged = true;
-                hasChanges = true;
-              } else {
-                const lm = medMap.get(cm.id);
-                const lTime = lm.updatedAt || lm.createdAt || 0;
-                const cTime = cm.updatedAt || cm.createdAt || 0;
-                if (cTime > lTime) {
-                  medMap.set(cm.id, cm);
-                  medChanged = true;
-                  hasChanges = true;
-                }
-              }
+            const medMerged =
+              window.SyncMerge && typeof window.SyncMerge.mergeMedications === 'function'
+                ? window.SyncMerge.mergeMedications(localMeds, cloudData.medications, {
+                    deletedMedIds,
+                  })
+                : { medications: localMeds, changed: false, localAhead: false };
+            localMeds = medMerged.medications;
+            if (medMerged.changed) {
+              medChanged = true;
+              hasChanges = true;
             }
-            localMeds = Array.from(medMap.values());
+            if (medMerged.localAhead) syncMergeLocalAhead = true;
+          }
+          // Thuốc đã xóa trên máy này phải bị loại khỏi bản local (nếu Cloud vừa hồi sinh).
+          if (deletedMedIds.size) {
+            const before = localMeds.length;
+            localMeds = localMeds.filter(m => m && !deletedMedIds.has(m.id));
+            if (localMeds.length !== before) {
+              medChanged = true;
+              hasChanges = true;
+            }
           }
 
           if (Array.isArray(cloudData.medHistory) && cloudData.medHistory.length > 0) {
-            const histMap = new Map();
-            localHistory.forEach(h => {
-              const k = h.id || h.medId + '_' + h.timeStr + '_' + (h.date || h.timestamp);
-              histMap.set(k, h);
-            });
-            for (const ch of cloudData.medHistory) {
-              if (!ch) continue;
-              const k = ch.id || ch.medId + '_' + ch.timeStr + '_' + (ch.date || ch.timestamp);
-              if (!histMap.has(k)) {
-                histMap.set(k, ch);
-                medChanged = true;
-                hasChanges = true;
-              }
+            const histMerged =
+              window.SyncMerge && typeof window.SyncMerge.mergeMedHistory === 'function'
+                ? window.SyncMerge.mergeMedHistory(localHistory, cloudData.medHistory, {
+                    deletedHistoryIds,
+                  })
+                : { history: localHistory, changed: false };
+            localHistory = histMerged.history;
+            if (histMerged.changed) {
+              medChanged = true;
+              hasChanges = true;
             }
-            localHistory = Array.from(histMap.values());
             localHistory.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
           }
 
@@ -1101,7 +1106,7 @@
       }
 
       // Kiểm tra chi tiết xem máy cục bộ có dữ liệu gì mới hơn hoặc khác biệt so với Cloud không
-      let isLocalAhead = !hasRemoteData;
+      let isLocalAhead = !hasRemoteData || syncMergeLocalAhead;
       if (!isLocalAhead && cloudData) {
         const remoteSessions = Array.isArray(cloudData.sessions) ? cloudData.sessions : [];
         const remoteKnowledge = Array.isArray(cloudData.knowledgeBase)
@@ -1294,20 +1299,22 @@
 
       // Chỉ lưu xuống IndexedDB khi thực sự có thay đổi từ Cloud
       if (hasChanges) {
-        // Lưu bằng transaction trực tiếp, KHÔNG gọi saveToDB để triệt tiêu đệ quy!
-        await clearAllDB();
+        // Ghi ATOMIC trong MỘT transaction: clear + put cùng transaction, không gọi
+        // clearAllDB() riêng (nếu bước put lỗi trước đây sẽ mất sạch dữ liệu).
         let database = getDB();
         if (!database && typeof window.initDB === 'function') {
           await window.initDB();
           database = getDB();
         }
         if (database) {
-          const tx = database.transaction(getSTORE_NAME(), 'readwrite');
-          const store = tx.objectStore(getSTORE_NAME());
-          finalSessions.forEach(s => store.put(s));
           await new Promise((res, rej) => {
+            const tx = database.transaction(getSTORE_NAME(), 'readwrite');
+            const store = tx.objectStore(getSTORE_NAME());
+            store.clear();
+            finalSessions.forEach(s => store.put(s));
             tx.oncomplete = () => res();
             tx.onerror = e => rej(e);
+            tx.onabort = e => rej(e);
           });
         }
         window.sessions = (await getAllFromDB()).sort(
@@ -1380,6 +1387,8 @@
           deletedVectorIds: Array.from(deletedVectorIds),
           medications: JSON.parse(ls.getItem('jarvis_medications') || '[]'),
           medHistory: JSON.parse(ls.getItem('jarvis_med_history') || '[]'),
+          deletedMedIds: JSON.parse(ls.getItem('jarvis_deleted_med_ids') || '[]'),
+          deletedMedHistoryIds: JSON.parse(ls.getItem('jarvis_deleted_med_history_ids') || '[]'),
           keyUsageFlash:
             typeof window.loadKeyUsageData === 'function' ? window.loadKeyUsageData() : null,
           keyUsageOpenRouter:

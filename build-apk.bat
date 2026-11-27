@@ -20,10 +20,15 @@ if !ERRORLEVEL! NEQ 0 (
 )
 
 echo [2/3] Cau hinh moi truong Java / Android SDK...
-if exist "C:\Program Files\Microsoft\jdk-17.0.21.21-hotspot" (
+:: Gradle 8.2 khong chay duoc tren JDK 25 (Android Studio jbr moi) -> uu tien JDK 17
+if exist "%USERPROFILE%\.jdks\jbr-17.0.14" (
+    set "JAVA_HOME=%USERPROFILE%\.jdks\jbr-17.0.14"
+) else if exist "C:\Program Files\Microsoft\jdk-17.0.21.21-hotspot" (
     set "JAVA_HOME=C:\Program Files\Microsoft\jdk-17.0.21.21-hotspot"
 ) else if exist "C:\Program Files\Eclipse Adoptium\jdk-17" (
     set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-17"
+) else if exist "%USERPROFILE%\.jdks\jbr-17.0.14" (
+    set "JAVA_HOME=%USERPROFILE%\.jdks\jbr-17.0.14"
 ) else if exist "C:\Program Files\Android\Android Studio\jbr" (
     set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
 )

@@ -10,9 +10,9 @@ import androidx.annotation.RequiresApi
 
 /**
  * Quick Settings Tile cho Jarvis AI
- * - Vuông màn hình → bật Tile → mở app + auto-start wake word listening
- * - Tile trạng thái: ACTIVE khi listening, INACTIVE khi không
- * - Long press tile → mở app trực tiếp
+ * - Chạm tile → mở app và bắt đầu cuộc gọi thoại Live (hands-free)
+ * - Wake word trong web đã bị gỡ, nên tile KHÔNG dùng wake-word nữa
+ * - Long press tile → mở cài đặt tile của hệ thống
  */
 @RequiresApi(Build.VERSION_CODES.N)
 class JarvisTileService : TileService() {
@@ -51,25 +51,19 @@ class JarvisTileService : TileService() {
         super.onClick()
         Log.d(TAG, "Tile clicked")
 
-        val tile = qsTile
-        val newState = when (tile.state) {
-            Tile.STATE_ACTIVE -> Tile.STATE_INACTIVE
-            else -> Tile.STATE_ACTIVE
-        }
-
-        // Toggle trạng thái
-        val startListening = (newState == Tile.STATE_ACTIVE)
-        launchJarvisWithWakeWord(startListening)
-        updateTileState(startListening)
+        // Luôn mở app và bắt đầu Live Call; trạng thái tile không phản ánh phiên gọi
+        // (do app quyết định), nên đặt lại INACTIVE để lần chạm sau vẫn kích hoạt.
+        launchJarvisLiveCall()
+        updateTileState(isListening = false)
     }
 
     /**
-     * Mở MainActivity và gửi intent để auto-start wake word listening
+     * Mở MainActivity và yêu cầu bắt đầu cuộc gọi thoại Live (hands-free)
      */
-    private fun launchJarvisWithWakeWord(startListening: Boolean) {
+    private fun launchJarvisLiveCall() {
         val intent = Intent(this, MainActivity::class.java).apply {
             action = ACTION_AUTO_START_WAKEWORD
-            putExtra(EXTRA_START_LISTENING, startListening)
+            putExtra(EXTRA_START_LISTENING, true)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         startActivityAndCollapse(intent)
@@ -82,9 +76,8 @@ class JarvisTileService : TileService() {
         val tile = qsTile
         tile.state = if (isListening) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         tile.label = if (isListening) getString(R.string.tile_label_listening) else getString(R.string.tile_label)
-        tile.subtitle = if (isListening) getString(R.string.tile_subtitle_on) else getString(R.string.tile_subtitle_off)
-        // Icon: có thể dùng icon khác cho trạng thái active
-        tile.icon = Icon.createWithResource(this, if (isListening) R.drawable.ic_tile_jarvis_active else R.drawable.ic_tile_jarvis)
+        tile.subtitle = getString(R.string.tile_subtitle_off)
+        tile.icon = Icon.createWithResource(this, R.drawable.ic_tile_jarvis)
         tile.updateTile()
     }
 

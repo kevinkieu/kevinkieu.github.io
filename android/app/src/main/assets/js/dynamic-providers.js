@@ -846,7 +846,7 @@
       const varName = keyVarMap[p.id] || p.id + 'Keys';
       const indexVarName = keyIndexVarMap[p.id] || p.keyIndexVar;
       window[varName] = keys;
-      window[indexVarName] = 0;
+      /** @type {any} */ (window)[indexVarName] = 0;
     });
 
     // Rebuild model select options in UI
@@ -1693,7 +1693,7 @@
     if (!content || !header) return;
 
     const isCollapsed = content.classList.toggle('collapsed');
-    header.setAttribute('aria-expanded', !isCollapsed);
+    header.setAttribute('aria-expanded', String(!isCollapsed));
     if (icon) {
       icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
     }

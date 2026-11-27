@@ -292,7 +292,7 @@
         'live-call': '📞 Live Call',
         none: 'Không hành động',
       };
-      showToast(`${labels[action] || action} (${gesture})`, 'info', 1500);
+      showToast(`${labels[action] || action} (${gesture})`, 'info');
     }
 
     // Visual ripple effect

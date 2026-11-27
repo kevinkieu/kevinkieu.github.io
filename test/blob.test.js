@@ -1,92 +1,19 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 function loadBlobModule() {
-  const code = `
-    async function blobToBase64(blob) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    }
-
-    function base64ToBlob(base64, mimeType) {
-      const byteChars = atob(base64);
-      const byteNumbers = new Array(byteChars.length);
-      for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
-      return new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
-    }
-
-    function downloadBlob(blob, filename) {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }
-
-    async function saveBlobViaNative(blob, filename, mimeType) {
-      if (window.Android && typeof window.Android.saveFile === 'function') {
-        const base64 = await blobToBase64(blob);
-        return window.Android.saveFile(base64, filename, mimeType);
-      }
-      downloadBlob(blob, filename);
-    }
-
-    async function shareContent(data) {
-      if (navigator.share) {
-        try {
-          await navigator.share(data);
-          return true;
-        } catch (e) {
-          if (e.name !== 'AbortError') console.warn('Share API failed:', e);
-        }
-      }
-      if (data.text && navigator.clipboard) {
-        try {
-          await navigator.clipboard.writeText(data.text);
-          return true;
-        } catch (e) {
-          console.warn('Clipboard fallback failed:', e);
-        }
-      }
-      return false;
-    }
-
-    async function copyToClipboard(text, toastMsg = 'Đã copy!') {
-      try {
-        await navigator.clipboard.writeText(text);
-        if (typeof window.showToast === 'function') window.showToast(toastMsg, 'success');
-        return true;
-      } catch (e) {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        ta.remove();
-        if (typeof window.showToast === 'function') window.showToast(toastMsg, 'success');
-        return true;
-      }
-    }
-
-    window.__TEST_EXPORTS__ = {
-      blobToBase64,
-      base64ToBlob,
-      downloadBlob,
-      saveBlobViaNative,
-      shareContent,
-      copyToClipboard,
-    };
-  `;
-  eval(code);
-  return window.__TEST_EXPORTS__;
+  // Nạp CHÍNH mã production; chỉ mock môi trường (fetch, storage, DOM).
+  const code = fs.readFileSync(path.resolve(process.cwd(), 'js/blob.js'), 'utf8');
+  new Function(code)();
+  return {
+    blobToBase64: window.blobToBase64,
+    base64ToBlob: window.base64ToBlob,
+    downloadBlob: window.downloadBlob,
+    saveBlobViaNative: window.saveBlobViaNative,
+    shareContent: window.shareContent,
+    copyToClipboard: window.copyToClipboard,
+  };
 }
 
 describe('blob.js', () => {

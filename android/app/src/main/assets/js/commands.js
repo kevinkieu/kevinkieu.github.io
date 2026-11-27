@@ -15,6 +15,13 @@
       : console.log(`[${type}] ${msg}`);
   const closeModals = () =>
     typeof window.closeModals === 'function' ? window.closeModals() : null;
+  const escapeHtml = str =>
+    typeof window.escapeHtml === 'function'
+      ? window.escapeHtml(str)
+      : String(str == null ? '' : str).replace(
+          /[&<>"']/g,
+          m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]
+        );
 
   // --- PROMPT LIBRARY SYSTEM ---
   const DEFAULT_PROMPTS = [
@@ -64,10 +71,11 @@
     const list = getCustomPrompts();
     const container = $('snippets-container');
     if (!container) return;
+    // Prompt là dữ liệu người dùng nhập: đưa vào data-* đã encode, không ghép vào JS inline.
     container.innerHTML = list
       .map(
         p => `
-      <div class="snippet-chip" onclick="if(typeof window.applySnippet==='function') window.applySnippet('${p.text.replace(/'/g, "\\'")}')">${p.title}</div>
+      <div class="snippet-chip" data-prompt="${encodeURIComponent(p.text || '')}" onclick="if(typeof window.applySnippet==='function') window.applySnippet(decodeURIComponent(this.dataset.prompt))">${escapeHtml(p.title)}</div>
     `
       )
       .join('');
@@ -82,12 +90,12 @@
         p => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--input-bg);border-radius:var(--radius-sm);border:1px solid var(--border);">
         <div style="flex:1;overflow:hidden;margin-right:10px;">
-          <strong style="font-size:0.82rem;color:var(--primary);">${p.title}</strong>
-          <p style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;">${p.text}</p>
+          <strong style="font-size:0.82rem;color:var(--primary);">${escapeHtml(p.title)}</strong>
+          <p style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;">${escapeHtml(p.text)}</p>
         </div>
         <div style="display:flex;gap:4px;">
-          <button class="btn" style="padding:4px 8px;font-size:0.72rem;" onclick="if(typeof window.applySnippet==='function') window.applySnippet('${p.text.replace(/'/g, "\\'")}'); if(typeof window.closeModals==='function') window.closeModals();">Dùng</button>
-          <button class="btn danger" style="padding:4px 8px;font-size:0.72rem;" onclick="window.removeCustomPrompt('${p.id}')">Xóa</button>
+          <button class="btn" style="padding:4px 8px;font-size:0.72rem;" data-prompt="${encodeURIComponent(p.text || '')}" onclick="if(typeof window.applySnippet==='function') window.applySnippet(decodeURIComponent(this.dataset.prompt)); if(typeof window.closeModals==='function') window.closeModals();">Dùng</button>
+          <button class="btn danger" style="padding:4px 8px;font-size:0.72rem;" data-id="${encodeURIComponent(p.id || '')}" onclick="window.removeCustomPrompt(decodeURIComponent(this.dataset.id))">Xóa</button>
         </div>
       </div>
     `

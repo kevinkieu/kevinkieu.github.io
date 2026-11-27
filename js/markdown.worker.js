@@ -27,11 +27,11 @@ marked.setOptions({
 // Simple HTML escape for code block content
 function escapeHtml(str) {
   return String(str == null ? '' : str)
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
-    .replace(/'/g, '\u0027');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Process code blocks using regex + hljs.highlight (string-based)
@@ -44,13 +44,14 @@ function processCodeBlocks(html) {
     (match, lang, codeContent) => {
       if (lang === 'mermaid') return match; // Skip mermaid - handled on main thread
 
-      // Decode HTML entities in code content
+      // Decode HTML entities in code content (marked đã escape khi sinh HTML)
       const decodedCode = codeContent
-        .replace(/</g, '<')
-        .replace(/>/g, '>')
-        .replace(/&/g, '&')
-        .replace(/"/g, '"')
-        .replace(/'/g, "'");
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&#x27;/gi, "'")
+        .replace(/&amp;/g, '&');
 
       // Highlight with hljs.highlight (string-based, not highlightElement)
       let highlightedCode = decodedCode;

@@ -4,9 +4,16 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content, viewport-fit=cover"
     />
     <title>Jarvis AI - Ultimate Intelligence Assistant</title>
+
+    <!-- CSP: chặn script data:/blob:, plugin, base tag bị chiếm. Vẫn cho phép CDN + inline handler
+         mà app đang dùng; lá chắn XSS chính là js/sanitize.js (allowlist). -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; media-src 'self' https: data: blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:*; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-src 'self' https:;"
+    />
 
     <!-- PWA META & MANIFEST -->
     <link rel="manifest" href="manifest.json" />
@@ -31,7 +38,10 @@
 
     <!-- GOOGLE GENAI (nạp trực tiếp từ CDN, gán vào window để mọi module dùng chung) -->
     <script type="module">
-      import * as genai from 'https://esm.run/@google/genai';
+      // Ghim version + nạp thẳng jsDelivr: bản build ESM của @google/genai import
+      // "/npm/p-retry@4.6.2/+esm" (đường dẫn từ gốc), nên nếu module đến từ esm.run
+      // thì đường dẫn đó thành esm.run/npm/... và 404. Nạp trực tiếp jsDelivr thì đúng.
+      import * as genai from 'https://cdn.jsdelivr.net/npm/@google/genai@3.6.1/+esm';
       window.GoogleGenAI = genai.GoogleGenAI || genai.default || genai;
     </script>
 
@@ -3718,6 +3728,8 @@
          vì globals.js đặt marked.use({ breaks: true }). -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="./js/perf-marks.js?v=1"></script>
+    <script src="./js/sanitize.js?v=1"></script>
+    <script src="./js/sync-merge.js?v=1"></script>
     <script src="./js/globals.js?v=77"></script>
     <script src="./js/lazy-libs.js?v=78"></script>
     <script src="./js/module-loader.js?v=2"></script>

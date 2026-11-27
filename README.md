@@ -25,6 +25,53 @@ Dual-Screen Face-to-Face Interpreter, and Real-Time Web Search._
 
 ---
 
+## 🔐 Bảo mật, đồng bộ & build (cập nhật 2026-11-27)
+
+### Chặn XSS
+
+- `js/sanitize.js` là cửa duy nhất để đưa HTML vào DOM: allowlist thẻ/thuộc tính, bỏ `on*`, chặn
+  `javascript:`/`vbscript:`/`data:` (chỉ cho ảnh base64), chặn `style` có `url()`/`expression()`.
+  Không phụ thuộc CDN nên APK offline vẫn chạy.
+- Đã áp dụng cho: chat/stream renderer, `markdown.worker.js` (escape trong `data-code`), Daily
+  Briefing, xuất PDF/Word, Prompt Library và tên tệp đính kèm.
+- `index.html` có CSP: `object-src 'none'`, `base-uri 'self'`, chặn script `data:`/`blob:`.
+
+### WebView Android
+
+- Bridge `JarvisNativeBridge` chỉ tồn tại cho `https://appassets.androidplatform.net`; điều hướng
+  remote bị chặn và mở bằng trình duyệt ngoài.
+- Chỉ cấp Micro/Camera khi origin yêu cầu đúng origin nội bộ.
+- `allowFileAccess=false`, universal access tắt, third-party cookie tắt, cleartext tắt,
+  `MedicationAlarmReceiver` đặt `exported=false`.
+- `saveBase64File(base64, filename, mimeType)` tự lọc path traversal/MIME lạ.
+
+### Smart Sync không mất dữ liệu
+
+- Hợp nhất **theo từng tin nhắn** (`js/sync-merge.js`), không chọn cả phiên theo số lượng, nên hai
+  máy cùng chat vẫn giữ đủ tin của cả hai.
+- Tombstone tin nhắn/phiên/vector được áp cho cả hai phía trước khi merge.
+- Thuốc có `updatedAt` và tombstone `jarvis_deleted_med_ids`; lịch sử uống thuốc có tombstone riêng
+  → xóa là không hồi sinh từ Cloud.
+- Ghi IndexedDB bằng một transaction `clear + put` (không còn cảnh clear xong rồi lỗi).
+
+### Build & kiểm thử
+
+```bash
+npm test              # Vitest, test nạp chính mã trong js/ (không copy logic)
+npm run typecheck     # tsc --noEmit, checkJs: true, 0 lỗi
+npm run lint          # ESLint
+npm run build:web     # dist/ đầy đủ (bundle + classic .min.js + rag.worker.js)
+npm run check-assets  # mirror android/app/src/main/assets khớp web root
+node build.js         # APK release, kiểm tra chữ ký bằng apksigner
+```
+
+- `build.js` tự chọn JDK 17 (Gradle 8.2 không chạy được JDK 25 của Android Studio).
+- Release APK luôn được ký: dùng `android/keystore.properties` nếu có, không thì debug key.
+- Quick Settings Tile (`JarvisTileService.kt`) đã được biên dịch thật và mở Live Call hands-free
+  (wake word phía web đã gỡ).
+
+---
+
 <a name="-tiếng-việt"></a>
 
 ## 🇻🇳 TIẾNG VIỆT
@@ -52,7 +99,8 @@ vào các framework nặng nề.
   - Bạn nói tiếng Việt ➔ Tự động dịch và phát âm thanh tiếng Khách.
   - Khách nói tiếng nước ngoài ➔ Tự động dịch và phát âm thanh tiếng Việt.
 - **Độ trễ chuyển đổi 0ms**: Giữ kết nối liên tục, chuyển mic không cần tải lại socket.
-- **Hỗ trợ 70+ ngôn ngữ**: Tiếng Anh, Trung, Nhật, Hàn, Pháp, Đức, Thái, Nga, Tây Ban Nha, v.v.
+- **Hỗ trợ 20 ngôn ngữ đích** (đúng theo `SUPPORTED_LANGS` trong `js/translate.js`): Việt, Anh,
+  Trung, Nhật, Hàn, Pháp, Đức, Thái, Nga, Tây Ban Nha, v.v.
 - **VU Meter & Speech Recognition cục bộ**: Vạch đo âm lượng nhảy theo giọng nói và hiển thị ngay
   tức thì phụ đề câu nói lên màn hình.
 
@@ -283,8 +331,8 @@ split-screen bilateral live interpretation, and real-time internet search capabi
   - Speak foreign language ➔ Instantly translates and voices in Vietnamese.
 - **0ms Switch Latency**: Persistent WebSocket connection allows instantaneous speaker toggling
   without reconnection delays.
-- **70+ Supported Languages**: English, Chinese, Japanese, Korean, French, German, Spanish, Thai,
-  Russian, and more.
+- **20 target languages** (see `SUPPORTED_LANGS` in `js/translate.js`): English, Vietnamese,
+  Chinese, Japanese, Korean, French, German, Spanish, Thai, Russian, and more.
 - **Real-Time VU Meter & On-Device Transcription**: Live audio volume indicator and 0ms latency
   speech-to-text previews.
 

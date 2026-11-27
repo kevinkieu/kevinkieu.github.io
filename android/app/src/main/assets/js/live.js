@@ -983,7 +983,7 @@ $('btn-live-cam-toggle').onclick = async () => {
         if (!isLiveCamOn || liveWs?.readyState !== WebSocket.OPEN || !isLiveSetupComplete) return;
         cv.width = v.videoWidth || 320;
         cv.height = v.videoHeight || 240;
-        cx.drawImage(v, 0, 0, cv.width, cv.height);
+        /** @type {any} */ (cx).drawImage(v, 0, 0, cv.width, cv.height);
         liveWs.send(
           JSON.stringify({
             realtimeInput: {
@@ -1062,3 +1062,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+export {};

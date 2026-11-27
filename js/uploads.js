@@ -4,6 +4,27 @@
    Tách khỏi js/app.js. Chỉ dùng trạng thái công khai: filesData, txtContent, DOM,
    showToast, updateTokenCount, escapeHtml, window.ensureLib (pdf.js tải theo nhu cầu).
    ========================================================================== */
+const escapeHtmlSafe = str =>
+  typeof window.escapeHtml === 'function'
+    ? window.escapeHtml(str)
+    : String(str == null ? '' : str).replace(
+        /[&<>"']/g,
+        m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]
+      );
+
+// Object URL của ảnh xem trước được thu hồi mỗi lần vẽ lại để không rò rỉ bộ nhớ.
+const previewUrls = new Map();
+function previewUrlFor(f, i) {
+  let u = previewUrls.get(i);
+  if (!u || previewUrls.get('f' + i) !== f) {
+    if (u) URL.revokeObjectURL(u);
+    u = URL.createObjectURL(f);
+    previewUrls.set(i, u);
+    previewUrls.set('f' + i, f);
+  }
+  return u;
+}
+
 async function readPDF(f) {
   const pdfjsLib =
     typeof window.ensureLib === 'function' ? await window.ensureLib('pdfjs') : window.pdfjsLib;
@@ -79,10 +100,10 @@ async function processUploadFiles(fs) {
       if (filesData.length < 20) filesData.push(f);
     } else if (f.type === 'application/pdf') {
       txtContent += `\n[PDF: ${f.name}]:\n${(await readPDF(f)).substring(0, 50000)}\n`;
-      DOM.textFileList.innerHTML += `📑 ${f.name}<br>`;
+      DOM.textFileList.innerHTML += `📑 ${escapeHtmlSafe(f.name)}<br>`;
     } else {
       txtContent += `\n[Văn bản: ${f.name}]:\n${(await f.text()).substring(0, 50000)}\n`;
-      DOM.textFileList.innerHTML += `📄 ${f.name}<br>`;
+      DOM.textFileList.innerHTML += `📄 ${escapeHtmlSafe(f.name)}<br>`;
     }
   }
   renderFiles();
@@ -92,11 +113,19 @@ async function processUploadFiles(fs) {
 function renderFiles() {
   DOM.previewBox.style.display = filesData.length || txtContent ? 'block' : 'none';
   DOM.fileCount.innerText = filesData.length + (txtContent ? 1 : 0);
+  // Thu hồi URL của các tệp đã bị xóa khỏi danh sách
+  for (const key of Array.from(previewUrls.keys())) {
+    if (typeof key === 'number' && key >= filesData.length) {
+      URL.revokeObjectURL(previewUrls.get(key));
+      previewUrls.delete(key);
+      previewUrls.delete('f' + key);
+    }
+  }
   DOM.previewGrid.innerHTML = filesData
     .map(
       (f, i) => `
         <div style="position:relative;width:50px;height:50px;background:#1e293b;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;overflow:hidden;border:1px solid var(--border);">
-          ${f.type.startsWith('image') ? `<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover;">` : f.type.startsWith('video') ? '🎬 VIDEO' : f.type.startsWith('audio') ? '🎵 AUDIO' : '📄 FILE'}
+          ${f.type.startsWith('image') ? `<img src="${previewUrlFor(f, i)}" style="width:100%;height:100%;object-fit:cover;">` : f.type.startsWith('video') ? '🎬 VIDEO' : f.type.startsWith('audio') ? '🎵 AUDIO' : '📄 FILE'}
           <button onclick="rmImg(${i})" style="position:absolute;top:2px;right:2px;background:rgba(239,68,68,0.9);color:white;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;">×</button>
         </div>
       `

@@ -276,7 +276,7 @@
   ];
 
   function getSlotUsage(group, slot) {
-    const fn = window[group.usageFn];
+    const fn = /** @type {any} */ (window[group.usageFn]);
     return typeof fn === 'function' ? Number(fn(slot)) || 0 : 0;
   }
 

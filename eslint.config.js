@@ -75,6 +75,15 @@ export default tseslint.config(
       'no-restricted-globals': ['error', 'event', 'fdescribe', 'fit', 'it', 'xdescribe', 'xit'],
     },
   },
+  // Ambient type declarations: `any` là chủ ý cho interop với code JS legacy.
+  {
+    files: ['types/**/*.d.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      'no-unused-vars': 'off',
+    },
+  },
   // Ignore patterns
   {
     ignores: [

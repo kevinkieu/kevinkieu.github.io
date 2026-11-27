@@ -57,7 +57,7 @@
   function getModelThinkingLevels(model) {
     const m = String(model || '').trim();
     for (const [re, levels] of THINKING_LEVELS_BY_MODEL) {
-      if (re.test(m)) return levels.slice();
+      if (/** @type {any} */ (re).test(m)) return /** @type {any[]} */ (levels).slice();
     }
     return [];
   }

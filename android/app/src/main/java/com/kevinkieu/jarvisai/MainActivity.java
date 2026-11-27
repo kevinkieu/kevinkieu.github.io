@@ -167,14 +167,17 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public boolean saveBase64File(String base64Data, String filename, String mimeType) {
             if (base64Data == null || filename == null) return false;
+            // Không tin tên tệp/MIME từ JS: chặn path traversal và MIME lạ.
+            final String safeName = safeFileName(filename);
+            final String safeMime = safeMimeType(mimeType);
             try {
                 byte[] fileBytes = Base64.decode(base64Data, Base64.DEFAULT);
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     ContentResolver resolver = getContentResolver();
                     ContentValues contentValues = new ContentValues();
-                    contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename);
-                    contentValues.put(MediaStore.MediaColumns.MIME_TYPE, mimeType != null ? mimeType : "application/octet-stream");
+                    contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, safeName);
+                    contentValues.put(MediaStore.MediaColumns.MIME_TYPE, safeMime);
                     contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
 
                     Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues);
@@ -183,7 +186,7 @@ public class MainActivity extends AppCompatActivity {
                             if (os != null) {
                                 os.write(fileBytes);
                                 os.flush();
-                                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Đã lưu vào thư mục Tải về (Download): " + filename, Toast.LENGTH_LONG).show());
+                                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Đã lưu vào thư mục Tải về (Download): " + safeName, Toast.LENGTH_LONG).show());
                                 return true;
                             }
                         }
@@ -191,13 +194,13 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
                     if (!downloadsDir.exists()) downloadsDir.mkdirs();
-                    File outFile = new File(downloadsDir, filename);
+                    File outFile = new File(downloadsDir, safeName);
                     try (FileOutputStream fos = new FileOutputStream(outFile)) {
                         fos.write(fileBytes);
                         fos.flush();
                     }
                     MediaScannerConnection.scanFile(MainActivity.this, new String[]{outFile.getAbsolutePath()}, null, null);
-                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Đã lưu vào thư mục Tải về (Download): " + filename, Toast.LENGTH_LONG).show());
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Đã lưu vào thư mục Tải về (Download): " + safeName, Toast.LENGTH_LONG).show());
                     return true;
                 }
             } catch (Exception e) {
@@ -302,6 +305,31 @@ public class MainActivity extends AppCompatActivity {
                 Log.e(TAG, "Error testing medication reminder: " + e.getMessage());
             }
         }
+    }
+
+    /** Bỏ mọi thành phần đường dẫn/ký tự điều khiển khỏi tên tệp do JS gửi lên. */
+    private static String safeFileName(String filename) {
+        String name = filename == null ? "" : filename.replace('\\', '/');
+        int slash = name.lastIndexOf('/');
+        if (slash >= 0) name = name.substring(slash + 1);
+        name = name.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_").trim();
+        if (name.isEmpty() || name.equals(".") || name.equals("..")) name = "jarvis_file";
+        if (name.length() > 120) {
+            int dot = name.lastIndexOf('.');
+            String ext = dot > 0 ? name.substring(dot) : "";
+            name = name.substring(0, Math.max(1, 120 - ext.length())) + ext;
+        }
+        if (name.startsWith(".")) name = "_" + name;
+        return name;
+    }
+
+    private static String safeMimeType(String mimeType) {
+        String m = mimeType == null ? "" : mimeType.trim().toLowerCase();
+        return m.matches("^[a-z0-9.+-]+/[a-z0-9.+-]+$") ? m : "application/octet-stream";
+    }
+
+    private static boolean isLocalUrl(String url) {
+        return url != null && (url.startsWith(LOCAL_ORIGIN) || url.startsWith("about:blank"));
     }
 
     @Override
@@ -415,16 +443,16 @@ public class MainActivity extends AppCompatActivity {
         }
     }
     
-    // Flag để auto-start wake word khi page đã load xong
+    // Flag để mở Live Call khi page đã load xong (từ Quick Settings Tile)
     private boolean pendingAutoStartWakeWord = false;
     
     private void triggerAutoStartWakeWord(boolean startListening) {
         if (webView == null) return;
-        String js = String.format(
-            "if (window.toggleWakeWord) window.toggleWakeWord(%b); if (%b && window.startWakeWordListening) window.startWakeWordListening();",
-            startListening, startListening
-        );
-        webView.evaluateJavascript(js, null);
+        // Wake word phía web đã bị gỡ -> tile giờ bật cuộc gọi thoại Live (hands-free).
+        String js = startListening
+            ? "if (window.startLiveVoiceCall) { try { window.startLiveVoiceCall(); } catch (e) { console.warn('Live call error', e); } }"
+            : "";
+        if (!js.isEmpty()) webView.evaluateJavascript(js, null);
         pendingAutoStartWakeWord = false;
     }
 
@@ -434,10 +462,15 @@ public class MainActivity extends AppCompatActivity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
-        settings.setAllowFileAccess(true);
+        // App chạy từ https://appassets... nên KHÔNG cần truy cập file://.
+        // Giữ allowContentAccess cho trình chọn tệp (content:// URI) hoạt động.
+        settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
-        settings.setAllowFileAccessFromFileURLs(true);
-        settings.setAllowUniversalAccessFromFileURLs(true);
+        settings.setAllowFileAccessFromFileURLs(false);
+        settings.setAllowUniversalAccessFromFileURLs(false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        }
         settings.setMediaPlaybackRequiresUserGesture(false); // Cho phép phát audio mượt mà
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
@@ -446,11 +479,11 @@ public class MainActivity extends AppCompatActivity {
         settings.setDisplayZoomControls(false);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
-        // Kích hoạt lưu Cookie và hỗ trợ Third Party
+        // Cookie chỉ dùng cho chính origin của app; không mở cho third-party.
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            cookieManager.setAcceptThirdPartyCookies(webView, true);
+            cookieManager.setAcceptThirdPartyCookies(webView, false);
         }
 
         webView.setBackgroundColor(0xFF0F172A);
@@ -462,8 +495,9 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                if (assetLoader != null) {
-                    WebResourceResponse resp = assetLoader.shouldInterceptRequest(request.getUrl());
+                Uri uri = request != null ? request.getUrl() : null;
+                if (assetLoader != null && uri != null && uri.toString().startsWith(LOCAL_ORIGIN)) {
+                    WebResourceResponse resp = assetLoader.shouldInterceptRequest(uri);
                     if (resp != null) return resp;
                 }
                 return super.shouldInterceptRequest(view, request);
@@ -484,23 +518,30 @@ public class MainActivity extends AppCompatActivity {
 
             private boolean handleExternalUrl(String url) {
                 if (url == null) return false;
-                if (url.startsWith(LOCAL_ORIGIN) || url.startsWith("https://kevinkieu.github.io") || url.startsWith("file:///android_asset/")) {
-                    return false;
+                // Chỉ origin nội bộ được ở lại WebView; mọi URL khác mở bằng trình duyệt.
+                if (isLocalUrl(url)) return false;
+                if (!(url.startsWith("http://") || url.startsWith("https://") || url.startsWith("mailto:") || url.startsWith("tel:"))) {
+                    return true; // chặn scheme lạ (intent:, javascript:, file:...)
                 }
                 try {
                     Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(intent);
                     return true;
                 } catch (Exception e) {
-                    return false;
+                    return true;
                 }
             }
 
             @Override
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
-                if (url != null && url.startsWith(LOCAL_ORIGIN)) {
+                if (isLocalUrl(url)) {
                     isPageLoaded = false;
+                } else if (url != null) {
+                    // Chặn tuyệt đối điều hướng remote trong WebView (bridge chỉ dành cho local).
+                    view.stopLoading();
+                    handleExternalUrl(url);
                 }
             }
 
@@ -541,10 +582,23 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onPermissionRequest(final PermissionRequest request) {
-                // Tự động cấp quyền Micro và Camera cho website
+                // Chỉ cấp Micro/Camera cho chính origin nội bộ của app.
                 runOnUiThread(() -> {
-                    String[] resources = request.getResources();
-                    request.grant(resources);
+                    Uri origin = request.getOrigin();
+                    String originStr = origin == null ? "" : origin.toString();
+                    if (!LOCAL_ORIGIN.equalsIgnoreCase(originStr)) {
+                        request.deny();
+                        return;
+                    }
+                    List<String> granted = new ArrayList<>();
+                    for (String res : request.getResources()) {
+                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(res)
+                                || PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(res)) {
+                            granted.add(res);
+                        }
+                    }
+                    if (granted.isEmpty()) request.deny();
+                    else request.grant(granted.toArray(new String[0]));
                 });
             }
 

@@ -1,5 +1,5 @@
 // Jarvis AI Service Worker for PWA
-const CACHE_NAME = 'jarvis-ai-pwa-v94';
+const CACHE_NAME = 'jarvis-ai-pwa-v96';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -14,6 +14,8 @@ const STATIC_ASSETS = [
   './js/perf-marks.js',
   './js/module-loader.js',
   './js/lazy-libs.js',
+  './js/sanitize.js',
+  './js/sync-merge.js',
   './js/globals.js',
   './js/model-registry.js',
   './js/failover.js',
@@ -41,23 +43,61 @@ const CDN_LIBS = [
   'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js',
-  'https://esm.run/@google/genai',
+  'https://cdn.jsdelivr.net/npm/@google/genai@3.6.1/+esm',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
 ];
 
+// Danh sách asset được suy ra từ chính index.html (không còn lệch khi thêm file mới).
+async function discoverAssets() {
+  const urls = new Set([
+    './',
+    './index.html',
+    './manifest.json',
+    './icon-192.png',
+    './icon-512.png',
+  ]);
+  try {
+    const res = await fetch('./index.html', { cache: 'no-store' });
+    if (res.ok) {
+      const html = await res.text();
+      const re = /(?:src|href)="(\.\/[^"?#]+\.(?:js|css|json|png|svg|webp))(?:\?[^"]*)?"/g;
+      let m;
+      while ((m = re.exec(html))) urls.add(m[1]);
+      // Các module nạp theo nhu cầu qua module-loader.js (không nằm trong index.html)
+      [
+        './js/tts.js',
+        './js/translate.js',
+        './js/rag-core.js',
+        './js/rag.js',
+        './js/rag.worker.js',
+        './js/sync.js',
+        './js/markdown.worker.js',
+      ].forEach(u => urls.add(u));
+    }
+  } catch (e) {
+    console.warn('[SW] Không đọc được index.html, dùng danh sách dự phòng:', e);
+  }
+  return Array.from(urls);
+}
+
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then(cache =>
-        Promise.all([
-          cache.addAll(STATIC_ASSETS),
-          cache.addAll(CDN_LIBS).catch(() => {}), // CDN libs pre-cache (best effort)
-        ])
-      )
-      .catch(() => {})
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      let assets = STATIC_ASSETS;
+      try {
+        const discovered = await discoverAssets();
+        if (discovered.length > STATIC_ASSETS.length) assets = discovered;
+      } catch (_) {}
+      // Precache từng file: một file lỗi không làm hỏng toàn bộ install.
+      const results = await Promise.allSettled(assets.map(u => cache.add(u)));
+      const failed = results.filter(r => r.status === 'rejected').length;
+      if (failed) console.warn(`[SW] ${failed}/${assets.length} asset precache thất bại`);
+      // CDN là best-effort (app vẫn chạy online nếu CDN lỗi lúc install).
+      await Promise.allSettled(CDN_LIBS.map(u => cache.add(u)));
+    })()
   );
 });
 
@@ -69,6 +109,17 @@ self.addEventListener('activate', event => {
       .then(() => self.clients.claim())
   );
 });
+
+// Query ?v= chỉ để bust cache; precache lưu không query nên phải chuẩn hoá key.
+function cacheKeyFor(url) {
+  try {
+    const u = new URL(url, self.location.href);
+    u.searchParams.delete('v');
+    return u.toString();
+  } catch (_) {
+    return url;
+  }
+}
 
 self.addEventListener('fetch', event => {
   const url = event.request.url;
@@ -95,7 +146,7 @@ self.addEventListener('fetch', event => {
     url.includes('cdn.jsdelivr.net')
   ) {
     event.respondWith(
-      caches.match(event.request).then(cached => {
+      caches.match(cacheKeyFor(event.request.url)).then(cached => {
         const fetchPromise = fetch(event.request)
           .then(response => {
             if (response && response.status === 200) {
@@ -118,7 +169,7 @@ self.addEventListener('fetch', event => {
 
   if (isScriptOrStyle) {
     event.respondWith(
-      caches.match(event.request).then(cached => {
+      caches.match(cacheKeyFor(event.request.url)).then(cached => {
         const fetchPromise = fetch(event.request)
           .then(response => {
             if (response && response.status === 200) {
@@ -146,7 +197,7 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(() => {
-          return caches.match(event.request).then(cached => {
+          return caches.match(cacheKeyFor(event.request.url)).then(cached => {
             if (cached) return cached;
             return caches.match('./index.html');
           });
@@ -156,5 +207,7 @@ self.addEventListener('fetch', event => {
   }
 
   // Cache-first for other static assets (icons, manifest)
-  event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));
+  event.respondWith(
+    caches.match(cacheKeyFor(event.request.url)).then(response => response || fetch(event.request))
+  );
 });

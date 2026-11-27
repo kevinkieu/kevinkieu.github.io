@@ -1302,3 +1302,5 @@ function resumeSpeaking() {
   }
 }
 window.resumeSpeaking = resumeSpeaking;
+
+export {};

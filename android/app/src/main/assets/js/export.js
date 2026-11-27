@@ -18,6 +18,21 @@
     typeof window.obfuscateKey === 'function' ? window.obfuscateKey(k) : k;
   const deobfuscateKey = k =>
     typeof window.deobfuscateKey === 'function' ? window.deobfuscateKey(k) : k;
+  const escapeHtml = str =>
+    typeof window.escapeHtml === 'function'
+      ? window.escapeHtml(str)
+      : String(str == null ? '' : str).replace(
+          /[&<>"']/g,
+          m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]
+        );
+
+  // Nội dung hội thoại (kể cả tin nhắn cũ nhập từ backup) là dữ liệu không tin cậy.
+  function renderMarkdownSafe(text) {
+    const marked = window.marked;
+    if (!marked) return escapeHtml(text);
+    const html = marked.parse(text || '');
+    return typeof window.sanitizeHtml === 'function' ? window.sanitizeHtml(html) : escapeHtml(text);
+  }
 
   function fallbackBrowserDownload(b, fn) {
     const u = URL.createObjectURL(b);
@@ -46,11 +61,13 @@
         reader.onloadend = () => {
           try {
             const res = reader.result || '';
-            const base64Data = res.includes(',') ? res.split(',')[1] : res;
+            const rawResult = String(res);
+            const base64Data = rawResult.includes(',') ? rawResult.split(',')[1] : rawResult;
+            // Java: saveBase64File(base64Data, filename, mimeType)
             window.JarvisNativeBridge.saveBase64File(
               base64Data,
-              b.type || 'application/octet-stream',
-              fn
+              fn,
+              b.type || 'application/octet-stream'
             );
           } catch (err) {
             console.warn('Native saveBase64File error, falling back to browser:', err);
@@ -235,13 +252,12 @@
 
   function exportChatDoc() {
     const history = window.chatHistory || [];
-    const marked = window.marked;
     const h =
       `<html><head><meta charset="utf-8"></head><body><h2>Lịch sử Trò chuyện Jarvis AI</h2>` +
       history
         .map(
           m =>
-            `<p><strong>${m.role === 'user' ? 'Bạn' : 'Jarvis AI'}:</strong><br>${m.role === 'model' && marked ? marked.parse(m.text) : m.text}</p><hr>`
+            `<p><strong>${m.role === 'user' ? 'Bạn' : 'Jarvis AI'}:</strong><br>${m.role === 'model' ? renderMarkdownSafe(m.text) : escapeHtml(m.text).replace(/\n/g, '<br>')}</p><hr>`
         )
         .join('') +
       '</body></html>';
@@ -253,7 +269,6 @@
 
   async function exportChatPDF() {
     const history = window.chatHistory || [];
-    const marked = window.marked;
     let html2pdf = window.html2pdf;
     if (!html2pdf && typeof window.ensureLib === 'function') {
       showToast('⏳ Đang tải thư viện xuất PDF...', 'info');
@@ -273,7 +288,7 @@
       history
         .map(
           m =>
-            `<div style="margin:14px 0;"><strong>${m.role === 'user' ? 'Bạn' : 'Jarvis AI'} [${m.time || ''}]:</strong><br>${m.role === 'model' && marked ? marked.parse(m.text) : m.text}</div><hr style="border:none;border-top:1px solid #e2e8f0;">`
+            `<div style="margin:14px 0;"><strong>${m.role === 'user' ? 'Bạn' : 'Jarvis AI'} [${escapeHtml(m.time || '')}]:</strong><br>${m.role === 'model' ? renderMarkdownSafe(m.text) : escapeHtml(m.text).replace(/\n/g, '<br>')}</div><hr style="border:none;border-top:1px solid #e2e8f0;">`
         )
         .join('');
     html2pdf()

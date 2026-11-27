@@ -490,7 +490,7 @@
     for (const p of Object.values(PROVIDER_REGISTRY)) {
       if (p.type !== PROVIDER_TYPE.OPENAI_COMPAT) continue;
       for (const m of p.models) {
-        const o = { ...m };
+        const o = /** @type {any} */ ({ ...m });
         // Đảm bảo các field cần thiết cho COMPAT_MODEL_OPTS
         o.maxOutputTokens = o.maxOutputTokens || o.maxTokens;
         opts[m.id] = o;

@@ -25,13 +25,23 @@ const DIST = path.join(ROOT, 'dist');
 const TMP = path.join(ROOT, '.build');
 
 const CHECK_ONLY = process.argv.includes('--check');
+// --check phải THỰC SỰ build (vào thư mục tạm) để bắt lỗi cú pháp/bundle,
+// chỉ khác là không ghi ra dist/.
+const OUT = CHECK_ONLY ? path.join(TMP, 'check-dist') : DIST;
 
 // Script cổ điển: minify riêng, giữ nguyên thứ tự trong index.html
-const CLASSIC = ['globals.js', 'lazy-libs.js', 'module-loader.js', 'perf-marks.js'];
+const CLASSIC = [
+  'sanitize.js',
+  'sync-merge.js',
+  'globals.js',
+  'lazy-libs.js',
+  'module-loader.js',
+  'perf-marks.js',
+];
 // Module nạp theo nhu cầu: chép + minify thành file riêng
 const LAZY = ['tts.js', 'translate.js', 'rag-core.js', 'rag.js', 'sync.js'];
 // File tĩnh khác cần có trong dist
-const EXTRA = ['markdown.worker.js', 'failover.js', 'offline-queue.js'];
+const EXTRA = ['markdown.worker.js', 'rag.worker.js', 'failover.js', 'offline-queue.js'];
 const DIRS = ['css'];
 const ROOT_FILES = ['manifest.json', 'sw.js'];
 
@@ -78,17 +88,13 @@ async function main() {
   const entryPath = path.join(TMP, 'entry.js');
   fs.writeFileSync(entryPath, modules.map(name => `import '../js/${name}';`).join('\n') + '\n');
 
-  if (CHECK_ONLY) {
-    console.log('[build:web] --check: chỉ kiểm tra, không ghi dist/.');
-  } else {
-    fs.rmSync(DIST, { recursive: true, force: true });
-    fs.mkdirSync(path.join(DIST, 'js'), { recursive: true });
-    for (const d of DIRS) fs.mkdirSync(path.join(DIST, d), { recursive: true });
-  }
+  fs.rmSync(OUT, { recursive: true, force: true });
+  fs.mkdirSync(path.join(OUT, 'js'), { recursive: true });
+  for (const d of DIRS) fs.mkdirSync(path.join(OUT, d), { recursive: true });
 
   // 2. Bundle + minify toàn bộ module
   let bundleBytes = 0;
-  if (!CHECK_ONLY) {
+  {
     const result = await esbuild.build({
       entryPoints: [entryPath],
       bundle: true,
@@ -97,19 +103,19 @@ async function main() {
       target: ['es2020'],
       charset: 'utf8',
       legalComments: 'none',
-      outfile: path.join(DIST, 'js', 'app.bundle.min.js'),
+      outfile: path.join(OUT, 'js', 'app.bundle.min.js'),
       logLevel: 'warning',
     });
     if (result.errors.length) throw new Error('esbuild bundle lỗi');
-    bundleBytes = fs.statSync(path.join(DIST, 'js', 'app.bundle.min.js')).size;
+    bundleBytes = fs.statSync(path.join(OUT, 'js', 'app.bundle.min.js')).size;
     console.log(`  bundle: js/app.bundle.min.js  ${kb(bundleBytes)}`);
   }
 
   // 3. Script cổ điển + module lazy + file phụ
   let classicBytes = 0;
-  if (!CHECK_ONLY) {
+  {
     for (const name of CLASSIC) {
-      const out = path.join(DIST, 'js', name.replace(/\.js$/, '.min.js'));
+      const out = path.join(OUT, 'js', name.replace(/\.js$/, '.min.js'));
       classicBytes += await minifyJs(path.join(ROOT, 'js', name), out, { keepNames: true });
     }
     console.log(`  script cổ điển: ${CLASSIC.length} file  ${kb(classicBytes)}`);
@@ -118,41 +124,42 @@ async function main() {
       const src = path.join(ROOT, 'js', name);
       if (!fs.existsSync(src)) continue;
       if (name === 'markdown.worker.js') {
-        fs.copyFileSync(src, path.join(DIST, 'js', name)); // worker: chép nguyên
+        fs.copyFileSync(src, path.join(OUT, 'js', name)); // worker: chép nguyên
       } else {
-        await minifyJs(src, path.join(DIST, 'js', name));
+        await minifyJs(src, path.join(OUT, 'js', name));
       }
     }
   }
 
   // 4. CSS + file gốc
-  if (!CHECK_ONLY) {
+  {
     let cssBytes = 0;
     for (const dir of DIRS) {
       for (const f of fs.readdirSync(path.join(ROOT, dir))) {
         if (!f.endsWith('.css')) continue;
         const code = fs.readFileSync(path.join(ROOT, dir, f), 'utf8');
         const res = await esbuild.transform(code, { loader: 'css', minify: true, charset: 'utf8' });
-        fs.writeFileSync(path.join(DIST, dir, f), res.code);
+        fs.writeFileSync(path.join(OUT, dir, f), res.code);
         cssBytes += res.code.length;
       }
     }
     console.log(`  css: ${kb(cssBytes)}`);
 
-    for (const f of ROOT_FILES) fs.copyFileSync(path.join(ROOT, f), path.join(DIST, f));
+    for (const f of ROOT_FILES) fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
     for (const f of fs.readdirSync(ROOT)) {
-      if (/^icon.*\.png$/i.test(f)) fs.copyFileSync(path.join(ROOT, f), path.join(DIST, f));
+      if (/^icon-(?:192|512)\.png$/i.test(f))
+        fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
     }
     const wellKnown = path.join(ROOT, '.well-known');
     if (fs.existsSync(wellKnown)) {
-      fs.mkdirSync(path.join(DIST, '.well-known'), { recursive: true });
+      fs.mkdirSync(path.join(OUT, '.well-known'), { recursive: true });
       for (const f of fs.readdirSync(wellKnown))
-        fs.copyFileSync(path.join(wellKnown, f), path.join(DIST, '.well-known', f));
+        fs.copyFileSync(path.join(wellKnown, f), path.join(OUT, '.well-known', f));
     }
   }
 
   // 5. index.html cho dist: thay script cổ điển bằng bản .min.js, gộp module
-  if (!CHECK_ONLY) {
+  {
     let out = html;
     for (const name of CLASSIC) {
       const re = new RegExp(
@@ -170,17 +177,17 @@ async function main() {
         return '    <script type="module" src="./js/app.bundle.min.js"></script>\n';
       }
     );
-    fs.writeFileSync(path.join(DIST, 'index.html'), out);
+    fs.writeFileSync(path.join(OUT, 'index.html'), out);
   }
 
-  const total = CHECK_ONLY
-    ? 0
-    : fs.readdirSync(path.join(DIST, 'js')).reduce((s, f) => {
-        return s + fs.statSync(path.join(DIST, 'js', f)).size;
-      }, 0);
-  console.log(
-    CHECK_ONLY ? '[build:web] OK (không ghi file).' : `[build:web] Xong: dist/ (js ${kb(total)})`
-  );
+  const total = fs.readdirSync(path.join(OUT, 'js')).reduce((s, f) => {
+    return s + fs.statSync(path.join(OUT, 'js', f)).size;
+  }, 0);
+  if (CHECK_ONLY) {
+    console.log(`[build:web] --check OK: bundle hợp lệ (js ${kb(total)}), không ghi dist/.`);
+  } else {
+    console.log(`[build:web] Xong: dist/ (js ${kb(total)})`);
+  }
   fs.rmSync(TMP, { recursive: true, force: true });
 }
 

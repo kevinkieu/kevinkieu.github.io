@@ -5,6 +5,8 @@ buildscript {
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:8.2.2'
+        // Cần cho JarvisTileService.kt (Quick Settings Tile) thực sự được biên dịch.
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22'
     }
 }
 

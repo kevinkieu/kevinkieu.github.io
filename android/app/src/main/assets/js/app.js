@@ -76,7 +76,7 @@ let currentFontSize = parseInt(ls.getItem('chat_font_size') || '16', 10);
 const applyFontSize = sz => {
   currentFontSize = Math.min(Math.max(sz, 12), 26);
   document.documentElement.style.setProperty('--chat-font-size', currentFontSize + 'px');
-  ls.setItem('chat_font_size', currentFontSize);
+  ls.setItem('chat_font_size', String(currentFontSize));
   if ($('font-size-label')) $('font-size-label').innerText = currentFontSize + 'px';
 };
 $('btn-font-dec').onclick = () => applyFontSize(currentFontSize - 1);
@@ -845,7 +845,7 @@ async function processHandsFreeAudioBlob(blob) {
         ? [...apiKeys]
         : [];
     if (!availableKeys.length) {
-      const raw = getGoogleKeysList(false).filter(Boolean);
+      const raw = window.getGoogleKeysList(false).filter(Boolean);
       availableKeys = raw
         .map(k => {
           let clean = (k || '').trim();
@@ -1744,7 +1744,7 @@ if (btnTakePhoto) {
     const c = document.createElement('canvas');
     c.width = v.videoWidth;
     c.height = v.videoHeight;
-    c.getContext('2d').drawImage(v, 0, 0);
+    /** @type {any} */ (c.getContext('2d')).drawImage(v, 0, 0);
     c.toBlob(
       b => {
         processUploadFiles([new File([b], `Cam_${Date.now()}.jpg`, { type: 'image/jpeg' })]);
@@ -2437,7 +2437,7 @@ async function playTextAudio(rawText, options = {}) {
   const chunks = splitTextIntoSmartChunks(clean, 850);
   const isVietnamese =
     /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(clean);
-  const activeKeys = getGoogleKeysList().filter(Boolean);
+  const activeKeys = window.getGoogleKeysList().filter(Boolean);
 
   // 1. Thử đọc bằng Gemini TTS chất lượng cao với chuỗi đoạn liên tục (Pipeline Streaming Queue)
   if (activeKeys.length > 0) {
@@ -2446,10 +2446,9 @@ async function playTextAudio(rawText, options = {}) {
       const ttsModel = $('tts-model-select')?.value || 'gemini-3.8-flash-lite-tts';
 
       const reqFn =
-        window.requestGeminiAudioWithFailover ||
-        (typeof requestGeminiAudioWithFailover === 'function'
-          ? requestGeminiAudioWithFailover
-          : null);
+        typeof window.requestGeminiAudioWithFailover === 'function'
+          ? window.requestGeminiAudioWithFailover
+          : null;
       if (!reqFn) throw new Error('Thư viện Gemini TTS chưa sẵn sàng');
 
       const fetchChunkAudioUrl = async textChunk => {
@@ -3006,9 +3005,10 @@ DOM.sendBtn.onclick = async () => {
     } else if (allKeys.length) {
       // Auto round-robin through available keys
       const providerKeyIndexVar = compatNow.keyIndexVar || compatNow.id + 'KeyIndex';
-      const providerKeyIndex = (window[providerKeyIndexVar] || 0) % allKeys.length;
+      const providerKeyIndex =
+        /** @type {any} */ (window[providerKeyIndexVar] || 0) % allKeys.length;
       gKey = allKeys[providerKeyIndex];
-      window[providerKeyIndexVar] = (providerKeyIndex + 1) % allKeys.length;
+      /** @type {any} */ (window)[providerKeyIndexVar] = (providerKeyIndex + 1) % allKeys.length;
       keyIndexNum = slotOfKey(gKey);
     } else {
       // Fallback to legacy single key if exists
@@ -3019,7 +3019,7 @@ DOM.sendBtn.onclick = async () => {
     }
 
     if (!gKey) {
-      bD?.remove();
+      if (bD) /** @type {any} */ (bD).remove();
       return showToast(
         'Vui lòng nhập API Key cho provider ' +
           (compatNow.label || compatNow.id) +
@@ -3070,7 +3070,7 @@ DOM.sendBtn.onclick = async () => {
       keyIndexNum = 1;
     }
     if (!gKey) {
-      bD?.remove();
+      if (bD) /** @type {any} */ (bD).remove();
       return showToast('Vui lòng nhập Experiential Labs API Key trong Cài đặt (⚙️)!', 'danger');
     }
     if (typeof window.recordExplabsRequest === 'function')
@@ -3503,7 +3503,7 @@ DOM.sendBtn.onclick = async () => {
     // gian hiện tại đã nằm trong system instruction (getDynamicSI → timeInstruction).
     const promptWithTime = fnP || '[Người dùng gửi tệp đính kèm]';
 
-    const currentParts = [{ text: promptWithTime }];
+    const currentParts = /** @type {any[]} */ ([{ text: promptWithTime }]);
     base64Files.forEach(({ mimeType, data }) => {
       currentParts.push({ inlineData: { mimeType, data } });
     });
@@ -3596,7 +3596,7 @@ DOM.sendBtn.onclick = async () => {
           await renderer.flush(finalResp);
           pS = true;
           if ($('latency-val'))
-            $('latency-val').innerText = Math.round(performance.now() - startTime);
+            $('latency-val').innerText = String(Math.round(performance.now() - startTime));
         } catch (clefErr) {
           if (clefErr.name === 'AbortError' || abortController.signal.aborted) throw clefErr;
           lastErr = clefErr;
@@ -3626,7 +3626,7 @@ DOM.sendBtn.onclick = async () => {
           // Ảnh LUÔN được gửi cho mọi model Explabs; model từ chối thì gửi lại không kèm ảnh.
           const expUserContent = withImages => {
             if (!hasImageFiles) return promptWithTime;
-            const parts = [{ type: 'text', text: promptWithTime }];
+            const parts = /** @type {any[]} */ ([{ type: 'text', text: promptWithTime }]);
             if (withImages) {
               for (const f of base64Files) {
                 if (String(f.mimeType || '').startsWith('image/')) {
@@ -3749,7 +3749,9 @@ DOM.sendBtn.onclick = async () => {
                     );
                     renderer.push(finalResp);
                     if ($('latency-val') && !pS)
-                      $('latency-val').innerText = Math.round(performance.now() - startTime);
+                      $('latency-val').innerText = String(
+                        Math.round(performance.now() - startTime)
+                      );
                     pS = true;
                   }
                 } catch (_) {}
@@ -3905,7 +3907,7 @@ DOM.sendBtn.onclick = async () => {
         });
       }
       if (base64Files && base64Files.length > 0) {
-        const compatUserContent = [{ type: 'text', text: promptWithTime }];
+        const compatUserContent = /** @type {any[]} */ ([{ type: 'text', text: promptWithTime }]);
         // Ảnh LUÔN gửi cho MỌI model (kể cả model khai báo text-only): provider từ chối thì
         // vòng thử lại bên dưới bắt lỗi, báo toast "<tên model> does not process images"
         // rồi gửi lại không kèm ảnh. Chỉ video/audio còn lọc theo inputModalities.
@@ -4215,7 +4217,8 @@ DOM.sendBtn.onclick = async () => {
               keyIndexNum = compatSlotOf(compatKey);
               // Đẩy con trỏ xoay tua qua key vừa dùng để lượt sau không lặp lại key này
               if (prov.keyIndexVar)
-                window[prov.keyIndexVar] = (compatPool.indexOf(compatKey) + 1) % compatPool.length;
+                /** @type {any} */ (window)[prov.keyIndexVar] =
+                  (compatPool.indexOf(compatKey) + 1) % compatPool.length;
               showToast(
                 `⚠️ ${prov.keyLabel} Key #${failedSlot} lỗi (HTTP ${compatRes.status}), đang xoay sang Key #${keyIndexNum}...`,
                 'warning'
@@ -4301,7 +4304,7 @@ DOM.sendBtn.onclick = async () => {
                 finalResp = formatThinkingResponse(compatThinking, compatContent, compatLabel);
                 renderer.push(finalResp);
                 if ($('latency-val') && !pS)
-                  $('latency-val').innerText = Math.round(performance.now() - startTime);
+                  $('latency-val').innerText = String(Math.round(performance.now() - startTime));
                 pS = true;
               }
             } catch (_) {}
@@ -4554,7 +4557,7 @@ DOM.sendBtn.onclick = async () => {
               finalResp = formatThinkingResponse(currentThinking, currentContent, 'Gemini');
               renderer.push(finalResp);
               if ($('latency-val') && !pS)
-                $('latency-val').innerText = Math.round(performance.now() - startTime);
+                $('latency-val').innerText = String(Math.round(performance.now() - startTime));
               pS = true;
             }
           }
@@ -4588,7 +4591,7 @@ DOM.sendBtn.onclick = async () => {
             renderer.push(finalResp);
             await renderer.flush(finalResp);
             if ($('latency-val') && !pS)
-              $('latency-val').innerText = Math.round(performance.now() - startTime);
+              $('latency-val').innerText = String(Math.round(performance.now() - startTime));
             pS = true;
           }
         } catch (uErr) {
@@ -4868,7 +4871,7 @@ DOM.sendBtn.onclick = async () => {
               finalResp = formatThinkingResponse(currentThinking, currentContent, 'Gemini');
               renderer.push(finalResp);
               if ($('latency-val') && !pS)
-                $('latency-val').innerText = Math.round(performance.now() - startTime);
+                $('latency-val').innerText = String(Math.round(performance.now() - startTime));
               pS = true;
             }
           }
@@ -5142,7 +5145,7 @@ DOM.sendBtn.onclick = async () => {
             retryStatusEl.innerHTML =
               '<span class="thinking-spinner">⏳</span> <em>Đang lấy câu trả lời từ Google…</em>';
           }
-          const retryCfg = { ...config, maxOutputTokens: 8192 };
+          const retryCfg = /** @type {any} */ ({ ...config, maxOutputTokens: 8192 });
           if (isGemma) retryCfg.thinkingConfig = { thinkingLevel: 'minimal' };
           else delete retryCfg.thinkingConfig;
           const retryStream = await new GoogleGenAI({ apiKey: gKey }).models.generateContentStream({
@@ -5316,7 +5319,7 @@ $('import-all-input').onchange = e => {
   const rd = new FileReader();
   rd.onload = async ev => {
     try {
-      const d = JSON.parse(ev.target.result);
+      const d = JSON.parse(String(ev.target.result));
       if (d.sessions) {
         await clearAllDB();
         for (const s of d.sessions) await saveToDB(s);
@@ -5379,7 +5382,7 @@ const fileToBase64 = f =>
   new Promise(r => {
     const rd = new FileReader();
     rd.onloadend = () => {
-      const b64 = (rd.result || '').split(',')[1] || '';
+      const b64 = String(rd.result || '').split(',')[1] || '';
       r({ mimeType: f.type || 'image/jpeg', data: b64 });
     };
     rd.readAsDataURL(f);
@@ -5480,7 +5483,7 @@ if (sideSearchInput) {
 }
 
 document.addEventListener('click', e => {
-  if (!sBar.contains(e.target)) sBar.classList.remove('active');
+  if (!sBar.contains(/** @type {any} */ (e.target))) sBar.classList.remove('active');
 });
 
 // BOOTSTRAP APP
@@ -5612,13 +5615,12 @@ if (typeof recordOpenRouterRequest !== 'undefined')
 if (typeof recordNvidiaRequest !== 'undefined') window.recordNvidiaRequest = recordNvidiaRequest;
 if (typeof recordCohereRequest !== 'undefined') window.recordCohereRequest = recordCohereRequest;
 if (typeof recordExplabsRequest !== 'undefined') window.recordExplabsRequest = recordExplabsRequest;
-if (typeof getGoogleKeysList !== 'undefined') window.getGoogleKeysList = getGoogleKeysList;
+// getGoogleKeysList được js/api-keys.js xuất qua window.
 
 // --- [GEMINI TTS STUDIO PRO MODULE MOVED TO js/tts.js] ---
 
 // Call initTTSStudio once loaded
-if (typeof initTTSStudio === 'function') initTTSStudio();
-else if (typeof window.initTTSStudio === 'function') window.initTTSStudio();
+if (typeof window.initTTSStudio === 'function') window.initTTSStudio();
 
 // Init Web Share Target & Shortcuts listener and Storage estimation
 handleIncomingWebShare();

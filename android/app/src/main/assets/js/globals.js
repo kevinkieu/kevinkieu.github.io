@@ -56,6 +56,7 @@ let cfgMap = [];
 
 let SAFETY = [];
 let FLASH_LITE_MODEL = '';
+/** @type {any} */
 let DOM = {};
 
 let closeModals = null;
@@ -355,7 +356,7 @@ window.makeCollapsibleSection = function (sectionId, headerSelector, contentSele
     }
 
     const isCollapsed = content.classList.toggle('collapsed');
-    header.setAttribute('aria-expanded', !isCollapsed);
+    header.setAttribute('aria-expanded', String(!isCollapsed));
 
     // Rotate icon
     const icon = header.querySelector('.section-toggle-icon');
@@ -532,6 +533,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // --- GOOGLE GENAI PROXY (loaded from CDN in index.html) ---
+/** @type {any} */
 const GoogleGenAI = new Proxy(function () {}, {
   construct: function (_target, args) {
     if (!window.GoogleGenAI) throw new Error('GoogleGenAI chưa được tải từ CDN.');

@@ -128,6 +128,36 @@
     }
   }
 
+  // Tombstone thuốc/cữ đã xóa: Smart Sync dùng để không hồi sinh từ Cloud.
+  function readIdList(key) {
+    try {
+      const arr = JSON.parse(localStorage.getItem(key) || '[]');
+      return Array.isArray(arr) ? arr.filter(Boolean) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function persistKey(key, value) {
+    try {
+      if (window.JarvisNativeBridge && typeof window.JarvisNativeBridge.setItem === 'function') {
+        window.JarvisNativeBridge.setItem(key, value);
+        if (typeof window.JarvisNativeBridge.commit === 'function')
+          window.JarvisNativeBridge.commit();
+      }
+      localStorage.setItem(key, value);
+    } catch (e) {
+      console.warn('Lỗi lưu tombstone:', e);
+    }
+  }
+
+  function addIdTombstone(key, id) {
+    if (!id) return;
+    const arr = readIdList(key).filter(x => x !== id);
+    arr.push(id);
+    persistKey(key, JSON.stringify(arr.slice(-500)));
+  }
+
   function updateMedicationBadge() {
     const badge = $('max-med-badge');
     if (!badge) return;
@@ -150,7 +180,7 @@
 
     const pending = Math.max(0, totalDosesToday - takenDosesToday);
     if (pending > 0) {
-      badge.innerText = pending;
+      badge.innerText = String(pending);
       badge.style.display = 'inline-block';
     } else {
       badge.style.display = 'none';
@@ -406,7 +436,7 @@
 
     if (!container) return;
 
-    if (totalTakenEl) totalTakenEl.innerText = maxMedHistory.length;
+    if (totalTakenEl) totalTakenEl.innerText = String(maxMedHistory.length);
 
     // Tính chuỗi ngày liên tục uống thuốc
     const uniqueDays = new Set(maxMedHistory.map(h => h.date));
@@ -563,6 +593,7 @@
         med.times = [...maxFormSelectedTimes];
         med.meal = meal;
         med.notes = notes;
+        med.updatedAt = Date.now();
       }
     } else {
       // Thêm thuốc mới
@@ -577,6 +608,7 @@
         notes: notes,
         active: true,
         createdAt: Date.now(),
+        updatedAt: Date.now(),
       };
       maxMedications.push(newMed);
     }
@@ -814,6 +846,7 @@
     const med = maxMedications.find(m => m.id === medId);
     if (!med) return;
     med.active = active;
+    med.updatedAt = Date.now();
     saveMedicationData(true);
     renderMaxTodaySchedule();
     updateMedicationBadge();
@@ -838,6 +871,7 @@
       });
     }
 
+    addIdTombstone('jarvis_deleted_med_ids', medId);
     maxMedications = maxMedications.filter(m => m.id !== medId);
     saveMedicationData(true);
     renderMaxCabinetList();
@@ -874,6 +908,13 @@
     }
     if (idx !== -1) {
       const removed = maxMedHistory.splice(idx, 1)[0];
+      if (removed) {
+        addIdTombstone(
+          'jarvis_deleted_med_history_ids',
+          removed.id ||
+            removed.medId + '_' + removed.timeStr + '_' + (removed.date || removed.timestamp)
+        );
+      }
       saveMedicationData(false);
       renderMaxHistoryList();
       renderMaxTodaySchedule();

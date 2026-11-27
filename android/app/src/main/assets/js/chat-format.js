@@ -29,7 +29,11 @@ function createStreamRenderer(targetEl) {
               );
               toRender = mergeAdjacentThinkingBlocks(toRender);
             }
-            targetEl.innerHTML = marked.parse(toRender, { sanitize: true });
+            const parsed = marked.parse(toRender);
+            targetEl.innerHTML =
+              typeof window.sanitizeHtml === 'function'
+                ? window.sanitizeHtml(parsed)
+                : window.escapeHtml(parsed);
           } catch (_) {}
           pending = false;
         });
@@ -127,3 +131,5 @@ window.createStreamRenderer = createStreamRenderer;
 window.formatThinkingResponse = formatThinkingResponse;
 window.formatFinalThinkingResponse = formatFinalThinkingResponse;
 window.formatUpstreamError = formatUpstreamError;
+
+export {};

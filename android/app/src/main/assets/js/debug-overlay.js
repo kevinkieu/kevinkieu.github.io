@@ -52,14 +52,17 @@
     });
 
     // Capture unhandled errors
-    window.addEventListener('error', e => {
-      addLog({
-        level: 'error',
-        timestamp: Date.now(),
-        args: [e.message],
-        stack: e.error?.stack || e.stack,
-      });
-    });
+    window.addEventListener(
+      'error',
+      /** @param {any} e */ e => {
+        addLog({
+          level: 'error',
+          timestamp: Date.now(),
+          args: [e.message],
+          stack: e.error?.stack || e.stack,
+        });
+      }
+    );
 
     window.addEventListener('unhandledrejection', e => {
       addLog({

@@ -240,7 +240,7 @@
       reader.onload = () =>
         resolve({
           mimeType,
-          data: reader.result.split(',')[1],
+          data: String(reader.result).split(',')[1],
         });
       reader.onerror = e => reject(e);
       reader.readAsDataURL(file);
@@ -258,10 +258,12 @@
     if (typeof options === 'string') {
       customApiKey = options;
     } else if (options && typeof options === 'object') {
-      customApiKey = options.apiKey || null;
-      taskType = options.taskType || null;
-      title = options.title || null;
-      outputDimensionality = options.outputDimensionality || 768;
+      /** @type {any} */
+      const opts = options;
+      customApiKey = opts.apiKey || null;
+      taskType = opts.taskType || null;
+      title = opts.title || null;
+      outputDimensionality = opts.outputDimensionality || 768;
     }
 
     const apiKey = customApiKey || getActiveApiKey();
@@ -303,7 +305,7 @@
       // Media part (image, audio, video, pdf)
       contentsForModel2 = [{ inlineData: input.inlineData }];
       if (title) {
-        contentsForModel2.push({ text: `title: ${title}` });
+        /** @type {any[]} */ (contentsForModel2).push({ text: `title: ${title}` });
       }
     } else if (Array.isArray(input)) {
       contentsForModel2 = input;
@@ -525,6 +527,60 @@
     return { docName, totalChunks: chunks.length };
   }
 
+  // --- VECTOR SEARCH WORKER (tránh block UI khi kho tri thức lớn) ---
+  let ragWorker = null;
+  let ragWorkerSeq = 0;
+  const ragWorkerPending = new Map();
+  const RAG_WORKER_MIN_ITEMS = 400;
+
+  function getRagWorker() {
+    if (ragWorker) return ragWorker;
+    try {
+      ragWorker = new Worker('./js/rag.worker.js');
+      ragWorker.onmessage = e => {
+        const { token, success, results, error } = e.data || {};
+        const entry = ragWorkerPending.get(token);
+        if (!entry) return;
+        ragWorkerPending.delete(token);
+        clearTimeout(entry.timer);
+        if (success) entry.resolve(results || []);
+        else entry.reject(new Error(error || 'RAG worker error'));
+      };
+      ragWorker.onerror = () => {
+        for (const [, entry] of ragWorkerPending) {
+          clearTimeout(entry.timer);
+          entry.reject(new Error('RAG worker failed'));
+        }
+        ragWorkerPending.clear();
+        ragWorker = null; // lần sau quay lại main thread
+      };
+    } catch (e) {
+      console.warn('[RAG] Không tạo được worker, dùng main thread:', e);
+      ragWorker = null;
+    }
+    return ragWorker;
+  }
+
+  function searchVectorsInWorker(queryVector, allItems, cleanQuery, opts) {
+    const worker = getRagWorker();
+    if (!worker) return Promise.reject(new Error('no worker'));
+    const token = ++ragWorkerSeq;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        ragWorkerPending.delete(token);
+        reject(new Error('RAG worker timeout'));
+      }, 5000);
+      ragWorkerPending.set(token, { resolve, reject, timer });
+      worker.postMessage({
+        token,
+        type: 'SEARCH',
+        queryVector,
+        allItems,
+        options: { topK: opts.topK, threshold: opts.threshold, query: cleanQuery },
+      });
+    });
+  }
+
   // --- SIMILARITY SEARCH ACROSS KNOWLEDGE BASE (HYBRID VECTOR + LEXICAL BOOST) ---
   async function searchSimilarVectors(query, options = {}) {
     const {
@@ -542,6 +598,19 @@
 
     const allItems = await getAllVectorItems(type);
     if (!allItems.length) return [];
+
+    // Kho lớn: tính cosine + lexical boost trong Worker để UI không giật.
+    if (allItems.length >= RAG_WORKER_MIN_ITEMS) {
+      try {
+        const results = await searchVectorsInWorker(queryVector, allItems, cleanQuery, {
+          topK,
+          threshold,
+        });
+        if (Array.isArray(results)) return results;
+      } catch (e) {
+        console.warn('[RAG] Worker search thất bại, quay lại main thread:', e);
+      }
+    }
 
     const qLower = cleanQuery.toLowerCase();
     // Danh sách stop words tiếng Việt và tiếng Anh phổ biến để lọc ra từ khóa thực chất

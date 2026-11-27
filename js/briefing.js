@@ -23,6 +23,14 @@
 
   let currentDailyBriefingMarkdown = '';
 
+  // Markdown do AI sinh ra vẫn là dữ liệu không tin cậy -> luôn lọc XSS.
+  function renderBriefingHtml(markdown) {
+    const html = window.marked ? window.marked.parse(markdown) : escapeHtml(markdown);
+    return typeof window.sanitizeHtml === 'function'
+      ? window.sanitizeHtml(html)
+      : escapeHtml(markdown);
+  }
+
   const VIETNAM_CITIES = [
     'Hà Nội',
     'TP. Hồ Chí Minh',
@@ -238,7 +246,12 @@
     if (speakBtn) speakBtn.innerHTML = '<span>🔊 Nghe bản tin (Jarvis TTS)</span>';
 
     const now = new Date();
-    const dateOptions = { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric' };
+    const dateOptions = /** @type {Intl.DateTimeFormatOptions} */ ({
+      weekday: 'long',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+    });
     const dateStr = now.toLocaleDateString('vi-VN', dateOptions);
     const todayKey = now.toISOString().slice(0, 10);
 
@@ -257,7 +270,7 @@
         if (loadingEl) loadingEl.style.display = 'none';
         if (contentEl) {
           contentEl.style.display = 'block';
-          contentEl.innerHTML = window.marked ? window.marked.parse(cached) : cached;
+          contentEl.innerHTML = renderBriefingHtml(cached);
           window.renderMathInElement?.(contentEl, {
             delimiters: [
               { left: '$$', right: '$$', display: true },
@@ -408,7 +421,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
       if (loadingEl) loadingEl.style.display = 'none';
       if (contentEl) {
         contentEl.style.display = 'block';
-        contentEl.innerHTML = window.marked ? window.marked.parse(generatedText) : generatedText;
+        contentEl.innerHTML = renderBriefingHtml(generatedText);
         window.renderMathInElement?.(contentEl, {
           delimiters: [
             { left: '$$', right: '$$', display: true },
@@ -523,8 +536,8 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
             btnGpsLocation.innerText = '🎯 Định vị GPS';
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
-            ls.setItem('jarvis_user_lat', lat);
-            ls.setItem('jarvis_user_lon', lon);
+            ls.setItem('jarvis_user_lat', String(lat));
+            ls.setItem('jarvis_user_lon', String(lon));
 
             let detectedCity = 'Vị trí hiện tại';
             try {

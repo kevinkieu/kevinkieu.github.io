@@ -29,12 +29,40 @@
 
 ## Kỹ thuật / nợ dọn dẹp
 
-- [ ] `npm run typecheck` vẫn đỏ (~1900 lỗi `checkJs` trong `js/`) — đã bỏ `|| true` để thấy đúng sự
-      thật; muốn xanh thì phải làm `types/global.d.ts` khớp thực tế rồi mới bật lại vào CI.
-- [ ] `npm test` phủ 8 file / 93 test cho phần lõi; chưa có test cho `local-llm.js`,
-      `persona-config.js`.
-- [ ] Tách `js/app.js` (~5800 dòng) thành các module nhỏ hơn (send-pipeline, session-manager,
-      memory), tránh thêm nhánh mới vào cùng một hàm gửi tin.
+- [x] ~~`npm run typecheck` đỏ vì `checkJs: false`~~ — đã bật `checkJs: true`, đưa `types/**/*.d.ts`
+      vào `include` và sửa hết lỗi: hiện `tsc --noEmit` = 0 lỗi.
+- [x] ~~Test chép lại logic thay vì chạy mã production~~ — `search/extract/blob/markdown.worker` giờ
+      nạp chính file trong `js/`; thêm `test/sanitize.test.js`, `test/sync-merge.test.js`.
+- [ ] Tách nốt `DOM.sendBtn.onclick` (~2.500 dòng trong `js/app.js`) thành module `send-pipeline`
+      riêng. Chưa làm vì handler dùng hàng trăm biến closure của `app.js`; tách mù sẽ dễ làm vỡ
+      luồng gửi tin. Các phần an toàn (render lịch sử, RAG worker, merge thuần) đã tách trước.
+- [ ] `local-llm.js`, `persona-config.js` chưa có test riêng.
+
+## Vừa hoàn thành (2026-11-27)
+
+- [x] Chặn XSS: thêm `js/sanitize.js` (allowlist thẻ/thuộc tính, chặn `javascript:`/`data:`/
+      `on*`/style nguy hiểm) và áp dụng cho chat render, stream renderer, briefing, export PDF/Word,
+      prompt library, tên tệp đính kèm; thêm CSP trong `index.html`; sửa `escapeHtml` trong
+      `markdown.worker.js` (trước đây là no-op nên `data-code` bị vỡ).
+- [x] Khóa WebView bridge: chỉ nạp từ `https://appassets.androidplatform.net`, chặn điều hướng
+      remote trong WebView (mở bằng trình duyệt), chỉ cấp Micro/Camera cho origin nội bộ, tắt
+      `allowFileAccess`/universal access/third-party cookie/cleartext, validate tên tệp + MIME khi
+      lưu file, `MedicationAlarmReceiver` đặt `exported=false`.
+- [x] Smart Sync: hợp nhất THEO TỪNG TIN NHẮN (`js/sync-merge.js`) thay vì chọn cả phiên theo số
+      lượng; ghi IndexedDB trong một transaction (clear + put) để không mất dữ liệu khi lỗi; thuốc
+      có `updatedAt` + tombstone `jarvis_deleted_med_ids`, lịch sử uống thuốc có tombstone riêng nên
+      không hồi sinh từ Cloud.
+- [x] Android: sửa thứ tự tham số `saveBase64File(base64, filename, mime)`; release build luôn được
+      ký (keystore riêng, không có thì debug key) và `build.js` kiểm tra bằng `apksigner`; thêm
+      Kotlin plugin nên `JarvisTileService` thực sự được biên dịch; Tile mở Live Call hands-free
+      thay vì wake word đã gỡ; script build tự chọn JDK 17 (Gradle 8.2 không chạy JDK 25).
+- [x] Build/test: `build:web --check` giờ build thật vào thư mục tạm; `dist/` có đủ file
+      (`sanitize.min.js`, `sync-merge.min.js`, `rag.worker.js`); Service Worker tự dò asset từ
+      `index.html`, precache từng file và chuẩn hoá cache key `?v=`.
+- [x] Tối ưu: RAG dùng `js/rag.worker.js` khi kho ≥ 400 mục (fallback main thread), render lịch sử
+      song song vào fragment rồi gắn một lần.
+- [x] Dọn asset: `icon.png` (1,3 MB ảnh nguồn) không còn bị đóng gói vào APK/dist; bỏ chặn zoom
+      trong viewport để tăng accessibility.
 
 ## Vừa hoàn thành (2026-11-26)
 

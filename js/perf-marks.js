@@ -49,6 +49,7 @@
   }
 
   function report() {
+    /** @type {any} */
     const nav = performance.getEntriesByType('navigation')[0] || {};
     const res = performance.getEntriesByType('resource');
     const js = res.filter(r => /\.js(\?|$)/.test(r.name));

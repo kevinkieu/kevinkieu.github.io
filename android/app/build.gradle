@@ -1,5 +1,6 @@
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
 }
 
 // --- CẤU HÌNH KÝ APK (không viết cứng mật khẩu trong repo public) ---
@@ -54,7 +55,9 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            if (canSignRelease) signingConfig signingConfigs.release
+            // Không có keystore riêng thì KÝ BẰNG DEBUG KEY: APK release vẫn cài được
+            // (trước đây rơi vào trạng thái unsigned, cài sẽ báo "App not installed").
+            signingConfig canSignRelease ? signingConfigs.release : signingConfigs.debug
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
@@ -66,6 +69,10 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
     }
 }
 

@@ -97,16 +97,16 @@
   }
 
   function installStub(moduleName, fnName) {
-    const current = window[fnName];
+    const current = /** @type {any} */ (window[fnName]);
     if (typeof current === 'function' && !current.__jarvisStub) return; // đã có hàm thật
     const stub = function (...args) {
       return ensureModule(moduleName).then(() => {
-        const real = window[fnName];
+        const real = /** @type {any} */ (window[fnName]);
         if (typeof real === 'function' && !real.__jarvisStub) return real.apply(window, args);
       });
     };
     stub.__jarvisStub = true;
-    window[fnName] = stub;
+    /** @type {any} */ (window)[fnName] = stub;
   }
 
   Object.keys(STUBS).forEach(name => STUBS[name].forEach(fn => installStub(name, fn)));
@@ -116,7 +116,7 @@
   const IDLE_PRELOAD = ['sync', 'tts', 'translate', 'rag'];
   function preloadIdle() {
     IDLE_PRELOAD.forEach((name, idx) => {
-      const run = () => ensureModule(name).catch(() => {});
+      const run = () => ensureModule(/** @type {any} */ (name)).catch(() => {});
       if (typeof requestIdleCallback === 'function') {
         requestIdleCallback(run, { timeout: 4000 + idx * 1500 });
       } else {

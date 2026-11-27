@@ -14,6 +14,7 @@
   const ls = localStorage;
 
   // DOM của app.js chỉ có sau khi app.js nạp -> đọc động từng lần truy cập.
+  /** @type {any} */
   const DOM = new Proxy({}, { get: (_t, k) => (window.DOM ? window.DOM[k] : undefined) });
   const chatHistory = () => window.chatHistory || [];
 
@@ -37,6 +38,11 @@
     typeof window.copyRawText === 'function' ? window.copyRawText(text, msg) : undefined;
   const saveToDB = s =>
     typeof window.saveToDB === 'function' ? window.saveToDB(s) : Promise.resolve();
+  // Mọi HTML sinh từ Markdown/Worker đều phải qua sanitizer trước khi vào DOM.
+  const sanitizeHtml = html => {
+    if (typeof window.sanitizeHtml === 'function') return window.sanitizeHtml(html);
+    return escapeHtml(html);
+  };
 
   // --- MARKDOWN WORKER (lazy init) ---
   let markdownWorker = null;
@@ -178,7 +184,7 @@
     if (workerResult.error) {
       // Fallback: main thread (original logic)
       html = marked.parse(markdownForWorker);
-      el.innerHTML = html;
+      el.innerHTML = sanitizeHtml(html);
       if (thinkingHtml) el.insertAdjacentHTML('afterbegin', thinkingHtml);
 
       // highlight.js chỉ cần ở nhánh fallback này -> tải theo nhu cầu (~120KB)
@@ -213,15 +219,15 @@
       });
     } else {
       // Worker success: inject HTML (already has code blocks highlighted + wrapped)
-      el.innerHTML = workerResult.html;
+      el.innerHTML = sanitizeHtml(workerResult.html);
       if (thinkingHtml) el.insertAdjacentHTML('afterbegin', thinkingHtml);
       // Wire up copy buttons from worker-generated markup
       el.querySelectorAll('.code-copy-btn').forEach(btn => {
-        btn.onclick = function () {
-          const codeText = this.getAttribute('data-code') || '';
+        btn.onclick = () => {
+          const codeText = btn.getAttribute('data-code') || '';
           copyRawText(codeText, '📋 Đã copy đoạn mã!');
-          this.innerText = '✅ Copied!';
-          setTimeout(() => (this.innerText = '📋 Copy Code'), 2000);
+          btn.innerText = '✅ Copied!';
+          setTimeout(() => (btn.innerText = '📋 Copy Code'), 2000);
         };
       });
     }
@@ -241,7 +247,7 @@
     });
   }
 
-  async function appendMsg(sd, t, i, iHL = false) {
+  async function appendMsg(sd, t, i, iHL = false, targetHost = null) {
     t = t || '';
     const c = document.createElement('div');
     c.className = 'message-container';
@@ -253,12 +259,13 @@
     m.setAttribute('data-raw', t);
 
     const ixId = chatHistory()[i]?.interactionId;
+    const safeIxId = ixId ? escapeHtml(String(ixId)) : '';
     const kNum = chatHistory()[i]?.keyIndex || chatHistory()[i]?.pinnedKey;
     const msgModel = chatHistory()[i]?.model;
     const keyBadge = sd !== 'user' && kNum ? getKeyBadgeHtml(kNum, msgModel) : '';
     const ixBadge =
-      sd !== 'user' && ixId
-        ? `<span class="interaction-id-badge" title="Interaction ID: ${ixId}">⚡ ID: ${ixId.slice(0, 8)}...</span>`
+      sd !== 'user' && safeIxId
+        ? `<span class="interaction-id-badge" title="Interaction ID: ${safeIxId}">⚡ ID: ${safeIxId.slice(0, 8)}...</span>`
         : '';
     const pinnedBadge = isPinned ? `<span class="pinned-tag">📌 ĐÃ GHIM</span>` : '';
     const liveBadge = chatHistory()[i]?.isLiveCall
@@ -268,7 +275,7 @@
     m.innerHTML = `
         <div class="message-header">
           <span>${sd === 'user' ? '👤 Bạn' : '✨ Jarvis AI'}</span>
-          <span style="font-size:0.72rem;opacity:0.75;margin-left:4px;">🕒 ${chatHistory()[i]?.time || getNowTime24h()}</span>
+          <span style="font-size:0.72rem;opacity:0.75;margin-left:4px;">🕒 ${escapeHtml(chatHistory()[i]?.time || getNowTime24h())}</span>
           ${keyBadge}
           ${liveBadge}
           ${pinnedBadge}
@@ -293,7 +300,7 @@
       `;
 
     c.append(m, a);
-    DOM.chat.appendChild(c);
+    (targetHost || DOM.chat).appendChild(c);
 
     if (!iHL && sd === 'user') DOM.chat.scrollTop = DOM.chat.scrollHeight;
     const contentEl = m.querySelector('.msg-content');
@@ -330,14 +337,15 @@
       window.renderSel?.();
     }
     DOM.chat.innerHTML = '';
-    for (let j = 0; j < chatHistory().length; j++) {
-      await appendMsg(
-        chatHistory()[j].role === 'model' ? 'bot' : 'user',
-        chatHistory()[j].text,
-        j,
-        true
-      );
-    }
+    // Render song song vào fragment rồi gắn một lần: lịch sử dài không còn
+    // treo UI vì mỗi tin phải chờ worker Markdown xong mới tới tin kế tiếp.
+    const frag = document.createDocumentFragment();
+    await Promise.all(
+      chatHistory().map((msg, j) =>
+        appendMsg(msg.role === 'model' ? 'bot' : 'user', msg.text, j, true, frag)
+      )
+    );
+    DOM.chat.appendChild(frag);
   }
 
   // Bo khoi suy nghi (thinking) khoi noi dung truoc khi sao chep
