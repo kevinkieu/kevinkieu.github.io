@@ -606,11 +606,30 @@
     return new Error((errData && errData.message) || 'Lỗi HTTP ' + res.status);
   }
 
+  // Helper fetch có backoff (exponential + jitter) cho lỗi mạng/5xx/429
+  async function fetchWithBackoff(url, options, retryOpts) {
+    const doFetch = async () => {
+      const res = await fetch(url, options);
+      if (res.status === 429 || res.status >= 500) {
+        throw new Error('HTTP ' + res.status);
+      }
+      return res;
+    };
+    const backoff = window.JarvisBackoff;
+    if (backoff) {
+      return backoff.retry(
+        doFetch,
+        Object.assign({ retries: 2, base: 800, max: 8000 }, retryOpts || {})
+      );
+    }
+    return doFetch();
+  }
+
   // Helper fetch file content from GitHub Gist (supporting large files with raw_url)
   async function fetchGistData(pat, gistId) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
-    const res = await fetch('https://api.github.com/gists/' + gistId, {
+    const res = await fetchWithBackoff('https://api.github.com/gists/' + gistId, {
       headers: {
         Authorization: 'Bearer ' + pat,
         Accept: 'application/vnd.github.v3+json',
@@ -667,16 +686,20 @@
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
-    const res = await fetch(url, {
-      method,
-      headers: {
-        Authorization: 'Bearer ' + pat,
-        Accept: 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
+    const res = await fetchWithBackoff(
+      url,
+      {
+        method,
+        headers: {
+          Authorization: 'Bearer ' + pat,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
       },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
+      { retries: 1 }
+    );
     clearTimeout(timeoutId);
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));

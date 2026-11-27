@@ -367,7 +367,135 @@
     throw new Error('Không nhận được vector từ Google Gemini API.');
   }
 
+  // --- BATCH EMBEDDING (hiệu năng): nhúng nhiều văn bản trong 1 request ---
+  // Trả về mảng vector cùng thứ tự input. Lỗi batch -> fallback từng item.
+  async function getEmbeddingsBatch(inputs, options = {}) {
+    const arr = Array.isArray(inputs) ? inputs : [inputs];
+    if (!arr.length) return [];
+    const customApiKey =
+      typeof options === 'string' ? options : options?.apiKey || null;
+    const taskType =
+      typeof options === 'string' ? null : options?.taskType || null;
+    const title = typeof options === 'string' ? null : options?.title || null;
+    const outputDimensionality =
+      (typeof options === 'object' && options?.outputDimensionality) || 768;
+
+    const apiKey = customApiKey || getActiveApiKey();
+    if (!apiKey) {
+      throw new Error('Cần ít nhất 1 Google API Key hợp lệ trong Cài đặt để tạo Vector Embedding.');
+    }
+    if (!window.GoogleGenAI) {
+      throw new Error('Thư viện GoogleGenAI chưa sẵn sàng.');
+    }
+
+    // Cache lookup
+    const results = new Array(arr.length).fill(null);
+    const uncachedIdx = [];
+    for (let i = 0; i < arr.length; i++) {
+      const inp = arr[i];
+      const isStr = typeof inp === 'string';
+      const clean = isStr ? String(inp).trim() : '';
+      if (isStr && !clean) {
+        results[i] = null;
+        continue;
+      }
+      const ck = isStr
+        ? `${taskType || 'none'}_${outputDimensionality}_${clean}`
+        : null;
+      if (ck && embeddingCache.has(ck)) {
+        results[i] = embeddingCache.get(ck);
+      } else {
+        uncachedIdx.push(i);
+      }
+    }
+    if (!uncachedIdx.length) return results;
+
+    // Chuẩn bị contents cho model 2 (đa phương thức chỉ text ở đây cho batch)
+    const buildContent = inp => {
+      const isStr = typeof inp === 'string';
+      const clean = isStr ? String(inp).trim() : '';
+      if (taskType === 'RETRIEVAL_QUERY') return `task: search result | query: ${clean}`;
+      if (taskType === 'RETRIEVAL_DOCUMENT')
+        return `title: ${title || 'none'} | text: ${clean}`;
+      if (taskType === 'SEMANTIC_SIMILARITY')
+        return `task: sentence similarity | query: ${clean}`;
+      return clean;
+    };
+
+    const uncachedInputs = uncachedIdx.map(i => arr[i]);
+    const contents = uncachedInputs.map(buildContent);
+
+    try {
+      const ai = new window.GoogleGenAI({ apiKey });
+      const res = await ai.models.embedContent({
+        model: PRIMARY_EMBEDDING_MODEL,
+        contents,
+        config: { outputDimensionality },
+      });
+      const embs = Array.isArray(res?.embeddings)
+        ? res.embeddings
+        : res?.embedding
+        ? [res.embedding]
+        : [];
+      for (let k = 0; k < uncachedIdx.length; k++) {
+        const vec = embs[k]?.values || embs[k]?.embedding?.values || null;
+        const i = uncachedIdx[k];
+        if (vec && Array.isArray(vec)) {
+          results[i] = vec;
+          const inp = arr[i];
+          const isStr = typeof inp === 'string';
+          const clean = isStr ? String(inp).trim() : '';
+          const ck = isStr
+            ? `${taskType || 'none'}_${outputDimensionality}_${clean}`
+            : null;
+          if (ck) {
+            embeddingCache.set(ck, vec);
+            if (embeddingCache.size > 500) {
+              const firstKey = embeddingCache.keys().next().value;
+              embeddingCache.delete(firstKey);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[RAG] Batch embedding thất bại, fallback từng item:', err);
+      // Fallback sequential
+      for (const i of uncachedIdx) {
+        try {
+          results[i] = await getEmbedding(arr[i], {
+            apiKey: customApiKey,
+            taskType,
+            title,
+            outputDimensionality,
+          });
+        } catch (e) {
+          results[i] = null;
+        }
+      }
+    }
+
+    // Fallback các item còn null (batch trả thiếu)
+    for (let k = 0; k < uncachedIdx.length; k++) {
+      const i = uncachedIdx[k];
+      if (!results[i]) {
+        try {
+          results[i] = await getEmbedding(arr[i], {
+            apiKey: customApiKey,
+            taskType,
+            title,
+            outputDimensionality,
+          });
+        } catch (e) {
+          results[i] = null;
+        }
+      }
+    }
+
+    return results;
+  }
+
   // --- TEXT CHUNKING WITH OVERLAP ---
+
   function chunkText(text, chunkSize = 750, overlap = 100) {
     if (!text || !text.trim()) return [];
     const clean = text.trim();
@@ -493,34 +621,47 @@
     const docId = `doc_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     let completed = 0;
 
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
+    // Batch embedding: gộp chunks thành lô 8 để giảm số request & latency.
+    const BATCH_SIZE = 8;
+    for (let start = 0; start < chunks.length; start += BATCH_SIZE) {
+      const batch = chunks.slice(start, start + BATCH_SIZE);
       if (onProgress) {
         onProgress({
-          current: i + 1,
+          current: start + 1,
           total: chunks.length,
-          percent: Math.round(((i + 1) / chunks.length) * 100),
-          status: `Đang nhúng vector đoạn ${i + 1}/${chunks.length} (${PRIMARY_EMBEDDING_MODEL})...`,
+          percent: Math.round(((start + 1) / chunks.length) * 100),
+          status: `Đang nhúng vector đoạn ${start + 1}-${Math.min(start + batch.length, chunks.length)}/${chunks.length} (batch)...`,
         });
       }
-
-      const vector = await getEmbedding(chunk, { taskType: 'RETRIEVAL_DOCUMENT', title: docName });
-      const item = {
-        id: `${docId}_chk_${i}`,
-        type: 'doc',
-        docName,
-        chunkIndex: i,
-        totalChunks: chunks.length,
-        title: `${docName} (Đoạn ${i + 1}/${chunks.length})`,
-        text: chunk,
-        vector,
-        metadata: { docName, chunkIndex: i, totalChunks: chunks.length },
-        createdAt: Date.now(),
-      };
-      await saveVectorItem(item);
-      completed++;
-      if (i < chunks.length - 1) {
-        await new Promise(r => setTimeout(r, 60));
+      let vectors = [];
+      try {
+        vectors = await getEmbeddingsBatch(batch, {
+          taskType: 'RETRIEVAL_DOCUMENT',
+          title: docName,
+        });
+      } catch (e) {
+        vectors = new Array(batch.length).fill(null);
+      }
+      for (let j = 0; j < batch.length; j++) {
+        const i = start + j;
+        const vector = (vectors && vectors[j]) || null;
+        const item = {
+          id: `${docId}_chk_${i}`,
+          type: 'doc',
+          docName,
+          chunkIndex: i,
+          totalChunks: chunks.length,
+          title: `${docName} (Đoạn ${i + 1}/${chunks.length})`,
+          text: chunks[i],
+          vector,
+          metadata: { docName, chunkIndex: i, totalChunks: chunks.length },
+          createdAt: Date.now(),
+        };
+        await saveVectorItem(item);
+        completed++;
+      }
+      if (start + BATCH_SIZE < chunks.length) {
+        await new Promise(r => setTimeout(r, 120));
       }
     }
 

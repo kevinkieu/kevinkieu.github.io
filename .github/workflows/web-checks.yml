@@ -1,0 +1,39 @@
+name: Web Checks (PWA)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  web-checks:
+    name: Web checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 🔍 node --check (toàn bộ JS)
+        run: |
+          set -e
+          for f in js/*.js sw.js; do
+            node --check "$f" || { echo "FAIL: $f"; exit 1; }
+          done
+          echo "OK: all JS pass node --check"
+
+      - name: 🔄 Đồng bộ assets + kiểm tra lệch
+        run: |
+          node scripts/sync-web-assets.js
+          node scripts/sync-web-assets.js --check
+
+      - name: 🧩 check-models
+        run: node scratch/check_model_registry.js
+
+      - name: 🗺️ check-map
+        run: node scripts/check-project-map.js

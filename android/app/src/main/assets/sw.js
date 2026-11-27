@@ -1,5 +1,5 @@
 // Jarvis AI Service Worker for PWA
-const CACHE_NAME = 'jarvis-ai-pwa-v97';
+const CACHE_NAME = 'jarvis-ai-pwa-v98';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -76,6 +76,7 @@ async function discoverAssets() {
         './js/rag.worker.js',
         './js/sync.js',
         './js/markdown.worker.js',
+        './js/audio-worklet-processor.js',
       ].forEach(u => urls.add(u));
     }
   } catch (e) {

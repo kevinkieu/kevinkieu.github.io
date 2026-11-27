@@ -26,7 +26,7 @@ const ROOT_FILES = ['index.html', 'manifest.json', 'sw.js', '.well-known/assetli
 // Thư mục cần mirror toàn bộ (đệ quy)
 const DIRS = ['js', 'css'];
 // Icon: chỉ icon PWA thật sự dùng (icon.png 1.3MB là ảnh nguồn, không đóng gói)
-const ICON_RE = /^icon-(?:192|512)\.png$/i;
+const ICON_RE = /^icon-(?:180|192|512)\.png$/i;
 
 const argv = process.argv.slice(2);
 const CHECK_ONLY = argv.includes('--check');

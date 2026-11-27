@@ -677,40 +677,87 @@ async function startLiveVoiceCall(options = {}) {
       liveWs.send(JSON.stringify(setupMsg));
 
       liveMicSource = liveAudioCtx.createMediaStreamSource(liveMediaStream);
-      liveScriptProcessor = liveAudioCtx.createScriptProcessor(4096, 1, 1);
       liveSilentGain = liveAudioCtx.createGain();
       liveSilentGain.gain.value = 0;
 
-      liveScriptProcessor.onaudioprocess = e => {
-        if (!isLiveSetupComplete || isLiveMicMuted || liveWs?.readyState !== WebSocket.OPEN) return;
-        const floatData = e.inputBuffer.getChannelData(0);
-
-        let sum = 0;
-        for (let i = 0; i < floatData.length; i++) sum += floatData[i] * floatData[i];
-        const rms = Math.sqrt(sum / floatData.length);
-        if (rms > 0.015 && orb && !orb.classList.contains('speaking')) {
-          orb.style.transform = `scale(${1 + Math.min(rms * 2.5, 0.25)})`;
-        } else if (orb && !orb.classList.contains('speaking')) {
-          orb.style.transform = 'scale(1)';
+      // Ưu tiên AudioWorklet (chạy trên audio thread, không block UI).
+      // Fallback ScriptProcessorNode nếu trình duyệt cũ/không hỗ trợ.
+      const setupMicProcessing = async () => {
+        try {
+          if (
+            liveAudioCtx.audioWorklet &&
+            typeof liveAudioCtx.audioWorklet.addModule === 'function'
+          ) {
+            await liveAudioCtx.audioWorklet.addModule('./js/audio-worklet-processor.js');
+            const node = new AudioWorkletNode(liveAudioCtx, 'live-mic-processor');
+            node.port.onmessage = ev => {
+              if (!ev || !ev.data) return;
+              const { pcm, rms } = ev.data;
+              const r = Number(rms) || 0;
+              const orb = $('live-orb');
+              if (r > 0.015 && orb && !orb.classList.contains('speaking')) {
+                orb.style.transform = `scale(${1 + Math.min(r * 2.5, 0.25)})`;
+              } else if (orb && !orb.classList.contains('speaking')) {
+                orb.style.transform = 'scale(1)';
+              }
+              if (r > 0.02) resetLiveSilenceTimer();
+              if (!isLiveSetupComplete || isLiveMicMuted || liveWs?.readyState !== WebSocket.OPEN)
+                return;
+              if (!pcm) return;
+              const bytes = new Uint8Array(pcm);
+              let bin = '';
+              for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+              liveWs.send(
+                JSON.stringify({
+                  realtimeInput: {
+                    audio: { mimeType: 'audio/pcm;rate=16000', data: btoa(bin) },
+                  },
+                })
+              );
+            };
+            liveMicSource.connect(node);
+            node.connect(liveSilentGain);
+            liveSilentGain.connect(liveAudioCtx.destination);
+            liveScriptProcessor = node; // reuse variable for cleanup
+            return;
+          }
+        } catch (awErr) {
+          console.warn('[Live] AudioWorklet không khả dụng, fallback ScriptProcessor:', awErr);
         }
-
-        if (rms > 0.02) resetLiveSilenceTimer();
-        const pcm16k = downsampleTo16kPCM(floatData, actualSampleRate);
-        let bin = '';
-        for (let i = 0; i < pcm16k.length; i++) bin += String.fromCharCode(pcm16k[i]);
-
-        liveWs.send(
-          JSON.stringify({
-            realtimeInput: {
-              audio: { mimeType: 'audio/pcm;rate=16000', data: btoa(bin) },
-            },
-          })
-        );
+        // Fallback
+        liveScriptProcessor = liveAudioCtx.createScriptProcessor(4096, 1, 1);
+        liveSilentGain = liveSilentGain || liveAudioCtx.createGain();
+        liveSilentGain.gain.value = 0;
+        liveScriptProcessor.onaudioprocess = e => {
+          if (!isLiveSetupComplete || isLiveMicMuted || liveWs?.readyState !== WebSocket.OPEN)
+            return;
+          const floatData = e.inputBuffer.getChannelData(0);
+          let sum = 0;
+          for (let i = 0; i < floatData.length; i++) sum += floatData[i] * floatData[i];
+          const rms = Math.sqrt(sum / floatData.length);
+          const orb = $('live-orb');
+          if (rms > 0.015 && orb && !orb.classList.contains('speaking')) {
+            orb.style.transform = `scale(${1 + Math.min(rms * 2.5, 0.25)})`;
+          } else if (orb && !orb.classList.contains('speaking')) {
+            orb.style.transform = 'scale(1)';
+          }
+          if (rms > 0.02) resetLiveSilenceTimer();
+          const pcm16k = downsampleTo16kPCM(floatData, actualSampleRate);
+          let bin = '';
+          for (let i = 0; i < pcm16k.length; i++) bin += String.fromCharCode(pcm16k[i]);
+          liveWs.send(
+            JSON.stringify({
+              realtimeInput: {
+                audio: { mimeType: 'audio/pcm;rate=16000', data: btoa(bin) },
+              },
+            })
+          );
+        };
+        liveMicSource.connect(liveScriptProcessor);
+        liveScriptProcessor.connect(liveSilentGain);
+        liveSilentGain.connect(liveAudioCtx.destination);
       };
-
-      liveMicSource.connect(liveScriptProcessor);
-      liveScriptProcessor.connect(liveSilentGain);
-      liveSilentGain.connect(liveAudioCtx.destination);
+      setupMicProcessing().catch(err => console.warn('[Live] setupMicProcessing lỗi:', err));
     };
 
     liveWs.onmessage = async e => {

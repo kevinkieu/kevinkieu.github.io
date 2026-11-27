@@ -52,7 +52,7 @@ jobs:
       - name: ⚙️ Khởi tạo Gradle Wrapper & Cấp quyền thực thi
         run: |
           cd android
-          gradle wrapper --gradle-version 8.2
+          gradle wrapper --gradle-version 8.7
           chmod +x gradlew
 
       - name: 🏷️ Bump Version Code & Version Name (không trùng tag release cũ)
