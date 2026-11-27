@@ -1,3 +1,13 @@
+## 2026-11-27 — Không tự xưng Jarvis AI khi người dùng đặt System Instruction riêng
+
+- **Nguyên nhân:** `PersonaConfig.buildCard()` luôn chèn thẻ tính cách có dòng
+  `Danh tính: Bạn là Jarvis AI...` vào đầu System Instruction, kể cả khi phiên đã có System
+  Instruction riêng không nhắc đến Jarvis AI. Model vì vậy luôn tự xưng Jarvis AI.
+- **Sửa:** `buildCard()` nhận `hasCustomSI`; nếu đã có System Instruction riêng thì bỏ dòng danh
+  tính mặc định (vẫn giữ quy tắc bắt buộc). `getDynamicSI()` truyền cờ này theo `DOM.sysInst`. Kiểm
+  tra localhost: model không còn tự xưng Jarvis AI. Đồng bộ Android assets.
+- **Cache:** bump `persona-config.js?v=3`, `app.js?v=209`, SW cache `jarvis-ai-pwa-v101`.
+
 ## 2026-11-27 — Sửa lỗi ReferenceError khi gửi tin sau refactor GĐ5-6 và expose state cho classic scripts
 
 - **Nguyên nhân:** sau khi tách `js/send-pipeline.js` (classic script) khỏi `js/app.js` (ES module),

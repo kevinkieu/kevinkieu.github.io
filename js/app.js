@@ -813,9 +813,10 @@ const getDynamicSI = (ragSnippet = '') => {
 
   const personalBlock = window.Personalization?.buildPromptBlock?.() || '';
 
+  const hasCustomSI = !!DOM.sysInst?.value?.trim();
   const card =
     persona && window.PersonaConfig && typeof window.PersonaConfig.buildCard === 'function'
-      ? window.PersonaConfig.buildCard(persona)
+      ? window.PersonaConfig.buildCard(persona, { hasCustomSI })
       : '';
 
   return `${timeInstruction ? timeInstruction + '\n\n' : ''}[CHỈ THỊ HỆ THỐNG]:\n${card ? card + '\n\n' : ''}${DOM.toggleGlob?.checked !== false && g ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}${ragBlock}${extraBlock ? '\n\n' + extraBlock : ''}${personalBlock ? '\n\n' + personalBlock : ''}`;

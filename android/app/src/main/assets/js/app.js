@@ -813,9 +813,10 @@ const getDynamicSI = (ragSnippet = '') => {
 
   const personalBlock = window.Personalization?.buildPromptBlock?.() || '';
 
+  const hasCustomSI = !!DOM.sysInst?.value?.trim();
   const card =
     persona && window.PersonaConfig && typeof window.PersonaConfig.buildCard === 'function'
-      ? window.PersonaConfig.buildCard(persona)
+      ? window.PersonaConfig.buildCard(persona, { hasCustomSI })
       : '';
 
   return `${timeInstruction ? timeInstruction + '\n\n' : ''}[CHỈ THỊ HỆ THỐNG]:\n${card ? card + '\n\n' : ''}${DOM.toggleGlob?.checked !== false && g ? '--- TOÀN CỤC: ' + g + '\n' : ''}--- RIÊNG: ${b}${memorySnippet}${pinnedSnippet}${ragBlock}${extraBlock ? '\n\n' + extraBlock : ''}${personalBlock ? '\n\n' + personalBlock : ''}`;
@@ -1547,24 +1548,132 @@ const exposeState = (name, get, set) =>
 if (typeof extractHashKeywords !== 'undefined') window.extractHashKeywords = extractHashKeywords;
 if (typeof btnSendHf !== 'undefined') window.btnSendHf = btnSendHf;
 
-exposeState('isHandsFreeActive', () => isHandsFreeActive, v => { isHandsFreeActive = v; });
-exposeState('isHandsFreeSpeaking', () => isHandsFreeSpeaking, v => { isHandsFreeSpeaking = v; });
-exposeState('isHandsFreeUserTalking', () => isHandsFreeUserTalking, v => { isHandsFreeUserTalking = v; });
-exposeState('autoSummaryThreshold', () => autoSummaryThreshold, v => { autoSummaryThreshold = v; });
-exposeState('contextMsgCount', () => contextMsgCount, v => { contextMsgCount = v; });
-exposeState('_nativeSyncTimer', () => _nativeSyncTimer, v => { _nativeSyncTimer = v; });
-exposeState('handsFreeAnalyser', () => handsFreeAnalyser, v => { handsFreeAnalyser = v; });
-exposeState('handsFreeAudioChunks', () => handsFreeAudioChunks, v => { handsFreeAudioChunks = v; });
-exposeState('handsFreeAudioCtx', () => handsFreeAudioCtx, v => { handsFreeAudioCtx = v; });
-exposeState('handsFreeMediaStream', () => handsFreeMediaStream, v => { handsFreeMediaStream = v; });
-exposeState('handsFreeRecorder', () => handsFreeRecorder, v => { handsFreeRecorder = v; });
-exposeState('handsFreeSpeechStartTime', () => handsFreeSpeechStartTime, v => { handsFreeSpeechStartTime = v; });
-exposeState('handsFreeTranscribeController', () => handsFreeTranscribeController, v => { handsFreeTranscribeController = v; });
-exposeState('handsFreeVadInterval', () => handsFreeVadInterval, v => { handsFreeVadInterval = v; });
-exposeState('currentSpeakingAbort', () => currentSpeakingAbort, v => { currentSpeakingAbort = v; });
-exposeState('currentSpeakingAudio', () => currentSpeakingAudio, v => { currentSpeakingAudio = v; });
-exposeState('currentSpeakingBtn', () => currentSpeakingBtn, v => { currentSpeakingBtn = v; });
-exposeState('currentSpeakingUrls', () => currentSpeakingUrls, v => { currentSpeakingUrls = v; });
+exposeState(
+  'isHandsFreeActive',
+  () => isHandsFreeActive,
+  v => {
+    isHandsFreeActive = v;
+  }
+);
+exposeState(
+  'isHandsFreeSpeaking',
+  () => isHandsFreeSpeaking,
+  v => {
+    isHandsFreeSpeaking = v;
+  }
+);
+exposeState(
+  'isHandsFreeUserTalking',
+  () => isHandsFreeUserTalking,
+  v => {
+    isHandsFreeUserTalking = v;
+  }
+);
+exposeState(
+  'autoSummaryThreshold',
+  () => autoSummaryThreshold,
+  v => {
+    autoSummaryThreshold = v;
+  }
+);
+exposeState(
+  'contextMsgCount',
+  () => contextMsgCount,
+  v => {
+    contextMsgCount = v;
+  }
+);
+exposeState(
+  '_nativeSyncTimer',
+  () => _nativeSyncTimer,
+  v => {
+    _nativeSyncTimer = v;
+  }
+);
+exposeState(
+  'handsFreeAnalyser',
+  () => handsFreeAnalyser,
+  v => {
+    handsFreeAnalyser = v;
+  }
+);
+exposeState(
+  'handsFreeAudioChunks',
+  () => handsFreeAudioChunks,
+  v => {
+    handsFreeAudioChunks = v;
+  }
+);
+exposeState(
+  'handsFreeAudioCtx',
+  () => handsFreeAudioCtx,
+  v => {
+    handsFreeAudioCtx = v;
+  }
+);
+exposeState(
+  'handsFreeMediaStream',
+  () => handsFreeMediaStream,
+  v => {
+    handsFreeMediaStream = v;
+  }
+);
+exposeState(
+  'handsFreeRecorder',
+  () => handsFreeRecorder,
+  v => {
+    handsFreeRecorder = v;
+  }
+);
+exposeState(
+  'handsFreeSpeechStartTime',
+  () => handsFreeSpeechStartTime,
+  v => {
+    handsFreeSpeechStartTime = v;
+  }
+);
+exposeState(
+  'handsFreeTranscribeController',
+  () => handsFreeTranscribeController,
+  v => {
+    handsFreeTranscribeController = v;
+  }
+);
+exposeState(
+  'handsFreeVadInterval',
+  () => handsFreeVadInterval,
+  v => {
+    handsFreeVadInterval = v;
+  }
+);
+exposeState(
+  'currentSpeakingAbort',
+  () => currentSpeakingAbort,
+  v => {
+    currentSpeakingAbort = v;
+  }
+);
+exposeState(
+  'currentSpeakingAudio',
+  () => currentSpeakingAudio,
+  v => {
+    currentSpeakingAudio = v;
+  }
+);
+exposeState(
+  'currentSpeakingBtn',
+  () => currentSpeakingBtn,
+  v => {
+    currentSpeakingBtn = v;
+  }
+);
+exposeState(
+  'currentSpeakingUrls',
+  () => currentSpeakingUrls,
+  v => {
+    currentSpeakingUrls = v;
+  }
+);
 
 if (typeof renderSel !== 'undefined') window.renderSel = renderSel;
 if (typeof updateTokenCount !== 'undefined') window.updateTokenCount = updateTokenCount;

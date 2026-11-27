@@ -97,13 +97,17 @@
   // Mục đích: model vẫn giữ đúng "con người" của Jarvis kể cả khi
   // System Instruction bị cắt ngắn, bị bỏ qua (model local) hoặc khi
   // phiên chỉ có 1-2 lượt ngắn.
-  function buildCard(cfg) {
+  function buildCard(cfg, opts) {
     const c = cfg || get();
     if (c.autoInject === false) return '';
-    const identity =
-      String(c.identity || '')
-        .trim()
-        .slice(0, 600) || DEFAULTS.identity;
+    // Nếu phiên đã có System Instruction riêng, không chèn danh tính mặc định
+    // (tránh model tự xưng Jarvis AI khi người dùng không muốn).
+    const hasCustomSI = !!(opts && opts.hasCustomSI);
+    const identity = hasCustomSI
+      ? ''
+      : String(c.identity || '')
+          .trim()
+          .slice(0, 600) || DEFAULTS.identity;
     const tone = String(c.tone || '')
       .trim()
       .slice(0, 400);
@@ -112,10 +116,12 @@
     if (c.privacyRule !== false) rules.push('không tự nhắc đời tư khi chưa được hỏi');
     if (c.thinkingRule !== false) rules.push('luôn viết câu trả lời hoàn chỉnh sau khi suy luận');
 
-    let out = `[THẺ TÍNH CÁCH NHANH - GIỮ NGUYÊN Ở MỌI LƯỢT TRẢ LỜI]:\n- Danh tính: ${identity}`;
-    if (tone) out += `\n- Xưng hô & phong cách: ${tone}`;
-    if (rules.length) out += `\n- Quy tắc bắt buộc: ${rules.join('; ')}.`;
-    return out;
+    const lines = [];
+    if (identity) lines.push(`- Danh tính: ${identity}`);
+    if (tone) lines.push(`- Xưng hô & phong cách: ${tone}`);
+    if (rules.length) lines.push(`- Quy tắc bắt buộc: ${rules.join('; ')}.`);
+    if (!lines.length) return '';
+    return `[THẺ TÍNH CÁCH NHANH - GIỮ NGUYÊN Ở MỌI LƯỢT TRẢ LỜI]:\n` + lines.join('\n');
   }
 
   function buildThinkingRule() {

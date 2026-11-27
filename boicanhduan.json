@@ -5,7 +5,7 @@
     "language": "JavaScript (ES modules, không bundler, không framework)",
     "purpose": "Multimodal AI assistant: chat đa model (Google Gemini + gateway OpenAI-compatible), live voice/video call, phiên dịch trực tiếp 2 màn hình, TTS studio, knowledge base + RAG, tìm kiếm web, tủ thuốc/nhắc uống thuốc và đồng bộ GitHub Gist 2 chiều.",
     "platforms": ["Web", "PWA", "Android (WebView + native medication alarms)"],
-    "versioning": "Android versionCode 76 / versionName 1.1.76 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=208, chat-render.js ?v=77, chat-format.js ?v=1, uploads.js ?v=1, msg-actions.js ?v=1, perf-marks.js ?v=1, module-loader.js ?v=2, failover.js ?v=1, offline-queue.js ?v=1, model-registry.js ?v=77, dynamic-providers.js ?v=83, sync.js ?v=85, api-keys.js ?v=80, provider-registry.js ?v=2, storage-manager.js ?v=80, export.js ?v=79, commands.js ?v=77, rag.js ?v=77, live.js ?v=77, lazy-libs.js ?v=77, persona-config.js ?v=2, gesture-manager.js ?v=2, gesture-settings.js ?v=2, debug-overlay.js ?v=1, globals.js ?v=76), sw cache jarvis-ai-pwa-v100, sanitize.js ?v=1, sync-merge.js ?v=1"
+    "versioning": "Android versionCode 76 / versionName 1.1.76 (android/app/build.gradle), cache buster ?v= trong index.html (app.js ?v=209, chat-render.js ?v=77, chat-format.js ?v=1, uploads.js ?v=1, msg-actions.js ?v=1, perf-marks.js ?v=1, module-loader.js ?v=2, failover.js ?v=1, offline-queue.js ?v=1, model-registry.js ?v=77, dynamic-providers.js ?v=83, sync.js ?v=85, api-keys.js ?v=80, provider-registry.js ?v=2, storage-manager.js ?v=80, export.js ?v=79, commands.js ?v=77, rag.js ?v=77, live.js ?v=77, lazy-libs.js ?v=77, persona-config.js ?v=3, gesture-manager.js ?v=2, gesture-settings.js ?v=2, debug-overlay.js ?v=1, globals.js ?v=76), sw cache jarvis-ai-pwa-v101, sanitize.js ?v=1, sync-merge.js ?v=1"
   },
   "runtime_entry": {
     "web": "index.html",
@@ -63,7 +63,7 @@
     "lazy_cdn_libs": ["pdf.js (chỉ tải khi cần đọc PDF, qua js/lazy-libs.js)", "html2pdf.js (chỉ tải khi xuất PDF)"],
     "service_worker": {
       "file": "sw.js",
-      "cache": "jarvis-ai-pwa-v100",
+      "cache": "jarvis-ai-pwa-v101",
       "precache": "STATIC_ASSETS: index.html, manifest, icons, 5 file CSS, js/{model-registry,chat-render,persona-config,app,sync,live,tts,translate,rag,search,extract,blob,markdown.worker}.js + toàn bộ CDN_LIBS",
       "html": "network-first (để bản deploy GitHub Pages lên ngay), fallback cache → ./index.html",
       "js_css_cdn": "stale-while-revalidate",
