@@ -174,8 +174,8 @@
     // Fallback hardcoded (để tương thích ngược)
     const fallbacks = {
       openrouter: {
-        keyPrefix: 'jarvis_openrouter_api',
-        keyNamePrefix: 'jarvis_openrouter_api_name',
+        keyPrefix: 'jarvis_openrouter_keys',
+        keyNamePrefix: 'jarvis_openrouter_keys_name',
         keyCount: 5,
       },
       explabs: {
@@ -184,13 +184,13 @@
         keyCount: 5,
       },
       nvidia: {
-        keyPrefix: 'jarvis_nvidia_api',
-        keyNamePrefix: 'jarvis_nvidia_api_name',
+        keyPrefix: 'jarvis_nvidia_keys',
+        keyNamePrefix: 'jarvis_nvidia_keys_name',
         keyCount: 3,
       },
       cohere: {
-        keyPrefix: 'jarvis_cohere_api',
-        keyNamePrefix: 'jarvis_cohere_api_name',
+        keyPrefix: 'jarvis_cohere_keys',
+        keyNamePrefix: 'jarvis_cohere_keys_name',
         keyCount: 3,
       },
     };

@@ -294,6 +294,10 @@
     const p = getProviderMeta(providerId);
     return p ? p.keyNamePrefix : `jarvis_provider_${providerId}_name`;
   }
+  function getProviderKeyPrefix(providerId) {
+    const p = getProviderMeta(providerId);
+    return p ? p.keyPrefix : `jarvis_provider_${providerId}_api`;
+  }
   function getProviderIcon(providerId) {
     if (typeof window.getProviderIcon === 'function') return window.getProviderIcon(providerId);
     const icons = { google: '🤖', nvidia: '🟢', openrouter: '🛰️', cohere: '🤝', explabs: '🌐' };
@@ -394,15 +398,15 @@
         : `${compatProv.label} Key #${keyNum}`;
     } else if (isNV) {
       provLabel = 'NVIDIA';
-      n = (ls.getItem(`jarvis_nvidia_api_name_${keyNum}`) || '').trim();
+      n = (ls.getItem(`${getProviderKeyNamePrefix('nvidia')}_${keyNum}`) || '').trim();
       label = n ? `NV Key #${keyNum} (${n})` : `NV Key #${keyNum}`;
     } else if (isCO) {
       provLabel = 'Cohere';
-      n = (ls.getItem(`jarvis_cohere_api_name_${keyNum}`) || '').trim();
+      n = (ls.getItem(`${getProviderKeyNamePrefix('cohere')}_${keyNum}`) || '').trim();
       label = n ? `CO Key #${keyNum} (${n})` : `CO Key #${keyNum}`;
     } else if (isORBadge) {
       provLabel = 'OpenRouter';
-      n = (ls.getItem(`jarvis_openrouter_api_name_${keyNum}`) || '').trim();
+      n = (ls.getItem(`${getProviderKeyNamePrefix('openrouter')}_${keyNum}`) || '').trim();
       label = n ? `OR Key #${keyNum} (${n})` : `OR Key #${keyNum}`;
     } else {
       provLabel = 'Google';
@@ -839,9 +843,11 @@
       let hasAnyKey = false;
       const count = getProviderKeyCount('openrouter');
       for (let i = 1; i <= count; i++) {
-        let k = (ls.getItem(`jarvis_openrouter_api_${i}`) || '').trim();
+        let k = (ls.getItem(`${getProviderKeyPrefix('openrouter')}_${i}`) || '').trim();
         if (k.startsWith('JVENC_') || k.startsWith('ENC_')) k = deobfuscateKey(k);
-        const n = (ls.getItem(`jarvis_openrouter_api_name_${i}`) || `OR Key ${i}`).trim();
+        const n = (
+          ls.getItem(`${getProviderKeyNamePrefix('openrouter')}_${i}`) || `OR Key ${i}`
+        ).trim();
         if (!k) continue;
         hasAnyKey = true;
         const u = getOpenRouterUsageCount(i);

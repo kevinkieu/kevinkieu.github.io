@@ -1,3 +1,23 @@
+## 2026-11-27 — Hợp nhất kho API key NVIDIA/OpenRouter/Cohere về một nguồn duy nhất
+
+- **Sửa lỗi hai kho key song song**: bảng key cố định trong Cài đặt (`js/api-keys.js` +
+  `provider-registry.js`) ghi `jarvis_<provider>_keys_*`, còn form "Thêm/Sửa Provider"
+  (`js/dynamic-providers.js`) và lúc gửi request (`app.js`) lại đọc `jarvis_<provider>_api_*` — key
+  nhập ở một chỗ bị chỗ kia bỏ qua, backup/Gist đóng gói một kiểu nhưng chạy lại kiểu khác. Nay
+  `provider-registry.js` là nguồn duy nhất: `migrateFromStatic()`, `addProvider()`,
+  `updateProvider()` đều ép prefix của NVIDIA/OpenRouter/Cohere về registry.
+- **Migration một lần** (`jarvis_key_prefix_v2`): chuyển prefix trong `jarvis_dynamic_providers` và
+  copy key/tên từ `jarvis_<provider>_api_*` sang `jarvis_<provider>_keys_*` (chỉ copy khi ô chuẩn
+  còn trống, giữ nguyên key cũ để có thể khôi phục). Chạy ngay khi `dynamic-providers.js` được nạp
+  nên `api-keys.js` (nạp sau) đọc được key đã hợp nhất, không cần tải lại trang.
+- **Bỏ ô nhập key trùng**: sửa provider NVIDIA/OpenRouter/Cohere trong form động không còn hiện ô
+  "Danh sách Key" (thay bằng ghi chú trỏ xuống bảng key tương ứng), ô "Key prefix" bị khoá; xoá
+  provider đó cũng không xoá kho key dùng chung.
+- **Đọc tên theo registry ở các chỗ còn hardcode**: `js/quota.js` (nhãn key NVIDIA/Cohere/
+  OpenRouter + popover quota) và `js/app.js` (chọn key theo slot) dùng `keyPrefix/keyNamePrefix` của
+  provider thay vì chuỗi `_api`. Bump `app.js?v=104`, `api-keys.js?v=80`, `quota.js?v=79`,
+  `dynamic-providers.js?v=83`, SW cache `jarvis-ai-pwa-v94`.
+
 ## 2026-11-27 — Nhẹ và mở nhanh hơn: lazy-load, gỡ Mermaid, tách app.js, build minify
 
 - **Đo trước khi tối ưu**: thêm `js/perf-marks.js` (mốc `html` → `globals-ready` → `app-ready` →

@@ -3847,7 +3847,10 @@ DOM.sendBtn.onclick = async () => {
           let orIdx = 0;
           if (orSel !== 'auto') {
             const slot = parseInt(orSel, 10) + 1;
-            let slotKey = (ls.getItem(`jarvis_openrouter_api_${slot}`) || '').trim();
+            const slotNames =
+              typeof prov.keyStorageMultiple === 'function' ? prov.keyStorageMultiple() : [];
+            const slotName = slotNames[slot - 1] || `jarvis_openrouter_keys_${slot}`;
+            let slotKey = (ls.getItem(slotName) || '').trim();
             if (slotKey.startsWith('JVENC_') || slotKey.startsWith('ENC_'))
               slotKey = deobfuscateKey(slotKey);
             orIdx = Math.max(0, orKeys.indexOf(slotKey));
@@ -3865,8 +3868,11 @@ DOM.sendBtn.onclick = async () => {
           if (compatKey.startsWith('JVENC_') || compatKey.startsWith('ENC_'))
             compatKey = deobfuscateKey(compatKey);
           if (!compatKey && prov.keyCount > 1) {
+            const slotNames =
+              typeof prov.keyStorageMultiple === 'function' ? prov.keyStorageMultiple() : [];
             for (let i = 1; i <= prov.keyCount; i++) {
-              let slotKey = (ls.getItem(`jarvis_${prov.id}_api_${i}`) || '').trim();
+              const slotName = slotNames[i - 1] || `jarvis_${prov.id}_api_${i}`;
+              let slotKey = (ls.getItem(slotName) || '').trim();
               if (slotKey.startsWith('JVENC_') || slotKey.startsWith('ENC_'))
                 slotKey = deobfuscateKey(slotKey);
               if (slotKey) {
