@@ -1,3 +1,38 @@
+## 2026-11-27 — Nhẹ và mở nhanh hơn: lazy-load, gỡ Mermaid, tách app.js, build minify
+
+- **Đo trước khi tối ưu**: thêm `js/perf-marks.js` (mốc `html` → `globals-ready` → `app-ready` →
+  `first-render`, đếm long task) và `window.JarvisPerf.report()`. Baseline ghi tại
+  `scratch/perf-baseline.md`: DCL 497ms, load 514ms, 40 file JS nội bộ (963KB), **6 file CDN
+  3,66MB**.
+- **Gỡ Mermaid hoàn toàn**: bỏ `<script>` trong `index.html`, `mermaid.initialize()` trong
+  `globals.js`, khối render `mermaid.render()` trong `chat-render.js`, URL trong `CDN_LIBS` của
+  `sw.js`; đổi prompt `/p2` trong `commands.js` sang sơ đồ ASCII (không còn phụ thuộc thư viện).
+- **CDN ra khỏi `<head>`**: `marked` chuyển xuống cuối `<body>` (trước `globals.js`, không chặn
+  render); `katex + auto-render` chỉ tải khi tin nhắn có công thức; `highlight.js` chỉ tải ở nhánh
+  fallback; `lamejs` chỉ tải khi xuất MP3; `pdf.js`/`html2pdf` giữ nguyên lazy. `js/lazy-libs.js`
+  thêm 4 entry mới.
+- **Lazy-load module nặng**: `js/module-loader.js` (mới) nạp `tts.js`, `translate.js`,
+  `rag-core.js`+`rag.js`, `sync.js` khi bấm tính năng (stub tự nạp rồi gọi lại) hoặc lúc rảnh;
+  `app.js` bảo đảm nạp `rag` trước khi truy vấn ngữ cảnh nên không mất Trí nhớ RAG.
+- **Sửa nút "Phiên dịch trực tiếp" khi chưa nạp module**: nút trước đây chỉ có handler gắn trong
+  `initTranslateUI()` nên lúc mới mở app bấm không phản ứng (handler là `null` cho tới khi preload
+  xong). Thêm `onclick="openLiveTranslateModal()"` trong `index.html` để cú bấm đầu tiên đi qua stub
+  của `module-loader.js`. Đã bấm thử cả 3 nút (TTS Studio, Phiên dịch trực tiếp, Knowledge) ở trạng
+  thái module **chưa** nạp: module tự tải rồi modal mở bình thường.
+- **Tách `app.js`** (6.146 → 5.741 dòng): `js/chat-format.js` (stream renderer + format
+  thinking/lỗi), `js/uploads.js` (PDF/nén ảnh/xem trước tệp), `js/msg-actions.js` (tombstone +
+  xoá/thử lại/sửa/ghim/ rẽ nhánh). `app.js` alias lại các hàm và giữ nguyên mọi điểm gọi cũ.
+- **Build minify + gộp**: `scripts/build-web.mjs` + `npm run build:web` (esbuild) gộp 36 module
+  thành `dist/js/app.bundle.min.js` (356KB → **113KB gzip**, một request thay vì 36), minify riêng 4
+  script cổ điển (giữ nguyên tên biến toàn cục `$`, `ls`…), minify CSS 116KB → 79,5KB, chép module
+  lazy + worker, tự sinh `dist/index.html`. `dist/` và `.build/` vào `.gitignore`.
+- **Chống lệch mirror Android**: `.husky/pre-commit` chạy `sync-web-assets.js` rồi `git add` thư mục
+  assets trước lint-staged; thêm `test/assets-mirror.test.js` so từng file (thiếu/khác/thừa) — chạy
+  trong `npm test`.
+- Kết quả đo sau tối ưu (localhost, cùng máy): bản dev **DCL 144ms, first-render 241ms**, CDN lúc mở
+  **1 file 39KB** (thay vì 6 file 3,66MB); bản `dist/` **DCL 108ms, first-render 196ms**, JS cần tải
+  trước khi vẽ xong **~374KB / 5 request** (thay vì 963KB / 40 request).
+
 ## 2026-11-27 — Hàng đợi tin nhắn ngoại tuyến (không mất nội dung khi mất mạng)
 
 - `js/offline-queue.js` (mới): hàng đợi ở `localStorage['jarvis_offline_queue']`, tối đa **20 tin**,

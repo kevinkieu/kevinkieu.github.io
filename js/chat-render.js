@@ -181,10 +181,17 @@
       el.innerHTML = html;
       if (thinkingHtml) el.insertAdjacentHTML('afterbegin', thinkingHtml);
 
+      // highlight.js chỉ cần ở nhánh fallback này -> tải theo nhu cầu (~120KB)
+      if (!window.hljs && typeof window.ensureLib === 'function') {
+        try {
+          await window.ensureLib('highlight');
+        } catch (_) {}
+      }
       // Code blocks beautification & Copy buttons (main thread)
       el.querySelectorAll('pre code').forEach(block => {
-        if (!block.classList.contains('language-mermaid')) {
-          hljs.highlightElement(block);
+        {
+          if (window.hljs && typeof hljs.highlightElement === 'function')
+            hljs.highlightElement(block);
           const pre = block.parentElement;
           if (!pre.parentElement.classList.contains('code-block-wrapper')) {
             const wrapper = document.createElement('div');
@@ -219,7 +226,12 @@
       });
     }
 
-    // Math KaTeX (always on main thread)
+    // Math KaTeX: chỉ tải khi nội dung thực sự có công thức ($...$ hoặc $$...$$)
+    if (!window.renderMathInElement && /\$\$?[^\s$]|\\\(/.test(t)) {
+      try {
+        await window.ensureLib?.('katexAutoRender');
+      } catch (_) {}
+    }
     window.renderMathInElement?.(el, {
       delimiters: [
         { left: '$$', right: '$$', display: true },
@@ -227,18 +239,6 @@
       ],
       throwOnError: false,
     });
-    // Mermaid diagrams (always on main thread)
-    const mds = el.querySelectorAll('code.language-mermaid');
-    for (let i = 0; i < mds.length; i++) {
-      try {
-        const { svg } = await mermaid.render('m_' + Date.now() + '_' + i, mds[i].textContent);
-        const d = document.createElement('div');
-        d.style.cssText =
-          'overflow-x:auto;padding:10px;text-align:center;background:var(--bg-card);border-radius:var(--radius-md);margin:10px 0;max-width:100%;box-sizing:border-box;';
-        d.innerHTML = svg;
-        mds[i].parentElement.replaceWith(d);
-      } catch {}
-    }
   }
 
   async function appendMsg(sd, t, i, iHL = false) {

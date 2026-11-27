@@ -19,19 +19,15 @@
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%232563eb'/><text x='50' y='65' font-size='48' font-weight='bold' fill='white' text-anchor='middle'>J</text></svg>"
     />
 
-    <!-- CDN LIBRARIES -->
-    <!-- pdf.js & html2pdf được nạp theo nhu cầu qua js/lazy-libs.js (giảm bundle ban đầu) -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- CDN STYLESHEETS (nhẹ, cần cho hiển thị công thức và tô màu code) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.8.0/dist/mermaid.min.js"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css"
     />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+    <!-- CDN JS: KHÔNG còn nằm trong <head>. marked nạp cuối <body> (không chặn render);
+         katex / highlight.js / lamejs / pdf.js / html2pdf nạp theo nhu cầu qua js/lazy-libs.js.
+         Mermaid đã được gỡ khỏi app. -->
 
     <!-- GOOGLE GENAI (nạp trực tiếp từ CDN, gán vào window để mọi module dùng chung) -->
     <script type="module">
@@ -516,6 +512,7 @@
             <button
               id="btn-open-live-translate"
               class="btn"
+              onclick="openLiveTranslateModal()"
               style="
                 background: linear-gradient(135deg, #0ea5e9, #2563eb);
                 color: white;
@@ -3715,8 +3712,13 @@
     </div>
 
     <!-- JAVASCRIPT APPLICATION MODULES -->
-    <script src="./js/globals.js?v=76"></script>
-    <script src="./js/lazy-libs.js?v=77"></script>
+    <!-- CDN JS nạp cuối body: không chặn first paint. marked phải có trước globals.js
+         vì globals.js đặt marked.use({ breaks: true }). -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="./js/perf-marks.js?v=1"></script>
+    <script src="./js/globals.js?v=77"></script>
+    <script src="./js/lazy-libs.js?v=78"></script>
+    <script src="./js/module-loader.js?v=1"></script>
     <link rel="stylesheet" href="./css/debug-overlay.css?v=1" />
     <script type="module" src="./js/search.js?v=76"></script>
     <script type="module" src="./js/extract.js?v=76"></script>
@@ -3743,18 +3745,18 @@
     <script type="module" src="./js/failover.js?v=1"></script>
     <script type="module" src="./js/offline-queue.js?v=1"></script>
     <script type="module" src="./js/dynamic-providers.js?v=82"></script>
-    <script type="module" src="./js/chat-render.js?v=76"></script>
+    <script type="module" src="./js/chat-render.js?v=77"></script>
+    <script type="module" src="./js/chat-format.js?v=1"></script>
+    <script type="module" src="./js/uploads.js?v=1"></script>
+    <script type="module" src="./js/msg-actions.js?v=1"></script>
     <script type="module" src="./js/persona-config.js?v=2"></script>
     <script type="module" src="./js/theme-scheduler.js?v=1"></script>
     <script type="module" src="./js/personalization.js?v=1"></script>
-    <script type="module" src="./js/app.js?v=102"></script>
+    <script type="module" src="./js/app.js?v=103"></script>
     <script type="module" src="./js/api-keys.js?v=79"></script>
-    <script type="module" src="./js/sync.js?v=84"></script>
+    <!-- sync.js / tts.js / translate.js / rag-core.js / rag.js KHÔNG nạp ở đây nữa:
+         js/module-loader.js nạp khi bấm tính năng hoặc lúc rảnh (giảm ~200KB JS lúc mở app). -->
     <script type="module" src="./js/live.js?v=77"></script>
-    <script type="module" src="./js/tts.js?v=76"></script>
-    <script type="module" src="./js/translate.js?v=76"></script>
     <script type="module" src="./js/eventBus.js?v=76"></script>
-    <script type="module" src="./js/rag-core.js?v=76"></script>
-    <script type="module" src="./js/rag.js?v=77"></script>
   </body>
 </html>

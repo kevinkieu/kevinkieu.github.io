@@ -1,5 +1,5 @@
 // Jarvis AI Service Worker for PWA
-const CACHE_NAME = 'jarvis-ai-pwa-v91';
+const CACHE_NAME = 'jarvis-ai-pwa-v92';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -11,6 +11,10 @@ const STATIC_ASSETS = [
   './css/tts.css',
   './css/translate.css',
   './css/rag.css',
+  './js/perf-marks.js',
+  './js/module-loader.js',
+  './js/lazy-libs.js',
+  './js/globals.js',
   './js/model-registry.js',
   './js/failover.js',
   './js/offline-queue.js',
@@ -34,7 +38,6 @@ const CDN_LIBS = [
   'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js',
   'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css',
   'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js',
-  'https://cdn.jsdelivr.net/npm/mermaid@10.8.0/dist/mermaid.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js',
@@ -85,7 +88,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Stale-while-revalidate for CDN libs (marked, katex, mermaid, highlight, lamejs, @google/genai, pdf.js, html2pdf)
+  // Stale-while-revalidate for CDN libs (marked, katex, highlight, lamejs, @google/genai, pdf.js, html2pdf)
   if (
     url.includes('esm.run') ||
     url.includes('cdnjs.cloudflare.com') ||

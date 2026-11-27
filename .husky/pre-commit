@@ -1,1 +1,4 @@
+# Tự đồng bộ mirror Android trước khi commit để không bao giờ lệch web root
+node scripts/sync-web-assets.js --quiet
+git add android/app/src/main/assets
 npx lint-staged

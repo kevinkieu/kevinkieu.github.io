@@ -23,3 +23,7 @@ keystore.properties
 # Vercel deploy token cho proxy du phong (khong commit)
 .vercel-token
 .vercel/
+
+# Bản build minify (npm run build:web)
+dist/
+.build/

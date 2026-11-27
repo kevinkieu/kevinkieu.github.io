@@ -511,8 +511,11 @@ window.getExternalConfigsObj = function () {
 window.setExternalConfigsObj = function () {}; // placeholder
 
 // --- INIT LIBRARIES ---
-marked.use({ breaks: true });
-mermaid.initialize({ startOnLoad: false, theme: 'default' });
+// marked nạp cuối <body> ngay trước file này; mermaid đã được gỡ khỏi app.
+if (window.marked && typeof window.marked.use === 'function') {
+  window.marked.use({ breaks: true });
+}
+window.JarvisPerf?.mark('globals-ready');
 
 // --- REGISTER PWA SERVICE WORKER ---
 if ('serviceWorker' in navigator) {

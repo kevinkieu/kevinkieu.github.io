@@ -160,8 +160,15 @@ function concatPcmArrays(arrays) {
   return result;
 }
 
-function encodePcmToMp3Blob(pcmBytes, sampleRate = 24000, kbps = 96) {
-  const Lame = window.lamejs || globalThis.lamejs;
+async function encodePcmToMp3Blob(pcmBytes, sampleRate = 24000, kbps = 96) {
+  // lamejs (~150KB) chỉ cần khi thật sự xuất MP3 -> nạp theo nhu cầu
+  let Lame = window.lamejs || globalThis.lamejs;
+  if ((!Lame || !Lame.Mp3Encoder) && typeof window.ensureLib === 'function') {
+    try {
+      await window.ensureLib('lamejs');
+    } catch (_) {}
+    Lame = window.lamejs || globalThis.lamejs;
+  }
   if (!Lame || !Lame.Mp3Encoder) {
     throw new Error('Thư viện nén MP3 (lamejs) chưa được nạp!');
   }
@@ -928,7 +935,7 @@ async function executeTTSWorkflow() {
     // MP3 Encoding via lamejs
     let mp3Blob;
     try {
-      mp3Blob = encodePcmToMp3Blob(mergedPcm, sampleRateCaptured, 96);
+      mp3Blob = await encodePcmToMp3Blob(mergedPcm, sampleRateCaptured, 96);
       ttsMasterMp3Blob = mp3Blob;
     } catch (encErr) {
       console.warn('MP3 encoding error, falling back to WAV:', encErr);

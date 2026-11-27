@@ -38,6 +38,11 @@ const restoreChatScroll = window.restoreChatScroll;
 const reRenderHistory = window.reRenderHistory;
 const stripThinkingForCopy = window.stripThinkingForCopy;
 const isThinkingHidden = window.isThinkingHidden;
+// Đã tách sang js/chat-format.js nhưng vẫn dùng tên ngắn trong file này
+const createStreamRenderer = window.createStreamRenderer;
+const formatThinkingResponse = window.formatThinkingResponse;
+const formatFinalThinkingResponse = window.formatFinalThinkingResponse;
+const formatUpstreamError = window.formatUpstreamError;
 
 // [escapeHtml: do js/globals.js khai báo]
 
@@ -80,101 +85,7 @@ $('btn-font-reset').onclick = () => applyFontSize(16);
 applyFontSize(currentFontSize);
 
 // --- STREAM RENDERER WITH REQUEST ANIMATION FRAME ---
-function createStreamRenderer(targetEl) {
-  let pending = false,
-    latest = '',
-    rafId = null;
-  return {
-    push: text => {
-      latest = text;
-      if (!pending) {
-        pending = true;
-        rafId = requestAnimationFrame(() => {
-          try {
-            let toRender = latest;
-            const hideThinking = isThinkingHidden();
-            if (hideThinking) {
-              toRender = toRender
-                .replace(/<(?:thinking|thought)>[\s\S]*?<\/(?:thinking|thought)>/gi, '')
-                .replace(/<details class="thinking-block">[\s\S]*?<\/details>/gi, '');
-            } else {
-              toRender = toRender.replace(
-                /<(?:thinking|thought)>([\s\S]*?)<\/(?:thinking|thought)>/gi,
-                (m, p1) => buildThinkingDetailsHtml(p1)
-              );
-              toRender = mergeAdjacentThinkingBlocks(toRender);
-            }
-            targetEl.innerHTML = marked.parse(toRender, { sanitize: true });
-          } catch (_) {}
-          pending = false;
-        });
-      }
-    },
-    flush: async finalText => {
-      if (rafId) cancelAnimationFrame(rafId);
-      pending = false;
-      await renderMsgContent(targetEl, finalText);
-    },
-  };
-}
-
 // --- REASONING ACCORDION & THINKING FORMATTER (GEMINI & DEEPSEEK) ---
-function formatThinkingResponse(currentThinking, currentContent, modelDisplayName = 'AI') {
-  const hideThinking = isThinkingHidden();
-
-  // Gộp mọi đoạn suy luận (reasoning_content + thinking/thought trong content) về một chuỗi duy nhất
-  const mergedSegments = mergeThinkingSegments(currentThinking, currentContent);
-  let displayThinking = mergedSegments.thinking;
-  let displayContent = mergedSegments.content;
-
-  if (hideThinking) {
-    if (displayContent) {
-      return displayContent;
-    } else {
-      return `<div class="thinking-streaming"><span class="thinking-spinner">⏳</span> <em>${modelDisplayName} đang suy nghĩ...</em></div>`;
-    }
-  } else {
-    const clean = displayThinking.trim();
-    const { words, tokens } = thinkingStats(clean);
-
-    if (displayContent) {
-      const thinkingBlock = buildThinkingDetailsHtml(clean);
-      return mergeAdjacentThinkingBlocks(
-        thinkingBlock ? thinkingBlock + '\n\n' + displayContent : displayContent
-      );
-    } else if (clean) {
-      return `<div class="thinking-streaming"><span class="thinking-spinner">⏳</span> <em>${modelDisplayName} đang suy luận (${words.toLocaleString('vi-VN')} từ • ~${tokens.toLocaleString('vi-VN')} tokens)...</em></div>`;
-    }
-    return '';
-  }
-}
-
-function formatFinalThinkingResponse(currentThinking, currentContent, modelDisplayName = 'AI') {
-  const hideThinking = isThinkingHidden();
-
-  // Gộp mọi đoạn suy luận (reasoning_content + thinking/thought trong content) về một chuỗi duy nhất
-  const mergedSegments = mergeThinkingSegments(currentThinking, currentContent);
-  let displayThinking = mergedSegments.thinking;
-  let displayContent = mergedSegments.content;
-
-  // FAIL-SAFE CHỐNG LỖI CHỈ CÓ SUY LUẬN MÀ KHÔNG CÓ CÂU TRẢ LỜI:
-  // Nếu mô hình chỉ xuất phần suy luận mà quên xuất câu trả lời người dùng,
-  // chuyển ngay nội dung suy luận thành câu trả lời để người dùng luôn nhận được kết quả hoàn chỉnh!
-  if (!displayContent.trim() && displayThinking.trim()) {
-    displayContent = displayThinking.trim();
-    displayThinking = '';
-  }
-
-  if (hideThinking) {
-    return displayContent;
-  } else {
-    const thinkingBlock = buildThinkingDetailsHtml(displayThinking);
-    return mergeAdjacentThinkingBlocks(
-      thinkingBlock ? thinkingBlock + '\n\n' + displayContent : displayContent
-    );
-  }
-}
-
 // --- EXPORT & TOOLS PROXIES (Đã chuyển sang js/export.js và js/tools.js) ---
 
 // [Đã tách sang js/api-keys.js: render container 10 API keys + init + handlers]
@@ -193,29 +104,6 @@ if (typeof cfgMap !== 'undefined') window.cfgMap = cfgMap;
 // Rút gọn lỗi thô của provider: OpenRouter thường trả metadata.raw là 1 khối JSON
 // (vd Google: {"error":{"code":503,"message":"...","status":"UNAVAILABLE"}}).
 // Chỉ lấy message + mã lỗi để toast gọn, không dump cả JSON vào thông báo.
-function formatUpstreamError(raw, httpStatus) {
-  const text = String(raw || '').trim();
-  if (!text) return httpStatus ? `HTTP ${httpStatus}` : '';
-  let msg = '';
-  let code = '';
-  try {
-    const j = JSON.parse(text);
-    msg = j?.error?.message || j?.message || j?.detail || '';
-    const c = j?.error?.code ?? j?.error?.status ?? j?.code ?? j?.status;
-    if (c !== undefined && c !== null && c !== '') code = String(c);
-  } catch (_) {
-    // Không phải JSON: bắt cặp "message"/"code" dạng text, còn lại coi là message
-    const mMsg = text.match(/"message"\s*:\s*"([^"]+)"/i);
-    const mCode = text.match(/"code"\s*:\s*"?([A-Za-z0-9_.-]+)"?/i);
-    msg = mMsg ? mMsg[1] : text;
-    if (mCode) code = mCode[1];
-  }
-  msg = String(msg).replace(/\s+/g, ' ').trim();
-  if (msg.length > 300) msg = msg.slice(0, 297) + '…';
-  if (!code && httpStatus) code = String(httpStatus);
-  if (!msg) return code ? `HTTP ${code}` : '';
-  return code ? `${msg} (${code})` : msg;
-}
 if (typeof formatUpstreamError !== 'undefined') window.formatUpstreamError = formatUpstreamError;
 
 // [Đã tách sang js/api-keys.js: initAPIKeys / initExternalConfigs + 3 button handlers + auto-init]
@@ -839,32 +727,6 @@ async function condenseSessionMemory(sessionObj, force = false) {
 }
 
 // --- CONVERSATION BRANCHING (RẼ NHÁNH HỘI THOẠI) ---
-window.forkSessionAt = async index => {
-  const curS = sessions.find(x => x.id === activeId);
-  if (!curS || index < 0 || index >= chatHistory.length) return;
-
-  const newForkId = 's_fork_' + Date.now();
-  const forkedHistory = JSON.parse(JSON.stringify(chatHistory.slice(0, index + 1)));
-  const baseName = curS.name.replace(/\s*\(Nhánh.*?\)$/, '');
-
-  const newS = {
-    ...curS,
-    id: newForkId,
-    name: `🌿 ${baseName} (Nhánh ${index + 1})`,
-    his: forkedHistory,
-    lastInteractionId: null,
-    assignedApiKey: null,
-    orderIndex: Date.now(),
-    parentSessionId: curS.id,
-    forkAtIndex: index,
-  };
-
-  sessions.unshift(newS);
-  await saveToDB(newS);
-  await switchSess(newForkId);
-  showToast(`🌿 Đã rẽ nhánh sang phiên mới từ tin #${index + 1}!`);
-};
-
 // --- FEATURE 2: DAILY BRIEFING (Đã chuyển sang js/briefing.js) ---
 
 // --- FEATURE 3: HANDS-FREE VOICE FLOW CONTROLLER (HARDWARE-GRADE getUserMedia + GEMINI STT) ---
@@ -1737,92 +1599,6 @@ if (DOM.btnToggleSnippets?.onclick)
     (DOM.snippetsContainer.style.display =
       DOM.snippetsContainer.style.display === 'flex' ? 'none' : 'flex');
 
-async function readPDF(f) {
-  const pdfjsLib =
-    typeof window.ensureLib === 'function' ? await window.ensureLib('pdfjs') : window.pdfjsLib;
-  if (!pdfjsLib) throw new Error('Chưa tải được thư viện PDF.js');
-  const p = await pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise;
-  let t = '';
-  for (let i = 1; i <= p.numPages; i++) {
-    t += (await (await p.getPage(i)).getTextContent()).items.map(x => x.str).join(' ') + '\n';
-  }
-  return t;
-}
-if (typeof readPDF !== 'undefined') window.readPDF = readPDF;
-
-async function compressImageIfNeeded(f) {
-  if (!f.type.startsWith('image/') || f.type === 'image/gif' || f.type === 'image/svg+xml')
-    return f;
-  return new Promise(resolve => {
-    const img = new Image();
-    const url = URL.createObjectURL(f);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const MAX_DIM = 1600;
-      let { width, height } = img;
-      if (width <= MAX_DIM && height <= MAX_DIM && f.size < 800 * 1024) return resolve(f);
-      if (width > height) {
-        if (width > MAX_DIM) {
-          height = Math.round((height * MAX_DIM) / width);
-          width = MAX_DIM;
-        }
-      } else {
-        if (height > MAX_DIM) {
-          width = Math.round((width * MAX_DIM) / height);
-          height = MAX_DIM;
-        }
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        blob => {
-          if (blob && blob.size < f.size) {
-            resolve(
-              new File([blob], f.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' })
-            );
-          } else {
-            resolve(f);
-          }
-        },
-        'image/jpeg',
-        0.82
-      );
-    };
-    img.onerror = () => resolve(f);
-    img.src = url;
-  });
-}
-
-async function processUploadFiles(fs) {
-  DOM.fileCount.innerText = '⏳';
-  for (let f of fs) {
-    if (f.type.startsWith('image/')) {
-      f = await compressImageIfNeeded(f);
-      if (filesData.length < 20) filesData.push(f);
-    } else if (f.type.startsWith('video/')) {
-      if (filesData.length < 20) filesData.push(f);
-    } else if (f.type.startsWith('audio/')) {
-      // Audio gửi base64 nguyên tệp -> chặn tệp quá lớn để không nổ payload
-      if (f.size > 25 * 1024 * 1024) {
-        showToast(`Tệp audio quá lớn (tối đa 25MB): ${f.name}`, 'danger');
-        continue;
-      }
-      if (filesData.length < 20) filesData.push(f);
-    } else if (f.type === 'application/pdf') {
-      txtContent += `\n[PDF: ${f.name}]:\n${(await readPDF(f)).substring(0, 50000)}\n`;
-      DOM.textFileList.innerHTML += `📑 ${f.name}<br>`;
-    } else {
-      txtContent += `\n[Văn bản: ${f.name}]:\n${(await f.text()).substring(0, 50000)}\n`;
-      DOM.textFileList.innerHTML += `📄 ${f.name}<br>`;
-    }
-  }
-  renderFiles();
-  updateTokenCount();
-}
-
 DOM.fileUpload.onchange = async e => {
   await processUploadFiles(Array.from(e.target.files));
   DOM.fileUpload.value = '';
@@ -2234,6 +2010,8 @@ async function switchSess(id) {
     }
   }
   DOM.chat.scrollTop = DOM.chat.scrollHeight;
+  if (window.JarvisPerf && !window.JarvisPerf.marks['first-render'])
+    window.JarvisPerf.mark('first-render');
   renderPendingQueue();
   renderSel();
   if (!openTabs.includes(id)) openTabs.push(id);
@@ -2873,162 +2651,6 @@ window.toggleSpeakMsg = async (btn, i) => {
   const raw = chatHistory[i]?.text || '';
   const cleanRaw = stripThinkingForCopy(raw);
   playTextAudio(cleanRaw, { btn });
-};
-
-window.togglePinMsg = async i => {
-  if (!chatHistory[i]) return;
-  chatHistory[i].pinned = !chatHistory[i].pinned;
-  const s = sessions.find(x => x.id === activeId);
-  if (s) {
-    s.his = chatHistory;
-    await saveToDB(s);
-  }
-  await reRenderHistory();
-  showToast(
-    chatHistory[i].pinned
-      ? 'Đã ghim tin nhắn! AI sẽ luôn ghi nhớ nội dung này.'
-      : 'Đã bỏ ghim tin nhắn.',
-    'info'
-  );
-};
-
-// --- TOMBSTONE: dấu vết tin nhắn đã xóa để Smart Sync không hồi sinh từ Cloud ---
-const DELETED_MSGS_KEY = 'jarvis_deleted_msgs';
-const TOMBSTONE_TTL = 90 * 24 * 3600 * 1000; // giữ 90 ngày
-function msgSig(m) {
-  const t = String((m && m.text) || '');
-  return ((m && m.role) || '') + '|' + t.length + '|' + t.slice(0, 160) + '|' + t.slice(-60);
-}
-function readDeletedMsgs() {
-  try {
-    const o = JSON.parse(ls.getItem(DELETED_MSGS_KEY) || '{}');
-    return o && typeof o === 'object' ? o : {};
-  } catch (_) {
-    return {};
-  }
-}
-function writeDeletedMsgs(map) {
-  try {
-    const str = JSON.stringify(map);
-    ls.setItem(DELETED_MSGS_KEY, str);
-    if (window.saveToNativeBridge) window.saveToNativeBridge(DELETED_MSGS_KEY, str);
-  } catch (_) {}
-}
-function addDeletedMsgs(sessionId, msgs) {
-  if (!sessionId || !Array.isArray(msgs) || !msgs.length) return;
-  const map = readDeletedMsgs();
-  const now = Date.now();
-  const arr = Array.isArray(map[sessionId])
-    ? map[sessionId].filter(x => x && x.t > now - TOMBSTONE_TTL)
-    : [];
-  msgs.forEach(m => {
-    if (!m) return;
-    const s = msgSig(m);
-    if (s) arr.push({ s, t: now });
-  });
-  map[sessionId] = arr.slice(-800);
-  writeDeletedMsgs(map);
-}
-function filterDeletedMsgs(sessionId, his) {
-  const list = Array.isArray(his) ? his : [];
-  const arr = readDeletedMsgs()[sessionId];
-  if (!Array.isArray(arr) || !arr.length) return { his: list, removed: 0 };
-  const sigs = new Set(arr.map(x => x.s));
-  const out = list.filter(m => !sigs.has(msgSig(m)));
-  return { his: out, removed: list.length - out.length };
-}
-function readAllDeletedMsgs() {
-  return readDeletedMsgs();
-}
-function mergeAllDeletedMsgs(remote) {
-  if (!remote || typeof remote !== 'object') return false;
-  const map = readDeletedMsgs();
-  const now = Date.now();
-  let changed = false;
-  Object.keys(remote).forEach(sid => {
-    const incoming = Array.isArray(remote[sid]) ? remote[sid] : [];
-    const arr = Array.isArray(map[sid]) ? map[sid].slice() : [];
-    const seen = new Set(arr.map(x => x && x.s));
-    incoming.forEach(x => {
-      if (!x || !x.s) return;
-      if ((x.t || 0) < now - TOMBSTONE_TTL) return;
-      if (!seen.has(x.s)) {
-        arr.push({ s: x.s, t: x.t || now });
-        seen.add(x.s);
-        changed = true;
-      }
-    });
-    if (arr.length) map[sid] = arr.slice(-800);
-  });
-  if (changed) writeDeletedMsgs(map);
-  return changed;
-}
-// Gọi lại khi Restore từ Cloud (js/sync.js)
-window.jarvisMsgTombstones = {
-  add: addDeletedMsgs,
-  filter: filterDeletedMsgs,
-  readAll: readAllDeletedMsgs,
-  mergeAll: mergeAllDeletedMsgs,
-  sig: msgSig,
-};
-
-window.deleteMsg = async i => {
-  if (confirm('Xóa tin nhắn này?')) {
-    // Ghi tombstone để Smart Sync không hồi sinh tin vừa xóa từ Cloud
-    if (window.jarvisMsgTombstones && chatHistory[i])
-      window.jarvisMsgTombstones.add(activeId, [chatHistory[i]]);
-    const keepScroll = captureChatScroll();
-    chatHistory.splice(i, 1);
-    const s = sessions.find(x => x.id === activeId);
-    if (s) {
-      const prevBot = chatHistory
-        .slice()
-        .reverse()
-        .find(m => m.role === 'model' && m.interactionId);
-      s.lastInteractionId = prevBot?.interactionId || null;
-      await saveToDB(s);
-    }
-    await reRenderHistory();
-    restoreChatScroll(keepScroll);
-  }
-};
-
-window.retryMsg = async i => {
-  if (isProcessing || i <= 0 || chatHistory[i - 1].role !== 'user') return;
-  const up = chatHistory[i - 1].text;
-  if (window.jarvisMsgTombstones)
-    window.jarvisMsgTombstones.add(activeId, chatHistory.slice(Math.max(0, i - 1), i + 1));
-  chatHistory.splice(i - 1, 2);
-  const s = sessions.find(x => x.id === activeId);
-  if (s) {
-    const prevBot = chatHistory
-      .slice()
-      .reverse()
-      .find(m => m.role === 'model' && m.interactionId);
-    s.lastInteractionId = prevBot?.interactionId || null;
-    await saveToDB(s);
-  }
-  await reRenderHistory();
-  DOM.input.value = up;
-  DOM.input.dispatchEvent(new Event('input'));
-  DOM.sendBtn.click();
-};
-
-window.editMsg = async i => {
-  DOM.input.value = chatHistory[i].text;
-  DOM.input.dispatchEvent(new Event('input'));
-  if (window.jarvisMsgTombstones) window.jarvisMsgTombstones.add(activeId, chatHistory.slice(i));
-  chatHistory = chatHistory.slice(0, i);
-  const s = sessions.find(x => x.id === activeId);
-  if (s) {
-    const prevBot = chatHistory
-      .slice()
-      .reverse()
-      .find(m => m.role === 'model' && m.interactionId);
-    s.lastInteractionId = prevBot?.interactionId || null;
-    await saveToDB(s);
-  }
-  await reRenderHistory();
 };
 
 window.clearActiveSession = async () => {
@@ -3833,6 +3455,12 @@ DOM.sendBtn.onclick = async () => {
       : DOM.toggleRagEmbedding
         ? DOM.toggleRagEmbedding.checked
         : true;
+    // rag.js nạp theo nhu cầu (js/module-loader.js): bảo đảm có module trước khi truy vấn
+    if (isRagSessionForQuery && !window.JarvisRAG && typeof window.ensureModule === 'function') {
+      try {
+        await window.ensureModule('rag');
+      } catch (_) {}
+    }
     if (
       isRagSessionForQuery &&
       window.JarvisRAG &&
@@ -5733,27 +5361,6 @@ $('import-all-input').onchange = e => {
   rd.readAsText(f);
 };
 
-function renderFiles() {
-  DOM.previewBox.style.display = filesData.length || txtContent ? 'block' : 'none';
-  DOM.fileCount.innerText = filesData.length + (txtContent ? 1 : 0);
-  DOM.previewGrid.innerHTML = filesData
-    .map(
-      (f, i) => `
-        <div style="position:relative;width:50px;height:50px;background:#1e293b;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;overflow:hidden;border:1px solid var(--border);">
-          ${f.type.startsWith('image') ? `<img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover;">` : f.type.startsWith('video') ? '🎬 VIDEO' : f.type.startsWith('audio') ? '🎵 AUDIO' : '📄 FILE'}
-          <button onclick="rmImg(${i})" style="position:absolute;top:2px;right:2px;background:rgba(239,68,68,0.9);color:white;border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;">×</button>
-        </div>
-      `
-    )
-    .join('');
-}
-
-window.rmImg = i => {
-  filesData.splice(i, 1);
-  renderFiles();
-  updateTokenCount();
-};
-
 DOM.clearFilesBtn.onclick = () => {
   filesData = [];
   txtContent = '';
@@ -6133,3 +5740,6 @@ if (document.readyState === 'loading') {
 } else {
   setTimeout(launchAppInits, 80);
 }
+
+// Mốc đo: app.js đã chạy xong (handler Gửi, toàn bộ sự kiện UI đã gắn)
+window.JarvisPerf?.mark('app-ready');

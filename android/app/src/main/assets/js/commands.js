@@ -25,8 +25,8 @@
     },
     {
       id: 'p2',
-      title: '📊 Sơ đồ Mermaid',
-      text: 'Vẽ sơ đồ tư duy trực quan bằng code Mermaid trong khối ```mermaid để giải thích rõ cấu trúc:',
+      title: '📊 Sơ đồ cấu trúc',
+      text: 'Vẽ sơ đồ cấu trúc trực quan bằng ký tự ASCII (mũi tên, thụt lề, nhánh) trong khối code để giải thích rõ cấu trúc:',
     },
     {
       id: 'p3',

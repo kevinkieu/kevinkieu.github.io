@@ -19,6 +19,30 @@
       url: 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
       get: () => window.html2pdf,
     },
+    // KaTeX: chỉ tải khi tin nhắn thực sự có công thức toán (~270KB)
+    katex: {
+      label: 'KaTeX',
+      url: 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js',
+      get: () => window.katex,
+    },
+    katexAutoRender: {
+      label: 'KaTeX auto-render',
+      url: 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js',
+      dependsOn: 'katex',
+      get: () => window.renderMathInElement,
+    },
+    // highlight.js: chỉ cần ở luồng fallback khi Web Worker không render được
+    highlight: {
+      label: 'highlight.js',
+      url: 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js',
+      get: () => window.hljs,
+    },
+    // lamejs: chỉ dùng khi xuất audio TTS thành MP3
+    lamejs: {
+      label: 'lamejs (MP3 encoder)',
+      url: 'https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js',
+      get: () => window.lamejs,
+    },
   };
 
   const pending = Object.create(null);
