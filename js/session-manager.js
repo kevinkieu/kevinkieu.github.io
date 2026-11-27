@@ -355,14 +355,12 @@ async function switchSess(id) {
   renderTabs();
 }
 
-DOM.selSession.onchange = e => switchSess(e.target.value);
-
 // Lọc phiên theo từ khoá gõ ở ô tìm kiếm sidebar (tên phiên, model đã dùng, nội dung tin nhắn)
-let sessionFilter = '';
+let _sessionFilter = '';
 Object.defineProperty(window, 'sessionFilter', {
-  get: () => sessionFilter,
+  get: () => _sessionFilter,
   set: v => {
-    sessionFilter = v;
+    _sessionFilter = v;
   },
   configurable: true,
 });
@@ -388,7 +386,7 @@ function sessionMatchesFilter(s, q) {
 }
 
 function renderSel() {
-  const q = sessionFilter.trim().toLowerCase();
+  const q = _sessionFilter.trim().toLowerCase();
   let v = sessions;
   if (q) {
     const matched = sessions.filter(s => sessionMatchesFilter(s, q));

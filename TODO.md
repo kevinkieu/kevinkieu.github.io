@@ -35,9 +35,9 @@
       vào `include` và sửa hết lỗi: hiện `tsc --noEmit` = 0 lỗi.
 - [x] ~~Test chép lại logic thay vì chạy mã production~~ — `search/extract/blob/markdown.worker` giờ
       nạp chính file trong `js/`; thêm `test/sanitize.test.js`, `test/sync-merge.test.js`.
-- [ ] Tách nốt `DOM.sendBtn.onclick` (~2.500 dòng trong `js/app.js`) thành module `send-pipeline`
-      riêng. Chưa làm vì handler dùng hàng trăm biến closure của `app.js`; tách mù sẽ dễ làm vỡ
-      luồng gửi tin. Các phần an toàn (render lịch sử, RAG worker, merge thuần) đã tách trước.
+- [x] Tách `DOM.sendBtn.onclick` (~2.500 dòng) thành `js/send-pipeline.js` (Giai đoạn 5).
+- [x] Dọn `js/app.js` thành shell (~1.727 dòng) + module
+      helper/session/hands-free/TTS/native-sync/offline-ui (Giai đoạn 1-4, 6).
 - [ ] `local-llm.js`, `persona-config.js` chưa có test riêng.
 
 - [x] Phase 1 security hardening (2026-11-27): XSS (session/file/doc/medication names), eventBus

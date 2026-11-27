@@ -54,51 +54,12 @@ async function updateConfig() {
   DOM.searchEngineBox.style.display = DOM.toggleSearch.checked ? 'block' : 'none';
 }
 
-DOM.model.addEventListener('change', () => {
-  const s = sessions.find(x => x.id === activeId);
-  const nextMod = DOM.model.value;
-  // Mỗi model có bộ mức Think Depth khác nhau (effort / bật-tắt / ngân sách token)
-  // -> nhớ mức của model vừa rời đi để quay lại không bị mất cấu hình.
-  if (s && s.mod && s.mod !== nextMod) {
-    s.thkMap = Object.assign({}, s.thkMap || {}, { [s.mod]: s.thk || DOM.thinking.value });
-  }
-  updateThinkingVisibility();
-  // Qwen4 Max mặc định Think Depth = Low khi chọn model này
-  if (nextMod === 'qwen4-max:free' && DOM.thinking) DOM.thinking.value = 'low';
-  // Khôi phục mức đã lưu cho model này nếu model đó có lưu và mức còn hợp lệ
-  const savedThk = s && s.thkMap ? s.thkMap[nextMod] : null;
-  if (savedThk && Array.from(DOM.thinking.options).some(o => o.value === savedThk)) {
-    DOM.thinking.value = savedThk;
-  }
-  updateConfig();
-  updateKeyQuotaUI();
-});
-DOM.engineSel.addEventListener('change', updateConfig);
-[DOM.sysInst, DOM.toggleGlob, DOM.toggleSearch, DOM.searchEngineSel, DOM.thinking].forEach(el =>
-  el?.addEventListener?.('change', updateConfig)
-);
-// key-pool-select has its own change handler in renderKeyPoolMenu which calls setGoogleKeySlot
-
-if (DOM.btnToggleSessionMem) {
-  DOM.btnToggleSessionMem.onclick = () => {
-    const s = sessions.find(x => x.id === activeId);
-    const cur = s ? s.mem !== false : DOM.toggleMemory.checked;
-    const next = !cur;
-    DOM.toggleMemory.checked = next;
-    if (DOM.sessionMemState) {
-      DOM.sessionMemState.innerText = next ? 'BẬT' : 'TẮT';
-      DOM.sessionMemState.style.color = next ? 'var(--success)' : 'var(--text-muted)';
-    }
-    if (s) {
-      s.mem = next;
-      saveToDB(s);
-    }
-    showToast(
-      `Ngữ cảnh trò chuyện [Phiên này]: ${next ? 'ĐÃ BẬT' : 'ĐÃ TẮT'}`,
-      next ? 'success' : 'warning'
-    );
-  };
-}
-
 if (typeof syncSessionsToNative !== 'undefined') window.syncSessionsToNative = syncSessionsToNative;
 if (typeof updateConfig !== 'undefined') window.updateConfig = updateConfig;
+
+function scheduleAutoSync(delay = 10000) {
+  if (window.JarvisSync && typeof window.JarvisSync.scheduleAutoSync === 'function') {
+    window.JarvisSync.scheduleAutoSync(delay);
+  }
+}
+if (typeof scheduleAutoSync !== 'undefined') window.scheduleAutoSync = scheduleAutoSync;

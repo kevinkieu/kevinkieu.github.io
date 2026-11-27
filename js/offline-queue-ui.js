@@ -1,4 +1,5 @@
 // Phase 4 offline-queue-ui (extracted from app.js)
+let flushingOfflineQueue = false;
 function renderPendingQueue() {
   const q = window.JarvisOfflineQueue;
   if (!q) return;

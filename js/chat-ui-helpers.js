@@ -143,8 +143,30 @@
     return chunks.length ? chunks : [text];
   }
 
+  function updateThinkingVisibility() {
+    const m = DOM.model?.value || '',
+      t = DOM.thinking;
+    if (!t) return;
+    const prev = t.value;
+    const mOpts = (window.COMPAT_MODEL_OPTS || {})[m];
+    if (mOpts && Array.isArray(mOpts.levels) && mOpts.levels.length) {
+      t.innerHTML = mOpts.levels.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+      t.value = mOpts.levels.some(([v]) => v === prev) ? prev : mOpts.levels[0][0];
+      t.disabled = mOpts.levels.length === 1;
+      return;
+    }
+    t.disabled = false;
+    const modelLevels = window.getModelThinkingLevels ? window.getModelThinkingLevels(m) : [];
+    const opts = (modelLevels.length ? modelLevels : window.DEFAULT_THINKING_LEVELS || []).map(
+      v => [v, (window.THINKING_LEVEL_LABELS || {})[v] || v]
+    );
+    t.innerHTML = opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+    t.value = opts.some(([v]) => v === prev) ? prev : opts[0]?.[0] || 'minimal';
+  }
+
   window.enableHorizontalScrollAndDrag = enableHorizontalScrollAndDrag;
   window.generateLocalFallbackTitle = generateLocalFallbackTitle;
   window.sanitizeTranscript = sanitizeTranscript;
   window.splitTextIntoSmartChunks = splitTextIntoSmartChunks;
+  window.updateThinkingVisibility = updateThinkingVisibility;
 })();

@@ -45,6 +45,8 @@
     "js/native-sync.js",
     "js/offline-queue-ui.js",
     "js/confirm-modal.js",
+    "js/send-pipeline.js",
+    "js/ui-notify.js",
     "build*.js",
     "bump-version.js"
   ]
