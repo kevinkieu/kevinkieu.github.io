@@ -315,8 +315,8 @@
   "changelog": {
     "file": "CHANGELOG.md",
     "note": "Lịch sử thay đổi chi tiết đã chuyển từ recent_changes sang CHANGELOG.md để boicanhduan.json chỉ còn mô tả kiến trúc.",
-    "entries": 52,
-    "last_change_date": "2026-11-27",
-    "latest_summary": "Phase 1 security hardening + keystore rotation + git history cleaned; Phase 3 PWA modernization (apple-touch-icon, theme-color dynamic, a11y, Background Sync, Notification). See CHANGELOG.md."
+    "entries": 53,
+    "last_change_date": "2026-11-28",
+    "latest_summary": "Phase 1 security hardening + keystore rotation + git history cleaned; Phase 3 PWA modernization (apple-touch-icon, theme-color dynamic, a11y, Background Sync, Notification); Phase 4 performance (AudioWorklet, embedding batch, backoff reconnect, CI web job, Android stack upgrade, cache v98). See CHANGELOG.md."
   }
 }

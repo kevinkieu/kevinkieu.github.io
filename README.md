@@ -84,6 +84,18 @@ _APK được build tự động bởi GitHub Actions khi push lên main/master.
   overscroll-behavior, manifest hiện đại, a11y (role/aria-label/prefers-reduced-motion), Background
   Sync + Notification infra, cache v97.
 
+### Cập nhật hiệu năng 2026-11-28 (Giai đoạn 4)
+
+- **AudioWorklet**: chuyển thu âm Live Call từ `ScriptProcessorNode` (main thread) sang
+  `AudioWorklet` (audio thread), có fallback cho trình duyệt cũ.
+- **Embedding batch**: gộp nhiều chunk vào 1 request (`getEmbeddingsBatch`), fallback từng item nếu
+  lỗi; index tài liệu dùng lô 8 chunk.
+- **Backoff reconnect**: exponential + jitter cho fetch Gist pull/push (retry mạng/5xx/429).
+- **CI web job**: workflow `web-checks.yml` chạy `node --check`, `sync-assets --check`,
+  `check-models`, `check-map` trên push/PR.
+- **Stack Android**: compileSdk/targetSdk 34→35, AGP 8.5.2, Gradle 8.7, Kotlin 1.9.24, appcompat
+  1.7.0, webkit 1.12.0, material 1.12.0. Cache v98.
+
 ---
 
 <a name="-tiếng-việt"></a>

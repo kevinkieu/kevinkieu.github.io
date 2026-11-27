@@ -53,6 +53,10 @@
       ?v=82 cho 4 CSS còn thiếu. `on*`/style nguy hiểm) và áp dụng cho chat render, stream renderer,
       briefing, export PDF/Word, prompt library, tên tệp đính kèm; thêm CSP trong `index.html`; sửa
       `escapeHtml` trong `markdown.worker.js` (trước đây là no-op nên `data-code` bị vỡ).
+- [x] Phase 4 hiệu năng (2026-11-28): AudioWorklet cho Live Call (fallback ScriptProcessor),
+      embedding batch (`getEmbeddingsBatch`, lô 8 chunk), backoff reconnect (exponential + jitter
+      cho fetch Gist), CI web job (`web-checks.yml`), stack Android (sdk 35, AGP 8.5.2, Gradle 8.7,
+      Kotlin 1.9.24, appcompat/webkit/material mới). Cache v98.
 - [x] Khóa WebView bridge: chỉ nạp từ `https://appassets.androidplatform.net`, chặn điều hướng
       remote trong WebView (mở bằng trình duyệt), chỉ cấp Micro/Camera cho origin nội bộ, tắt
       `allowFileAccess`/universal access/third-party cookie/cleartext, validate tên tệp + MIME khi
