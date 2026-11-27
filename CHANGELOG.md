@@ -1,3 +1,17 @@
+## 2026-11-27 — Sửa lỗi ReferenceError khi gửi tin sau refactor GĐ5-6 và expose state cho classic scripts
+
+- **Nguyên nhân:** sau khi tách `js/send-pipeline.js` (classic script) khỏi `js/app.js` (ES module),
+  các lời gọi như `extractHashKeywords`, `isHandsFreeActive`, `currentSpeakingAbort`, ... trong
+  classic scripts không còn truy cập được biến module-private của `app.js`, gây lỗi
+  `extractHashKeywords is not defined` khi gửi tin nhắn.
+- **Sửa:** expose các helper/state qua `window` bằng getter/setter (`exposeState`) để classic
+  scripts đọc/ghi được giá trị mới nhất; bổ sung `_nativeSyncTimer`, các biến hands-free và TTS
+  speaking. Đồng bộ sang `android/app/src/main/assets`.
+- **Dọn code:** rút gọn khối expose lặp lại bằng helper `exposeState`.
+- **Kiểm tra:** gửi tin với key thật thành công; TTS và hands-free chạy không còn ReferenceError;
+  `npm run typecheck`, `npm test`, `check-assets` OK. Bump `app.js?v=208`, SW cache
+  `jarvis-ai-pwa-v100`.
+
 ## 2026-11-27 — Hợp nhất kho API key NVIDIA/OpenRouter/Cohere về một nguồn duy nhất
 
 - **Sửa lỗi hai kho key song song**: bảng key cố định trong Cài đặt (`js/api-keys.js` +

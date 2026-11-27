@@ -1539,6 +1539,141 @@ if (typeof deobfuscateKey !== 'undefined') window.deobfuscateKey = deobfuscateKe
 if (typeof stripThinkingForCopy !== 'undefined') window.stripThinkingForCopy = stripThinkingForCopy;
 if (typeof getSessionApiKey !== 'undefined') window.getSessionApiKey = getSessionApiKey;
 if (typeof updateColorPickerUI !== 'undefined') window.updateColorPickerUI = updateColorPickerUI;
+// Expose helpers/state that were left module-private after the GĐ5-6 split but are
+// still referenced by classic scripts (send-pipeline.js, hands-free.js, message-tts.js).
+const exposeState = (name, get, set) =>
+  Object.defineProperty(window, name, { get, set, configurable: true });
+
+if (typeof extractHashKeywords !== 'undefined') window.extractHashKeywords = extractHashKeywords;
+if (typeof btnSendHf !== 'undefined') window.btnSendHf = btnSendHf;
+
+exposeState(
+  'isHandsFreeActive',
+  () => isHandsFreeActive,
+  v => {
+    isHandsFreeActive = v;
+  }
+);
+exposeState(
+  'isHandsFreeSpeaking',
+  () => isHandsFreeSpeaking,
+  v => {
+    isHandsFreeSpeaking = v;
+  }
+);
+exposeState(
+  'isHandsFreeUserTalking',
+  () => isHandsFreeUserTalking,
+  v => {
+    isHandsFreeUserTalking = v;
+  }
+);
+exposeState(
+  'autoSummaryThreshold',
+  () => autoSummaryThreshold,
+  v => {
+    autoSummaryThreshold = v;
+  }
+);
+exposeState(
+  'contextMsgCount',
+  () => contextMsgCount,
+  v => {
+    contextMsgCount = v;
+  }
+);
+exposeState(
+  '_nativeSyncTimer',
+  () => _nativeSyncTimer,
+  v => {
+    _nativeSyncTimer = v;
+  }
+);
+exposeState(
+  'handsFreeAnalyser',
+  () => handsFreeAnalyser,
+  v => {
+    handsFreeAnalyser = v;
+  }
+);
+exposeState(
+  'handsFreeAudioChunks',
+  () => handsFreeAudioChunks,
+  v => {
+    handsFreeAudioChunks = v;
+  }
+);
+exposeState(
+  'handsFreeAudioCtx',
+  () => handsFreeAudioCtx,
+  v => {
+    handsFreeAudioCtx = v;
+  }
+);
+exposeState(
+  'handsFreeMediaStream',
+  () => handsFreeMediaStream,
+  v => {
+    handsFreeMediaStream = v;
+  }
+);
+exposeState(
+  'handsFreeRecorder',
+  () => handsFreeRecorder,
+  v => {
+    handsFreeRecorder = v;
+  }
+);
+exposeState(
+  'handsFreeSpeechStartTime',
+  () => handsFreeSpeechStartTime,
+  v => {
+    handsFreeSpeechStartTime = v;
+  }
+);
+exposeState(
+  'handsFreeTranscribeController',
+  () => handsFreeTranscribeController,
+  v => {
+    handsFreeTranscribeController = v;
+  }
+);
+exposeState(
+  'handsFreeVadInterval',
+  () => handsFreeVadInterval,
+  v => {
+    handsFreeVadInterval = v;
+  }
+);
+exposeState(
+  'currentSpeakingAbort',
+  () => currentSpeakingAbort,
+  v => {
+    currentSpeakingAbort = v;
+  }
+);
+exposeState(
+  'currentSpeakingAudio',
+  () => currentSpeakingAudio,
+  v => {
+    currentSpeakingAudio = v;
+  }
+);
+exposeState(
+  'currentSpeakingBtn',
+  () => currentSpeakingBtn,
+  v => {
+    currentSpeakingBtn = v;
+  }
+);
+exposeState(
+  'currentSpeakingUrls',
+  () => currentSpeakingUrls,
+  v => {
+    currentSpeakingUrls = v;
+  }
+);
+
 if (typeof renderSel !== 'undefined') window.renderSel = renderSel;
 if (typeof updateTokenCount !== 'undefined') window.updateTokenCount = updateTokenCount;
 if (typeof newSess !== 'undefined') window.newSess = newSess;
