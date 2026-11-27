@@ -684,7 +684,10 @@ async function startLiveVoiceCall(options = {}) {
       // Fallback ScriptProcessorNode nếu trình duyệt cũ/không hỗ trợ.
       const setupMicProcessing = async () => {
         try {
-          if (liveAudioCtx.audioWorklet && typeof liveAudioCtx.audioWorklet.addModule === 'function') {
+          if (
+            liveAudioCtx.audioWorklet &&
+            typeof liveAudioCtx.audioWorklet.addModule === 'function'
+          ) {
             await liveAudioCtx.audioWorklet.addModule('./js/audio-worklet-processor.js');
             const node = new AudioWorkletNode(liveAudioCtx, 'live-mic-processor');
             node.port.onmessage = ev => {
@@ -698,7 +701,8 @@ async function startLiveVoiceCall(options = {}) {
                 orb.style.transform = 'scale(1)';
               }
               if (r > 0.02) resetLiveSilenceTimer();
-              if (!isLiveSetupComplete || isLiveMicMuted || liveWs?.readyState !== WebSocket.OPEN) return;
+              if (!isLiveSetupComplete || isLiveMicMuted || liveWs?.readyState !== WebSocket.OPEN)
+                return;
               if (!pcm) return;
               const bytes = new Uint8Array(pcm);
               let bin = '';
@@ -725,7 +729,8 @@ async function startLiveVoiceCall(options = {}) {
         liveSilentGain = liveSilentGain || liveAudioCtx.createGain();
         liveSilentGain.gain.value = 0;
         liveScriptProcessor.onaudioprocess = e => {
-          if (!isLiveSetupComplete || isLiveMicMuted || liveWs?.readyState !== WebSocket.OPEN) return;
+          if (!isLiveSetupComplete || isLiveMicMuted || liveWs?.readyState !== WebSocket.OPEN)
+            return;
           const floatData = e.inputBuffer.getChannelData(0);
           let sum = 0;
           for (let i = 0; i < floatData.length; i++) sum += floatData[i] * floatData[i];

@@ -372,10 +372,8 @@
   async function getEmbeddingsBatch(inputs, options = {}) {
     const arr = Array.isArray(inputs) ? inputs : [inputs];
     if (!arr.length) return [];
-    const customApiKey =
-      typeof options === 'string' ? options : options?.apiKey || null;
-    const taskType =
-      typeof options === 'string' ? null : options?.taskType || null;
+    const customApiKey = typeof options === 'string' ? options : options?.apiKey || null;
+    const taskType = typeof options === 'string' ? null : options?.taskType || null;
     const title = typeof options === 'string' ? null : options?.title || null;
     const outputDimensionality =
       (typeof options === 'object' && options?.outputDimensionality) || 768;
@@ -399,9 +397,7 @@
         results[i] = null;
         continue;
       }
-      const ck = isStr
-        ? `${taskType || 'none'}_${outputDimensionality}_${clean}`
-        : null;
+      const ck = isStr ? `${taskType || 'none'}_${outputDimensionality}_${clean}` : null;
       if (ck && embeddingCache.has(ck)) {
         results[i] = embeddingCache.get(ck);
       } else {
@@ -415,10 +411,8 @@
       const isStr = typeof inp === 'string';
       const clean = isStr ? String(inp).trim() : '';
       if (taskType === 'RETRIEVAL_QUERY') return `task: search result | query: ${clean}`;
-      if (taskType === 'RETRIEVAL_DOCUMENT')
-        return `title: ${title || 'none'} | text: ${clean}`;
-      if (taskType === 'SEMANTIC_SIMILARITY')
-        return `task: sentence similarity | query: ${clean}`;
+      if (taskType === 'RETRIEVAL_DOCUMENT') return `title: ${title || 'none'} | text: ${clean}`;
+      if (taskType === 'SEMANTIC_SIMILARITY') return `task: sentence similarity | query: ${clean}`;
       return clean;
     };
 
@@ -435,8 +429,8 @@
       const embs = Array.isArray(res?.embeddings)
         ? res.embeddings
         : res?.embedding
-        ? [res.embedding]
-        : [];
+          ? [res.embedding]
+          : [];
       for (let k = 0; k < uncachedIdx.length; k++) {
         const vec = embs[k]?.values || embs[k]?.embedding?.values || null;
         const i = uncachedIdx[k];
@@ -445,9 +439,7 @@
           const inp = arr[i];
           const isStr = typeof inp === 'string';
           const clean = isStr ? String(inp).trim() : '';
-          const ck = isStr
-            ? `${taskType || 'none'}_${outputDimensionality}_${clean}`
-            : null;
+          const ck = isStr ? `${taskType || 'none'}_${outputDimensionality}_${clean}` : null;
           if (ck) {
             embeddingCache.set(ck, vec);
             if (embeddingCache.size > 500) {

@@ -617,7 +617,10 @@
     };
     const backoff = window.JarvisBackoff;
     if (backoff) {
-      return backoff.retry(doFetch, Object.assign({ retries: 2, base: 800, max: 8000 }, retryOpts || {}));
+      return backoff.retry(
+        doFetch,
+        Object.assign({ retries: 2, base: 800, max: 8000 }, retryOpts || {})
+      );
     }
     return doFetch();
   }
