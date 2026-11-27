@@ -782,9 +782,7 @@
             ...Object.values(models)
               .filter(m => m.provider === 'explabs')
               .map(m => m.id),
-            ...(Array.isArray(explabsProvider.models)
-              ? explabsProvider.models.map(m => m.id)
-              : []),
+            ...(Array.isArray(explabsProvider.models) ? explabsProvider.models.map(m => m.id) : []),
           ]),
         ]
       : [];

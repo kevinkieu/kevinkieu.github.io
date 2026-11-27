@@ -77,6 +77,11 @@
     const effectiveTheme = mode === 'auto' ? getScheduledTheme() : mode;
     root.setAttribute('data-theme', effectiveTheme);
 
+    // Cập nhật theme-color meta để status bar / browser chrome đồng bộ với theme
+    const THEME_COLORS = { light: '#f8fafc', dark: '#090d16', sepia: '#fdf6e3' };
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) metaTheme.setAttribute('content', THEME_COLORS[effectiveTheme] || '#090d16');
+
     const btnTheme = $('btn-theme');
     if (btnTheme) {
       btnTheme.innerHTML = `${THEME_ICONS[mode]} <span class="mobile-hidden">${THEME_MODES[mode].split(' (')[0]}</span>`;

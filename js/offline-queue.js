@@ -110,7 +110,22 @@
       return null;
     }
     all.push(data);
-    return writeAll(all) ? data : null;
+    const ok = writeAll(all);
+    if (ok) {
+      // Background Sync: yêu cầu SW flush queue khi có mạng lại (progressive enhancement)
+      try {
+        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+          navigator.serviceWorker.ready
+            .then(reg => {
+              if (reg && typeof reg.sync !== 'undefined') {
+                reg.sync.register('flush-offline-queue').catch(() => {});
+              }
+            })
+            .catch(() => {});
+        }
+      } catch (_) {}
+    }
+    return ok ? data : null;
   }
 
   function update(id, patch) {

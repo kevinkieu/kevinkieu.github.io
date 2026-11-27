@@ -175,6 +175,7 @@ body {
   background: var(--bg-main);
   color: var(--text-main);
   overflow: hidden;
+  overscroll-behavior-y: none;
   padding-bottom: env(safe-area-inset-bottom);
   -webkit-font-smoothing: antialiased;
 }
@@ -1183,7 +1184,7 @@ think {
   background: transparent;
   border: none;
   color: var(--text-main);
-  font-size: 0.98rem;
+  font-size: 1rem; /* 16px — tránh iOS Safari auto-zoom khi focus */
   outline: none;
   resize: none;
   max-height: 160px;
@@ -3159,4 +3160,17 @@ think {
   margin-top: 4px;
   font-size: 0.7rem;
   color: #ef4444;
+}
+
+/* ==========================================================================
+   ACCESSIBILITY: prefers-reduced-motion
+   Tắt animation/transition cho người dùng yêu cầu giảm chuyển động.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

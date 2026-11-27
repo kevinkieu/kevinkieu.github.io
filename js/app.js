@@ -2777,6 +2777,15 @@ window.addEventListener('online', () => {
   renderPendingQueue();
   flushOfflineQueue();
 });
+// Background Sync từ Service Worker: khi mạng trở lại, SW báo app flush queue
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', ev => {
+    if (ev && ev.data && ev.data.type === 'FLUSH_OFFLINE_QUEUE') {
+      renderPendingQueue();
+      flushOfflineQueue();
+    }
+  });
+}
 window.addEventListener('offline', renderPendingQueue);
 window.addEventListener('jarvis:queue-changed', () => renderPendingQueue());
 // Lần đầu mở app: vẽ lại tin đang chờ và thử gửi nếu đang có mạng.
@@ -5417,6 +5426,35 @@ function showToast(m, t = 'success') {
   DOM.toast.className = `toast ${t} show`;
   tTO = setTimeout(() => DOM.toast.classList.remove('show'), 3200);
 }
+
+// Helper thông báo hệ thống (Notification API) — progressive enhancement.
+// Yêu cầu người dùng cấp quyền lần đầu; nếu bị từ chối thì im lặng fallback về toast.
+async function notifyUser(title, body, tag) {
+  try {
+    if (!('Notification' in window)) return false;
+    if (Notification.permission === 'default') {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') return false;
+    }
+    if (Notification.permission !== 'granted') return false;
+    // Ưu tiên qua Service Worker để hoạt động cả khi tab đóng (nếu SW sẵn sàng)
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'SHOW_NOTIFICATION',
+        title: title || 'Jarvis AI',
+        body: body || '',
+        tag: tag || 'jarvis',
+      });
+      return true;
+    }
+    new Notification(title || 'Jarvis AI', { body: body || '', tag: tag || 'jarvis' });
+    return true;
+  } catch (e) {
+    console.warn('[notifyUser] lỗi:', e);
+    return false;
+  }
+}
+window.notifyUser = notifyUser;
 
 // --- SEARCH BAR POPUP & TRIGGER (FIXED ENTER & MOBILE & SEMANTIC) ---
 const sBar = document.querySelector('.header-search-bar');

@@ -1,9 +1,10 @@
 // Jarvis AI Service Worker for PWA
-const CACHE_NAME = 'jarvis-ai-pwa-v96';
+const CACHE_NAME = 'jarvis-ai-pwa-v97';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './icon-180.png',
   './icon-192.png',
   './icon-512.png',
   './css/style.css',
@@ -11,6 +12,7 @@ const STATIC_ASSETS = [
   './css/tts.css',
   './css/translate.css',
   './css/rag.css',
+  './css/debug-overlay.css',
   './js/perf-marks.js',
   './js/module-loader.js',
   './js/lazy-libs.js',
@@ -54,6 +56,7 @@ async function discoverAssets() {
     './',
     './index.html',
     './manifest.json',
+    './icon-180.png',
     './icon-192.png',
     './icon-512.png',
   ]);
@@ -210,4 +213,48 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(cacheKeyFor(event.request.url)).then(response => response || fetch(event.request))
   );
+});
+
+// Background Sync: flush offline queue when connectivity returns
+self.addEventListener('sync', event => {
+  if (event.tag === 'flush-offline-queue') {
+    event.waitUntil(
+      self.clients
+        .matchAll({ type: 'window', includeUncontrolled: true })
+        .then(clients => {
+          clients.forEach(c => {
+            try {
+              c.postMessage({ type: 'FLUSH_OFFLINE_QUEUE' });
+            } catch (_) {}
+          });
+        })
+    );
+  }
+});
+
+// Notification click: focus existing tab or open app
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+      if (clients && clients.length) {
+        return clients[0].focus();
+      }
+      return self.clients.openWindow('./');
+    })
+  );
+});
+
+// Allow clients to trigger a notification via message
+self.addEventListener('message', event => {
+  const data = event.data || {};
+  if (data.type === 'SHOW_NOTIFICATION' && self.Notification && Notification.permission === 'granted') {
+    self.registration.showNotification(data.title || 'Jarvis AI', {
+      body: data.body || '',
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag: data.tag || 'jarvis',
+      renotify: !!data.renotify,
+    });
+  }
 });

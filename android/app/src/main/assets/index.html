@@ -21,10 +21,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Jarvis AI" />
-    <link
-      rel="apple-touch-icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%232563eb'/><text x='50' y='65' font-size='48' font-weight='bold' fill='white' text-anchor='middle'>J</text></svg>"
-    />
+    <link rel="apple-touch-icon" href="./icon-180.png" />
 
     <!-- CDN STYLESHEETS (nhẹ, cần cho hiển thị công thức và tô màu code) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
@@ -47,10 +44,10 @@
 
     <!-- MODULAR STYLESHEETS -->
     <link rel="stylesheet" href="./css/style.css?v=82" />
-    <link rel="stylesheet" href="./css/live.css" />
-    <link rel="stylesheet" href="./css/tts.css" />
-    <link rel="stylesheet" href="./css/translate.css" />
-    <link rel="stylesheet" href="./css/rag.css" />
+    <link rel="stylesheet" href="./css/live.css?v=82" />
+    <link rel="stylesheet" href="./css/tts.css?v=82" />
+    <link rel="stylesheet" href="./css/translate.css?v=82" />
+    <link rel="stylesheet" href="./css/rag.css?v=82" />
   </head>
   <body>
     <!-- DRAG & DROP OVERLAY (DESKTOP) -->
@@ -926,7 +923,7 @@
       <!-- MODAL DAILY BRIEFING (BẢN TIN NGÀY MỚI) -->
       <div
         id="daily-briefing-modal"
-        class="modal-box"
+        class="modal-box" role="dialog" aria-modal="true"
         style="max-width: 660px; width: 94%; display: none; z-index: 2150"
       >
         <div
@@ -954,6 +951,7 @@
             class="close-btn icon-btn"
             style="width: 28px; height: 28px; font-size: 1.1rem"
             title="Đóng"
+            aria-label="Đóng"
           >
             &times;
           </button>
@@ -1093,7 +1091,7 @@
       </div>
 
       <!-- MODAL WEB SHARE TARGET PROMPT -->
-      <div id="share-target-modal" class="modal-box" style="max-width: 540px; display: none">
+      <div id="share-target-modal" class="modal-box" role="dialog" aria-modal="true" style="max-width: 540px; display: none">
         <div
           class="modal-header"
           style="
@@ -1111,6 +1109,7 @@
               $('share-target-modal').style.display = 'none';
               $('modal-overlay').style.display = 'none';
             "
+            aria-label="Đóng"
           >
             &times;
           </button>
@@ -1169,7 +1168,7 @@
       </div>
 
       <!-- MODAL PROMPT LIBRARY (KHO PROMPT CÁ NHÂN) -->
-      <div id="prompt-library-modal" class="modal-box">
+      <div id="prompt-library-modal" class="modal-box" role="dialog" aria-modal="true">
         <div class="modal-header">
           <h3>
             <svg class="icon" viewBox="0 0 24 24">
@@ -2268,7 +2267,7 @@
       </div>
 
       <!-- MODAL GLOBAL & SEMANTIC SEARCH -->
-      <div id="search-modal" class="modal-box" style="max-width: 620px; width: 92%">
+      <div id="search-modal" class="modal-box" role="dialog" aria-modal="true" style="max-width: 620px; width: 92%">
         <div class="modal-header">
           <div style="display: flex; align-items: center; gap: 8px">
             <h3 style="margin: 0; font-size: 1.05rem">🔍 Tìm kiếm Nâng cao & Ngữ nghĩa AI</h3>
@@ -2363,7 +2362,7 @@
       </div>
 
       <!-- MODAL KNOWLEDGE BASE & RAG STUDIO -->
-      <div id="knowledge-modal" class="modal-box" style="max-width: 720px; width: 94%">
+      <div id="knowledge-modal" class="modal-box" role="dialog" aria-modal="true" style="max-width: 720px; width: 94%">
         <div class="modal-header">
           <div style="display: flex; align-items: center; gap: 8px">
             <h3 style="margin: 0; font-size: 1.05rem">🧠 Kho Tri Thức Cá Nhân & RAG Studio</h3>
@@ -2473,6 +2472,7 @@
                   class="icon-btn"
                   onclick="$('persona-summary-box').style.display = 'none'"
                   style="width: 20px; height: 20px"
+                  aria-label="Đóng"
                 >
                   &times;
                 </button>
@@ -2739,7 +2739,7 @@
       </div>
 
       <!-- MODAL RETRIEVED RAG DETAILS -->
-      <div id="rag-details-modal" class="modal-box" style="max-width: 580px; width: 92%">
+      <div id="rag-details-modal" class="modal-box" role="dialog" aria-modal="true" style="max-width: 580px; width: 92%">
         <div class="modal-header">
           <div style="display: flex; align-items: center; gap: 8px">
             <h3 style="margin: 0; font-size: 1.05rem">🧠 Dữ liệu Trí nhớ RAG Đã Trích Xuất</h3>
@@ -2769,7 +2769,7 @@
       </div>
 
       <!-- MODAL FILE LIBRARY -->
-      <div id="file-library-modal" class="modal-box">
+      <div id="file-library-modal" class="modal-box" role="dialog" aria-modal="true">
         <div class="modal-header">
           <h3>🗄️ Thư viện Tài liệu</h3>
           <button class="close-btn icon-btn" aria-label="Đóng">&times;</button>
@@ -2787,7 +2787,7 @@
       </div>
 
       <!-- MODAL CAMERA -->
-      <div id="camera-modal" class="modal-box">
+      <div id="camera-modal" class="modal-box" role="dialog" aria-modal="true">
         <div class="modal-header">
           <h3>📷 Chụp ảnh từ Camera</h3>
           <button class="close-btn icon-btn" aria-label="Đóng">&times;</button>
@@ -2804,7 +2804,7 @@
       </div>
 
       <!-- MODAL BULK EDIT MESSAGES -->
-      <div id="bulk-edit-modal" class="modal-box">
+      <div id="bulk-edit-modal" class="modal-box" role="dialog" aria-modal="true">
         <div class="modal-header">
           <h3>🛠️ Quản lý Lịch sử Tin nhắn</h3>
           <button class="close-btn icon-btn" aria-label="Đóng">&times;</button>
@@ -2830,7 +2830,7 @@
       </div>
 
       <!-- MODAL CLOUD SYNC (GITHUB GIST) -->
-      <div id="cloud-sync-modal" class="modal-box" style="max-width: 580px">
+      <div id="cloud-sync-modal" class="modal-box" role="dialog" aria-modal="true" style="max-width: 580px">
         <div class="modal-header">
           <h3 style="display: flex; align-items: center; gap: 8px">☁️ Đồng bộ Cloud qua GitHub Gist</h3>
           <button class="close-btn icon-btn" aria-label="Đóng">&times;</button>
@@ -3014,7 +3014,7 @@
       <!-- ==========================================
          MODAL: GEMINI TTS STUDIO PRO
          ========================================== -->
-      <div id="tts-studio-modal" class="modal-box modal-tts-studio" data-mobile-tab="editor">
+      <div id="tts-studio-modal" class="modal-box modal-tts-studio" role="dialog" aria-modal="true" data-mobile-tab="editor">
         <!-- HEADER -->
         <div class="tts-header-bar">
           <div class="tts-header-title">
@@ -3032,7 +3032,7 @@
               </div>
             </div>
           </div>
-          <button id="btn-close-tts-studio" class="close-btn icon-btn" title="Đóng Studio">&times;</button>
+          <button id="btn-close-tts-studio" class="close-btn icon-btn" title="Đóng Studio" aria-label="Đóng Studio">&times;</button>
         </div>
 
         <!-- MOBILE SEGMENTED TABS -->
@@ -3383,7 +3383,7 @@
       </div>
 
       <!-- MODAL KEY QUOTA DETAILS (10 KEYS - 20 RPD) -->
-      <div id="key-quota-modal" class="modal-box" style="max-width: 440px; width: 92%; display: none; z-index: 2150">
+      <div id="key-quota-modal" class="modal-box" role="dialog" aria-modal="true" style="max-width: 440px; width: 92%; display: none; z-index: 2150">
         <div
           class="modal-header"
           style="
@@ -3411,6 +3411,7 @@
             class="close-btn icon-btn"
             style="width: 28px; height: 28px; font-size: 1.1rem; line-height: 1"
             title="Đóng"
+            aria-label="Đóng"
           >
             &times;
           </button>
@@ -3524,7 +3525,7 @@
               </div>
             </div>
           </div>
-          <button id="btn-close-max-med" class="max-med-close-btn" title="Đóng">&times;</button>
+          <button id="btn-close-max-med" class="max-med-close-btn" title="Đóng" aria-label="Đóng">&times;</button>
         </div>
 
         <!-- TODAY SUMMARY BAR -->
@@ -3590,7 +3591,7 @@
       <div class="max-form-box">
         <div class="max-form-header">
           <h3 id="max-form-title">➕ Thêm thuốc vào Tủ</h3>
-          <button id="btn-close-max-form" class="max-med-close-btn">&times;</button>
+          <button id="btn-close-max-form" class="max-med-close-btn" aria-label="Đóng">&times;</button>
         </div>
 
         <div class="max-form-body">
