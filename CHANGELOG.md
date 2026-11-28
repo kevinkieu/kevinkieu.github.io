@@ -1,3 +1,15 @@
+## 2026-11-27 — Nâng mốc version Android lên 1.1.156 và giải thích APK nhỏ hơn
+
+- **Lỗi không cài đè được:** bản APK đang cài là `1.1.155` (versionCode 155), nhưng tag release trên
+  remote chỉ còn tới `v1.1.83`. Workflow build lấy `max(versionCode trong repo, tag cao nhất) + 1`
+  nên tạo ra `1.1.83/84`, thấp hơn bản đang cài. Nâng mốc trong `android/app/build.gradle` lên
+  `versionCode 156` / `versionName 1.1.156`; lần build CI tiếp theo sẽ thành `1.1.157` và cài đè
+  được bản 155. Đồng bộ `package.json`, `package-lock.json` và `boicanhduan.json`.
+- **APK nhỏ khoảng một nửa:** từ commit `83d4f99`, release build bật `minifyEnabled true` +
+  `shrinkResources true` (R8). So sánh release `v1.1.79` (5,1MB, `classes.dex` 8,6MB) với `v1.1.83`
+  (2,1MB, `classes.dex` 1,25MB): dung lượng giảm do R8, không phải thiếu asset. APK 83 vẫn chứa đủ
+  74 asset entry (toàn bộ JS/CSS/HTML/icon), nhiều hơn 65 entry của bản 79.
+
 ## 2026-11-27 — Không tự xưng Jarvis AI khi người dùng đặt System Instruction riêng
 
 - **Nguyên nhân:** `PersonaConfig.buildCard()` luôn chèn thẻ tính cách có dòng

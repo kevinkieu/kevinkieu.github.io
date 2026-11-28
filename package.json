@@ -1,6 +1,6 @@
 {
   "name": "jarvis-ai",
-  "version": "1.1.76",
+  "version": "1.1.156",
   "private": true,
   "description": "Jarvis AI - trợ lý AI cá nhân (PWA + Android WebView): chat đa model, live voice, RAG/Second Brain và TTS studio.",
   "main": "bump-version.js",
