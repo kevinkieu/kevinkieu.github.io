@@ -12,22 +12,26 @@
     pdfjs: {
       label: 'PDF.js',
       url: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js',
+      integrity: 'sha384-lrb5efVIYR2lZw+OsuztHZzP9wpGNrhui+0VlpiHb/iPcZSCDT3CeETsL9EMQ8ih',
       get: () => window.pdfjsLib,
     },
     html2pdf: {
       label: 'html2pdf',
       url: 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
+      integrity: 'sha384-Yv5O+t3uE3hunW8uyrbpPW3iw6/5/Y7HitWJBLgqfMoA36NogMmy+8wWZMpn3HWc',
       get: () => window.html2pdf,
     },
     // KaTeX: chỉ tải khi tin nhắn thực sự có công thức toán (~270KB)
     katex: {
       label: 'KaTeX',
       url: 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js',
+      integrity: 'sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8',
       get: () => window.katex,
     },
     katexAutoRender: {
       label: 'KaTeX auto-render',
       url: 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js',
+      integrity: 'sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05',
       dependsOn: 'katex',
       get: () => window.renderMathInElement,
     },
@@ -35,12 +39,14 @@
     highlight: {
       label: 'highlight.js',
       url: 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js',
+      integrity: 'sha384-F/bZzf7p3Joyp5psL90p/p89AZJsndkSoGwRpXcZhleCWhd8SnRuoYo4d0yirjJp',
       get: () => window.hljs,
     },
     // lamejs: chỉ dùng khi xuất audio TTS thành MP3
     lamejs: {
       label: 'lamejs (MP3 encoder)',
       url: 'https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js',
+      integrity: 'sha384-xuasJXVcyv3hZq0eYpelEkBC8l4yufatZXDsKuyCU2rqfhDCb+ftuE/mSfZAteiK',
       get: () => window.lamejs,
     },
   };
@@ -62,6 +68,12 @@
       s.src = url;
       s.async = true;
       s.dataset.lazySrc = url;
+      // SRI: tra cứu integrity từ LIBS theo url để chặn CDN bị thay thế.
+      const libEntry = Object.values(LIBS).find(l => l.url === url);
+      if (libEntry && libEntry.integrity) {
+        s.integrity = libEntry.integrity;
+        s.crossOrigin = 'anonymous';
+      }
       s.onload = () => {
         s.dataset.loaded = '1';
         resolve();

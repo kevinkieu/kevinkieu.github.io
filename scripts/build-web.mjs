@@ -78,6 +78,8 @@ async function minifyJs(srcPath, outPath, { keepNames = false } = {}) {
 }
 
 async function main() {
+  const crypto = await import('node:crypto');
+  let BUILD_HASH = '';
   const html = readIndex();
   const modules = moduleScripts(html);
   if (!modules.length) throw new Error('Không tìm thấy module script nào trong index.html');
@@ -109,6 +111,12 @@ async function main() {
     if (result.errors.length) throw new Error('esbuild bundle lỗi');
     bundleBytes = fs.statSync(path.join(OUT, 'js', 'app.bundle.min.js')).size;
     console.log(`  bundle: js/app.bundle.min.js  ${kb(bundleBytes)}`);
+    // Build hash ban đầu từ bundle (sẽ được cập nhật thêm css ở bước 4)
+    BUILD_HASH = crypto
+      .createHash('sha256')
+      .update(fs.readFileSync(path.join(OUT, 'js', 'app.bundle.min.js')))
+      .digest('hex')
+      .slice(0, 8);
   }
 
   // 3. Script cổ điển + module lazy + file phụ
@@ -158,6 +166,28 @@ async function main() {
     }
   }
 
+  // Tính build hash cuối (bundle + css) và bust cache tự động cho bản prod
+  {
+    const hash = crypto.createHash('sha256');
+    const bundlePath = path.join(OUT, 'js', 'app.bundle.min.js');
+    if (fs.existsSync(bundlePath)) hash.update(fs.readFileSync(bundlePath));
+    for (const f of fs.readdirSync(path.join(OUT, 'css'))) {
+      hash.update(fs.readFileSync(path.join(OUT, 'css', f)));
+    }
+    BUILD_HASH = hash.digest('hex').slice(0, 8);
+    console.log('  build hash:', BUILD_HASH);
+    // Cập nhật CACHE_NAME trong dist/sw.js để evict cache cũ
+    const swPath = path.join(OUT, 'sw.js');
+    const swSrc = fs.readFileSync(swPath, 'utf8');
+    fs.writeFileSync(
+      swPath,
+      swSrc.replace(
+        /const CACHE_NAME = 'jarvis-ai-pwa-v[^']*';/,
+        `const CACHE_NAME = 'jarvis-ai-pwa-v101-${BUILD_HASH}';`
+      )
+    );
+  }
+
   // 5. index.html cho dist: thay script cổ điển bằng bản .min.js, gộp module
   {
     let out = html;
@@ -177,6 +207,8 @@ async function main() {
         return '    <script type="module" src="./js/app.bundle.min.js"></script>\n';
       }
     );
+    // Bust cache tự động: mọi asset local dùng build hash thay cho ?v= thủ công
+    out = out.replace(/\?v=\d+/g, '?v=' + BUILD_HASH);
     fs.writeFileSync(path.join(OUT, 'index.html'), out);
   }
 

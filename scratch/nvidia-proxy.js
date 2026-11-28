@@ -4,8 +4,8 @@
      http://127.0.0.1:8140/v1
    Lệnh: node scratch/nvidia-proxy.js  (đổi cổng bằng PORT=...)
 */
-const http = require('http');
-const { Readable } = require('stream');
+import http from 'node:http';
+import { Readable } from 'node:stream';
 
 const PORT = Number(process.env.PORT) || 8140;
 const UPSTREAM = 'https://integrate.api.nvidia.com';
