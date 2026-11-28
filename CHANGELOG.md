@@ -1,3 +1,14 @@
+## 2026-11-28 — Sửa giao diện Android bị tràn fullscreen, header nằm dưới status bar
+
+- **Nguyên nhân:** `targetSdk 35` khiến Android 15 ép chế độ edge-to-edge cho mọi app. WebView vì
+  thế vẽ tràn ra sau status bar và navigation bar, còn `MainActivity` không bù window insets nên
+  `.main-header` của web app nằm lọt dưới thanh trạng thái.
+- **Sửa:** thêm `OnApplyWindowInsetsListener` trên root `FrameLayout` (`@id/app_root`) trong
+  `MainActivity.applySystemBarInsets()`, chỉ áp dụng từ API 35 trở lên (nơi edge-to-edge bị ép),
+  padding theo `systemBars() | displayCutout()` để WebView bắt đầu dưới status bar và kết thúc trên
+  navigation bar. Đặt icon status/navigation bar màu sáng để không bị chìm trên nền `#090D16`. Các
+  máy API 24–34 giữ nguyên hành vi cũ (không đổi cách resize bàn phím).
+
 ## 2026-11-27 — Nâng mốc version Android lên 1.1.156 và giải thích APK nhỏ hơn
 
 - **Lỗi không cài đè được:** bản APK đang cài là `1.1.155` (versionCode 155), nhưng tag release trên

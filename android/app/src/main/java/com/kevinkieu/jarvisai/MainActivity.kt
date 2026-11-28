@@ -19,6 +19,7 @@ import android.os.Looper
 import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
+import android.view.View
 import android.view.Window
 import android.view.WindowManager
 import android.webkit.CookieManager
@@ -36,6 +37,9 @@ import androidx.annotation.NonNull
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
 import java.io.File
@@ -290,6 +294,9 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
 
+        val root = findViewById<View>(R.id.app_root)
+        if (root != null) applySystemBarInsets(root)
+
         webView = findViewById(R.id.webview)
         setupWebView()
 
@@ -309,6 +316,33 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleOpenTabIntent(intent)
+    }
+
+    /**
+     * Android 15 (API 35) ép edge-to-edge với app targetSdk 35 nên WebView vẽ tràn dưới
+     * status bar và navigation bar. Bù lại bằng padding theo window insets để header
+     * của web app nằm dưới status bar, còn nội dung không bị thanh điều hướng che.
+     */
+    private fun applySystemBarInsets(root: View) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return
+
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            if (view.paddingTop != bars.top || view.paddingBottom != bars.bottom ||
+                view.paddingLeft != bars.left || view.paddingRight != bars.right
+            ) {
+                view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            }
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
     }
 
     private fun loadMainPage() {
