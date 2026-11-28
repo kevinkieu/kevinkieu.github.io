@@ -16,7 +16,7 @@
   const MODULES = {
     tts: { files: ['./js/tts.js?v=77'], label: 'TTS Studio' },
     translate: { files: ['./js/translate.js?v=76'], label: 'Phiên dịch trực tiếp' },
-    rag: { files: ['./js/rag-core.js?v=76', './js/rag.js?v=77'], label: 'Trí nhớ RAG' },
+    rag: { files: ['./js/rag-core.js?v=76', './js/rag.js?v=78'], label: 'Trí nhớ RAG' },
     sync: { files: ['./js/sync.js?v=85'], label: 'Đồng bộ Gist' },
   };
 

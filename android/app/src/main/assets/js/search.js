@@ -131,6 +131,89 @@
     }
   }
 
+  // --- TRÍCH XUẤT TỪ KHÓA TÌM KIẾM BẰNG GEMINI 3.5 FLASH LITE ---
+  // Dùng khi người dùng gõ chữ "tìm kiếm" trong input (không dùng #kw#).
+  // Trả về chuỗi từ khóa hoặc null nếu không trích xuất được.
+  async function extractSearchKeywords(text, googleKey) {
+    const key = String(googleKey || '').trim();
+    const fallbackKey =
+      key ||
+      (Array.isArray(window.apiKeys) && window.apiKeys.length
+        ? String(window.apiKeys[0] || '').trim()
+        : '');
+    // Giải mã nếu bị obfuscate
+    let finalKey = fallbackKey;
+    if (finalKey.startsWith('JVENC_') || finalKey.startsWith('ENC_')) {
+      finalKey =
+        typeof window.deobfuscateKey === 'function' ? window.deobfuscateKey(finalKey) : finalKey;
+    }
+    if (!finalKey) {
+      if (typeof window.showToast === 'function')
+        window.showToast('Cần Google API Key để trích xuất từ khóa tìm kiếm.', 'warning');
+      return null;
+    }
+    const GoogleGenAI = window.GoogleGenAI;
+    if (!GoogleGenAI) {
+      if (typeof window.showToast === 'function')
+        window.showToast('Chưa nạp thư viện GoogleGenAI.', 'warning');
+      return null;
+    }
+    const hint =
+      (window.filesData && window.filesData.length
+        ? ` (người dùng có đính kèm ${window.filesData.length} tệp)`
+        : '') || '';
+    const prompt = `Bạn là bộ trích xuất từ khóa tìm kiếm web. Từ yêu cầu của người dùng, trả về MỘT cụm từ khóa ngắn (tối đa 8 từ) để tìm kiếm web. Chỉ trả về từ khóa, không giải thích, không dấu ngoặc, không xuống dòng.\n\nYêu cầu${hint}: ${String(text || '').trim()}`;
+    const tryCall = async cfg => {
+      const ai = new GoogleGenAI({ apiKey: finalKey });
+      const res = await ai.models.generateContent({
+        model: 'gemini-3.5-flash-lite',
+        contents: prompt,
+        config: cfg,
+      });
+      return (res && res.text ? res.text : '').trim();
+    };
+    const withTimeout = (p, ms) =>
+      Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+    try {
+      let txt = '';
+      try {
+        txt = await withTimeout(
+          tryCall({
+            temperature: 0.1,
+            thinkingConfig: { thinkingLevel: 'minimal' },
+            safetySettings: window.SAFETY || [],
+          }),
+          8000
+        );
+      } catch (e1) {
+        // Fallback: bỏ thinkingConfig nếu model/API không hỗ trợ
+        txt = await withTimeout(
+          tryCall({
+            temperature: 0.1,
+            safetySettings: window.SAFETY || [],
+          }),
+          8000
+        );
+      }
+      const kw = String(txt || '')
+        .trim()
+        .replace(/^["'`“”«»]+|["'`“”«»]+$/g, '')
+        .replace(/\s+/g, ' ');
+      return kw || null;
+    } catch (e) {
+      console.warn('extractSearchKeywords failed:', e);
+      if (typeof window.showToast === 'function')
+        window.showToast(
+          '⚠️ Không trích xuất được từ khóa — dùng nguyên văn câu hỏi để tìm.',
+          'warning'
+        );
+      const fallback = String(text || '')
+        .trim()
+        .slice(0, 80);
+      return fallback || null;
+    }
+  }
+
   // Window exports
   window.getSearchCache = getSearchCache;
   window.setSearchCache = setSearchCache;
@@ -138,4 +221,5 @@
   window.fetchSerperSearch = fetchSerperSearch;
   window.executeLiveSearch = executeLiveSearch;
   window.extractQuotedKeywords = extractQuotedKeywords;
+  window.extractSearchKeywords = extractSearchKeywords;
 })();

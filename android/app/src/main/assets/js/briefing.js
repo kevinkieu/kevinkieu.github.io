@@ -399,6 +399,7 @@ Hãy tạo một "Bản Tin Ngày Mới (Daily Briefing)" cực kỳ truyền c�
             config: {
               temperature: 0.35,
               safetySettings: window.SAFETY || [],
+              thinkingConfig: { thinkingLevel: 'minimal' },
             },
           });
           if (res.text) {

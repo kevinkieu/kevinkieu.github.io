@@ -88,6 +88,7 @@
           safetySettings: SAFETY,
           maxOutputTokens: 350,
           temperature: 0.7,
+          thinkingConfig: { thinkingLevel: 'minimal' },
         },
       });
 

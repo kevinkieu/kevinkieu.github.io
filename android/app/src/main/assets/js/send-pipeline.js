@@ -296,6 +296,20 @@ const __initSendPipeline = () => {
       if (!gKey) return showToast('Cần ít nhất 1 Google API Key trong Cài đặt!', 'danger');
     }
 
+    // Khóa Google dùng cho các tác vụ phụ trợ (Flash Lite): auto-name, follow-up, RAG learn,
+    // trích xuất từ khóa tìm kiếm. Khi model chính là compat gateway (NVIDIA/Kilo/OpenRouter/
+    // Cohere/dynamic) hoặc Explabs, gKey là key của provider đó -> KHÔNG dùng cho Gemini.
+    // Phải lấy key Google riêng để tránh gọi Gemini bằng key sai -> fail im lặng.
+    let auxGoogleKey = gKey;
+    if (usesCompatGateway || usesExplabs) {
+      auxGoogleKey =
+        (typeof getSessionApiKey === 'function' ? getSessionApiKey(cs, true) : null) ||
+        (Array.isArray(apiKeys) && apiKeys.length ? apiKeys[0] : '') ||
+        '';
+      if (auxGoogleKey && (auxGoogleKey.startsWith('JVENC_') || auxGoogleKey.startsWith('ENC_')))
+        auxGoogleKey = deobfuscateKey(auxGoogleKey);
+    }
+
     ls.removeItem('jarvis_draft');
     isProcessing = true;
     abortController = new AbortController();
@@ -483,7 +497,7 @@ const __initSendPipeline = () => {
         const isDefaultSessName =
           !normName || /^(hội thoại|phiên|cuộc trò chuyện|new session)/i.test(normName);
         if (isDefaultSessName && !cs.isCustomNamed) {
-          setTimeout(() => tryAutoNameSession(cs, fP, finalResp, gKey), 200);
+          setTimeout(() => tryAutoNameSession(cs, fP, finalResp, auxGoogleKey), 200);
         }
       }
 
@@ -505,7 +519,7 @@ const __initSendPipeline = () => {
         window.JarvisRAG &&
         typeof window.JarvisRAG.extractAndLearnMemory === 'function'
       ) {
-        setTimeout(() => window.JarvisRAG.extractAndLearnMemory(fP, gKey), 400);
+        setTimeout(() => window.JarvisRAG.extractAndLearnMemory(fP, auxGoogleKey), 400);
       }
 
       // TỰ ĐỘNG ĐỒNG BỘ NGẦM LÊN CLOUD SAU KHI CHAT XONG (DEBOUNCE 10 GIÂY)
@@ -598,18 +612,52 @@ const __initSendPipeline = () => {
       if (abortController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
       // WEB SEARCH (TAVILY / SERPER)
-      const quoted = extractHashKeywords(fnP);
-      if (quoted && DOM.toggleSearch.checked) {
+      // 1) Ưu tiên từ khóa bọc trong #...# (cách cũ, không gọi LLM).
+      let searchKw = extractHashKeywords(fnP);
+      // 2) Nhánh mới: nếu search đang bật và input chứa chữ "tìm kiếm" (không có #kw#),
+      //    dùng Gemini 3.5 Flash Lite để trích xuất từ khóa từ toàn bộ input.
+      if (!searchKw && DOM.toggleSearch.checked && /tìm\s*kiếm/i.test(msg)) {
+        let extractBadge = null;
+        const msgHdr0 = bD?.querySelector('.message-header');
+        if (msgHdr0) {
+          extractBadge = document.createElement('span');
+          extractBadge.className = 'search-status-badge';
+          extractBadge.style.cssText =
+            'font-size:0.75rem;padding:2px 8px;border-radius:12px;background:rgba(139,92,246,0.15);color:#8b5cf6;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin-left:8px;';
+          extractBadge.innerHTML = `🔍 Đang trích xuất từ khóa...`;
+          msgHdr0.appendChild(extractBadge);
+        }
+        try {
+          const kw = await window.extractSearchKeywords(msg, auxGoogleKey);
+          if (kw) {
+            searchKw = kw;
+            if (extractBadge) {
+              extractBadge.style.background = 'rgba(16,185,129,0.15)';
+              extractBadge.style.color = '#10b981';
+              extractBadge.innerHTML = `✓ Từ khóa: <em>"${escapeHtml(kw)}"</em>`;
+              setTimeout(() => {
+                if (extractBadge) extractBadge.remove();
+              }, 4000);
+            }
+          } else if (extractBadge) {
+            extractBadge.remove();
+          }
+        } catch (e) {
+          console.warn('extractSearchKeywords error:', e);
+          if (extractBadge) extractBadge.remove();
+        }
+      }
+      if (searchKw && DOM.toggleSearch.checked) {
         const tgt = DOM.searchEngineSel.value === 'serper' ? 'serper' : 'tavily';
 
-        let actualSearchQuery = quoted;
+        let actualSearchQuery = searchKw;
         const now = new Date();
         const dateStr = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
         if (
-          /(^|\s)(hôm nay|mới nhất|hôm qua)(\s|$)/i.test(quoted) &&
-          !quoted.includes(String(now.getFullYear()))
+          /(^|\s)(hôm nay|mới nhất|hôm qua)(\s|$)/i.test(searchKw) &&
+          !searchKw.includes(String(now.getFullYear()))
         ) {
-          actualSearchQuery = `${quoted} ${dateStr}`;
+          actualSearchQuery = `${searchKw} ${dateStr}`;
         }
 
         let searchBadge = null;
@@ -619,7 +667,7 @@ const __initSendPipeline = () => {
           searchBadge.className = 'search-status-badge';
           searchBadge.style.cssText =
             'font-size:0.75rem;padding:2px 8px;border-radius:12px;background:rgba(59,130,246,0.15);color:#3b82f6;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin-left:8px;';
-          searchBadge.innerHTML = `🌐 Đang tìm kiếm (${tgt}): <em>"${escapeHtml(quoted)}"</em>...`;
+          searchBadge.innerHTML = `🌐 Đang tìm kiếm (${tgt}): <em>"${escapeHtml(searchKw)}"</em>...`;
           msgHdr.appendChild(searchBadge);
         }
 
@@ -648,12 +696,12 @@ const __initSendPipeline = () => {
           if (searchBadge) {
             searchBadge.style.background = 'rgba(16,185,129,0.15)';
             searchBadge.style.color = '#10b981';
-            searchBadge.innerHTML = `✓ Đã cập nhật Web: "${escapeHtml(quoted)}"`;
+            searchBadge.innerHTML = `✓ Đã cập nhật Web: "${escapeHtml(searchKw)}"`;
             setTimeout(() => {
               if (searchBadge) searchBadge.remove();
             }, 5000);
           }
-          fnP = `[DỮ LIỆU TÌM ĐƯỢC TỪ INTERNET CHO TỪ KHÓA "${quoted}"]:\n${sText}\n\n[HÃY TỔNG HỢP THÔNG TIN TÌM ĐƯỢC Ở TRÊN ĐỂ TRẢ LỜI CÂU HỎI SAU]:\n${fnP}`;
+          fnP = `[DỮ LIỆU TÌM ĐƯỢC TỪ INTERNET CHO TỪ KHÓA "${searchKw}"]:\n${sText}\n\n[HÃY TỔNG HỢP THÔNG TIN TÌM ĐƯỢC Ở TRÊN ĐỂ TRẢ LỜI CÂU HỎI SAU]:\n${fnP}`;
         } else if (searchBadge) {
           searchBadge.style.background = 'rgba(239,68,68,0.15)';
           searchBadge.style.color = '#ef4444';

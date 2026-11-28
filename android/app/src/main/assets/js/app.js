@@ -711,15 +711,30 @@ if ($('btn-enhance-prompt'))
     if (!k) return showToast('Cần Google Key để Enhance!', 'danger');
     $('btn-enhance-prompt').innerText = '⏳...';
     try {
-      const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
-        model: FLASH_LITE_MODEL,
-        contents: `Hãy tối ưu và mở rộng câu lệnh prompt sau đây để rõ ràng, chi tiết, chuyên nghiệp và hiệu quả nhất khi gửi cho AI:\n\n"${txt}"\n\nChỉ trả về duy nhất nội dung prompt đã được tối ưu, không giải thích gì thêm.`,
-        config: { safetySettings: SAFETY, maxOutputTokens: 400 },
-      });
-      if (res.text) {
+      const modelsToTry = window.AUX_FALLBACK_MODELS || [FLASH_LITE_MODEL];
+      let res = null;
+      for (const m of modelsToTry) {
+        try {
+          res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
+            model: m,
+            contents: `Hãy tối ưu và mở rộng câu lệnh prompt sau đây để rõ ràng, chi tiết, chuyên nghiệp và hiệu quả nhất khi gửi cho AI:\\n\\n"${txt}"\\n\\nChỉ trả về duy nhất nội dung prompt đã được tối ưu, không giải thích gì thêm.`,
+            config: {
+              safetySettings: SAFETY,
+              maxOutputTokens: 400,
+              thinkingConfig: { thinkingLevel: 'minimal' },
+            },
+          });
+          if (res && res.text) break;
+        } catch (e) {
+          console.warn('Enhance failed on', m, e?.message || e);
+        }
+      }
+      if (res && res.text) {
         DOM.input.value = res.text.trim();
         DOM.input.dispatchEvent(new Event('input'));
         showToast('🪄 Đã tối ưu hóa Prompt!');
+      } else {
+        showToast('Lỗi Enhance: không nhận được phản hồi', 'danger');
       }
     } catch (err) {
       showToast('Lỗi Enhance: ' + err.message, 'danger');
@@ -863,12 +878,25 @@ DOM.btnAddUrl.onclick = async () => {
       let summary = '';
       if (k) {
         try {
-          const res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
-            model: FLASH_LITE_MODEL,
-            contents: `Phân tích và tóm tắt chi tiết video YouTube sau:\n- Tiêu đề: ${yt.title}\n- Kênh: ${yt.author}\n- Link: ${u}\n${yt.content ? yt.content : ''}\nHãy nêu rõ chủ đề chính, các luận điểm nổi bật và ý nghĩa của video. Tuyệt đối KHÔNG từ chối là không xem được video.`,
-            config: { safetySettings: SAFETY, maxOutputTokens: 700 },
-          });
-          summary = res.text;
+          const modelsToTry = window.AUX_FALLBACK_MODELS || [FLASH_LITE_MODEL];
+          let res = null;
+          for (const m of modelsToTry) {
+            try {
+              res = await new GoogleGenAI({ apiKey: k }).models.generateContent({
+                model: m,
+                contents: `Phân tích và tóm tắt chi tiết video YouTube sau:\n- Tiêu đề: ${yt.title}\n- Kênh: ${yt.author}\n- Link: ${u}\n${yt.content ? yt.content : ''}\nHãy nêu rõ chủ đề chính, các luận điểm nổi bật và ý nghĩa của video. Tuyệt đối KHÔNG từ chối là không xem được video.`,
+                config: {
+                  safetySettings: SAFETY,
+                  maxOutputTokens: 700,
+                  thinkingConfig: { thinkingLevel: 'minimal' },
+                },
+              });
+              if (res && res.text) break;
+            } catch (e) {
+              console.warn('YouTube summary failed on', m, e?.message || e);
+            }
+          }
+          if (res && res.text) summary = res.text;
         } catch (e) {
           summary = `Tiêu đề: ${yt.title} (Kênh: ${yt.author})`;
         }

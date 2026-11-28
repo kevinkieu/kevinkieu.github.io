@@ -84,7 +84,11 @@
                 '\n' +
                 (yt.content ? yt.content : '') +
                 '\nHãy nêu rõ chủ đề chính, các luận điểm nổi bật và ý nghĩa của video. Tuyệt đối KHÔNG từ chối là không xem được video.',
-              config: { safetySettings: SAFETY, maxOutputTokens: 700 },
+              config: {
+                safetySettings: SAFETY,
+                maxOutputTokens: 700,
+                thinkingConfig: { thinkingLevel: 'minimal' },
+              },
             });
             summary = res.text;
           } catch (e) {

@@ -28,6 +28,7 @@ async function tryAutoNameSession(sessionObj, userText, botText, preferredKey = 
           safetySettings: SAFETY,
           maxOutputTokens: 100,
           temperature: 0.4,
+          thinkingConfig: { thinkingLevel: 'minimal' },
         },
       });
 
@@ -126,6 +127,7 @@ async function condenseSessionMemory(sessionObj, force = false) {
           config: {
             safetySettings: SAFETY,
             temperature: 0.3,
+            thinkingConfig: { thinkingLevel: 'minimal' },
           },
         });
         if (res && res.text) break;

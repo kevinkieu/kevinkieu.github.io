@@ -1185,6 +1185,7 @@ Nhiệm vụ:
               responseMimeType: 'application/json',
               temperature: 0.1,
               maxOutputTokens: 300,
+              thinkingConfig: { thinkingLevel: 'minimal' },
             },
           });
           if (res) break;
@@ -1621,6 +1622,7 @@ Giọng văn ấm áp, thông minh, tôn trọng, đúng chuẩn Jarvis. Không 
             config: {
               temperature: 0.3,
               maxOutputTokens: 800,
+              thinkingConfig: { thinkingLevel: 'minimal' },
             },
           });
           if (res.text) {

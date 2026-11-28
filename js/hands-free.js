@@ -166,6 +166,7 @@ async function processHandsFreeAudioBlob(blob) {
             ],
             config: {
               maxOutputTokens: 500,
+              thinkingConfig: { thinkingLevel: 'minimal' },
             },
           });
           spokenText = (res.text || '').trim();

@@ -868,7 +868,7 @@
         await new GoogleGenAI({ apiKey: k }).models.generateContent({
           model: FLASH_LITE_MODEL,
           contents: 'hi',
-          config: { maxOutputTokens: 1 },
+          config: { maxOutputTokens: 1, thinkingConfig: { thinkingLevel: 'minimal' } },
         });
         el.style.border = '2px solid var(--success)';
         if (nameEl) nameEl.style.border = '2px solid var(--success)';
